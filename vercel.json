@@ -1,12 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
-    { "path": "/api/cron/ingest-ebay-daily", "schedule": "20 1 * * *" },
-    { "path": "/api/cron/ingest-ebay-snapshot", "schedule": "10 * * * *" },
-    { "path": "/api/cron/ingest-reverb", "schedule": "40 */6 * * *" },
-    { "path": "/api/cron/ingest-sweetwater", "schedule": "20 */6 * * *" },
-    { "path": "/api/cron/ingest-gear4music", "schedule": "0 */6 * * *" },
-    { "path": "/api/cron/ingest-zzounds", "schedule": "10 */6 * * *" },
     { "path": "/api/cron/ingest-folkcraft", "schedule": "30 */6 * * *" },
     { "path": "/api/cron/ingest-acousticguitar", "schedule": "45 */6 * * *" },
     { "path": "/api/cron/ingest-jamstik", "schedule": "15 */6 * * *" },
