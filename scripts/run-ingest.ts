@@ -8,6 +8,9 @@ import {
 import { ingestReverbFeed } from "../lib/ingestion/reverb-awin"
 import { ingestSweetwaterFeed } from "../lib/ingestion/sweetwater-linkconnector"
 import { ingestGear4MusicFeed } from "../lib/ingestion/gear4music-awin"
+import { ingestZzoundsFeed } from "../lib/ingestion/zzounds-cj"
+import { ingestFullCompassFeed } from "../lib/ingestion/fullcompass-cj"
+import { ingestPinevilleMusicFeed } from "../lib/ingestion/pinevillemusic-cj"
 import { resolveUnmatchedListings } from "../lib/canonical/resolve"
 import { refreshAllDeals } from "../lib/deals/pricing"
 
@@ -20,6 +23,9 @@ import { refreshAllDeals } from "../lib/deals/pricing"
  *   npm run ingest:reverb            Awin product datafeed
  *   npm run ingest:sweetwater        LinkConnector product datafeed
  *   npm run ingest:gear4music        Awin product datafeed
+ *   npm run ingest:zzounds           CJ Affiliate product feed
+ *   npm run ingest:fullcompass       CJ Affiliate product feed
+ *   npm run ingest:pinevillemusic    CJ Affiliate product feed
  *
  * Useful for a first load and for checking credentials without waiting on a
  * schedule.
@@ -45,12 +51,23 @@ async function main() {
   } else if (source === "gear4music") {
     const result = await ingestGear4MusicFeed()
     console.log("[ingest] Gear4music:", JSON.stringify(result, null, 2))
+  } else if (source === "zzounds") {
+    const result = await ingestZzoundsFeed()
+    console.log("[ingest] zZounds:", JSON.stringify(result, null, 2))
+  } else if (source === "fullcompass") {
+    const result = await ingestFullCompassFeed()
+    console.log("[ingest] Full Compass:", JSON.stringify(result, null, 2))
+  } else if (source === "pinevillemusic") {
+    const result = await ingestPinevilleMusicFeed()
+    console.log("[ingest] Pineville Music:", JSON.stringify(result, null, 2))
   } else if (source === "resolve") {
     const tally = await resolveUnmatchedListings()
     console.log("[ingest] resolution tally:", tally)
     console.log("[ingest] deals:", await refreshAllDeals())
   } else {
-    console.error("Usage: run-ingest.ts <ebay|reverb|sweetwater|gear4music|resolve> [daily|snapshot|bootstrap]")
+    console.error(
+      "Usage: run-ingest.ts <ebay|reverb|sweetwater|gear4music|zzounds|fullcompass|pinevillemusic|resolve> [daily|snapshot|bootstrap]",
+    )
     process.exitCode = 1
   }
 

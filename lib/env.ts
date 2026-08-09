@@ -109,6 +109,28 @@ export const env = {
     },
   },
 
+  cj: {
+    /**
+     * CJ Affiliate (formerly Commission Junction). Each advertiser is a
+     * separate program with its own product feed; zZounds and Full Compass
+     * Systems are both CJ advertisers but have independent feed URLs.
+     * Unset is the expected state until each is confirmed in the CJ account
+     * dashboard. Never falls back to scraping either site.
+     */
+    zzoundsFeedUrl: str("CJ_ZZOUNDS_FEED_URL"),
+    get hasZzoundsFeed(): boolean {
+      return Boolean(env.cj.zzoundsFeedUrl)
+    },
+    fullCompassFeedUrl: str("CJ_FULLCOMPASS_FEED_URL"),
+    get hasFullCompassFeed(): boolean {
+      return Boolean(env.cj.fullCompassFeedUrl)
+    },
+    pinevilleMusicFeedUrl: str("CJ_PINEVILLEMUSIC_FEED_URL"),
+    get hasPinevilleMusicFeed(): boolean {
+      return Boolean(env.cj.pinevilleMusicFeedUrl)
+    },
+  },
+
   typesense: {
     host: str("TYPESENSE_HOST"),
     port: int("TYPESENSE_PORT", 443),
@@ -161,6 +183,9 @@ export function describeConfig(): string {
     `reverb-feed=${env.awin.hasFeed ? "set" : "absent"}`,
     `sweetwater-feed=${env.linkconnector.hasSweetwaterFeed ? "set" : "absent"}`,
     `gear4music-feed=${env.awin.hasGear4musicFeed ? "set" : "absent"}`,
+    `zzounds-feed=${env.cj.hasZzoundsFeed ? "set" : "absent"}`,
+    `fullcompass-feed=${env.cj.hasFullCompassFeed ? "set" : "absent"}`,
+    `pinevillemusic-feed=${env.cj.hasPinevilleMusicFeed ? "set" : "absent"}`,
     `typesense=${env.typesense.isConfigured ? "set" : "postgres-fallback"}`,
     `redis=${env.redisUrl ? "set" : "absent"}`,
   ]

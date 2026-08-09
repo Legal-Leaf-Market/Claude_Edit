@@ -17,6 +17,9 @@
     "ingest:reverb": "tsx scripts/run-ingest.ts reverb",
     "ingest:sweetwater": "tsx scripts/run-ingest.ts sweetwater",
     "ingest:gear4music": "tsx scripts/run-ingest.ts gear4music",
+    "ingest:zzounds": "tsx scripts/run-ingest.ts zzounds",
+    "ingest:fullcompass": "tsx scripts/run-ingest.ts fullcompass",
+    "ingest:pinevillemusic": "tsx scripts/run-ingest.ts pinevillemusic",
     "search:reindex": "tsx scripts/reindex.ts"
   },
   "dependencies": {

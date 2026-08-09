@@ -32,6 +32,12 @@ const ALLOWED_HOSTS = [
   /(^|\.)ebay\.to$/i,
   /(^|\.)sweetwater\.com$/i,
   /(^|\.)gear4music\.[a-z.]{2,6}$/i,
+  /(^|\.)zzounds\.com$/i,
+  /(^|\.)fullcompass\.com$/i,
+  /(^|\.)pinevillemusic\.com$/i,
+  // CJ Affiliate's own tracking domains, for the pre-built BUY_URL links
+  // zZounds/Full Compass/Pineville Music feeds carry.
+  /(^|\.)(anrdoezrs\.net|apmebf\.com|awltovhc\.com|dpbolvw\.net|ftjcfx\.com|jdoqocy\.com|kqzyfj\.com|tkqlhce\.com|qksrv\.net)$/i,
 ]
 
 function isAllowedDestination(rawUrl: string): boolean {

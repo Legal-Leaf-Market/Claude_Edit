@@ -45,6 +45,18 @@ built for that site's own frontend rather than published for this use.
   several regional storefronts (.com, .ie, .fr, .dk, .pl) under one Awin
   merchant; `isGear4MusicProductUrl` in `lib/affiliate/awin.ts` recognises all
   of them.
+- **zZounds, Full Compass Systems, Pineville Music**, each via their own
+  **CJ Affiliate (Commission Junction) product feed** (`lib/ingestion/
+  zzounds-cj.ts`, `fullcompass-cj.ts`, `pinevillemusic-cj.ts`, gated on
+  `CJ_ZZOUNDS_FEED_URL` / `CJ_FULLCOMPASS_FEED_URL` /
+  `CJ_PINEVILLEMUSIC_FEED_URL`). All three are separate CJ advertiser
+  programmes, not one shared feed. CJ's product feed schema has no untracked
+  merchant-URL column, only a pre-built `BUY_URL`; `isCjTrackingUrl` in
+  `lib/affiliate/cj.ts` checks it resolves to one of CJ's own tracking domains
+  before trusting it as the affiliate link, the same "trust the network's own
+  link, verify the host, never hand-build one" rule as Sweetwater and
+  Gear4music. All three default an empty condition to "New" like Gear4music:
+  new-inventory retailers, not peer marketplaces.
 - **Small independent sellers, via public Shopify storefront JSON
   (`/products.json`)**, on a per-merchant basis, the same pattern the sister
   sites use. Only for merchants confirmed to be enrolled in an affiliate
@@ -336,9 +348,10 @@ Never fork the logic between them. Add work to the job function.
 | `AWIN_REVERB_FEED_URL` | Reverb catalogue. Unset is expected; the job no-ops. |
 | `LINKCONNECTOR_SWEETWATER_FEED_URL` | Sweetwater catalogue. Unset is expected; the job no-ops. Never falls back to scraping. |
 | `AWIN_GEAR4MUSIC_MERCHANT_ID` / `AWIN_GEAR4MUSIC_FEED_URL` | Gear4music catalogue and deep links. Same shape as the Reverb pair, independent ids. |
+| `CJ_ZZOUNDS_FEED_URL` / `CJ_FULLCOMPASS_FEED_URL` / `CJ_PINEVILLEMUSIC_FEED_URL` | Three independent CJ Affiliate programmes. Each no-ops when unset. |
 | `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
 | `REDIS_URL` | BullMQ queues and the shared rate-limit counter. Optional. |
-| `CRON_SECRET` | All six crons. Unset = 503, wrong = 401. Load bearing. |
+| `CRON_SECRET` | All nine crons. Unset = 503, wrong = 401. Load bearing. |
 | `BETTER_AUTH_SECRET` | Accounts and alerts. Unset = auth routes 503, rest of site unaffected. |
 | `RESEND_API_KEY` / `DISCORD_WEBHOOK_URL` | Alert delivery. Each no-ops with a warning. |
 

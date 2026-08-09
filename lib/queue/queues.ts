@@ -28,6 +28,9 @@ export type IngestionJob =
   | { kind: "reverb-feed" }
   | { kind: "sweetwater-feed" }
   | { kind: "gear4music-feed" }
+  | { kind: "zzounds-feed" }
+  | { kind: "fullcompass-feed" }
+  | { kind: "pinevillemusic-feed" }
 
 export type MaintenanceJob =
   | { kind: "refresh-deals" }
@@ -141,6 +144,33 @@ export async function registerRepeatableJobs(): Promise<string[]> {
       { name: "gear4music-feed", data: { kind: "gear4music-feed" } },
     )
     registered.push("gear4music-feed @ every 6h")
+  }
+
+  if (env.cj.hasZzoundsFeed) {
+    await ingestion.upsertJobScheduler(
+      "zzounds-feed",
+      { pattern: "10 */6 * * *" },
+      { name: "zzounds-feed", data: { kind: "zzounds-feed" } },
+    )
+    registered.push("zzounds-feed @ every 6h")
+  }
+
+  if (env.cj.hasFullCompassFeed) {
+    await ingestion.upsertJobScheduler(
+      "fullcompass-feed",
+      { pattern: "50 */6 * * *" },
+      { name: "fullcompass-feed", data: { kind: "fullcompass-feed" } },
+    )
+    registered.push("fullcompass-feed @ every 6h")
+  }
+
+  if (env.cj.hasPinevilleMusicFeed) {
+    await ingestion.upsertJobScheduler(
+      "pinevillemusic-feed",
+      { pattern: "0 3 * * *" },
+      { name: "pinevillemusic-feed", data: { kind: "pinevillemusic-feed" } },
+    )
+    registered.push("pinevillemusic-feed @ daily 03:00 UTC")
   }
 
   await maintenance.upsertJobScheduler(
