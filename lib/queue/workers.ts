@@ -7,6 +7,11 @@ import {
   ingestEbaySnapshot,
 } from "@/lib/ingestion/ebay-ingest"
 import { ingestReverbFeed } from "@/lib/ingestion/reverb-awin"
+import { ingestSweetwaterFeed } from "@/lib/ingestion/sweetwater-linkconnector"
+import { ingestGear4MusicFeed } from "@/lib/ingestion/gear4music-awin"
+import { ingestZzoundsFeed } from "@/lib/ingestion/zzounds-cj"
+import { ingestFullCompassFeed } from "@/lib/ingestion/fullcompass-cj"
+import { ingestPinevilleMusicFeed } from "@/lib/ingestion/pinevillemusic-cj"
 import { refreshAllDeals } from "@/lib/deals/pricing"
 import { evaluateAlerts } from "@/lib/alerts/evaluate"
 import { syncSearchIndex } from "@/lib/search/sync"
@@ -49,6 +54,31 @@ export function startIngestionWorker(): Worker<IngestionJob> {
         }
         case "reverb-feed": {
           const result = await ingestReverbFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "sweetwater-feed": {
+          const result = await ingestSweetwaterFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "gear4music-feed": {
+          const result = await ingestGear4MusicFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "zzounds-feed": {
+          const result = await ingestZzoundsFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "fullcompass-feed": {
+          const result = await ingestFullCompassFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "pinevillemusic-feed": {
+          const result = await ingestPinevilleMusicFeed()
           await syncSearchIndex()
           return result
         }

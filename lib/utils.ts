@@ -46,6 +46,11 @@ export function timeAgo(iso: string | null | undefined): string | null {
 export function sourceLabel(source: string): string {
   if (source === "ebay") return "eBay"
   if (source === "reverb") return "Reverb"
+  if (source === "sweetwater") return "Sweetwater"
+  if (source === "gear4music") return "Gear4music"
+  if (source === "zzounds") return "zZounds"
+  if (source === "fullcompass") return "Full Compass Systems"
+  if (source === "pinevillemusic") return "Pineville Music"
   return source
 }
 

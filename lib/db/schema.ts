@@ -134,7 +134,7 @@ export const marketplaceListings = pgTable(
       onDelete: "set null",
     }),
 
-    /** 'ebay' | 'reverb'. Facebook Marketplace is deliberately out of scope. */
+    /** 'ebay' | 'reverb' | 'sweetwater' | 'gear4music' | 'zzounds' | 'fullcompass' | 'pinevillemusic'. Facebook Marketplace is deliberately out of scope. */
     source: varchar("source", { length: 20 }).notNull(),
     externalId: varchar("external_id", { length: 255 }).notNull(),
 
@@ -336,7 +336,15 @@ export type SavedAlert = typeof savedAlerts.$inferSelect
 export type IngestRun = typeof ingestRuns.$inferSelect
 
 /** Sources v1 actually ingests. Facebook Marketplace is intentionally absent. */
-export const SOURCES = ["ebay", "reverb"] as const
+export const SOURCES = [
+  "ebay",
+  "reverb",
+  "sweetwater",
+  "gear4music",
+  "zzounds",
+  "fullcompass",
+  "pinevillemusic",
+] as const
 export type Source = (typeof SOURCES)[number]
 
 export const LISTING_STATUSES = ["active", "sold", "expired"] as const

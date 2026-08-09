@@ -83,6 +83,52 @@ export const env = {
     get hasFeed(): boolean {
       return Boolean(env.awin.reverbFeedUrl)
     },
+
+    gear4musicMerchantId: str("AWIN_GEAR4MUSIC_MERCHANT_ID"),
+    /** Gear4music's Awin product datafeed URL. Unset means the worker no-ops. */
+    gear4musicFeedUrl: str("AWIN_GEAR4MUSIC_FEED_URL"),
+    get gear4musicIsConfigured(): boolean {
+      return Boolean(env.awin.publisherId && env.awin.gear4musicMerchantId)
+    },
+    get hasGear4musicFeed(): boolean {
+      return Boolean(env.awin.gear4musicFeedUrl)
+    },
+  },
+
+  linkconnector: {
+    /**
+     * Sweetwater's affiliate program runs on LinkConnector. Their datafeed
+     * URL, if a Sweetwater product feed is confirmed to exist there. Unset is
+     * the expected state until confirmed; when unset the Sweetwater worker
+     * logs and no-ops. It never falls back to scraping sweetwater.com or its
+     * search index.
+     */
+    sweetwaterFeedUrl: str("LINKCONNECTOR_SWEETWATER_FEED_URL"),
+    get hasSweetwaterFeed(): boolean {
+      return Boolean(env.linkconnector.sweetwaterFeedUrl)
+    },
+  },
+
+  cj: {
+    /**
+     * CJ Affiliate (formerly Commission Junction). Each advertiser is a
+     * separate program with its own product feed; zZounds and Full Compass
+     * Systems are both CJ advertisers but have independent feed URLs.
+     * Unset is the expected state until each is confirmed in the CJ account
+     * dashboard. Never falls back to scraping either site.
+     */
+    zzoundsFeedUrl: str("CJ_ZZOUNDS_FEED_URL"),
+    get hasZzoundsFeed(): boolean {
+      return Boolean(env.cj.zzoundsFeedUrl)
+    },
+    fullCompassFeedUrl: str("CJ_FULLCOMPASS_FEED_URL"),
+    get hasFullCompassFeed(): boolean {
+      return Boolean(env.cj.fullCompassFeedUrl)
+    },
+    pinevilleMusicFeedUrl: str("CJ_PINEVILLEMUSIC_FEED_URL"),
+    get hasPinevilleMusicFeed(): boolean {
+      return Boolean(env.cj.pinevilleMusicFeedUrl)
+    },
   },
 
   typesense: {
@@ -135,6 +181,11 @@ export function describeConfig(): string {
     `ebay=${env.ebay.isConfigured ? (env.ebay.isSandbox ? "sandbox" : "production") : "unconfigured"}`,
     `awin=${env.awin.isConfigured ? "set" : "unconfigured"}`,
     `reverb-feed=${env.awin.hasFeed ? "set" : "absent"}`,
+    `sweetwater-feed=${env.linkconnector.hasSweetwaterFeed ? "set" : "absent"}`,
+    `gear4music-feed=${env.awin.hasGear4musicFeed ? "set" : "absent"}`,
+    `zzounds-feed=${env.cj.hasZzoundsFeed ? "set" : "absent"}`,
+    `fullcompass-feed=${env.cj.hasFullCompassFeed ? "set" : "absent"}`,
+    `pinevillemusic-feed=${env.cj.hasPinevilleMusicFeed ? "set" : "absent"}`,
     `typesense=${env.typesense.isConfigured ? "set" : "postgres-fallback"}`,
     `redis=${env.redisUrl ? "set" : "absent"}`,
   ]
