@@ -1,0 +1,146 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--font-inter), 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Brand tokens: warm valve-amp palette. Tweed, jewel lamp, brushed steel. */
+  --color-tweed: var(--tweed);
+  --color-tweed-deep: var(--tweed-deep);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --color-cream: var(--cream);
+  --color-steel: var(--steel);
+  --color-deal: var(--deal);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  color-scheme: dark;
+  --radius: 0.75rem;
+
+  --tweed: #241d16;
+  --tweed-deep: #16110d;
+  --amber: #f0a830;
+  --amber-soft: #f7c877;
+  --cream: #f6efe4;
+  --steel: #9aa3ad;
+  --deal: #4ade80;
+
+  --background: #0f0c0a;
+  --foreground: #f6efe4;
+  --card: rgba(255, 255, 255, 0.04);
+  --card-foreground: #f6efe4;
+  --popover: #1a1410;
+  --popover-foreground: #f6efe4;
+  --primary: #f0a830;
+  --primary-foreground: #1a1208;
+  --secondary: rgba(255, 255, 255, 0.07);
+  --secondary-foreground: #f6efe4;
+  --muted: rgba(255, 255, 255, 0.05);
+  --muted-foreground: #a89e90;
+  --accent: rgba(240, 168, 48, 0.16);
+  --accent-foreground: #f7c877;
+  --destructive: #f87171;
+  --border: rgba(240, 168, 48, 0.16);
+  --input: rgba(255, 255, 255, 0.09);
+  --ring: rgba(240, 168, 48, 0.45);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    color: var(--foreground);
+    background:
+      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(240, 168, 48, 0.1), transparent 60%),
+      linear-gradient(180deg, #17110c 0%, #0f0c0a 55%, #0b0908 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Woven tweed texture. Two crossed hairline gradients read as fabric at
+     normal zoom and cost nothing, which a raster texture would not. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.014) 0 1px, transparent 1px 4px),
+      repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 4px);
+  }
+
+  body > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: rgba(240, 168, 48, 0.3);
+    color: var(--cream);
+  }
+}
+
+@layer components {
+  /* Panel surface used by cards, the filter rail and the detail sections. */
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(6px);
+  }
+
+  /* Thin amber rule used under section headings. */
+  .rule-amber {
+    background: linear-gradient(90deg, var(--amber), transparent);
+    height: 1px;
+  }
+}
+
+/* Respect a user's reduced-motion preference across every transition. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
