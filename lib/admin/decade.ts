@@ -217,6 +217,65 @@ export const ADVISORS: Advisor[] = [
   },
 ]
 
+/**
+ * Warm introductions versus cold outreach.
+ *
+ * The boutique-maker channel was originally priced as cold outreach: find a
+ * builder, email them, hope. That is the wrong model for this operator and
+ * this market. Boutique instrument building is a scene, reputation travels
+ * inside it, and an introduction from someone a builder already trusts is a
+ * different act from an unsolicited email.
+ *
+ * The mechanism matters, because it is not the one you would guess. A warm
+ * intro does NOT get you a better commission rate here: the rate is 3.5% by
+ * choice, and deliberately low. What it changes is how many makers say yes,
+ * and how fast. Since each maker is worth roughly five times more as a
+ * promotional channel than as a commission line (their audience posts about
+ * you; the commission is nearly a wash against the existing storefronts),
+ * the network's value flows almost entirely through TRAFFIC.
+ *
+ * That is also why this is modelled as an acquisition rate rather than a
+ * revenue multiplier. More makers signed, each bringing an audience, against
+ * a business whose binding constraint is traffic and not monetisation.
+ *
+ * Magnitudes below are judgement. Warm intros are well understood to convert
+ * better than cold outreach, but the specific ratio here is an assumption,
+ * and it is doing real work in the output.
+ */
+export type OutreachMode = {
+  key: "cold" | "warm"
+  label: string
+  /** Makers signed per month. */
+  makersPerMonth: number
+  /** Referred sessions per maker per month, once live. */
+  sessionsPerMakerPerMonth: number
+  detail: string
+}
+
+export const OUTREACH_MODES: Record<"cold" | "warm", OutreachMode> = {
+  cold: {
+    key: "cold",
+    label: "Cold outreach",
+    makersPerMonth: 1.25,
+    sessionsPerMakerPerMonth: 80,
+    detail:
+      "Unsolicited email to builders with no shared context. Most go unanswered, and the ones that land still owe you nothing beyond a link.",
+  },
+  warm: {
+    key: "warm",
+    label: "Warm introductions",
+    makersPerMonth: 3,
+    sessionsPerMakerPerMonth: 120,
+    detail:
+      "Introductions through an existing network in the same scene. More say yes, they say yes sooner, and crucially they promote harder, because they are doing a favour for someone they know rather than accepting a commercial offer from a stranger. The higher per-maker traffic figure is that promotional difference, not a bigger audience.",
+  },
+}
+
+/** Monthly referred sessions from makers signed to date, at a given month. */
+export function makerTrafficAt(mode: OutreachMode, month: number): number {
+  return Math.round(mode.makersPerMonth * month * mode.sessionsPerMakerPerMonth)
+}
+
 /** Probability-weighted outcome across the three paths. */
 export function expectedOutcome(
   weights: ScenarioWeights,
