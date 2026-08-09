@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { env } from "@/lib/env"
 import { indexableCategories } from "@/lib/categories"
+import { STORES } from "@/lib/stores"
 
 /**
  * Sitemap.
@@ -62,7 +63,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       return entries
     })
 
-    return [...staticRoutes, ...gearRoutes]
+    const storeResult = await db.execute<{ source: string; updated: string }>(sql`
+      SELECT source, MAX(updated_at)::text AS updated
+      FROM marketplace_listings
+      WHERE listing_status = 'active'
+      GROUP BY source
+    `)
+    const liveSources = new Map(storeResult.rows.map((row) => [row.source, row.updated]))
+
+    // Same soft-404 concern as the deal routes: a store page with zero live
+    // listings is worse than no page, so only sources with active inventory
+    // right now get indexed.
+    const storeRoutes: MetadataRoute.Sitemap = STORES.filter((store) => liveSources.has(store.source)).map(
+      (store) => {
+        const updated = liveSources.get(store.source)
+        return {
+          url: `${base}/shop/${store.slug}`,
+          lastModified: updated ? new Date(updated) : undefined,
+          changeFrequency: "daily" as const,
+          priority: 0.6,
+        }
+      },
+    )
+
+    return [...staticRoutes, ...gearRoutes, ...storeRoutes]
   } catch {
     // A sitemap missing its dynamic half beats a 500 that gets the whole file
     // dropped from the index.
