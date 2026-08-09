@@ -22,9 +22,17 @@ import type { Facets, FacetValue } from "@/lib/search/types"
 type Props = {
   facets: Facets
   found: number
+  /**
+   * Facets to leave out because the page itself already fixes them. A store
+   * page is scoped to one store, so offering a store filter there would just
+   * navigate the shopper off the store they are looking at; same for category
+   * on a category page. The underlying query still applies the scope, this
+   * only hides a control that could contradict it.
+   */
+  hide?: (keyof Facets)[]
 }
 
-export function FilterSidebar({ facets, found }: Props) {
+export function FilterSidebar({ facets, found, hide }: Props) {
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -62,7 +70,7 @@ export function FilterSidebar({ facets, found }: Props) {
 
       {/* Desktop rail */}
       <aside className="hidden w-64 shrink-0 lg:block" aria-label="Filters">
-        <FilterControls facets={facets} found={found} />
+        <FilterControls facets={facets} found={found} hide={hide} />
       </aside>
 
       {/*
@@ -102,7 +110,7 @@ export function FilterSidebar({ facets, found }: Props) {
                 </Button>
               </div>
               <div className="flex-1 overflow-y-auto p-4">
-                <FilterControls facets={facets} found={found} onNavigate={() => setOpen(false)} />
+                <FilterControls facets={facets} found={found} hide={hide} onNavigate={() => setOpen(false)} />
               </div>
             </div>
           </div>,
@@ -117,8 +125,10 @@ export function FilterSidebar({ facets, found }: Props) {
 function FilterControls({
   facets,
   found,
+  hide,
   onNavigate,
 }: Props & { onNavigate?: () => void }) {
+  const hidden = new Set(hide ?? [])
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
@@ -228,6 +238,7 @@ function FilterControls({
         </div>
       </fieldset>
 
+      {!hidden.has("source") && (
       <FacetGroup
         title="Marketplace"
         values={facets.source}
@@ -235,12 +246,16 @@ function FilterControls({
         onToggle={(v) => toggleValue("source", v)}
         renderLabel={sourceLabel}
       />
+      )}
+      {!hidden.has("category") && (
       <FacetGroup
         title="Category"
         values={facets.category}
         selected={selected("category")}
         onToggle={(v) => toggleValue("category", v)}
       />
+      )}
+      {!hidden.has("brand") && (
       <FacetGroup
         title="Brand"
         values={facets.brand}
@@ -248,12 +263,15 @@ function FilterControls({
         onToggle={(v) => toggleValue("brand", v)}
         collapsibleAfter={8}
       />
+      )}
+      {!hidden.has("condition") && (
       <FacetGroup
         title="Condition"
         values={facets.condition}
         selected={selected("condition")}
         onToggle={(v) => toggleValue("condition", v)}
       />
+      )}
     </div>
   )
 }
