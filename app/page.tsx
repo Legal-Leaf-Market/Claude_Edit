@@ -51,13 +51,13 @@ export default async function HomePage() {
     <div className="mx-auto max-w-7xl px-4 sm:px-6">
       <section className="py-12 sm:py-16">
         <h1 className="max-w-3xl text-3xl font-semibold leading-tight tracking-tight text-[var(--cream)] sm:text-5xl">
-          Every used listing for the same instrument,{" "}
+          Real gear, straight from the makers,{" "}
           <span className="text-[var(--amber)]">on one page</span>
         </h1>
         <p className="mt-4 max-w-2xl text-base leading-relaxed text-[var(--muted-foreground)] sm:text-lg">
-          Gear Avail pulls used and vintage gear from eBay and Reverb, works out which listings are
-          the same instrument, and shows you every live price side by side. Sorted by price, with
-          the genuinely underpriced ones marked.
+          Gear Avail pulls real-time inventory from independent instrument makers and retailers, so
+          you can browse everything in one place instead of hunting down each store. Sorted by
+          price, with the genuinely underpriced gear marked.
         </p>
 
         <div className="mt-7 flex flex-wrap gap-3">
@@ -124,8 +124,8 @@ export default async function HomePage() {
         <div className="grid gap-4 sm:grid-cols-3">
           <HowItWorks
             icon={<SearchIcon className="h-5 w-5" aria-hidden="true" />}
-            title="One search, every marketplace"
-            body="We ingest structured listing feeds rather than guessing from titles, so a Fender Player Stratocaster on eBay and the same guitar on Reverb land on one page instead of two."
+            title="One search, every store"
+            body="We ingest each source's real catalogue, verified against its own published terms, rather than scraping a storefront built for humans. What you see here is what is actually in stock."
           />
           <HowItWorks
             icon={<LineChart className="h-5 w-5" aria-hidden="true" />}

@@ -106,30 +106,26 @@ export async function registerRepeatableJobs(): Promise<string[]> {
 
   const registered: string[] = []
 
-  // Daily new listings, shortly after midnight UTC so the previous day's feed
-  // is complete.
-  await ingestion.upsertJobScheduler(
-    "ebay-daily",
-    { pattern: "20 1 * * *" },
-    { name: "ebay-daily", data: { kind: "ebay-daily" } },
-  )
-  registered.push("ebay-daily @ 01:20 UTC")
-
-  // Hourly price and status reconciliation.
-  await ingestion.upsertJobScheduler(
-    "ebay-snapshot",
-    { pattern: "10 * * * *" },
-    { name: "ebay-snapshot", data: { kind: "ebay-snapshot" } },
-  )
-  registered.push("ebay-snapshot @ :10 hourly")
-
-  // Weekly full catalogue bootstrap. Large, so it runs at a quiet hour.
-  await ingestion.upsertJobScheduler(
-    "ebay-bootstrap",
-    { pattern: "0 3 * * 0" },
-    { name: "ebay-bootstrap", data: { kind: "ebay-bootstrap" } },
-  )
-  registered.push("ebay-bootstrap @ Sun 03:00 UTC")
+  // eBay: no EPN keyset approved yet, so these are paused rather than
+  // scheduled. Re-add once EBAY_OAUTH_TOKEN is actually set; the code and
+  // tests stay in place, same "code stays, schedule doesn't" treatment as
+  // the paused CJ/Shopify sources below.
+  //
+  // await ingestion.upsertJobScheduler(
+  //   "ebay-daily",
+  //   { pattern: "20 1 * * *" },
+  //   { name: "ebay-daily", data: { kind: "ebay-daily" } },
+  // )
+  // await ingestion.upsertJobScheduler(
+  //   "ebay-snapshot",
+  //   { pattern: "10 * * * *" },
+  //   { name: "ebay-snapshot", data: { kind: "ebay-snapshot" } },
+  // )
+  // await ingestion.upsertJobScheduler(
+  //   "ebay-bootstrap",
+  //   { pattern: "0 3 * * 0" },
+  //   { name: "ebay-bootstrap", data: { kind: "ebay-bootstrap" } },
+  // )
 
   if (env.awin.hasFeed) {
     await ingestion.upsertJobScheduler(

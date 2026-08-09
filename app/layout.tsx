@@ -10,26 +10,26 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
 const SITE_NAME = "Gear Avail"
 const SITE_DESCRIPTION =
-  "Search used and vintage music gear across eBay and Reverb in one place. Compare every live listing for the same instrument side by side, sort by price, and see which ones are genuinely below market."
+  "Browse real-time inventory from independent music gear makers and retailers in one place. Sort by price and see which listings are genuinely below market."
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.site.url),
   title: {
-    default: "Gear Avail: Compare Used and Vintage Music Gear Prices",
+    default: "Gear Avail: Music Gear From Independent Makers and Retailers",
     template: "%s | Gear Avail",
   },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
   keywords: [
-    "used music gear",
-    "vintage guitars",
-    "used guitar prices",
+    "music gear",
+    "guitar pedals",
+    "electric guitars",
+    "independent music gear makers",
     "compare gear prices",
-    "used amps",
-    "used synthesizers",
-    "used pedals",
+    "amplifiers",
+    "synthesizers",
+    "effects pedals",
     "gear price comparison",
-    "reverb vs ebay",
   ],
   authors: [{ name: SITE_NAME, url: env.site.url }],
   creator: SITE_NAME,
@@ -40,13 +40,13 @@ export const metadata: Metadata = {
     type: "website",
     url: env.site.url,
     siteName: SITE_NAME,
-    title: "Gear Avail: Compare Used and Vintage Music Gear Prices",
+    title: "Gear Avail: Music Gear From Independent Makers and Retailers",
     description: SITE_DESCRIPTION,
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Gear Avail: Compare Used and Vintage Music Gear Prices",
+    title: "Gear Avail: Music Gear From Independent Makers and Retailers",
     description: SITE_DESCRIPTION,
   },
   robots: {
