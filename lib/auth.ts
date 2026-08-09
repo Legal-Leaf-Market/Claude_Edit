@@ -34,6 +34,19 @@ export const auth = betterAuth({
     requireEmailVerification: false,
     minPasswordLength: 10,
   },
+  // Optional. Unset GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET means Better Auth
+  // simply has no social providers, and the sign-in page falls back to
+  // email/password only; no separate feature flag needed.
+  ...(env.auth.google.isConfigured
+    ? {
+        socialProviders: {
+          google: {
+            clientId: env.auth.google.clientId,
+            clientSecret: env.auth.google.clientSecret,
+          },
+        },
+      }
+    : {}),
   session: {
     expiresIn: 60 * 60 * 24 * 30,
     updateAge: 60 * 60 * 24,

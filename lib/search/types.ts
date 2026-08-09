@@ -3,7 +3,7 @@ import type { Source } from "@/lib/db/schema"
 /** Shipping intent. Local pickup and shippable are genuinely different shopping modes. */
 export type ShippingFilter = "any" | "local" | "shippable"
 
-export type SortOption = "relevance" | "price_asc" | "price_desc" | "newest" | "deal"
+export type SortOption = "relevance" | "price_asc" | "price_desc" | "newest" | "deal" | "shuffle"
 
 export const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "relevance", label: "Best match" },
@@ -11,6 +11,7 @@ export const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "price_desc", label: "Price: high to low" },
   { value: "deal", label: "Biggest discount" },
   { value: "newest", label: "Newly listed" },
+  { value: "shuffle", label: "Shuffle the shops" },
 ]
 
 export type SearchParams = {
@@ -26,6 +27,13 @@ export type SearchParams = {
   /** Restrict to one canonical gear row, used by the gear detail page. */
   canonicalGearId?: string
   sort?: SortOption
+  /**
+   * Only meaningful for sort=shuffle. Fixes which shuffle you get, so paging
+   * through a shuffled result set stays consistent instead of re-drawing (and
+   * repeating or skipping listings) on every page. The shuffle button just
+   * picks a new one.
+   */
+  seed?: number
   page?: number
   perPage?: number
 }

@@ -15,6 +15,11 @@ import type { SearchParams, SearchResult, ShippingFilter, SortOption } from "./t
  * mistaken for everything working.
  */
 export async function search(params: SearchParams): Promise<SearchResult> {
+  // Shuffle is a seeded round-robin across shops, expressed as a window
+  // function. Typesense has no equivalent, so this one sort always answers
+  // from Postgres rather than silently degrading to a different order.
+  if (params.sort === "shuffle") return searchPostgres(params)
+
   if (env.typesense.isConfigured) {
     try {
       const result = await searchTypesense(params)
@@ -37,7 +42,7 @@ export * from "./types"
 /*  URL <-> params                                                            */
 /* -------------------------------------------------------------------------- */
 
-const SORTS: SortOption[] = ["relevance", "price_asc", "price_desc", "newest", "deal"]
+const SORTS: SortOption[] = ["relevance", "price_asc", "price_desc", "newest", "deal", "shuffle"]
 const SHIPPING: ShippingFilter[] = ["any", "local", "shippable"]
 
 function multi(value: string | string[] | undefined): string[] | undefined {
@@ -70,6 +75,10 @@ export function paramsFromQuery(
   const sort = first(query.sort) as SortOption | undefined
   const shipping = first(query.shipping) as ShippingFilter | undefined
   const page = Number.parseInt(first(query.page) ?? "1", 10)
+  // Clamped to a plain non-negative integer: it is concatenated into a hash
+  // input, so it must never carry anything but a number.
+  const rawSeed = Number.parseInt(first(query.seed) ?? "", 10)
+  const seed = Number.isFinite(rawSeed) && rawSeed >= 0 ? rawSeed % 1_000_000 : undefined
 
   return {
     q: first(query.q)?.trim() || undefined,
@@ -82,6 +91,7 @@ export function paramsFromQuery(
     dealsOnly: first(query.deals) === "1",
     shipping: shipping && SHIPPING.includes(shipping) ? shipping : "any",
     sort: sort && SORTS.includes(sort) ? sort : undefined,
+    seed,
     page: Number.isFinite(page) && page > 0 ? page : 1,
   }
 }
@@ -99,6 +109,9 @@ export function queryFromParams(params: SearchParams): string {
   if (params.dealsOnly) search.set("deals", "1")
   if (params.shipping && params.shipping !== "any") search.set("shipping", params.shipping)
   if (params.sort) search.set("sort", params.sort)
+  // Only carried for shuffle: on any other sort it would just make otherwise
+  // identical URLs look distinct and split the cache.
+  if (params.sort === "shuffle" && params.seed != null) search.set("seed", String(params.seed))
   if (params.page && params.page > 1) search.set("page", String(params.page))
   return search.toString()
 }

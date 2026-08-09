@@ -2,10 +2,13 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { sql } from "drizzle-orm"
+import { FilterSidebar } from "@/components/filter-sidebar"
 import { ListingCard } from "@/components/listing-card"
+import { Pagination } from "@/components/pagination"
+import { SortSelect } from "@/components/sort-select"
 import { db } from "@/lib/db"
 import { CATEGORY_INTRO, categoryFromSlug, indexableCategories } from "@/lib/categories"
-import { search } from "@/lib/search"
+import { paramsFromQuery, queryFromParams, search } from "@/lib/search"
 import { formatPrice } from "@/lib/utils"
 
 /**
@@ -18,7 +21,10 @@ import { formatPrice } from "@/lib/utils"
  */
 export const revalidate = 900
 
-type PageProps = { params: Promise<{ category: string }> }
+type PageProps = {
+  params: Promise<{ category: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}
 
 export function generateStaticParams() {
   return indexableCategories().map(({ slug }) => ({ category: slug }))
@@ -59,15 +65,29 @@ async function popularModels(category: string) {
   return result.rows
 }
 
-export default async function CategoryPage({ params }: PageProps) {
+export default async function CategoryPage({ params, searchParams }: PageProps) {
   const { category: slug } = await params
   const category = categoryFromSlug(slug)
   if (!category) notFound()
 
+  // Filters come off the URL exactly as they do on /search, then the category
+  // is forced back on. The page owns that one dimension; the shopper owns the
+  // rest.
+  const query = await searchParams
+  const searchParamsForQuery = { ...paramsFromQuery(query), categories: [category] }
+
   const [results, models] = await Promise.all([
-    search({ categories: [category], sort: "price_asc", perPage: 12 }),
+    search(searchParamsForQuery),
     popularModels(category),
   ])
+
+  const buildHref = (page: number) => {
+    // categories is dropped from the query string: it lives in the path here,
+    // and repeating it would let the two disagree.
+    const { categories: _fixed, ...rest } = { ...searchParamsForQuery, page }
+    const qs = queryFromParams(rest)
+    return qs ? `/used/${slug}?${qs}` : `/used/${slug}`
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
@@ -122,30 +142,41 @@ export default async function CategoryPage({ params }: PageProps) {
         </section>
       )}
 
-      <section>
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-semibold text-[var(--cream)]">Cheapest right now</h2>
-          <Link
-            href={`/search?category=${encodeURIComponent(category)}`}
-            className="text-sm text-[var(--amber)] underline-offset-2 hover:underline"
-          >
-            Search all {category.toLowerCase()}
-          </Link>
-        </div>
+      <div className="flex flex-col gap-6 lg:flex-row">
+        {/* Category is fixed by the route, so that facet would only ever
+            navigate the shopper out of the page they chose. */}
+        <FilterSidebar facets={results.facets} found={results.found} hide={["category"]} />
 
-        {results.hits.length === 0 ? (
-          <p className="panel p-8 text-center text-sm text-[var(--muted-foreground)]">
-            Nothing live in this category at the moment. Used stock turns over quickly, so it is
-            worth checking back.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {results.hits.map((hit) => (
-              <ListingCard key={hit.id} hit={hit} />
-            ))}
+        <section className="min-w-0 flex-1">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold text-[var(--cream)]">
+              {results.found.toLocaleString()} {results.found === 1 ? "listing" : "listings"}
+            </h2>
+            <SortSelect />
           </div>
-        )}
-      </section>
+
+          {results.hits.length === 0 ? (
+            <p className="panel p-8 text-center text-sm text-[var(--muted-foreground)]">
+              Nothing matches those filters right now. Used stock turns over quickly, so it is
+              worth widening the price range or checking back.
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {results.hits.map((hit) => (
+                  <ListingCard key={hit.id} hit={hit} />
+                ))}
+              </div>
+              <Pagination
+                page={results.page}
+                perPage={results.perPage}
+                found={results.found}
+                buildHref={buildHref}
+              />
+            </>
+          )}
+        </section>
+      </div>
     </div>
   )
 }

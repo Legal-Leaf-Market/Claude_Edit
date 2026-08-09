@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { AuthForm } from "@/components/auth-form"
+import { env } from "@/lib/env"
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -14,7 +15,7 @@ export default function SignInPage() {
       <p className="mb-6 text-sm text-[var(--muted-foreground)]">
         An account exists only so your price alerts have somewhere to live.
       </p>
-      <AuthForm mode="sign-in" />
+      <AuthForm mode="sign-in" googleEnabled={env.auth.google.isConfigured} />
     </div>
   )
 }

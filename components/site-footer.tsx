@@ -1,4 +1,6 @@
 import Link from "next/link"
+import { InstagramGlyph } from "@/components/icons/instagram-glyph"
+import { env } from "@/lib/env"
 
 /**
  * Affiliate disclosure lives here and is deliberately plain. We earn on
@@ -16,6 +18,14 @@ export function SiteFooter() {
               Real-time inventory from independent music gear makers and retailers, all in one
               place.
             </p>
+            <a
+              href={`https://instagram.com/${env.social.instagramHandle}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-1.5 text-sm text-[var(--amber)] underline-offset-2 hover:underline"
+            >
+              <InstagramGlyph className="h-4 w-4" />@{env.social.instagramHandle}
+            </a>
           </div>
 
           <nav aria-label="Browse">
@@ -48,13 +58,20 @@ export function SiteFooter() {
             <p className="text-sm font-semibold text-[var(--cream)]">How this works</p>
             <p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">
               Gear Avail earns affiliate commission when you buy through an outbound link. That never
-              changes your price, and it never changes how listings are ranked: sorting is by price
-              and discount only.
+              changes your price, and it never changes how listings are ranked: you sort by price,
+              discount, how new a listing is, or a shuffle that gives every shop equal footing, and
+              what a store pays us is not an input to any of them. No fees, no cut of your sale, no
+              exit plan that ends with someone else's shareholders deciding what this costs you.
             </p>
           </div>
         </div>
 
-        <p className="mt-8 border-t border-[var(--border)] pt-6 text-xs text-[var(--muted-foreground)]">
+        <p className="mt-8 border-t border-[var(--border)] pt-6 text-xs font-medium text-[var(--amber)]">
+          Built by a musician who bought and sold over a thousand pedals the hard way, for the
+          musicians doing it now. Not selling out. Not ever.
+        </p>
+
+        <p className="mt-4 text-xs text-[var(--muted-foreground)]">
           Prices and availability are captured from marketplace feeds and can change before you
           reach the seller. Always confirm the final price on the marketplace. Gear Avail is not
           affiliated with eBay or Reverb.

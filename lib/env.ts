@@ -237,6 +237,19 @@ export const env = {
     get isConfigured(): boolean {
       return Boolean(env.auth.secret)
     },
+    /**
+     * Optional. Signing in with a Google account someone already has removes
+     * the "make up a password" wall in front of every auth-gated feature
+     * (alerts, Flip Match). Unset means the sign-in page just shows email and
+     * password, same as before this existed.
+     */
+    google: {
+      clientId: str("GOOGLE_CLIENT_ID"),
+      clientSecret: str("GOOGLE_CLIENT_SECRET"),
+      get isConfigured(): boolean {
+        return Boolean(env.auth.google.clientId && env.auth.google.clientSecret)
+      },
+    },
   },
 
   /**
@@ -245,6 +258,24 @@ export const env = {
    * the same guard the sister sites use.
    */
   cronSecret: str("CRON_SECRET"),
+
+  /**
+   * Official Instagram post embeds (embed.js), never a scraped feed widget.
+   * INSTAGRAM_POST_URLS is a comma list of public post permalinks; unset
+   * means the homepage section renders as a plain follow callout instead of
+   * embeds, the same isConfigured-style fallback every other integration in
+   * this file uses, so a missing credential never ships a broken widget.
+   */
+  social: {
+    instagramHandle: str("INSTAGRAM_HANDLE", "stompbox.world"),
+    instagramPostUrls: str("INSTAGRAM_POST_URLS")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+    get hasInstagramPosts(): boolean {
+      return env.social.instagramPostUrls.length > 0
+    },
+  },
 
   /** Skips network calls in tests and lets fixtures drive the ingestion path. */
   offline: bool("MUSICTIME_OFFLINE", false),
@@ -265,6 +296,8 @@ export function describeConfig(): string {
     `typesense=${env.typesense.isConfigured ? "set" : "postgres-fallback"}`,
     `redis=${env.redisUrl ? "set" : "absent"}`,
     `leads-notify=${env.leads.canEmail ? "set" : "db-only"}`,
+    `instagram=${env.social.hasInstagramPosts ? "embeds" : "follow-only"}`,
+    `google-signin=${env.auth.google.isConfigured ? "set" : "unconfigured"}`,
   ]
   return parts.join(" ")
 }

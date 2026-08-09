@@ -10,6 +10,7 @@ const NAV = [
   { href: "/used/amplifiers", label: "Amps" },
   { href: "/used/synthesizers", label: "Synths" },
   { href: "/used/recording-audio", label: "Studio" },
+  { href: "/feed", label: "Feed" },
 ]
 
 export function SiteHeader() {
