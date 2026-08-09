@@ -17,6 +17,8 @@ export default function robots(): MetadataRoute.Robots {
           // Filtered and paged search permutations are near-duplicates of each
           // other; the clean /search page is the one worth crawling.
           "/search?",
+          // Private, passcode-gated. Never meant to be discoverable.
+          "/admin",
         ],
       },
     ],
