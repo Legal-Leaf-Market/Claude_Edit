@@ -8,15 +8,15 @@ import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
-const SITE_NAME = "MusicTime"
+const SITE_NAME = "Gear Avail"
 const SITE_DESCRIPTION =
   "Search used and vintage music gear across eBay and Reverb in one place. Compare every live listing for the same instrument side by side, sort by price, and see which ones are genuinely below market."
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.site.url),
   title: {
-    default: "MusicTime: Compare Used and Vintage Music Gear Prices",
-    template: "%s | MusicTime",
+    default: "Gear Avail: Compare Used and Vintage Music Gear Prices",
+    template: "%s | Gear Avail",
   },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
@@ -40,13 +40,13 @@ export const metadata: Metadata = {
     type: "website",
     url: env.site.url,
     siteName: SITE_NAME,
-    title: "MusicTime: Compare Used and Vintage Music Gear Prices",
+    title: "Gear Avail: Compare Used and Vintage Music Gear Prices",
     description: SITE_DESCRIPTION,
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "MusicTime: Compare Used and Vintage Music Gear Prices",
+    title: "Gear Avail: Compare Used and Vintage Music Gear Prices",
     description: SITE_DESCRIPTION,
   },
   robots: {

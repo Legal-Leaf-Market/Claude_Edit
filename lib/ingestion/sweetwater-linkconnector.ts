@@ -24,7 +24,7 @@ import type { NewMarketplaceListing } from "@/lib/db/schema"
  * building against an interface that was not made for this.
  *
  * So: when LINKCONNECTOR_SWEETWATER_FEED_URL is unset this job logs and no-ops.
- * It does not fall back to scraping. If the feed never materialises, MusicTime
+ * It does not fall back to scraping. If the feed never materialises, Gear Avail
  * simply does not carry Sweetwater listings.
  *
  * Column names below are LinkConnector's own documented 50-column datafeed
@@ -165,7 +165,7 @@ export async function fetchLinkConnectorFeedText(
   fetchImpl: typeof fetch = fetch,
 ): Promise<string> {
   const res = await fetchImpl(url, {
-    headers: { Accept: "text/csv,application/gzip,*/*", "User-Agent": "MusicTime/1.0 (+aggregator)" },
+    headers: { Accept: "text/csv,application/gzip,*/*", "User-Agent": "GearAvail/1.0 (+aggregator)" },
   })
   if (!res.ok) {
     const error = new Error(`LinkConnector feed returned ${res.status} ${res.statusText}`) as Error & {

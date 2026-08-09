@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: `Every live used ${name} listing from eBay and Reverb, compared side by side with the current market price.`,
     alternates: { canonical: `/gear/${gear.slug}` },
     openGraph: {
-      title: `Used ${name} prices | MusicTime`,
+      title: `Used ${name} prices | Gear Avail`,
       description: `Compare live used ${name} listings across marketplaces.`,
       images: gear.imageUrl ? [{ url: gear.imageUrl }] : undefined,
     },

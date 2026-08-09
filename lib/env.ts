@@ -1,7 +1,7 @@
 /**
  * Central environment access.
  *
- * MusicTime is built against gated data sources: the eBay Buy Feed API is a
+ * Gear Avail is built against gated data sources: the eBay Buy Feed API is a
  * Limited Release that needs EPN approval, and the Reverb catalogue is only
  * available to us if Awin publishes a product datafeed to publishers. Neither
  * is guaranteed at build time, so nothing in this file throws on a missing
@@ -37,7 +37,7 @@ export const env = {
 
   site: {
     url: str("SITE_URL", "http://localhost:3000"),
-    name: "MusicTime",
+    name: "Gear Avail",
   },
 
   ebay: {
@@ -131,6 +131,67 @@ export const env = {
     },
   },
 
+  /**
+   * Small independent Shopify sellers, confirmed enrolled in GoAffPro (or a
+   * similar affiliate app) and verified per-store to publish an agents.md
+   * "Read-Only Browsing" section sanctioning /products.json. Catalogue
+   * ingestion works with no credentials at all; these vars only carry this
+   * publisher's actual referral code for that store's program, so listings
+   * get a real affiliate_url instead of a null one.
+   */
+  goaffpro: {
+    folkcraft: {
+      refParam: str("GOAFFPRO_FOLKCRAFT_REF_PARAM"),
+      refCode: str("GOAFFPRO_FOLKCRAFT_REF_CODE"),
+    },
+    acousticGuitar: {
+      refParam: str("GOAFFPRO_ACOUSTICGUITAR_REF_PARAM"),
+      refCode: str("GOAFFPRO_ACOUSTICGUITAR_REF_CODE"),
+    },
+    jamstik: {
+      refParam: str("GOAFFPRO_JAMSTIK_REF_PARAM"),
+      refCode: str("GOAFFPRO_JAMSTIK_REF_CODE"),
+    },
+    jacksonAudio: {
+      // Defaults to "ref", the parameter in the approved referral link
+      // (jackson.audio/?ref=...); the real code is still required from env.
+      refParam: str("GOAFFPRO_JACKSONAUDIO_REF_PARAM", "ref"),
+      refCode: str("GOAFFPRO_JACKSONAUDIO_REF_CODE"),
+    },
+    eminenceDigital: {
+      refParam: str("GOAFFPRO_EMINENCEDIGITAL_REF_PARAM", "ref"),
+      refCode: str("GOAFFPRO_EMINENCEDIGITAL_REF_CODE"),
+    },
+    hazeGuitar: {
+      refParam: str("GOAFFPRO_HAZEGUITAR_REF_PARAM", "ref"),
+      refCode: str("GOAFFPRO_HAZEGUITAR_REF_CODE"),
+    },
+    eartGuitar: {
+      refParam: str("GOAFFPRO_EARTGUITAR_REF_PARAM", "ref"),
+      refCode: str("GOAFFPRO_EARTGUITAR_REF_CODE"),
+    },
+    playWithAuthority: {
+      refParam: str("GOAFFPRO_PLAYWITHAUTHORITY_REF_PARAM", "ref"),
+      refCode: str("GOAFFPRO_PLAYWITHAUTHORITY_REF_CODE"),
+    },
+    puresMusic: {
+      refParam: str("GOAFFPRO_PURESMUSIC_REF_PARAM", "ref"),
+      refCode: str("GOAFFPRO_PURESMUSIC_REF_CODE"),
+    },
+    squaver: {
+      refParam: str("GOAFFPRO_SQUAVER_REF_PARAM", "ref"),
+      refCode: str("GOAFFPRO_SQUAVER_REF_CODE"),
+    },
+    easonMusicStore: {
+      refParam: str("GOAFFPRO_EASONMUSICSTORE_REF_PARAM", "ref"),
+      refCode: str("GOAFFPRO_EASONMUSICSTORE_REF_CODE"),
+    },
+    goKalimba: {
+      refParam: str("GOAFFPRO_GOKALIMBA_REF_PARAM", "ref"),
+      refCode: str("GOAFFPRO_GOKALIMBA_REF_CODE"),
+    },
+  },
+
   typesense: {
     host: str("TYPESENSE_HOST"),
     port: int("TYPESENSE_PORT", 443),
@@ -145,7 +206,7 @@ export const env = {
 
   alerts: {
     resendApiKey: str("RESEND_API_KEY"),
-    fromEmail: str("SITE_FROM_EMAIL", "alerts@musictime.app"),
+    fromEmail: str("SITE_FROM_EMAIL", "alerts@gearavail.app"),
     discordWebhookUrl: str("DISCORD_WEBHOOK_URL"),
     get canEmail(): boolean {
       return Boolean(env.alerts.resendApiKey)

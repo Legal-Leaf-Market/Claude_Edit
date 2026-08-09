@@ -6,7 +6,7 @@ import { marketplaceListings, outboundClicks } from "@/lib/db/schema"
 /**
  * Outbound affiliate gateway.
  *
- * This is the ONLY path from MusicTime to a marketplace. Cards never link to
+ * This is the ONLY path from Gear Avail to a marketplace. Cards never link to
  * raw_url directly, because this route is what records the click and picks the
  * monetised destination.
  *
@@ -38,6 +38,21 @@ const ALLOWED_HOSTS = [
   // CJ Affiliate's own tracking domains, for the pre-built BUY_URL links
   // zZounds/Full Compass/Pineville Music feeds carry.
   /(^|\.)(anrdoezrs\.net|apmebf\.com|awltovhc\.com|dpbolvw\.net|ftjcfx\.com|jdoqocy\.com|kqzyfj\.com|tkqlhce\.com|qksrv\.net)$/i,
+  // Small independent Shopify sellers. GoAffPro-style referral links append a
+  // query param to the merchant's own domain rather than redirecting through
+  // a separate tracking host, so the raw and affiliate URLs share a host.
+  /(^|\.)folkcraft\.com$/i,
+  /(^|\.)acousticguitar\.com$/i,
+  /(^|\.)jamstik\.com$/i,
+  /(^|\.)jackson\.audio$/i,
+  /(^|\.)eminence-digital\.com$/i,
+  /(^|\.)hazeguitar\.com\.au$/i,
+  /(^|\.)eartguitar\.com$/i,
+  /(^|\.)playwithauthority\.com$/i,
+  /(^|\.)puresmusic\.com$/i,
+  /(^|\.)squaver\.in$/i,
+  /(^|\.)easonmusicstore\.com$/i,
+  /(^|\.)gokalimba\.com$/i,
 ]
 
 function isAllowedDestination(rawUrl: string): boolean {
@@ -112,7 +127,7 @@ export async function GET(
   // strict-origin-when-cross-origin to every response, and a header set here
   // loses to it, so overriding would be a comment describing behaviour that
   // never ships. The global policy is also the one we want: it sends our origin
-  // and not the path, so the marketplace sees the traffic came from MusicTime,
+  // and not the path, so the marketplace sees the traffic came from Gear Avail,
   // which affiliate attribution wants, while the shopper's search query stays
   // on our side.
   return NextResponse.redirect(destination, {

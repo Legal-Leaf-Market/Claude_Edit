@@ -39,7 +39,7 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24,
   },
   advanced: {
-    cookiePrefix: "musictime",
+    cookiePrefix: "gearavail",
   },
 })
 

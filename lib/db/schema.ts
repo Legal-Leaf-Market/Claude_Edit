@@ -134,7 +134,7 @@ export const marketplaceListings = pgTable(
       onDelete: "set null",
     }),
 
-    /** 'ebay' | 'reverb' | 'sweetwater' | 'gear4music' | 'zzounds' | 'fullcompass' | 'pinevillemusic'. Facebook Marketplace is deliberately out of scope. */
+    /** 'ebay' | 'reverb' | 'sweetwater' | 'gear4music' | 'zzounds' | 'fullcompass' | 'pinevillemusic' | 'folkcraft' | 'acousticguitar' | 'jamstik' | 'jacksonaudio'. Facebook Marketplace is deliberately out of scope. */
     source: varchar("source", { length: 20 }).notNull(),
     externalId: varchar("external_id", { length: 255 }).notNull(),
 
@@ -344,6 +344,18 @@ export const SOURCES = [
   "zzounds",
   "fullcompass",
   "pinevillemusic",
+  "folkcraft",
+  "acousticguitar",
+  "jamstik",
+  "jacksonaudio",
+  "eminencedigital",
+  "hazeguitar",
+  "eartguitar",
+  "playwithauthority",
+  "puresmusic",
+  "squaver",
+  "easonmusicstore",
+  "gokalimba",
 ] as const
 export type Source = (typeof SOURCES)[number]
 

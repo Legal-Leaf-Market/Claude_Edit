@@ -17,8 +17,8 @@ import { getRedis } from "./redis"
  */
 
 export const QUEUE_NAMES = {
-  ingestion: "musictime-ingestion",
-  maintenance: "musictime-maintenance",
+  ingestion: "gearavail-ingestion",
+  maintenance: "gearavail-maintenance",
 } as const
 
 export type IngestionJob =
@@ -31,6 +31,18 @@ export type IngestionJob =
   | { kind: "zzounds-feed" }
   | { kind: "fullcompass-feed" }
   | { kind: "pinevillemusic-feed" }
+  | { kind: "folkcraft-feed" }
+  | { kind: "acousticguitar-feed" }
+  | { kind: "jamstik-feed" }
+  | { kind: "jacksonaudio-feed" }
+  | { kind: "eminencedigital-feed" }
+  | { kind: "hazeguitar-feed" }
+  | { kind: "eartguitar-feed" }
+  | { kind: "playwithauthority-feed" }
+  | { kind: "puresmusic-feed" }
+  | { kind: "squaver-feed" }
+  | { kind: "easonmusicstore-feed" }
+  | { kind: "gokalimba-feed" }
 
 export type MaintenanceJob =
   | { kind: "refresh-deals" }
@@ -172,6 +184,93 @@ export async function registerRepeatableJobs(): Promise<string[]> {
     )
     registered.push("pinevillemusic-feed @ daily 03:00 UTC")
   }
+
+  // Small independent Shopify sellers. Unlike the gated feeds above, these
+  // need no feed URL or merchant approval to ingest (their catalogue is
+  // public), so the schedule is unconditional.
+  await ingestion.upsertJobScheduler(
+    "folkcraft-feed",
+    { pattern: "30 */6 * * *" },
+    { name: "folkcraft-feed", data: { kind: "folkcraft-feed" } },
+  )
+  registered.push("folkcraft-feed @ every 6h")
+
+  await ingestion.upsertJobScheduler(
+    "acousticguitar-feed",
+    { pattern: "45 */6 * * *" },
+    { name: "acousticguitar-feed", data: { kind: "acousticguitar-feed" } },
+  )
+  registered.push("acousticguitar-feed @ every 6h")
+
+  await ingestion.upsertJobScheduler(
+    "jamstik-feed",
+    { pattern: "15 */6 * * *" },
+    { name: "jamstik-feed", data: { kind: "jamstik-feed" } },
+  )
+  registered.push("jamstik-feed @ every 6h")
+
+  await ingestion.upsertJobScheduler(
+    "jacksonaudio-feed",
+    { pattern: "35 */6 * * *" },
+    { name: "jacksonaudio-feed", data: { kind: "jacksonaudio-feed" } },
+  )
+  registered.push("jacksonaudio-feed @ every 6h")
+
+  await ingestion.upsertJobScheduler(
+    "eminencedigital-feed",
+    { pattern: "5 */6 * * *" },
+    { name: "eminencedigital-feed", data: { kind: "eminencedigital-feed" } },
+  )
+  registered.push("eminencedigital-feed @ every 6h")
+
+  await ingestion.upsertJobScheduler(
+    "hazeguitar-feed",
+    { pattern: "25 */6 * * *" },
+    { name: "hazeguitar-feed", data: { kind: "hazeguitar-feed" } },
+  )
+  registered.push("hazeguitar-feed @ every 6h")
+
+  await ingestion.upsertJobScheduler(
+    "eartguitar-feed",
+    { pattern: "50 */6 * * *" },
+    { name: "eartguitar-feed", data: { kind: "eartguitar-feed" } },
+  )
+  registered.push("eartguitar-feed @ every 6h")
+
+  await ingestion.upsertJobScheduler(
+    "playwithauthority-feed",
+    { pattern: "55 */6 * * *" },
+    { name: "playwithauthority-feed", data: { kind: "playwithauthority-feed" } },
+  )
+  registered.push("playwithauthority-feed @ every 6h")
+
+  await ingestion.upsertJobScheduler(
+    "puresmusic-feed",
+    { pattern: "2 */6 * * *" },
+    { name: "puresmusic-feed", data: { kind: "puresmusic-feed" } },
+  )
+  registered.push("puresmusic-feed @ every 6h")
+
+  await ingestion.upsertJobScheduler(
+    "squaver-feed",
+    { pattern: "8 */6 * * *" },
+    { name: "squaver-feed", data: { kind: "squaver-feed" } },
+  )
+  registered.push("squaver-feed @ every 6h")
+
+  await ingestion.upsertJobScheduler(
+    "easonmusicstore-feed",
+    { pattern: "12 */6 * * *" },
+    { name: "easonmusicstore-feed", data: { kind: "easonmusicstore-feed" } },
+  )
+  registered.push("easonmusicstore-feed @ every 6h")
+
+  await ingestion.upsertJobScheduler(
+    "gokalimba-feed",
+    { pattern: "18 */6 * * *" },
+    { name: "gokalimba-feed", data: { kind: "gokalimba-feed" } },
+  )
+  registered.push("gokalimba-feed @ every 6h")
 
   await maintenance.upsertJobScheduler(
     "refresh-deals",

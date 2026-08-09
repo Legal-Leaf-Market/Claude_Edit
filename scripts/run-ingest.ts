@@ -11,6 +11,18 @@ import { ingestGear4MusicFeed } from "../lib/ingestion/gear4music-awin"
 import { ingestZzoundsFeed } from "../lib/ingestion/zzounds-cj"
 import { ingestFullCompassFeed } from "../lib/ingestion/fullcompass-cj"
 import { ingestPinevilleMusicFeed } from "../lib/ingestion/pinevillemusic-cj"
+import { ingestFolkcraftFeed } from "../lib/ingestion/folkcraft-shopify"
+import { ingestAcousticGuitarFeed } from "../lib/ingestion/acousticguitar-shopify"
+import { ingestJamstikFeed } from "../lib/ingestion/jamstik-shopify"
+import { ingestJacksonAudioFeed } from "../lib/ingestion/jacksonaudio-shopify"
+import { ingestEminenceDigitalFeed } from "../lib/ingestion/eminencedigital-shopify"
+import { ingestHazeGuitarFeed } from "../lib/ingestion/hazeguitar-shopify"
+import { ingestEartGuitarFeed } from "../lib/ingestion/eartguitar-shopify"
+import { ingestPlayWithAuthorityFeed } from "../lib/ingestion/playwithauthority-shopify"
+import { ingestPuresMusicFeed } from "../lib/ingestion/puresmusic-shopify"
+import { ingestSquaverFeed } from "../lib/ingestion/squaver-woocommerce"
+import { ingestEasonMusicStoreFeed } from "../lib/ingestion/easonmusicstore-shopify"
+import { ingestGoKalimbaFeed } from "../lib/ingestion/gokalimba-shopify"
 import { resolveUnmatchedListings } from "../lib/canonical/resolve"
 import { refreshAllDeals } from "../lib/deals/pricing"
 
@@ -26,6 +38,18 @@ import { refreshAllDeals } from "../lib/deals/pricing"
  *   npm run ingest:zzounds           CJ Affiliate product feed
  *   npm run ingest:fullcompass       CJ Affiliate product feed
  *   npm run ingest:pinevillemusic    CJ Affiliate product feed
+ *   npm run ingest:folkcraft         Public Shopify storefront JSON
+ *   npm run ingest:acousticguitar    Public Shopify storefront JSON
+ *   npm run ingest:jamstik           Public Shopify storefront JSON
+ *   npm run ingest:jacksonaudio      Public Shopify storefront JSON
+ *   npm run ingest:eminencedigital   Public Shopify storefront JSON
+ *   npm run ingest:hazeguitar        Public Shopify storefront JSON
+ *   npm run ingest:eartguitar        Public Shopify storefront JSON
+ *   npm run ingest:playwithauthority Public Shopify storefront JSON
+ *   npm run ingest:puresmusic        Public Shopify storefront JSON
+ *   npm run ingest:squaver           Public WooCommerce Store API
+ *   npm run ingest:easonmusicstore   Public Shopify storefront JSON
+ *   npm run ingest:gokalimba         Public Shopify storefront JSON
  *
  * Useful for a first load and for checking credentials without waiting on a
  * schedule.
@@ -60,13 +84,49 @@ async function main() {
   } else if (source === "pinevillemusic") {
     const result = await ingestPinevilleMusicFeed()
     console.log("[ingest] Pineville Music:", JSON.stringify(result, null, 2))
+  } else if (source === "folkcraft") {
+    const result = await ingestFolkcraftFeed()
+    console.log("[ingest] Folkcraft:", JSON.stringify(result, null, 2))
+  } else if (source === "acousticguitar") {
+    const result = await ingestAcousticGuitarFeed()
+    console.log("[ingest] Acoustic Guitar:", JSON.stringify(result, null, 2))
+  } else if (source === "jamstik") {
+    const result = await ingestJamstikFeed()
+    console.log("[ingest] Jamstik:", JSON.stringify(result, null, 2))
+  } else if (source === "jacksonaudio") {
+    const result = await ingestJacksonAudioFeed()
+    console.log("[ingest] Jackson Audio:", JSON.stringify(result, null, 2))
+  } else if (source === "eminencedigital") {
+    const result = await ingestEminenceDigitalFeed()
+    console.log("[ingest] Eminence Digital:", JSON.stringify(result, null, 2))
+  } else if (source === "hazeguitar") {
+    const result = await ingestHazeGuitarFeed()
+    console.log("[ingest] Haze Guitar:", JSON.stringify(result, null, 2))
+  } else if (source === "eartguitar") {
+    const result = await ingestEartGuitarFeed()
+    console.log("[ingest] EART Guitar:", JSON.stringify(result, null, 2))
+  } else if (source === "playwithauthority") {
+    const result = await ingestPlayWithAuthorityFeed()
+    console.log("[ingest] Play With Authority:", JSON.stringify(result, null, 2))
+  } else if (source === "puresmusic") {
+    const result = await ingestPuresMusicFeed()
+    console.log("[ingest] Pures Music:", JSON.stringify(result, null, 2))
+  } else if (source === "squaver") {
+    const result = await ingestSquaverFeed()
+    console.log("[ingest] Squaver:", JSON.stringify(result, null, 2))
+  } else if (source === "easonmusicstore") {
+    const result = await ingestEasonMusicStoreFeed()
+    console.log("[ingest] Eason Music Store:", JSON.stringify(result, null, 2))
+  } else if (source === "gokalimba") {
+    const result = await ingestGoKalimbaFeed()
+    console.log("[ingest] Go Kalimba:", JSON.stringify(result, null, 2))
   } else if (source === "resolve") {
     const tally = await resolveUnmatchedListings()
     console.log("[ingest] resolution tally:", tally)
     console.log("[ingest] deals:", await refreshAllDeals())
   } else {
     console.error(
-      "Usage: run-ingest.ts <ebay|reverb|sweetwater|gear4music|zzounds|fullcompass|pinevillemusic|resolve> [daily|snapshot|bootstrap]",
+      "Usage: run-ingest.ts <ebay|reverb|sweetwater|gear4music|zzounds|fullcompass|pinevillemusic|folkcraft|acousticguitar|jamstik|jacksonaudio|eminencedigital|hazeguitar|eartguitar|playwithauthority|puresmusic|squaver|easonmusicstore|gokalimba|resolve> [daily|snapshot|bootstrap]",
     )
     process.exitCode = 1
   }

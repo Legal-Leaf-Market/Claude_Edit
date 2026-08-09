@@ -18,7 +18,7 @@ const memoryCounters = new Map<string, { count: number; resetAt: number }>()
 
 function utcDayKey(prefix: string, now = new Date()): string {
   const stamp = now.toISOString().slice(0, 10)
-  return `musictime:ratelimit:${prefix}:${stamp}`
+  return `gearavail:ratelimit:${prefix}:${stamp}`
 }
 
 function endOfUtcDay(now = new Date()): number {

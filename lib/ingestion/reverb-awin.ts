@@ -25,7 +25,7 @@ import type { NewMarketplaceListing } from "@/lib/db/schema"
  *
  * So: when AWIN_REVERB_FEED_URL is unset this job logs and no-ops. It does not
  * fall back to the Reverb API, and it does not scrape. If the feed never
- * materialises, MusicTime ships as an eBay-only aggregator that links out to
+ * materialises, Gear Avail ships as an eBay-only aggregator that links out to
  * Reverb through Awin, which is a complete and compliant product.
  */
 
@@ -168,7 +168,7 @@ export async function fetchAwinFeedText(
   fetchImpl: typeof fetch = fetch,
 ): Promise<string> {
   const res = await fetchImpl(url, {
-    headers: { Accept: "text/csv,application/gzip,*/*", "User-Agent": "MusicTime/1.0 (+aggregator)" },
+    headers: { Accept: "text/csv,application/gzip,*/*", "User-Agent": "GearAvail/1.0 (+aggregator)" },
   })
   if (!res.ok) {
     const error = new Error(`Awin feed returned ${res.status} ${res.statusText}`) as Error & {

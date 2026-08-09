@@ -51,6 +51,18 @@ export function sourceLabel(source: string): string {
   if (source === "zzounds") return "zZounds"
   if (source === "fullcompass") return "Full Compass Systems"
   if (source === "pinevillemusic") return "Pineville Music"
+  if (source === "folkcraft") return "Folkcraft Instruments"
+  if (source === "acousticguitar") return "Acoustic Guitar"
+  if (source === "jamstik") return "Jamstik"
+  if (source === "jacksonaudio") return "Jackson Audio"
+  if (source === "eminencedigital") return "Eminence Digital"
+  if (source === "hazeguitar") return "Haze Guitar"
+  if (source === "eartguitar") return "EART Guitar"
+  if (source === "playwithauthority") return "Play With Authority"
+  if (source === "puresmusic") return "Pures Music"
+  if (source === "squaver") return "Squaver"
+  if (source === "easonmusicstore") return "Eason Music Store"
+  if (source === "gokalimba") return "Go Kalimba"
   return source
 }
 

@@ -1,6 +1,6 @@
 /**
- * The MusicTime mark: a clock face whose hands are drawn as a tuning fork.
- * One geometry, reused at every size, so it stays legible down to a favicon.
+ * The Gear Avail mark: a tuning fork inside a ring, reused at every size so
+ * it stays legible down to a favicon.
  */
 export function LogoMark({ className = "h-7 w-7" }: { className?: string }) {
   return (

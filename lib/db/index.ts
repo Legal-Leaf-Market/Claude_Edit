@@ -19,8 +19,8 @@ import * as schema from "./schema"
  */
 
 const globalForDb = globalThis as unknown as {
-  __musictimePool?: Pool
-  __musictimeDb?: NodePgDatabase<typeof schema>
+  __gearavailPool?: Pool
+  __gearavailDb?: NodePgDatabase<typeof schema>
 }
 
 function makePool(): Pool {
@@ -44,15 +44,15 @@ function makePool(): Pool {
 }
 
 export function getPool(): Pool {
-  if (!globalForDb.__musictimePool) globalForDb.__musictimePool = makePool()
-  return globalForDb.__musictimePool
+  if (!globalForDb.__gearavailPool) globalForDb.__gearavailPool = makePool()
+  return globalForDb.__gearavailPool
 }
 
 function getDb(): NodePgDatabase<typeof schema> {
-  if (!globalForDb.__musictimeDb) {
-    globalForDb.__musictimeDb = drizzle(getPool(), { schema })
+  if (!globalForDb.__gearavailDb) {
+    globalForDb.__gearavailDb = drizzle(getPool(), { schema })
   }
-  return globalForDb.__musictimeDb
+  return globalForDb.__gearavailDb
 }
 
 /**
@@ -68,11 +68,11 @@ export const db = new Proxy({} as NodePgDatabase<typeof schema>, {
 
 /** Close the pool. Used by scripts and tests; the app leaves it open. */
 export async function closeDb(): Promise<void> {
-  const existing = globalForDb.__musictimePool
+  const existing = globalForDb.__gearavailPool
   if (existing) {
     await existing.end().catch(() => {})
-    globalForDb.__musictimePool = undefined
-    globalForDb.__musictimeDb = undefined
+    globalForDb.__gearavailPool = undefined
+    globalForDb.__gearavailDb = undefined
   }
 }
 

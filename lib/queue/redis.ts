@@ -10,11 +10,11 @@ import { env } from "@/lib/env"
  * handle a null connection.
  */
 
-const globalForRedis = globalThis as unknown as { __musictimeRedis?: IORedis | null }
+const globalForRedis = globalThis as unknown as { __gearavailRedis?: IORedis | null }
 
 export function getRedis(): IORedis | null {
   if (!env.redisUrl) return null
-  if (globalForRedis.__musictimeRedis !== undefined) return globalForRedis.__musictimeRedis
+  if (globalForRedis.__gearavailRedis !== undefined) return globalForRedis.__gearavailRedis
 
   const client = new IORedis(env.redisUrl, {
     // BullMQ requires this to be null: it blocks on BRPOPLPUSH and a retry
@@ -28,7 +28,7 @@ export function getRedis(): IORedis | null {
     console.error("[redis] connection error:", err.message)
   })
 
-  globalForRedis.__musictimeRedis = client
+  globalForRedis.__gearavailRedis = client
   return client
 }
 
@@ -42,9 +42,9 @@ export function requireRedis(): IORedis {
 }
 
 export async function closeRedis(): Promise<void> {
-  const client = globalForRedis.__musictimeRedis
+  const client = globalForRedis.__gearavailRedis
   if (client) {
     await client.quit().catch(() => {})
-    globalForRedis.__musictimeRedis = undefined
+    globalForRedis.__gearavailRedis = undefined
   }
 }
