@@ -36,6 +36,13 @@
       "when": 1786318500000,
       "tag": "0004_patreon_url",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786318900000,
+      "tag": "0005_subscribers",
+      "breakpoints": true
     }
   ]
 }

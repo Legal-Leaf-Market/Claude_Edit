@@ -5,6 +5,7 @@ import { FilterSidebar } from "@/components/filter-sidebar"
 import { ListingCard } from "@/components/listing-card"
 import { Pagination } from "@/components/pagination"
 import { SortSelect } from "@/components/sort-select"
+import { SubscribeForm } from "@/components/subscribe-form"
 import { STORES, storeFromSlug } from "@/lib/stores"
 import { paramsFromQuery, queryFromParams, search } from "@/lib/search"
 
@@ -126,6 +127,10 @@ export default async function StorePage({ params, searchParams }: PageProps) {
             </>
           )}
         </section>
+      </div>
+
+      <div className="mt-10 max-w-2xl">
+        <SubscribeForm source="store" />
       </div>
     </div>
   )

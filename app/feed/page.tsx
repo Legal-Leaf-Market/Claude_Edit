@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { sql } from "drizzle-orm"
 import { db } from "@/lib/db"
+import { SubscribeForm } from "@/components/subscribe-form"
 import { BOARD_BY_KIND } from "@/lib/boards"
 import type { BoardKind } from "@/lib/db/schema"
 import { formatPrice, timeAgo } from "@/lib/utils"
@@ -77,6 +78,10 @@ export default async function FeedPage() {
             {board.navLabel}
           </Link>
         ))}
+      </div>
+
+      <div className="mt-6">
+        <SubscribeForm source="feed" />
       </div>
 
       <section className="mt-8">

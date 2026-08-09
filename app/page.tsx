@@ -2,6 +2,7 @@ import Link from "next/link"
 import { sql } from "drizzle-orm"
 import { ArrowRight, BellRing, LineChart, Search as SearchIcon } from "lucide-react"
 import { InstagramStrip } from "@/components/instagram-strip"
+import { SubscribeForm } from "@/components/subscribe-form"
 import { ListingCard } from "@/components/listing-card"
 import { db } from "@/lib/db"
 import { search } from "@/lib/search"
@@ -142,6 +143,13 @@ export default async function HomePage() {
             title="Alerts for the gear you want"
             body="Save a search with a price ceiling. When something matching drops below it, you get an email or a Discord ping, usually within the hour."
           />
+        </div>
+      </section>
+
+      <section className="pb-16">
+        <h2 className="mb-4 text-xl font-semibold text-[var(--cream)]">Get the weekly hunt</h2>
+        <div className="max-w-2xl">
+          <SubscribeForm source="home" />
         </div>
       </section>
 
