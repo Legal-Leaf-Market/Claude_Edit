@@ -3,16 +3,21 @@
 Read this fully before editing. Sister project to **Legal-Leaf Market**,
 **Herbal Leaf Market** and **Nicotia Market**, and it inherits their house
 rules (section 12). The difference: those sites scrape public storefront JSON
-from merchants who want the traffic. This one consumes **gated partner feeds**
-from two companies whose terms say exactly what you may and may not do with
-their data. That constraint shapes most of the decisions below, and undoing one
-of them casually is how this project gets a legal letter rather than a bug.
+from merchants who want the traffic. This one mostly consumes **gated partner
+feeds** whose terms say exactly what you may and may not do with their data.
+That constraint shapes most of the decisions below, and undoing one of them
+casually is how this project gets a legal letter rather than a bug. (Small
+independent Shopify-based sellers are the exception: their public storefront
+JSON, the same pattern the sister sites use, is fair game when the merchant is
+enrolled in an affiliate program that explicitly wants the traffic. See the
+GoAffPro note in section 2.)
 
 ---
 
 ## 1. What this is
 
-A used and vintage music gear aggregator. It ingests listings, works out which
+A music gear aggregator, used and vintage first, expanding into new gear where
+a legitimate feed exists (Gear4music). It ingests listings, works out which
 listings are the same physical instrument, computes a market price per
 instrument, and sends the shopper out to the marketplace through an affiliate
 link. We never take an order and never hold stock.
@@ -32,6 +37,22 @@ built for that site's own frontend rather than published for this use.
   third parties is whatever datafeed their affiliate program (run on
   LinkConnector) actually offers. Do not scrape sweetwater.com or its Algolia-
   backed search/Gear Exchange listings as a substitute.
+- **Gear4music**, via their **Awin product datafeed** (`lib/ingestion/
+  gear4music-awin.ts`, gated on `AWIN_GEAR4MUSIC_FEED_URL`). Same network as
+  Reverb, different merchant account and feed URL. Primarily NEW retail
+  inventory, which is why its condition normalizer defaults an empty condition
+  column to "New" rather than "Unspecified" the way Reverb's does. Ships
+  several regional storefronts (.com, .ie, .fr, .dk, .pl) under one Awin
+  merchant; `isGear4MusicProductUrl` in `lib/affiliate/awin.ts` recognises all
+  of them.
+- **Small independent sellers, via public Shopify storefront JSON
+  (`/products.json`)**, on a per-merchant basis, the same pattern the sister
+  sites use. Only for merchants confirmed to be enrolled in an affiliate
+  program (GoAffPro or similar) that explicitly wants publisher-driven
+  traffic, not a blanket license to hit any Shopify store's JSON endpoint.
+  Verify the endpoint is actually public and check the individual merchant's
+  own affiliate terms before wiring one in; this is a per-store decision, not
+  a feed that covers many merchants at once the way Awin/LinkConnector do.
 - **Guitar Center was evaluated and rejected.** No official product API exists;
   their `robots.txt` explicitly disallows `/search`, `/pdp/`, `/product-detail-
   page`, `/category-page`, and the query params their own site search uses;
@@ -85,11 +106,12 @@ These are not preferences. Each one is a term of service.
   aggregated". Aggregating their catalogue through it is a breach on two
   counts. `lib/ingestion/reverb-awin.ts` reads the Awin datafeed or it no-ops.
   It has no fallback path, deliberately, so nobody can add one "temporarily".
-- **`AWIN_REVERB_FEED_URL` and `LINKCONNECTOR_SWEETWATER_FEED_URL` unset is the
-  EXPECTED state**, not a bug to route around. Each source ships only if its
-  feed is confirmed; MusicTime degrades gracefully to whichever subset of
-  eBay/Reverb/Sweetwater actually has a working feed. A smaller aggregator that
-  is fully compliant beats a bigger one that is not.
+- **`AWIN_REVERB_FEED_URL`, `LINKCONNECTOR_SWEETWATER_FEED_URL` and
+  `AWIN_GEAR4MUSIC_FEED_URL` unset is the EXPECTED state**, not a bug to route
+  around. Each source ships only if its feed is confirmed; MusicTime degrades
+  gracefully to whichever subset of eBay/Reverb/Sweetwater/Gear4music actually
+  has a working feed. A smaller aggregator that is fully compliant beats a
+  bigger one that is not.
 - **eBay production access is not guaranteed.** `EBAY_FEED_BASE_URL` defaults
   to **sandbox** on purpose. Never flip that default; set it per environment
   once a production keyset is actually approved. A misconfigured deploy sending
@@ -313,9 +335,10 @@ Never fork the logic between them. Add work to the job function.
 | `AWIN_PUBLISHER_ID` / `AWIN_REVERB_MERCHANT_ID` | Reverb deep links. Either missing produces null links, not broken ones. |
 | `AWIN_REVERB_FEED_URL` | Reverb catalogue. Unset is expected; the job no-ops. |
 | `LINKCONNECTOR_SWEETWATER_FEED_URL` | Sweetwater catalogue. Unset is expected; the job no-ops. Never falls back to scraping. |
+| `AWIN_GEAR4MUSIC_MERCHANT_ID` / `AWIN_GEAR4MUSIC_FEED_URL` | Gear4music catalogue and deep links. Same shape as the Reverb pair, independent ids. |
 | `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
 | `REDIS_URL` | BullMQ queues and the shared rate-limit counter. Optional. |
-| `CRON_SECRET` | All five crons. Unset = 503, wrong = 401. Load bearing. |
+| `CRON_SECRET` | All six crons. Unset = 503, wrong = 401. Load bearing. |
 | `BETTER_AUTH_SECRET` | Accounts and alerts. Unset = auth routes 503, rest of site unaffected. |
 | `RESEND_API_KEY` / `DISCORD_WEBHOOK_URL` | Alert delivery. Each no-ops with a warning. |
 
@@ -342,6 +365,10 @@ Never fork the logic between them. Add work to the job function.
   indexes) as a substitute for a confirmed affiliate datafeed.
 - Do NOT add a new data source without first confirming a legitimate feed or
   partner API exists for it. A retailer having a website is not a source.
+- Do NOT treat "it's a Shopify store with `/products.json` public" as a
+  blanket license. Check per merchant: is the endpoint actually enabled, is
+  the merchant enrolled in an affiliate program that wants the traffic, and do
+  their own terms say anything to the contrary.
 - Do NOT change `EBAY_FEED_BASE_URL`'s sandbox default.
 - Do NOT link the UI directly to `raw_url`; everything goes through `/go`.
 - Do NOT let an `inferred*` field win over an explicit one.

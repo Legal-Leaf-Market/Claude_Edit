@@ -8,6 +8,7 @@ import {
 } from "@/lib/ingestion/ebay-ingest"
 import { ingestReverbFeed } from "@/lib/ingestion/reverb-awin"
 import { ingestSweetwaterFeed } from "@/lib/ingestion/sweetwater-linkconnector"
+import { ingestGear4MusicFeed } from "@/lib/ingestion/gear4music-awin"
 import { refreshAllDeals } from "@/lib/deals/pricing"
 import { evaluateAlerts } from "@/lib/alerts/evaluate"
 import { syncSearchIndex } from "@/lib/search/sync"
@@ -55,6 +56,11 @@ export function startIngestionWorker(): Worker<IngestionJob> {
         }
         case "sweetwater-feed": {
           const result = await ingestSweetwaterFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "gear4music-feed": {
+          const result = await ingestGear4MusicFeed()
           await syncSearchIndex()
           return result
         }

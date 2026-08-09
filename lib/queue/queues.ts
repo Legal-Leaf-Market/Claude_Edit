@@ -27,6 +27,7 @@ export type IngestionJob =
   | { kind: "ebay-bootstrap" }
   | { kind: "reverb-feed" }
   | { kind: "sweetwater-feed" }
+  | { kind: "gear4music-feed" }
 
 export type MaintenanceJob =
   | { kind: "refresh-deals" }
@@ -131,6 +132,15 @@ export async function registerRepeatableJobs(): Promise<string[]> {
       { name: "sweetwater-feed", data: { kind: "sweetwater-feed" } },
     )
     registered.push("sweetwater-feed @ every 6h")
+  }
+
+  if (env.awin.hasGear4musicFeed) {
+    await ingestion.upsertJobScheduler(
+      "gear4music-feed",
+      { pattern: "0 */6 * * *" },
+      { name: "gear4music-feed", data: { kind: "gear4music-feed" } },
+    )
+    registered.push("gear4music-feed @ every 6h")
   }
 
   await maintenance.upsertJobScheduler(

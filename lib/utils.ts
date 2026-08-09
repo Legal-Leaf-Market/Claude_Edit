@@ -47,6 +47,7 @@ export function sourceLabel(source: string): string {
   if (source === "ebay") return "eBay"
   if (source === "reverb") return "Reverb"
   if (source === "sweetwater") return "Sweetwater"
+  if (source === "gear4music") return "Gear4music"
   return source
 }
 

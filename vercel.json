@@ -5,6 +5,7 @@
     { "path": "/api/cron/ingest-ebay-snapshot", "schedule": "10 * * * *" },
     { "path": "/api/cron/ingest-reverb", "schedule": "40 */6 * * *" },
     { "path": "/api/cron/ingest-sweetwater", "schedule": "20 */6 * * *" },
+    { "path": "/api/cron/ingest-gear4music", "schedule": "0 */6 * * *" },
     { "path": "/api/cron/refresh-deals", "schedule": "0 4 * * *" }
   ]
 }

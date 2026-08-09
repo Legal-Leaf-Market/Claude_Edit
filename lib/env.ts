@@ -83,6 +83,16 @@ export const env = {
     get hasFeed(): boolean {
       return Boolean(env.awin.reverbFeedUrl)
     },
+
+    gear4musicMerchantId: str("AWIN_GEAR4MUSIC_MERCHANT_ID"),
+    /** Gear4music's Awin product datafeed URL. Unset means the worker no-ops. */
+    gear4musicFeedUrl: str("AWIN_GEAR4MUSIC_FEED_URL"),
+    get gear4musicIsConfigured(): boolean {
+      return Boolean(env.awin.publisherId && env.awin.gear4musicMerchantId)
+    },
+    get hasGear4musicFeed(): boolean {
+      return Boolean(env.awin.gear4musicFeedUrl)
+    },
   },
 
   linkconnector: {
@@ -150,6 +160,7 @@ export function describeConfig(): string {
     `awin=${env.awin.isConfigured ? "set" : "unconfigured"}`,
     `reverb-feed=${env.awin.hasFeed ? "set" : "absent"}`,
     `sweetwater-feed=${env.linkconnector.hasSweetwaterFeed ? "set" : "absent"}`,
+    `gear4music-feed=${env.awin.hasGear4musicFeed ? "set" : "absent"}`,
     `typesense=${env.typesense.isConfigured ? "set" : "postgres-fallback"}`,
     `redis=${env.redisUrl ? "set" : "absent"}`,
   ]

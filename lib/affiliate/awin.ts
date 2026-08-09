@@ -20,6 +20,9 @@ const AWIN_CREAD = "https://www.awin1.com/cread.php"
 /** Hosts we are willing to wrap. Guards against building a tracked link to somewhere unexpected. */
 const REVERB_HOSTS = /(^|\.)reverb\.com$/i
 
+/** Gear4music runs regional storefronts (.com, .ie, .fr, .dk, .pl, ...) on one merchant account. */
+const GEAR4MUSIC_HOSTS = /(^|\.)gear4music\.[a-z.]{2,6}$/i
+
 export type AwinLinkOptions = {
   publisherId?: string
   merchantId?: string
@@ -33,6 +36,17 @@ export function isReverbProductUrl(rawUrl: string): boolean {
     const u = new URL(rawUrl)
     if (u.protocol !== "https:" && u.protocol !== "http:") return false
     return REVERB_HOSTS.test(u.hostname)
+  } catch {
+    return false
+  }
+}
+
+/** True when the URL is a Gear4music product URL we are prepared to deep link. */
+export function isGear4MusicProductUrl(rawUrl: string): boolean {
+  try {
+    const u = new URL(rawUrl)
+    if (u.protocol !== "https:" && u.protocol !== "http:") return false
+    return GEAR4MUSIC_HOSTS.test(u.hostname)
   } catch {
     return false
   }
@@ -78,5 +92,11 @@ export function buildAwinDeepLink(
  */
 export function reverbAffiliateUrl(productUrl: string, options: AwinLinkOptions = {}): string | null {
   if (!isReverbProductUrl(productUrl)) return null
+  return buildAwinDeepLink(productUrl, options)
+}
+
+/** Same rule as reverbAffiliateUrl, for Gear4music's regional storefronts. */
+export function gear4musicAffiliateUrl(productUrl: string, options: AwinLinkOptions = {}): string | null {
+  if (!isGear4MusicProductUrl(productUrl)) return null
   return buildAwinDeepLink(productUrl, options)
 }

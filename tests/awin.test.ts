@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { buildAwinDeepLink, isReverbProductUrl, reverbAffiliateUrl } from "@/lib/affiliate/awin"
+import {
+  buildAwinDeepLink,
+  gear4musicAffiliateUrl,
+  isGear4MusicProductUrl,
+  isReverbProductUrl,
+  reverbAffiliateUrl,
+} from "@/lib/affiliate/awin"
 
 /**
  * Note the house rule these tests obey: never GET an awin1.com/cread.php URL.
@@ -110,6 +116,35 @@ describe("reverbAffiliateUrl", () => {
   it("refuses to wrap a non-Reverb destination", () => {
     expect(
       reverbAffiliateUrl("https://example.com/item/42", { publisherId: PUB, merchantId: MID }),
+    ).toBeNull()
+  })
+})
+
+describe("isGear4MusicProductUrl", () => {
+  it("accepts gear4music.com and its regional storefronts", () => {
+    expect(isGear4MusicProductUrl("https://www.gear4music.com/Guitar/1")).toBe(true)
+    expect(isGear4MusicProductUrl("https://www.gear4music.ie/Guitar/1")).toBe(true)
+    expect(isGear4MusicProductUrl("https://www.gear4music.fr/Guitar/1")).toBe(true)
+  })
+
+  it("rejects lookalike hosts", () => {
+    expect(isGear4MusicProductUrl("https://gear4music.com.evil.example/1")).toBe(false)
+    expect(isGear4MusicProductUrl("https://notgear4music.com/1")).toBe(false)
+  })
+})
+
+describe("gear4musicAffiliateUrl", () => {
+  it("wraps a Gear4music URL", () => {
+    const link = gear4musicAffiliateUrl("https://www.gear4music.com/Guitar/1", {
+      publisherId: PUB,
+      merchantId: "1117",
+    })
+    expect(link).toContain("awin1.com/cread.php")
+  })
+
+  it("refuses to wrap a non-Gear4music destination", () => {
+    expect(
+      gear4musicAffiliateUrl("https://example.com/item/42", { publisherId: PUB, merchantId: "1117" }),
     ).toBeNull()
   })
 })
