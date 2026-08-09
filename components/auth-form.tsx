@@ -10,12 +10,35 @@ import { signIn, signUp } from "@/lib/auth-client"
 /** Matches the minPasswordLength configured on the server in lib/auth.ts. */
 const MIN_PASSWORD_LENGTH = 10
 
-export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
+export function AuthForm({
+  mode,
+  googleEnabled = false,
+}: {
+  mode: "sign-in" | "sign-up"
+  googleEnabled?: boolean
+}) {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [googlePending, setGooglePending] = useState(false)
 
   const isSignUp = mode === "sign-up"
+
+  async function onGoogleClick() {
+    setError(null)
+    setGooglePending(true)
+    try {
+      const result = await signIn.social({ provider: "google", callbackURL: "/alerts" })
+      if (result.error) {
+        setError(result.error.message ?? "Could not sign in with Google.")
+        setGooglePending(false)
+      }
+      // On success Better Auth redirects the browser itself; nothing more to do here.
+    } catch {
+      setError("Could not sign in with Google. Try again in a moment.")
+      setGooglePending(false)
+    }
+  }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -59,83 +82,105 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="panel space-y-4 p-6">
-      {isSignUp && (
+    <div className="panel space-y-4 p-6">
+      {googleEnabled && (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={googlePending}
+            onClick={onGoogleClick}
+            className="w-full"
+          >
+            {googlePending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+            Continue with Google
+          </Button>
+          <div className="flex items-center gap-3 text-xs text-[var(--muted-foreground)]">
+            <span className="h-px flex-1 bg-[var(--border)]" />
+            or use email
+            <span className="h-px flex-1 bg-[var(--border)]" />
+          </div>
+        </>
+      )}
+
+      <form onSubmit={onSubmit} className="space-y-4">
+        {isSignUp && (
+          <div>
+            <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-[var(--cream)]">
+              Name
+            </label>
+            <input
+              id="name"
+              name="name"
+              autoComplete="name"
+              className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm text-[var(--cream)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            />
+          </div>
+        )}
+
         <div>
-          <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-[var(--cream)]">
-            Name
+          <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-[var(--cream)]">
+            Email
           </label>
           <input
-            id="name"
-            name="name"
-            autoComplete="name"
+            id="email"
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
             className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm text-[var(--cream)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
           />
         </div>
-      )}
 
-      <div>
-        <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-[var(--cream)]">
-          Email
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          required
-          autoComplete="email"
-          className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm text-[var(--cream)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-        />
-      </div>
+        <div>
+          <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-[var(--cream)]">
+            Password
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            minLength={isSignUp ? MIN_PASSWORD_LENGTH : undefined}
+            autoComplete={isSignUp ? "new-password" : "current-password"}
+            className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm text-[var(--cream)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+          />
+          {isSignUp && (
+            <p className="mt-1.5 text-xs text-[var(--muted-foreground)]">
+              At least {MIN_PASSWORD_LENGTH} characters.
+            </p>
+          )}
+        </div>
 
-      <div>
-        <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-[var(--cream)]">
-          Password
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          required
-          minLength={isSignUp ? MIN_PASSWORD_LENGTH : undefined}
-          autoComplete={isSignUp ? "new-password" : "current-password"}
-          className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm text-[var(--cream)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-        />
-        {isSignUp && (
-          <p className="mt-1.5 text-xs text-[var(--muted-foreground)]">
-            At least {MIN_PASSWORD_LENGTH} characters.
+        {error && (
+          <p role="alert" className="text-sm text-[var(--destructive)]">
+            {error}
           </p>
         )}
-      </div>
 
-      {error && (
-        <p role="alert" className="text-sm text-[var(--destructive)]">
-          {error}
+        <Button type="submit" disabled={pending} className="w-full">
+          {pending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+          {isSignUp ? "Create account" : "Sign in"}
+        </Button>
+
+        <p className="text-center text-sm text-[var(--muted-foreground)]">
+          {isSignUp ? (
+            <>
+              Already have an account?{" "}
+              <Link href="/sign-in" className="text-[var(--amber)] underline-offset-2 hover:underline">
+                Sign in
+              </Link>
+            </>
+          ) : (
+            <>
+              Need an account?{" "}
+              <Link href="/sign-up" className="text-[var(--amber)] underline-offset-2 hover:underline">
+                Create one
+              </Link>
+            </>
+          )}
         </p>
-      )}
-
-      <Button type="submit" disabled={pending} className="w-full">
-        {pending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-        {isSignUp ? "Create account" : "Sign in"}
-      </Button>
-
-      <p className="text-center text-sm text-[var(--muted-foreground)]">
-        {isSignUp ? (
-          <>
-            Already have an account?{" "}
-            <Link href="/sign-in" className="text-[var(--amber)] underline-offset-2 hover:underline">
-              Sign in
-            </Link>
-          </>
-        ) : (
-          <>
-            Need an account?{" "}
-            <Link href="/sign-up" className="text-[var(--amber)] underline-offset-2 hover:underline">
-              Create one
-            </Link>
-          </>
-        )}
-      </p>
-    </form>
+      </form>
+    </div>
   )
 }

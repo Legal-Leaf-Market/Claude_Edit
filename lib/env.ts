@@ -237,6 +237,19 @@ export const env = {
     get isConfigured(): boolean {
       return Boolean(env.auth.secret)
     },
+    /**
+     * Optional. Signing in with a Google account someone already has removes
+     * the "make up a password" wall in front of every auth-gated feature
+     * (alerts, Flip Match). Unset means the sign-in page just shows email and
+     * password, same as before this existed.
+     */
+    google: {
+      clientId: str("GOOGLE_CLIENT_ID"),
+      clientSecret: str("GOOGLE_CLIENT_SECRET"),
+      get isConfigured(): boolean {
+        return Boolean(env.auth.google.clientId && env.auth.google.clientSecret)
+      },
+    },
   },
 
   /**
@@ -284,6 +297,7 @@ export function describeConfig(): string {
     `redis=${env.redisUrl ? "set" : "absent"}`,
     `leads-notify=${env.leads.canEmail ? "set" : "db-only"}`,
     `instagram=${env.social.hasInstagramPosts ? "embeds" : "follow-only"}`,
+    `google-signin=${env.auth.google.isConfigured ? "set" : "unconfigured"}`,
   ]
   return parts.join(" ")
 }

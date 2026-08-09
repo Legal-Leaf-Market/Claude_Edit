@@ -406,6 +406,7 @@ Never fork the logic between them. Add work to the job function.
 | `RESEND_API_KEY` / `DISCORD_WEBHOOK_URL` | Alert delivery. Each no-ops with a warning. |
 | `ADMIN_PASSCODE` | `/admin/operating-model`. Unset = nobody can sign in, ever. See section 12. |
 | `INSTAGRAM_HANDLE` / `INSTAGRAM_POST_URLS` | Homepage and footer follow strip. Handle defaults to `stompbox.world`; unset post URLs render a plain follow callout instead of embeds. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | "Continue with Google" on sign-in/sign-up. Unset means email and password only. |
 
 ---
 

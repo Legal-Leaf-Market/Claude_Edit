@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { AuthForm } from "@/components/auth-form"
+import { env } from "@/lib/env"
 
 export const metadata: Metadata = {
   title: "Create an account",
@@ -15,7 +16,7 @@ export default function SignUpPage() {
         We use your address for one thing: telling you when gear you are watching drops below your
         price. No cart, no checkout, no newsletter.
       </p>
-      <AuthForm mode="sign-up" />
+      <AuthForm mode="sign-up" googleEnabled={env.auth.google.isConfigured} />
     </div>
   )
 }

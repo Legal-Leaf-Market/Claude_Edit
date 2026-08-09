@@ -364,6 +364,82 @@ export const ingestRuns = pgTable(
   ],
 )
 
+/* -------------------------------------------------------------------------- */
+/*  Flip Match: a public bulletin board, not a marketplace                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Every board this one table can carry. 'flip' is the only one with a page
+ * built; the rest are reserved so adding their UI later never needs another
+ * migration.
+ */
+export const BOARD_KINDS = ["flip", "wanted", "bandmates", "lessons", "shows", "free", "studio"] as const
+export type BoardKind = (typeof BOARD_KINDS)[number]
+
+/**
+ * A player posting gear they want to flip. Deliberately old-school: no DMs,
+ * no offer/checkout flow, no fee, no cut. Whoever's interested replies in the
+ * open thread below, and the actual sale happens off-platform (PayPal,
+ * cash, whatever the two of them agree) once they've connected. That is a
+ * product decision, not a missing feature: Gear Avail never touches this
+ * money and never will.
+ *
+ * `kind` exists so the same public-thread-plus-replies shape can carry other
+ * community boards later (wanted ads, bandmate search, lessons, local shows,
+ * free gear) without another migration or another pair of tables. Each is
+ * just a different `kind` value and a thin filtered view over this table;
+ * add one to the enum below and a page for it when it's actually built.
+ */
+export const flipThreads = pgTable(
+  "flip_threads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** 'flip' | 'wanted' | 'bandmates' | 'lessons' | 'shows' | 'free' | 'studio'. */
+    kind: varchar("kind", { length: 20 }).notNull().default("flip"),
+    title: varchar("title", { length: 200 }).notNull(),
+    /** Free text, not scoped to the canonical_gear categories: this board is not tied to ingested listings. */
+    category: varchar("category", { length: 50 }).notNull().default("other"),
+    description: text("description").notNull(),
+    /** Optional; plenty of posters just want "make an offer" in the replies. */
+    askingPriceCents: integer("asking_price_cents"),
+    location: varchar("location", { length: 200 }),
+    imageUrl: text("image_url"),
+    /** 'open' | 'closed'. The poster closes it once it's flipped, filled, or off the table. */
+    status: varchar("status", { length: 20 }).notNull().default("open"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_flip_threads_kind_status_created").on(t.kind, t.status, t.createdAt),
+    index("idx_flip_threads_author").on(t.authorId),
+  ],
+)
+
+/** Public replies on a Flip Match thread. Contact info gets exchanged here, in the open, same as the old forums. */
+export const flipReplies = pgTable(
+  "flip_replies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => flipThreads.id, { onDelete: "cascade" }),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_flip_replies_thread").on(t.threadId, t.createdAt)],
+)
+
+export type FlipThread = typeof flipThreads.$inferSelect
+export type NewFlipThread = typeof flipThreads.$inferInsert
+export type FlipReply = typeof flipReplies.$inferSelect
+export type NewFlipReply = typeof flipReplies.$inferInsert
+
 export type CanonicalGear = typeof canonicalGear.$inferSelect
 export type NewCanonicalGear = typeof canonicalGear.$inferInsert
 export type MarketplaceListing = typeof marketplaceListings.$inferSelect
