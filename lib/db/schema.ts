@@ -163,6 +163,14 @@ export const marketplaceListings = pgTable(
      */
     affiliateUrl: text("affiliate_url"),
     primaryImageUrl: text("primary_image_url"),
+    /**
+     * The store's own id for building a prefilled cart URL: a Shopify variant
+     * id for Shopify sources, a WooCommerce product id for Squaver, null for
+     * every source that has no such concept (eBay/Reverb/CJ/Awin feeds; see
+     * lib/cart/stores.ts). Never the same thing as externalId, which also
+     * encodes our own composite key.
+     */
+    platformVariantId: varchar("platform_variant_id", { length: 50 }),
 
     /** 'active' | 'sold' | 'expired'. */
     listingStatus: varchar("listing_status", { length: 20 }).notNull().default("active"),
@@ -267,6 +275,34 @@ export const alertMatches = pgTable(
   (t) => [uniqueIndex("unique_alert_listing").on(t.alertId, t.listingId)],
 )
 
+/**
+ * "Get your shop listed" submissions from /list-your-shop. Filled in either by
+ * a shop owner directly or by a customer referring their local shop; either
+ * way this is the start of a human conversation, not an automated signup, so
+ * every row needs a real person to read it and follow up.
+ */
+export const merchantLeads = pgTable(
+  "merchant_leads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    shopName: varchar("shop_name", { length: 200 }).notNull(),
+    contactName: varchar("contact_name", { length: 200 }).notNull(),
+    email: varchar("email", { length: 320 }).notNull(),
+    phone: varchar("phone", { length: 30 }),
+    location: varchar("location", { length: 200 }),
+    /** What the shop already has online, in their own words if 'unsure'. */
+    hasOnlineCatalog: varchar("has_online_catalog", { length: 20 }).notNull().default("unsure"),
+    existingLink: text("existing_link"),
+    message: text("message"),
+    /** 'owner' submitted for their own shop, or 'customer' referring one. */
+    referredBy: varchar("referred_by", { length: 20 }).notNull().default("owner"),
+    /** 'new' | 'contacted' | 'onboarded' | 'declined'. Reviewed by hand for now. */
+    status: varchar("status", { length: 20 }).notNull().default("new"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_merchant_leads_status").on(t.status), index("idx_merchant_leads_created").on(t.createdAt)],
+)
+
 /* -------------------------------------------------------------------------- */
 /*  Monetisation and observability                                            */
 /* -------------------------------------------------------------------------- */
@@ -334,6 +370,8 @@ export type MarketplaceListing = typeof marketplaceListings.$inferSelect
 export type NewMarketplaceListing = typeof marketplaceListings.$inferInsert
 export type SavedAlert = typeof savedAlerts.$inferSelect
 export type IngestRun = typeof ingestRuns.$inferSelect
+export type MerchantLead = typeof merchantLeads.$inferSelect
+export type NewMerchantLead = typeof merchantLeads.$inferInsert
 
 /** Sources v1 actually ingests. Facebook Marketplace is intentionally absent. */
 export const SOURCES = [

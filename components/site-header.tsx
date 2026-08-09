@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Suspense } from "react"
+import { CartBadge } from "./cart-badge"
 import { LogoMark } from "./logo-mark"
 import { SearchBox } from "./search-box"
 
@@ -49,6 +50,8 @@ export function SiteHeader() {
             ))}
           </ul>
         </nav>
+
+        <CartBadge />
       </div>
     </header>
   )

@@ -216,6 +216,21 @@ export const env = {
     },
   },
 
+  /**
+   * Where "get your shop listed" submissions get emailed. Reuses
+   * RESEND_API_KEY/DISCORD_WEBHOOK_URL above rather than a separate
+   * credential; only the destination address is new. Unset means the lead
+   * still gets saved to the database (that is the durable record), it just
+   * has no notification sent, the same "log to DB, notify best effort"
+   * pattern as everything else here.
+   */
+  leads: {
+    notifyEmail: str("LEADS_NOTIFY_EMAIL"),
+    get canEmail(): boolean {
+      return Boolean(env.alerts.resendApiKey && env.leads.notifyEmail)
+    },
+  },
+
   auth: {
     secret: str("BETTER_AUTH_SECRET"),
     url: str("BETTER_AUTH_URL", str("SITE_URL", "http://localhost:3000")),
@@ -249,6 +264,7 @@ export function describeConfig(): string {
     `pinevillemusic-feed=${env.cj.hasPinevilleMusicFeed ? "set" : "absent"}`,
     `typesense=${env.typesense.isConfigured ? "set" : "postgres-fallback"}`,
     `redis=${env.redisUrl ? "set" : "absent"}`,
+    `leads-notify=${env.leads.canEmail ? "set" : "db-only"}`,
   ]
   return parts.join(" ")
 }

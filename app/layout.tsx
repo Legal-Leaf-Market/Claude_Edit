@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
+import { CartProvider } from "@/lib/cart/context"
 import { env } from "@/lib/env"
 import "./globals.css"
 
@@ -76,9 +77,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         >
           Skip to content
         </a>
-        <SiteHeader />
-        <main id="main">{children}</main>
-        <SiteFooter />
+        <CartProvider>
+          <SiteHeader />
+          <main id="main">{children}</main>
+          <SiteFooter />
+        </CartProvider>
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>

@@ -52,6 +52,7 @@ describe("normalizeWooCommerceProduct", () => {
     expect(row.brand).toBe("Squaver")
     expect(row.mpn).toBe("SQ-GCB-11")
     expect(row.condition).toBe("New")
+    expect(row.platformVariantId).toBe("2301")
     expect(row.locationCountry).toBe("IN")
     expect(row.rawUrl).toBe("https://squaver.in/product/electric-guitar-strings-regular-light/")
     expect(row.description).toBe("Vibrant, punchy tone. Fits most electrics.")

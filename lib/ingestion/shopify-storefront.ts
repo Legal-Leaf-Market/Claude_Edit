@@ -158,6 +158,9 @@ export function normalizeShopifyProduct(
       rawUrl,
       affiliateUrl: buildAffiliateUrl(rawUrl, config),
       primaryImageUrl: variant.featured_image?.src ?? productImage,
+      // Shopify's cart permalink (/cart/{variantId}:{qty}) is keyed on this,
+      // not on the product id.
+      platformVariantId: String(variant.id).slice(0, 50),
       listingStatus: variant.available === false ? "expired" : "active",
       listedAt: null,
       endsAt: null,

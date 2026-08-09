@@ -157,6 +157,10 @@ export function normalizeWooCommerceProduct(
       rawUrl,
       affiliateUrl: buildAffiliateUrl(rawUrl, config),
       primaryImageUrl: product.images?.[0]?.src ?? null,
+      // WooCommerce's add-to-cart URL (?add-to-cart={id}) is keyed on the
+      // product id itself; there is no separate variant id for the 'simple'
+      // products this module handles.
+      platformVariantId: String(product.id).slice(0, 50),
       listingStatus: product.is_in_stock === false || product.is_purchasable === false ? "expired" : "active",
       listedAt: null,
       endsAt: null,
