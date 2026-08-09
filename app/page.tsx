@@ -55,7 +55,7 @@ export default async function HomePage() {
           <span className="text-[var(--amber)]">on one page</span>
         </h1>
         <p className="mt-4 max-w-2xl text-base leading-relaxed text-[var(--muted-foreground)] sm:text-lg">
-          MusicTime pulls used and vintage gear from eBay and Reverb, works out which listings are
+          Gear Avail pulls used and vintage gear from eBay and Reverb, works out which listings are
           the same instrument, and shows you every live price side by side. Sorted by price, with
           the genuinely underpriced ones marked.
         </p>
@@ -120,7 +120,7 @@ export default async function HomePage() {
       </section>
 
       <section className="pb-16">
-        <h2 className="mb-4 text-xl font-semibold text-[var(--cream)]">How MusicTime works</h2>
+        <h2 className="mb-4 text-xl font-semibold text-[var(--cream)]">How Gear Avail works</h2>
         <div className="grid gap-4 sm:grid-cols-3">
           <HowItWorks
             icon={<SearchIcon className="h-5 w-5" aria-hidden="true" />}

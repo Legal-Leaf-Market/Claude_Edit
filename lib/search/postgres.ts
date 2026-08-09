@@ -16,7 +16,7 @@ import {
  *
  * This is the fallback when Typesense is not configured, and it is a real
  * backend rather than a stub: the site is fully usable on Postgres alone, which
- * is what lets MusicTime deploy before any search infrastructure exists.
+ * is what lets Gear Avail deploy before any search infrastructure exists.
  *
  * Text matching is trigram similarity on the title (GIN indexed), unioned with
  * a plain ILIKE so that short exact substrings like "SM58" still match when

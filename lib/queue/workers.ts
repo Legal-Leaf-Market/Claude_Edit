@@ -12,6 +12,18 @@ import { ingestGear4MusicFeed } from "@/lib/ingestion/gear4music-awin"
 import { ingestZzoundsFeed } from "@/lib/ingestion/zzounds-cj"
 import { ingestFullCompassFeed } from "@/lib/ingestion/fullcompass-cj"
 import { ingestPinevilleMusicFeed } from "@/lib/ingestion/pinevillemusic-cj"
+import { ingestFolkcraftFeed } from "@/lib/ingestion/folkcraft-shopify"
+import { ingestAcousticGuitarFeed } from "@/lib/ingestion/acousticguitar-shopify"
+import { ingestJamstikFeed } from "@/lib/ingestion/jamstik-shopify"
+import { ingestJacksonAudioFeed } from "@/lib/ingestion/jacksonaudio-shopify"
+import { ingestEminenceDigitalFeed } from "@/lib/ingestion/eminencedigital-shopify"
+import { ingestHazeGuitarFeed } from "@/lib/ingestion/hazeguitar-shopify"
+import { ingestEartGuitarFeed } from "@/lib/ingestion/eartguitar-shopify"
+import { ingestPlayWithAuthorityFeed } from "@/lib/ingestion/playwithauthority-shopify"
+import { ingestPuresMusicFeed } from "@/lib/ingestion/puresmusic-shopify"
+import { ingestSquaverFeed } from "@/lib/ingestion/squaver-woocommerce"
+import { ingestEasonMusicStoreFeed } from "@/lib/ingestion/easonmusicstore-shopify"
+import { ingestGoKalimbaFeed } from "@/lib/ingestion/gokalimba-shopify"
 import { refreshAllDeals } from "@/lib/deals/pricing"
 import { evaluateAlerts } from "@/lib/alerts/evaluate"
 import { syncSearchIndex } from "@/lib/search/sync"
@@ -79,6 +91,66 @@ export function startIngestionWorker(): Worker<IngestionJob> {
         }
         case "pinevillemusic-feed": {
           const result = await ingestPinevilleMusicFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "folkcraft-feed": {
+          const result = await ingestFolkcraftFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "acousticguitar-feed": {
+          const result = await ingestAcousticGuitarFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "jamstik-feed": {
+          const result = await ingestJamstikFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "jacksonaudio-feed": {
+          const result = await ingestJacksonAudioFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "eminencedigital-feed": {
+          const result = await ingestEminenceDigitalFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "hazeguitar-feed": {
+          const result = await ingestHazeGuitarFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "eartguitar-feed": {
+          const result = await ingestEartGuitarFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "playwithauthority-feed": {
+          const result = await ingestPlayWithAuthorityFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "puresmusic-feed": {
+          const result = await ingestPuresMusicFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "squaver-feed": {
+          const result = await ingestSquaverFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "easonmusicstore-feed": {
+          const result = await ingestEasonMusicStoreFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "gokalimba-feed": {
+          const result = await ingestGoKalimbaFeed()
           await syncSearchIndex()
           return result
         }

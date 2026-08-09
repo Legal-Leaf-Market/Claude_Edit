@@ -157,7 +157,7 @@ export async function fetchGear4MusicFeedText(
   fetchImpl: typeof fetch = fetch,
 ): Promise<string> {
   const res = await fetchImpl(url, {
-    headers: { Accept: "text/csv,application/gzip,*/*", "User-Agent": "MusicTime/1.0 (+aggregator)" },
+    headers: { Accept: "text/csv,application/gzip,*/*", "User-Agent": "GearAvail/1.0 (+aggregator)" },
   })
   if (!res.ok) {
     const error = new Error(`Awin feed returned ${res.status} ${res.statusText}`) as Error & {

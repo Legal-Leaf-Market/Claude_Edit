@@ -106,7 +106,7 @@ export function AlertsClient() {
         <p className="text-sm text-[var(--cream)]">Sign in to save an alert.</p>
         <p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">
           An account exists purely so we have somewhere to send the alert. There is no cart and no
-          checkout on MusicTime.
+          checkout on Gear Avail.
         </p>
         <div className="mt-4 flex gap-2">
           <Link

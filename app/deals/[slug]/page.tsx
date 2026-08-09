@@ -111,7 +111,7 @@ export default async function DealsPage({ params }: PageProps) {
         <p className="mt-3 text-base leading-relaxed text-[var(--muted-foreground)]">
           The market price for a used {name} is{" "}
           <strong className="text-[var(--cream)]">{formatPrice(market)}</strong>, taken as a rolling
-          median of the {gear.priceSampleSize} listings MusicTime has on file. The cheapest live
+          median of the {gear.priceSampleSize} listings Gear Avail has on file. The cheapest live
           listing right now is <strong className="text-[var(--cream)]">{formatPrice(cheapest)}</strong>
           {saving > 0 ? (
             <>

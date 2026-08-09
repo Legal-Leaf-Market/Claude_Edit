@@ -97,9 +97,9 @@ export async function sendAlertEmail(
           </p>
           <table style="width:100%;border-collapse:collapse">${matchRows(matches)}</table>
           <p style="margin:24px 0 0;color:#9ca3af;font-size:12px;line-height:1.6">
-            You are getting this because you saved a price alert on MusicTime.
+            You are getting this because you saved a price alert on Gear Avail.
             <a href="${env.site.url}/alerts" style="color:#6b7280">Manage your alerts</a>.
-            MusicTime earns a commission if you buy through these links, at no cost to you.
+            Gear Avail earns a commission if you buy through these links, at no cost to you.
           </p>
         </div>`,
     })
@@ -131,7 +131,7 @@ export async function sendDiscordAlert(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        username: "MusicTime",
+        username: "Gear Avail",
         // Discord caps embeds at 10 per message.
         embeds: matches.slice(0, 10).map((match) => ({
           title: match.title.slice(0, 250),

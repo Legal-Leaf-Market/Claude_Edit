@@ -1,4 +1,4 @@
-# CLAUDE.md - Operating guide for MusicTime
+# CLAUDE.md - Operating guide for Gear Avail
 
 Read this fully before editing. Sister project to **Legal-Leaf Market**,
 **Herbal Leaf Market** and **Nicotia Market**, and it inherits their house
@@ -64,7 +64,33 @@ built for that site's own frontend rather than published for this use.
   traffic, not a blanket license to hit any Shopify store's JSON endpoint.
   Verify the endpoint is actually public and check the individual merchant's
   own affiliate terms before wiring one in; this is a per-store decision, not
-  a feed that covers many merchants at once the way Awin/LinkConnector do.
+  a feed that covers many merchants at once the way Awin/LinkConnector do. The
+  concrete basis for each store is its own `/agents.md`, which Shopify now
+  ships platform-wide with a "Read-Only Browsing (No Authentication
+  Required)" section explicitly naming `/products.json` as the sanctioned
+  no-auth path for agents that read catalogue data without transacting; that
+  is stronger evidence than inferring permission from `robots.txt` alone, and
+  it is checked per store before wiring one in, in `lib/ingestion/
+  shopify-storefront.ts`. Confirmed so far: Folkcraft Instruments, Acoustic
+  Guitar, Jamstik, Jackson Audio (`jacksonaudio-shopify.ts`), Eminence Digital
+  (`eminencedigital-shopify.ts`, digital impulse-response packs, not physical
+  gear, included on explicit request despite condition/shipping fields not
+  really applying), Haze Guitar, EART Guitar, Play With Authority, Pures
+  Music (mixed catalogue of real instruments and sound-healing accessories,
+  ingested whole with no category filtering), Eason Music Store, and Go
+  Kalimba.
+- **Squaver (`squaver-woocommerce.ts`) is the one exception to the Shopify
+  pattern above, and its basis is deliberately weaker.** Squaver runs
+  WordPress + WooCommerce, not Shopify: it has no `agents.md` at all, and the
+  only public catalogue read is WooCommerce's Store API
+  (`/wp-json/wc/store/v1/products`), which is unauthenticated by default
+  because it backs WooCommerce's own cart/checkout blocks, not because
+  Squaver published it for third-party aggregation. That is the same "built
+  for the site's own frontend, not published for this use" shape rejected for
+  Guitar Center below. The user was told this explicitly and chose to build
+  it anyway for this one confirmed GoAffPro store; treat that as a decision
+  specific to Squaver, not precedent for wiring up other WooCommerce stores
+  on the same reasoning without an equivalent explicit call.
 - **Guitar Center was evaluated and rejected.** No official product API exists;
   their `robots.txt` explicitly disallows `/search`, `/pdp/`, `/product-detail-
   page`, `/category-page`, and the query params their own site search uses;
@@ -120,7 +146,7 @@ These are not preferences. Each one is a term of service.
   It has no fallback path, deliberately, so nobody can add one "temporarily".
 - **`AWIN_REVERB_FEED_URL`, `LINKCONNECTOR_SWEETWATER_FEED_URL` and
   `AWIN_GEAR4MUSIC_FEED_URL` unset is the EXPECTED state**, not a bug to route
-  around. Each source ships only if its feed is confirmed; MusicTime degrades
+  around. Each source ships only if its feed is confirmed; Gear Avail degrades
   gracefully to whichever subset of eBay/Reverb/Sweetwater/Gear4music actually
   has a working feed. A smaller aggregator that is fully compliant beats a
   bigger one that is not.
@@ -252,7 +278,7 @@ so a permanent silent fallback is visible instead of looking like everything
 working.
 
 The Postgres backend is not a stub. The site is fully usable on it, which is
-what lets MusicTime deploy before any search infrastructure exists.
+what lets Gear Avail deploy before any search infrastructure exists.
 
 **Facet counting follows the Legal-Leaf rule:** each facet's counts are
 computed with every OTHER filter applied but not its own, so no visible option
@@ -349,6 +375,7 @@ Never fork the logic between them. Add work to the job function.
 | `LINKCONNECTOR_SWEETWATER_FEED_URL` | Sweetwater catalogue. Unset is expected; the job no-ops. Never falls back to scraping. |
 | `AWIN_GEAR4MUSIC_MERCHANT_ID` / `AWIN_GEAR4MUSIC_FEED_URL` | Gear4music catalogue and deep links. Same shape as the Reverb pair, independent ids. |
 | `CJ_ZZOUNDS_FEED_URL` / `CJ_FULLCOMPASS_FEED_URL` / `CJ_PINEVILLEMUSIC_FEED_URL` | Three independent CJ Affiliate programmes. Each no-ops when unset. |
+| `GOAFFPRO_*_REF_PARAM` / `GOAFFPRO_*_REF_CODE` | One pair per small independent Shopify/WooCommerce seller (Folkcraft, Acoustic Guitar, Jamstik, Jackson Audio, Eminence Digital, Haze Guitar, EART Guitar, Play With Authority, Pures Music, Squaver, Eason Music Store, Go Kalimba). Catalogue ingestion needs no credential at all; an unset code just means a null `affiliate_url` until the referral is confirmed. |
 | `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
 | `REDIS_URL` | BullMQ queues and the shared rate-limit counter. Optional. |
 | `CRON_SECRET` | All nine crons. Unset = 503, wrong = 401. Load bearing. |

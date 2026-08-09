@@ -275,7 +275,7 @@ export async function* parseTsvRows(
 /* -------------------------------------------------------------------------- */
 
 /**
- * The slice of eBay's ~98-column Item schema that MusicTime actually uses.
+ * The slice of eBay's ~98-column Item schema that Gear Avail actually uses.
  * Everything else in the row is carried through untouched in `raw` so a later
  * feature can read a field without a re-ingest.
  */

@@ -1,4 +1,4 @@
-# MusicTime
+# Gear Avail
 
 A used and vintage music gear aggregator. It pulls listings from eBay and
 Reverb, works out which listings are the same physical instrument, computes a
@@ -20,7 +20,7 @@ v1 has two sources, and the reasons are contractual rather than technical.
 | **Reverb** | **Awin product datafeed**, if published to publishers | The Reverb API is scoped to managing your own shop, and their terms forbid scraping and the use of API or member data with a third-party marketing platform. |
 | **Facebook Marketplace** | Not ingested | No public API. Scraping violates Meta's terms. Out of scope for v1. |
 
-If Reverb turns out not to publish a publisher datafeed, MusicTime ships as an
+If Reverb turns out not to publish a publisher datafeed, Gear Avail ships as an
 eBay-only aggregator that links out to Reverb through Awin. A single-source
 aggregator that is fully compliant beats a two-source one that is not.
 

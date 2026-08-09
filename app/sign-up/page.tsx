@@ -3,7 +3,7 @@ import { AuthForm } from "@/components/auth-form"
 
 export const metadata: Metadata = {
   title: "Create an account",
-  description: "Create a MusicTime account to save price alerts on used gear.",
+  description: "Create a Gear Avail account to save price alerts on used gear.",
   robots: { index: false, follow: false },
 }
 

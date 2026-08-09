@@ -189,7 +189,7 @@ export function PriceHistoryChart({ points }: { points: PricePoint[] }) {
       </div>
 
       <figcaption className="mt-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
-        Median asking price across the listings MusicTime had on file each day. These are asking
+        Median asking price across the listings Gear Avail had on file each day. These are asking
         prices, not confirmed sale prices.
       </figcaption>
 

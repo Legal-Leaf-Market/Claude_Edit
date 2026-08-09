@@ -3,7 +3,7 @@ import { AuthForm } from "@/components/auth-form"
 
 export const metadata: Metadata = {
   title: "Sign in",
-  description: "Sign in to manage your MusicTime price alerts.",
+  description: "Sign in to manage your Gear Avail price alerts.",
   robots: { index: false, follow: false },
 }
 
