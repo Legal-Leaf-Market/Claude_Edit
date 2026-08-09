@@ -19,6 +19,8 @@ export default function robots(): MetadataRoute.Robots {
           "/search?",
           // Private, passcode-gated. Never meant to be discoverable.
           "/admin",
+          // Carries a per-subscriber token and has nothing to index.
+          "/unsubscribe",
         ],
       },
     ],

@@ -4,6 +4,7 @@ import { db } from "@/lib/db"
 import { env } from "@/lib/env"
 import { indexableCategories } from "@/lib/categories"
 import { STORES } from "@/lib/stores"
+import { BOARDS } from "@/lib/boards"
 
 /**
  * Sitemap.
@@ -25,6 +26,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${base}/used/${slug}`,
       changeFrequency: "daily" as const,
       priority: 0.7,
+    })),
+    // The feed and the boards are listed unconditionally, unlike gear and
+    // store routes. They render their own copy and a post form whether or not
+    // anyone has posted yet, so an empty board is a thin page rather than the
+    // soft 404 an inventory page with no inventory would be. Individual posts
+    // are deliberately absent: they are noindex, short-lived, and reachable
+    // from the board above them.
+    { url: `${base}/feed`, changeFrequency: "hourly" as const, priority: 0.8 },
+    ...BOARDS.map((board) => ({
+      url: `${base}/boards/${board.slug}`,
+      changeFrequency: "daily" as const,
+      priority: 0.6,
     })),
   ]
 

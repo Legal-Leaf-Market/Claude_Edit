@@ -55,19 +55,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Could not sign you up just now." }, { status: 500 })
   }
 }
-
-/** One-click unsubscribe. Kept as a GET so it works straight from an email link. */
-export async function GET(request: NextRequest) {
-  const token = new URL(request.url).searchParams.get("token")
-  if (!token) return NextResponse.json({ error: "Missing token" }, { status: 400 })
-
-  const updated = await db
-    .update(subscribers)
-    .set({ isActive: false, unsubscribedAt: new Date() })
-    .where(eq(subscribers.unsubscribeToken, token))
-    .returning({ id: subscribers.id })
-
-  // Deliberately the same response either way: an unsubscribe link should not
-  // report whether a token was real.
-  return NextResponse.json({ unsubscribed: true, matched: updated.length > 0 })
-}
