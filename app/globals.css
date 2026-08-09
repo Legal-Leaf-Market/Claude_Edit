@@ -1,0 +1,107 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--font-inter), 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Brand tokens */
+  --color-navy: var(--navy);
+  --color-navy2: var(--navy2);
+  --color-emerald-deep: var(--emerald-deep);
+  --color-jade: var(--jade);
+  --color-lime: var(--lime);
+  --color-mint: var(--mint);
+  --color-gold: var(--gold);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  color-scheme: dark;
+  --radius: 1rem;
+
+  --navy: #071423;
+  --navy2: #0b2138;
+  --emerald-deep: #0f5132;
+  --jade: #1f7a4d;
+  --lime: #32d74b;
+  --mint: #dff7e7;
+  --gold: #d6b56d;
+
+  --background: #04101b;
+  --foreground: #f7fff9;
+  --card: rgba(255, 255, 255, 0.06);
+  --card-foreground: #f7fff9;
+  --popover: #0b2138;
+  --popover-foreground: #f7fff9;
+  --primary: #32d74b;
+  --primary-foreground: #071423;
+  --secondary: rgba(255, 255, 255, 0.08);
+  --secondary-foreground: #dff7e7;
+  --muted: rgba(255, 255, 255, 0.06);
+  --muted-foreground: #9fb9aa;
+  --accent: #d6b56d;
+  --accent-foreground: #071423;
+  --destructive: #ffb7a8;
+  --border: rgba(214, 181, 109, 0.28);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: rgba(50, 215, 75, 0.5);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply text-foreground;
+    position: relative;
+    background: radial-gradient(circle at top left, #123c31 0, #071423 38%, #04101b 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+  /* Vibrant paisley art as the full-page background. Sections layer their own
+     translucent fills on top so the paisley shines through everywhere. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: url(/art/paisley-banner.png);
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    opacity: 0.85;
+  }
+  /* Keep real content above the decorative layer. */
+  body > * {
+    position: relative;
+    z-index: 1;
+  }
+}
