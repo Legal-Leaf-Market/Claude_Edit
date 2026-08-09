@@ -1,0 +1,173 @@
+import Link from "next/link"
+import { sql } from "drizzle-orm"
+import { ArrowRight, BellRing, LineChart, Search as SearchIcon } from "lucide-react"
+import { ListingCard } from "@/components/listing-card"
+import { db } from "@/lib/db"
+import { search } from "@/lib/search"
+
+export const revalidate = 300
+
+const CATEGORIES = [
+  { slug: "electric-guitars", label: "Electric guitars" },
+  { slug: "acoustic-guitars", label: "Acoustic guitars" },
+  { slug: "bass-guitars", label: "Bass guitars" },
+  { slug: "amplifiers", label: "Amplifiers" },
+  { slug: "effects-pedals", label: "Effects pedals" },
+  { slug: "synthesizers", label: "Synthesizers" },
+  { slug: "keyboards-pianos", label: "Keyboards" },
+  { slug: "drums-percussion", label: "Drums" },
+  { slug: "microphones", label: "Microphones" },
+  { slug: "recording-audio", label: "Studio gear" },
+]
+
+/** Headline counts. Wrapped because an empty database is the normal first-run state. */
+async function siteStats() {
+  try {
+    const result = await db.execute<{ listings: number; gear: number; deals: number }>(sql`
+      SELECT
+        COUNT(*) FILTER (WHERE listing_status = 'active')::int AS listings,
+        COUNT(DISTINCT canonical_gear_id)::int AS gear,
+        COUNT(*) FILTER (WHERE is_deal AND listing_status = 'active')::int AS deals
+      FROM marketplace_listings
+    `)
+    const row = result.rows[0]
+    return {
+      listings: Number(row?.listings ?? 0),
+      gear: Number(row?.gear ?? 0),
+      deals: Number(row?.deals ?? 0),
+    }
+  } catch {
+    return { listings: 0, gear: 0, deals: 0 }
+  }
+}
+
+export default async function HomePage() {
+  const [stats, deals] = await Promise.all([
+    siteStats(),
+    search({ dealsOnly: true, sort: "deal", perPage: 6 }).catch(() => null),
+  ])
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <section className="py-12 sm:py-16">
+        <h1 className="max-w-3xl text-3xl font-semibold leading-tight tracking-tight text-[var(--cream)] sm:text-5xl">
+          Every used listing for the same instrument,{" "}
+          <span className="text-[var(--amber)]">on one page</span>
+        </h1>
+        <p className="mt-4 max-w-2xl text-base leading-relaxed text-[var(--muted-foreground)] sm:text-lg">
+          MusicTime pulls used and vintage gear from eBay and Reverb, works out which listings are
+          the same instrument, and shows you every live price side by side. Sorted by price, with
+          the genuinely underpriced ones marked.
+        </p>
+
+        <div className="mt-7 flex flex-wrap gap-3">
+          <Link
+            href="/search"
+            className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--primary)] px-5 text-sm font-medium text-[var(--primary-foreground)] transition-colors hover:bg-[var(--amber-soft)]"
+          >
+            Browse all gear
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+          <Link
+            href="/search?deals=1&sort=deal"
+            className="inline-flex h-11 items-center gap-2 rounded-lg border border-[var(--border)] px-5 text-sm font-medium text-[var(--cream)] transition-colors hover:bg-[var(--secondary)]"
+          >
+            See what is below market
+          </Link>
+        </div>
+
+        {stats.listings > 0 && (
+          <dl className="mt-9 flex flex-wrap gap-x-10 gap-y-4">
+            <Stat label="Live listings" value={stats.listings.toLocaleString()} />
+            <Stat label="Instruments tracked" value={stats.gear.toLocaleString()} />
+            <Stat label="Below market now" value={stats.deals.toLocaleString()} />
+          </dl>
+        )}
+      </section>
+
+      {deals && deals.hits.length > 0 && (
+        <section className="pb-12">
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-xl font-semibold text-[var(--cream)]">Biggest discounts right now</h2>
+            <Link
+              href="/search?deals=1&sort=deal"
+              className="text-sm text-[var(--amber)] underline-offset-2 hover:underline"
+            >
+              See all
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {deals.hits.map((hit) => (
+              <ListingCard key={hit.id} hit={hit} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="pb-12">
+        <h2 className="mb-4 text-xl font-semibold text-[var(--cream)]">Browse by category</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {CATEGORIES.map((category) => (
+            <Link
+              key={category.slug}
+              href={`/used/${category.slug}`}
+              className="panel px-4 py-3 text-sm text-[var(--cream)] transition-colors hover:border-[var(--amber)]/40 hover:bg-[var(--secondary)]"
+            >
+              {category.label}
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="pb-16">
+        <h2 className="mb-4 text-xl font-semibold text-[var(--cream)]">How MusicTime works</h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <HowItWorks
+            icon={<SearchIcon className="h-5 w-5" aria-hidden="true" />}
+            title="One search, every marketplace"
+            body="We ingest structured listing feeds rather than guessing from titles, so a Fender Player Stratocaster on eBay and the same guitar on Reverb land on one page instead of two."
+          />
+          <HowItWorks
+            icon={<LineChart className="h-5 w-5" aria-hidden="true" />}
+            title="A market price you can check"
+            body="Each instrument gets a rolling median from the listings we have actually seen. If the sample is too thin to mean anything, we say so rather than inventing a number."
+          />
+          <HowItWorks
+            icon={<BellRing className="h-5 w-5" aria-hidden="true" />}
+            title="Alerts for the gear you want"
+            body="Save a search with a price ceiling. When something matching drops below it, you get an email or a Discord ping, usually within the hour."
+          />
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">{label}</dt>
+      <dd className="mt-0.5 text-2xl font-semibold text-[var(--cream)]">{value}</dd>
+    </div>
+  )
+}
+
+function HowItWorks({
+  icon,
+  title,
+  body,
+}: {
+  icon: React.ReactNode
+  title: string
+  body: string
+}) {
+  return (
+    <div className="panel p-5">
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)]">
+        {icon}
+      </div>
+      <h3 className="mt-3 text-sm font-semibold text-[var(--cream)]">{title}</h3>
+      <p className="mt-1.5 text-sm leading-relaxed text-[var(--muted-foreground)]">{body}</p>
+    </div>
+  )
+}

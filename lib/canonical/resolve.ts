@@ -27,7 +27,7 @@ import { gearSlug, parseGearFromTitle } from "./model-parse"
 /** Minimum trigram similarity for a Tier 2 match. Tuned conservatively. */
 export const FUZZY_MATCH_THRESHOLD = 0.55
 
-export type MatchTier = "gtin" | "epid" | "fuzzy" | "provisional"
+export type MatchTier = "gtin" | "epid" | "mpn" | "fuzzy" | "provisional"
 
 export type ResolutionResult = {
   gearId: string
@@ -63,6 +63,63 @@ async function findByKey(column: "gtin" | "epid", value: string): Promise<Canoni
     .select()
     .from(canonicalGear)
     .where(eq(column === "gtin" ? canonicalGear.gtin : canonicalGear.epid, value))
+    .limit(1)
+  return rows[0] ?? null
+}
+
+/**
+ * Placeholder values sellers and feed exporters put in an MPN column when they
+ * have nothing to put there. Treating any of these as an identity key would
+ * merge every unbranded listing in the catalogue into one row.
+ */
+const MPN_PLACEHOLDERS = new Set([
+  "NA", "N/A", "NONE", "NIL", "NULL", "UNKNOWN", "DOESNOTAPPLY", "NOTAPPLICABLE",
+  "DOESNTAPPLY", "NOMPN", "GENERIC", "STANDARD", "REGULAR", "DEFAULT", "OEM",
+  "0", "00", "000", "1", "11", "111", "123", "XXX", "TBD", "SEEDESCRIPTION",
+  "SEETITLE", "VARIOUS", "ASSORTED", "CUSTOM", "HANDMADE", "VINTAGE", "USED",
+])
+
+/**
+ * Canonicalise an MPN for comparison: uppercase, strip everything that is not
+ * alphanumeric. That collapses "JCM-800/2203", "jcm800 2203" and "JCM8002203"
+ * onto one key, which is exactly the variation real feeds carry.
+ *
+ * Returns null for anything too short, purely placeholder, or with no digits
+ * AND no mixed case structure worth trusting. Conservative on purpose: a bad
+ * MPN merges two unrelated instruments and corrupts both their price histories.
+ */
+export function normalizeMpn(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const stripped = raw.toUpperCase().replace(/[^A-Z0-9]/g, "")
+  if (stripped.length < 3 || stripped.length > 64) return null
+  if (MPN_PLACEHOLDERS.has(stripped)) return null
+  // A run of one repeated character ("XXXXX", "00000") is filler, not a part number.
+  if (/^(.)\1*$/.test(stripped)) return null
+  return stripped
+}
+
+/**
+ * Match on brand plus manufacturer part number.
+ *
+ * This sits between the identifier tiers and the fuzzy tier because it is
+ * deterministic, not probabilistic: an MPN names one product by definition. It
+ * must be scoped to the brand, because part numbers are only unique within a
+ * manufacturer and short ones like "2203" certainly collide across brands.
+ *
+ * Added after seeding showed six instruments splitting into duplicate canonical
+ * rows purely on title wording ("SM58 Dynamic Vocal" against "SM58-LC Cardioid
+ * Dynamic") while both listings carried the identical MPN the whole time.
+ */
+async function findByBrandMpn(brand: string, mpn: string): Promise<CanonicalGear | null> {
+  const rows = await db
+    .select()
+    .from(canonicalGear)
+    .where(
+      and(
+        sql`lower(${canonicalGear.brand}) = lower(${brand})`,
+        sql`upper(regexp_replace(${canonicalGear.mpn}, '[^A-Za-z0-9]', '', 'g')) = ${mpn}`,
+      ),
+    )
     .limit(1)
   return rows[0] ?? null
 }
@@ -271,7 +328,32 @@ export async function resolveCanonicalGear(
     }
   }
 
-  if (!brand || !model) return null
+  if (!brand) return null
+
+  /* ---- Tier 1c: brand + MPN ---- */
+  const normalizedMpn = normalizeMpn(mpn)
+  if (normalizedMpn) {
+    const existing = await findByBrandMpn(brand, normalizedMpn)
+    if (existing) {
+      await enrichGear(existing, { gtin, epid, imageUrl: image })
+      return { gearId: existing.id, tier: "mpn", score: 1, created: false }
+    }
+    if (model) {
+      const created = await createGear({
+        brand,
+        model,
+        category: parsed.category,
+        gtin,
+        epid,
+        mpn,
+        imageUrl: image,
+        needsReview: false,
+      })
+      return { gearId: created.id, tier: "mpn", score: 1, created: true }
+    }
+  }
+
+  if (!model) return null
 
   /* ---- Tier 2: brand-scoped fuzzy ---- */
   const candidate = await findFuzzyCandidate(brand, model)
@@ -319,7 +401,7 @@ export async function resolveUnmatchedListings(limit = 5000): Promise<Record<Mat
     .where(isNull(marketplaceListings.canonicalGearId))
     .limit(limit)
 
-  const tally: Record<MatchTier, number> = { gtin: 0, epid: 0, fuzzy: 0, provisional: 0 }
+  const tally: Record<MatchTier, number> = { gtin: 0, epid: 0, mpn: 0, fuzzy: 0, provisional: 0 }
 
   for (const row of pending) {
     const result = await resolveCanonicalGear(row)

@@ -115,7 +115,7 @@ describe("normalizeAwinRow", () => {
   it("builds a deep link when the feed has only a merchant URL", () => {
     const row = normalizeAwinRow(record({ aw_deep_link: "" }))!
     // Built from AWIN_PUBLISHER_ID in .env.local; without a merchant id it stays null.
-    expect(row.affiliateUrl === null || row.affiliateUrl.includes("awin1.com")).toBe(true)
+    expect(!row.affiliateUrl || row.affiliateUrl.includes("awin1.com")).toBe(true)
     expect(row.rawUrl).toContain("reverb.com")
   })
 

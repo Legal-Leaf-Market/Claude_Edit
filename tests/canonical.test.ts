@@ -6,6 +6,7 @@ import {
   FUZZY_MATCH_THRESHOLD,
   findFuzzyCandidate,
   normalizeGtin,
+  normalizeMpn,
   resolveCanonicalGear,
 } from "@/lib/canonical/resolve"
 import { upsertListings } from "@/lib/ingestion/upsert"
@@ -122,6 +123,99 @@ describe("Tier 1: deterministic identifiers", () => {
     await resolveCanonicalGear(listing({ gtin: "885978512345" }))
     const [gear] = await db.select().from(canonicalGear)
     expect(gear.needsReview).toBe(false)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/*  Tier 1c: brand + MPN                                                      */
+/* -------------------------------------------------------------------------- */
+
+describe("normalizeMpn", () => {
+  it("collapses the punctuation variants of one part number", () => {
+    expect(normalizeMpn("JCM-800/2203")).toBe("JCM8002203")
+    expect(normalizeMpn("jcm800 2203")).toBe("JCM8002203")
+    expect(normalizeMpn("JCM8002203")).toBe("JCM8002203")
+  })
+
+  it("rejects the placeholders exporters put in an empty MPN column", () => {
+    // Any of these treated as an identity key would merge the whole catalogue
+    // into a single canonical row.
+    for (const junk of ["N/A", "na", "none", "Does Not Apply", "UNKNOWN", "-", "generic"]) {
+      expect(normalizeMpn(junk)).toBeNull()
+    }
+  })
+
+  it("rejects filler runs and values that are too short", () => {
+    expect(normalizeMpn("XXXXX")).toBeNull()
+    expect(normalizeMpn("00000")).toBeNull()
+    expect(normalizeMpn("AB")).toBeNull()
+    expect(normalizeMpn("")).toBeNull()
+    expect(normalizeMpn(null)).toBeNull()
+  })
+})
+
+describe("Tier 1c: brand and MPN", () => {
+  it("merges listings whose titles differ but whose MPN matches", async () => {
+    // The real case this tier was added for: seeding split these into two
+    // canonical rows on title wording alone while both carried the same MPN.
+    const first = await resolveCanonicalGear(
+      listing({
+        title: "Shure SM58 Dynamic Vocal Microphone",
+        brand: "Shure",
+        mpn: "SM58-LC",
+        gtin: null,
+        epid: null,
+      }),
+    )
+    expect(first?.tier).toBe("mpn")
+    expect(first?.created).toBe(true)
+
+    const second = await resolveCanonicalGear(
+      listing({
+        title: "Shure SM58-LC Cardioid Dynamic Microphone with Clip",
+        brand: "Shure",
+        mpn: "sm58 lc",
+        gtin: null,
+        epid: null,
+      }),
+    )
+    expect(second?.tier).toBe("mpn")
+    expect(second?.gearId).toBe(first?.gearId)
+
+    expect(await db.select().from(canonicalGear)).toHaveLength(1)
+  })
+
+  it("scopes MPN matching to the brand", async () => {
+    // Short part numbers like "2203" certainly collide across manufacturers, so
+    // the same MPN under a different brand must land on its own row. It is
+    // still keyed by MPN, it just does not match the other brand's gear.
+    const marshall = await resolveCanonicalGear(
+      listing({ title: "Marshall JCM800 Head", brand: "Marshall", mpn: "2203", gtin: null, epid: null }),
+    )
+    const peavey = await resolveCanonicalGear(
+      listing({ title: "Peavey Classic Amp", brand: "Peavey", mpn: "2203", gtin: null, epid: null }),
+    )
+    expect(peavey?.gearId).not.toBe(marshall?.gearId)
+    expect(peavey?.created).toBe(true)
+    expect(await db.select().from(canonicalGear)).toHaveLength(2)
+  })
+
+  it("does not let a placeholder MPN merge unrelated gear", async () => {
+    await resolveCanonicalGear(
+      listing({ title: "Fender Stratocaster", brand: "Fender", mpn: "N/A", gtin: null, epid: null }),
+    )
+    await resolveCanonicalGear(
+      listing({ title: "Fender Jazzmaster", brand: "Fender", mpn: "N/A", gtin: null, epid: null }),
+    )
+    const rows = await db.select().from(canonicalGear)
+    expect(rows).toHaveLength(2)
+  })
+
+  it("ranks below GTIN and EPID", async () => {
+    const result = await resolveCanonicalGear(
+      listing({ gtin: "885978512345", mpn: "0144502500" }),
+    )
+    expect(result?.tier).toBe("gtin")
   })
 })
 
