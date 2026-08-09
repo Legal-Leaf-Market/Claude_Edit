@@ -21,7 +21,7 @@ export function SiteHeader() {
         >
           <LogoMark />
           <span className="text-lg font-semibold tracking-tight text-[var(--cream)]">
-            Music<span className="text-[var(--amber)]">Time</span>
+            Gear<span className="text-[var(--amber)]">Avail</span>
           </span>
         </Link>
 

@@ -244,12 +244,10 @@ export async function registerRepeatableJobs(): Promise<string[]> {
   )
   registered.push("playwithauthority-feed @ every 6h")
 
-  await ingestion.upsertJobScheduler(
-    "puresmusic-feed",
-    { pattern: "2 */6 * * *" },
-    { name: "puresmusic-feed", data: { kind: "puresmusic-feed" } },
-  )
-  registered.push("puresmusic-feed @ every 6h")
+  // Pures Music: GoAffPro enrollment is not confirmed yet (unlike the other
+  // Shopify sources above), so this is paused rather than scheduled. The
+  // ingestion module, cron route, and env vars stay in place; re-add the
+  // scheduler call here once the store is actually approved.
 
   await ingestion.upsertJobScheduler(
     "squaver-feed",

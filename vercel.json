@@ -15,7 +15,6 @@
     { "path": "/api/cron/ingest-hazeguitar", "schedule": "25 */6 * * *" },
     { "path": "/api/cron/ingest-eartguitar", "schedule": "50 */6 * * *" },
     { "path": "/api/cron/ingest-playwithauthority", "schedule": "55 */6 * * *" },
-    { "path": "/api/cron/ingest-puresmusic", "schedule": "2 */6 * * *" },
     { "path": "/api/cron/ingest-squaver", "schedule": "8 */6 * * *" },
     { "path": "/api/cron/ingest-easonmusicstore", "schedule": "12 */6 * * *" },
     { "path": "/api/cron/ingest-gokalimba", "schedule": "18 */6 * * *" },

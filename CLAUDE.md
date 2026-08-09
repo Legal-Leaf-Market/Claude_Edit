@@ -75,10 +75,15 @@ built for that site's own frontend rather than published for this use.
   Guitar, Jamstik, Jackson Audio (`jacksonaudio-shopify.ts`), Eminence Digital
   (`eminencedigital-shopify.ts`, digital impulse-response packs, not physical
   gear, included on explicit request despite condition/shipping fields not
-  really applying), Haze Guitar, EART Guitar, Play With Authority, Pures
-  Music (mixed catalogue of real instruments and sound-healing accessories,
-  ingested whole with no category filtering), Eason Music Store, and Go
-  Kalimba.
+  really applying), Haze Guitar, EART Guitar, Play With Authority, Eason
+  Music Store, and Go Kalimba. Pures Music (`puresmusic-shopify.ts`, mixed
+  catalogue of real instruments and sound-healing accessories, ingested whole
+  with no category filtering) is built but **paused**: GoAffPro enrollment
+  is not confirmed yet, so its cron entry is pulled from `vercel.json` and
+  its BullMQ scheduler registration is commented out in `lib/queue/
+  queues.ts`, the same "code stays, schedule doesn't" treatment as Full
+  Compass and Pineville Music above. Re-enable both once the store is
+  actually approved.
 - **Squaver (`squaver-woocommerce.ts`) is the one exception to the Shopify
   pattern above, and its basis is deliberately weaker.** Squaver runs
   WordPress + WooCommerce, not Shopify: it has no `agents.md` at all, and the
