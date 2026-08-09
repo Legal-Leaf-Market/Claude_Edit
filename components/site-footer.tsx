@@ -58,9 +58,10 @@ export function SiteFooter() {
             <p className="text-sm font-semibold text-[var(--cream)]">How this works</p>
             <p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">
               Gear Avail earns affiliate commission when you buy through an outbound link. That never
-              changes your price, and it never changes how listings are ranked: sorting is by price
-              and discount only. No fees, no cut of your sale, no exit plan that ends with someone
-              else's shareholders deciding what this costs you.
+              changes your price, and it never changes how listings are ranked: you sort by price,
+              discount, how new a listing is, or a shuffle that gives every shop equal footing, and
+              what a store pays us is not an input to any of them. No fees, no cut of your sale, no
+              exit plan that ends with someone else's shareholders deciding what this costs you.
             </p>
           </div>
         </div>

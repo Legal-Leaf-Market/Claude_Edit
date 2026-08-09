@@ -105,6 +105,21 @@ function orderBy(params: SearchParams): SQL {
   const { sort } = normalizeParams(params)
   const q = params.q?.trim()
   switch (sort) {
+    case "shuffle": {
+      // Round-robin across shops rather than a flat random draw. A plain
+      // random ordering is still proportional to catalogue size, so the
+      // biggest store would take roughly a quarter of every page; ranking
+      // within each source and then ordering by that rank puts one listing
+      // from each shop first, then a second from each, and so on. Small
+      // stores become visible without commission touching the ordering
+      // (house rule: rank never follows payout).
+      //
+      // The hash is seeded and deterministic so paging through a shuffled
+      // set stays stable; a new seed is a new shuffle.
+      const seed = String(params.seed ?? 0)
+      const roll = sql`md5(l.id::text || ${seed})`
+      return sql`ROW_NUMBER() OVER (PARTITION BY l.source ORDER BY ${roll}), ${roll}`
+    }
     case "price_asc":
       return sql`l.price_cents ASC, l.updated_at DESC`
     case "price_desc":
