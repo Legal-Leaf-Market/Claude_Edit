@@ -1,5 +1,5 @@
 import Script from "next/script"
-import { Instagram } from "lucide-react"
+import { InstagramGlyph } from "@/components/icons/instagram-glyph"
 import { env } from "@/lib/env"
 
 /**
@@ -24,7 +24,7 @@ export function InstagramStrip() {
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 text-sm text-[var(--amber)] underline-offset-2 hover:underline"
         >
-          <Instagram className="h-4 w-4" aria-hidden="true" />
+          <InstagramGlyph className="h-4 w-4" />
           Follow
         </a>
       </div>

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Instagram } from "lucide-react"
+import { InstagramGlyph } from "@/components/icons/instagram-glyph"
 import { env } from "@/lib/env"
 
 /**
@@ -24,7 +24,7 @@ export function SiteFooter() {
               rel="noopener noreferrer"
               className="mt-3 inline-flex items-center gap-1.5 text-sm text-[var(--amber)] underline-offset-2 hover:underline"
             >
-              <Instagram className="h-4 w-4" aria-hidden="true" />@{env.social.instagramHandle}
+              <InstagramGlyph className="h-4 w-4" />@{env.social.instagramHandle}
             </a>
           </div>
 
