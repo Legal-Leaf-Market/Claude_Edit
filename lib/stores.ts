@@ -9,8 +9,22 @@ import { sourceLabel } from "@/lib/utils"
  * deliberately not copying their bespoke illustrated styling -- Gear Avail's
  * own dark-amber marketplace look carries the brand here instead.
  *
- * Only sources worth a dedicated page (an actual confirmed storefront with
- * real inventory, not a paused/unconfirmed feed) get a slug below.
+ * EVERY ingested storefront gets a page. Not just the ones that pay.
+ *
+ * The first version of this file listed only merchants with a confirmed
+ * referral link, which meant promotion was allocated by payout status: EART
+ * Guitar got a page, Folkcraft did not, and the only difference between them
+ * was whether a referral code had been handed over. That is the same rule as
+ * "commission affects ranking" wearing a different hat, and the footer
+ * promises shoppers it does not happen.
+ *
+ * So the criterion is real live inventory, nothing else. A store that pays
+ * 20% and a store that pays nothing get identical treatment here. Jackson
+ * Audio pays 0% and keeps its page; Folkcraft has no confirmed link and gets
+ * one. The sitemap still gates on a store actually having active listings,
+ * because a page promising inventory that is not there fails the shopper,
+ * which is a different concern from who pays us.
+ *
  * generateStaticParams in the route reads this list, so adding a source here
  * is the only step needed to give it a page.
  */
@@ -29,7 +43,7 @@ export const STORES: StoreProfile[] = [
     name: "EART Guitar",
     tagline: "Direct-from-maker electric and acoustic guitars",
     blurb:
-      "EART builds and sells its own guitars direct, without a middleman markup between the workshop and your case. Confirmed, working referral link -- every listing here is real, current inventory from their own storefront, not a scrape.",
+      "EART builds and sells its own guitars direct, without a middleman markup between the workshop and your case. Every listing here is real, current inventory read from their own storefront, not a scrape.",
   },
   {
     source: "hazeguitar",
@@ -43,9 +57,9 @@ export const STORES: StoreProfile[] = [
     source: "easonmusicstore",
     slug: "eason-music-store",
     name: "Eason Music Store",
-    tagline: "An independent storefront with a confirmed referral link",
+    tagline: "A long-running independent shop, broad catalogue",
     blurb:
-      "Eason Music Store is one of the independent shops with a confirmed, working referral link -- clicking through here credits them correctly, every time.",
+      "A long-running independent shop in Singapore carrying a broad instrument catalogue, from beginner gear to the specialist pieces bigger retailers stop stocking.",
   },
   {
     source: "gokalimba",
@@ -61,7 +75,7 @@ export const STORES: StoreProfile[] = [
     name: "Jackson Audio",
     tagline: "Boutique pedal maker, direct storefront",
     blurb:
-      "Jackson Audio is a boutique effects-pedal maker selling direct. Their catalogue here is small by design -- boutique pedal runs usually are -- but the referral link is real and confirmed.",
+      "Jackson Audio is a boutique effects-pedal maker selling direct. The catalogue is small by design, the way boutique pedal runs always are: short builds, high spec, no filler.",
   },
   {
     source: "eminencedigital",
@@ -77,7 +91,39 @@ export const STORES: StoreProfile[] = [
     name: "Squaver",
     tagline: "An independent WooCommerce storefront",
     blurb:
-      "Squaver runs on WooCommerce rather than Shopify like most of the family here, with a smaller, hand-picked catalogue and a confirmed referral link.",
+      "Squaver runs on WooCommerce rather than Shopify like most of the family here, with a smaller, hand-picked catalogue.",
+  },
+  {
+    source: "folkcraft",
+    slug: "folkcraft-instruments",
+    name: "Folkcraft Instruments",
+    tagline: "Dulcimers and traditional folk instruments, built in Indiana",
+    blurb:
+      "Folkcraft has been building mountain and hammered dulcimers for decades, alongside the strings, cases and parts that keep them playing. The kind of catalogue that exists nowhere else because almost nobody else makes these.",
+  },
+  {
+    source: "acousticguitar",
+    slug: "acoustic-guitar",
+    name: "Acoustic Guitar",
+    tagline: "Books, lessons and gear from the magazine's own store",
+    blurb:
+      "The storefront attached to Acoustic Guitar: instruction books, songbooks, transcriptions and accessories, aimed at players who want to get better rather than just buy more.",
+  },
+  {
+    source: "jamstik",
+    slug: "jamstik",
+    name: "Jamstik",
+    tagline: "MIDI guitars and practice tools that plug into your DAW",
+    blurb:
+      "Jamstik builds smart guitars and MIDI controllers designed for players who learn and record on a screen. Narrow catalogue, unusually specific: nothing else here does what these do.",
+  },
+  {
+    source: "playwithauthority",
+    slug: "play-with-authority",
+    name: "Play With Authority",
+    tagline: "An independent shop for players",
+    blurb:
+      "A small independent storefront with a tightly chosen catalogue, the sort of shop that carries what its owner actually believes in rather than everything a distributor offers.",
   },
 ]
 
