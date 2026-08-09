@@ -1,1 +1,330 @@
-@AGENTS.md
+# CLAUDE.md - Operating guide for MusicTime
+
+Read this fully before editing. Sister project to **Legal-Leaf Market**,
+**Herbal Leaf Market** and **Nicotia Market**, and it inherits their house
+rules (section 12). The difference: those sites scrape public storefront JSON
+from merchants who want the traffic. This one consumes **gated partner feeds**
+from two companies whose terms say exactly what you may and may not do with
+their data. That constraint shapes most of the decisions below, and undoing one
+of them casually is how this project gets a legal letter rather than a bug.
+
+---
+
+## 1. What this is
+
+A used and vintage music gear aggregator. It ingests listings, works out which
+listings are the same physical instrument, computes a market price per
+instrument, and sends the shopper out to the marketplace through an affiliate
+link. We never take an order and never hold stock.
+
+**Two data sources in v1, and only two:**
+
+- **eBay**, via the Buy Feed API (`/buy/feed/v1_beta`). Bulk TSV feeds.
+- **Reverb**, via the **Awin product datafeed**, if and only if Reverb
+  publishes one to publishers.
+
+**Facebook Marketplace is out of scope.** Not "later", not "behind a flag". It
+has no public API, scraping it violates Meta's terms, and it is the exact
+conduct Meta litigates. If it ever returns it is as user-submitted local
+listings, never as a proxy-rotating scraper.
+
+```
+app/
+  page.tsx                  Home: stats, biggest discounts, category mesh
+  search/                   Faceted search, filter rail collapses to a sheet
+  gear/[slug]/              One instrument, every live listing, price chart
+  deals/[slug]/             Programmatic SEO, per model
+  used/[category]/          Programmatic SEO, per category
+  go/[listingId]/           THE outbound gateway (section 5)
+  alerts/, sign-in/, sign-up/
+  api/
+    health                  Freshness and config, read this first when confused
+    alerts                  Saved alert CRUD
+    auth/[...all]           Better Auth
+    cron/*                  4 jobs, all fail closed on CRON_SECRET
+lib/
+  env.ts                    Every integration exposes isConfigured; nothing throws
+  ingestion/ebay-feed.ts    Transport + TSV parsing (section 3)
+  ingestion/ebay-ingest.ts  The three eBay jobs
+  ingestion/reverb-awin.ts  Awin feed only. Never the Reverb API (section 2)
+  ingestion/upsert.ts       Idempotent writes, price history, run bookkeeping
+  canonical/resolve.ts      Four-tier entity resolution (section 4)
+  canonical/model-parse.ts  Brand/model/category from keyword-soup titles
+  deals/pricing.ts          Rolling median, deal threshold
+  search/                   Typesense with a real Postgres fallback (section 6)
+  queue/                    BullMQ; the OTHER way to run ingestion (section 7)
+scripts/                    migrate, seed, worker, run-ingest, reindex
+```
+
+---
+
+## 2. THE LEGAL CONSTRAINTS, and why the code looks paranoid
+
+These are not preferences. Each one is a term of service.
+
+- **Never use the Reverb API to build the catalogue.** It is scoped to managing
+  *your own* shop, and their terms forbid scraping AND "use of API or member
+  data with a third-party advertising or marketing platform, whether or not
+  aggregated". Aggregating their catalogue through it is a breach on two
+  counts. `lib/ingestion/reverb-awin.ts` reads the Awin datafeed or it no-ops.
+  It has no fallback path, deliberately, so nobody can add one "temporarily".
+- **`AWIN_REVERB_FEED_URL` unset is the EXPECTED state**, not a bug to route
+  around. If Reverb turns out not to publish a publisher datafeed, MusicTime
+  ships as an eBay-only aggregator that links out to Reverb through Awin. A
+  single-source aggregator that is fully compliant beats a two-source one that
+  is not.
+- **eBay production access is not guaranteed.** `EBAY_FEED_BASE_URL` defaults
+  to **sandbox** on purpose. Never flip that default; set it per environment
+  once a production keyset is actually approved. A misconfigured deploy sending
+  a sandbox-shaped token at the live feed burns the call budget for nothing.
+- Reverb changed hands in April 2025 (Creator Partners + Servco). If indexing
+  their catalogue becomes load bearing for the business, get written permission
+  from their partnerships contact. Do not infer it from the affiliate terms,
+  which point the other way.
+- None of the above is a legal opinion. It is the engineering-visible shape of
+  the constraints. A lawyer who has seen the actual setup is the right source.
+
+---
+
+## 3. The eBay feed is not a normal REST API
+
+Four things break naive code, and all four are handled in
+`lib/ingestion/ebay-feed.ts`:
+
+1. **Success returns gzipped TSV. Errors return JSON.** So the response parser
+   branches on status, never on Content-Type. `Accept` must list both types.
+2. **`Range` is mandatory and the file can be gigabytes.** We walk it in
+   sequential byte ranges and learn the true size from the first
+   `Content-Range`. A 200 instead of a 206 means the server ignored the range
+   and handed us everything, which we accept and stop on.
+3. **Chunk boundaries land mid-gzip-member.** Do NOT try to buffer the whole
+   file and then gunzip it; a bootstrap feed will not fit in memory. A
+   *streaming* inflater keeps its window across writes, so a split member is
+   invisible to it. There is a test that chunks a fixture one byte at a time.
+4. **Columns are bound by HEADER NAME, never by position.** eBay adds fields to
+   the ~98-column Item schema over time, and a positional parser silently
+   shifts every value the day they do. If a new field is needed, add it to
+   `COLUMN_ALIASES` rather than counting columns.
+
+Two more traps:
+
+- **`inferredBrand`/`inferredGtin`/`inferredEpid` are eBay's own guesses from
+  the title.** Explicit fields always win. Letting a guess claim `canonical_gear`'s
+  unique `gtin` or `epid` merges two unrelated instruments permanently.
+- **Snapshot files lag ~2 hours.** Asking for the current hour reliably 404s.
+  `snapshotHourStamp()` defaults three hours back. Do not "fix" it to now.
+
+Category `619` is Musical Instruments & Gear (L1, EBAY_US). eBay reshuffles
+categories roughly quarterly, so re-verify with the Taxonomy API rather than
+trusting the constant.
+
+---
+
+## 4. Entity resolution: four tiers, and why the order is the order
+
+`lib/canonical/resolve.ts`. Ordered by how much the evidence deserves trust.
+
+| Tier | Key | Why here |
+|---|---|---|
+| 1a | GTIN | A global barcode. Hard identity. |
+| 1b | EPID | eBay's own catalogue id. Hard identity. |
+| 1c | **brand + MPN** | An MPN names one product by definition. |
+| 2 | brand-scoped pg_trgm on model | Probabilistic, so it sits below all identifiers. |
+| 3 | provisional row, `needs_review = true` | Last resort. |
+
+**Tier 1c exists because of measured evidence, not theory.** Seeding split six
+instruments into duplicate canonical rows purely on title wording ("SM58
+Dynamic Vocal" against "SM58-LC Cardioid Dynamic") while both listings carried
+the identical MPN the whole time. Adding it took the seed from 16 canonical
+rows to the correct 10, `needs_review` from 6 to 0, and deals from 1 to 4,
+because the bargains had been landing on single-listing rows with no market
+price to compare against.
+
+Two rules that must not be relaxed:
+
+- **MPN matching is scoped to the brand.** Short part numbers like "2203"
+  certainly collide across manufacturers.
+- **`normalizeMpn()` rejects placeholders** ("N/A", "None", "Does Not Apply",
+  repeated-character filler). Treating one as an identity key would merge the
+  entire catalogue into one row. If you widen that list, check live MPN values
+  first, the same way `isExcluded` is treated on the hemp sites.
+
+**Fuzzy matching is brand-scoped for the same reason.** "Standard" under Gibson
+and "Standard" under Squier are instruments an order of magnitude apart in
+price. An unscoped `similarity()` search happily merges them.
+
+Paid embeddings are deliberately NOT wired up. `resolveByEmbedding()` is a
+marked stub. Structured fields carry the vast majority of rows; do not spend on
+embeddings before the `needs_review` queue proves a miss rate that justifies it.
+
+**Bias throughout: under-merge rather than over-merge.** An unmatched listing
+still shows up in search on its own text. A bad merge corrupts the price
+history of two instruments and every deal badge computed from it.
+
+---
+
+## 5. Money: the outbound path is `/go/[listingId]` and nothing else
+
+- **Never link a card or a listing row straight to `raw_url`.** That route is
+  what records the click and attaches attribution. A direct link costs revenue
+  and loses the analytics in one move. Everything user-facing links to `/go`.
+- **Click logging failures are swallowed on purpose.** A click we cannot bill
+  for is a rounding error; a shopper who cannot reach the listing is the
+  product failing at the one moment that matters.
+- **The destination is checked against an allowlist.** The URL comes from our
+  own ingestion, so this is defence in depth: a poisoned or misparsed feed row
+  must not turn `/go` into an open redirect for laundering phishing links
+  through our domain.
+- **`affiliate_url` is nullable and the upsert NEVER overwrites a stored one
+  with null** (`COALESCE(excluded.affiliate_url, ...)`). A later feed pulled
+  without affiliate context would otherwise strip monetisation off every row it
+  touched, silently.
+- **eBay:** the feed's own `itemAffiliateWebUrl` is always preferred; the built
+  EPN link is only a fallback. Passing `EBAY_AFFILIATE_CAMPAIGN_ID` is what
+  makes eBay populate that field, via `X-EBAY-C-ENDUSERCTX`.
+- **NEVER GET an `awin1.com/cread.php` link while testing.** Same rule as
+  Herbal Leaf. Every request registers a real click and pollutes conversion
+  reporting with our own traffic. Assert on the string; do not follow it. The
+  Awin tests do exactly this.
+- An unapproved or empty merchant id produces **null**, not a half-built link.
+  Routing a shopper through a tracker that credits nobody is worse than a clean
+  direct link.
+
+---
+
+## 6. Search has two backends and both are real
+
+`lib/search/index.ts` is a facade. Typesense when configured, Postgres
+otherwise, and **a Typesense failure falls through to Postgres** rather than
+erroring the page. The result carries `backend`, and `/api/health` reports it,
+so a permanent silent fallback is visible instead of looking like everything
+working.
+
+The Postgres backend is not a stub. The site is fully usable on it, which is
+what lets MusicTime deploy before any search infrastructure exists.
+
+**Facet counting follows the Legal-Leaf rule:** each facet's counts are
+computed with every OTHER filter applied but not its own, so no visible option
+can ever lead to an empty grid. If you add a facet, add it to `allExcept` too
+or it will start lying.
+
+---
+
+## 7. Two ways to run ingestion, one implementation
+
+The job functions live in `lib/ingestion/`. There are two triggers:
+
+- **`/api/cron/*` routes** (`vercel.json`). What a Vercel deploy uses.
+- **BullMQ workers** (`npm run worker`). Concurrency control, retries, and a
+  durable queue for the bootstrap feed that will not finish inside a serverless
+  timeout.
+
+Never fork the logic between them. Add work to the job function.
+
+- All four cron routes **fail closed on `CRON_SECRET`**: unset returns 503,
+  wrong bearer returns 401. Unset mattering more than wrong is the point, these
+  routes burn the eBay call budget and send email.
+- Ingestion worker concurrency is **1** on purpose. These jobs are bounded by
+  the eBay daily call budget and Postgres write throughput, not CPU. Running
+  several in parallel spends the same budget faster and races on the same
+  upsert targets.
+- BullMQ 6 removed `repeat` on `add()`. Schedules use `upsertJobScheduler` with
+  **stable ids**, so editing a cron pattern updates the schedule instead of
+  leaving the old one running beside it and pulling the feed twice.
+
+---
+
+## 8. Deal detection is the most load-bearing claim on the site
+
+`lib/deals/pricing.ts`.
+
+- **Median, never mean.** One optimist asking $1.2m for a Strat would drag a
+  mean high enough to make every ordinary listing look like a bargain.
+- **`MIN_SAMPLE_SIZE` is a floor, not a suggestion.** Below it we publish NO
+  market price and flag NO deals, and the gear page says so in words. Inventing
+  a market price from two listings is a guess dressed up as a measurement.
+- **Recently ended listings count towards the sample.** Restricting to active
+  listings biases it towards overpriced gear, because the well priced items are
+  exactly the ones that already sold.
+- The threshold is "more than 20% below", so exactly `0.8 * market` is not a
+  deal. There is a test pinning that boundary.
+
+---
+
+## 9. Idempotency and the price history table
+
+- Every upsert is keyed on `(source, external_id)`. Feeds overlap by design and
+  a re-run after a failure must be a no-op.
+- Batches are **deduplicated in memory first**: Postgres rejects an
+  `ON CONFLICT` statement that updates the same target row twice in one
+  command, and feeds do repeat an item within a single file.
+- **Price history is written only when a price or status actually moves.** The
+  hourly snapshot touches most of the catalogue; without that filter the table
+  would grow by the size of the catalogue per hour and the chart would be a
+  flat line drawn a thousand times.
+- Alert notifications are claimed by **inserting into `alert_matches` before
+  sending**. A crash between insert and send loses one notification. The
+  reverse order mails somebody the same guitar on every hourly run forever.
+
+---
+
+## 10. Verify before you merge
+
+1. `npm run typecheck` and `npm test`. The suite includes integration tests
+   against real Postgres; they need `DATABASE_URL` and they truncate tables, so
+   never point them at production.
+2. `npm run db:seed` then `npm run dev`, and actually look at the site. The
+   seed deliberately includes cross-source duplicates and identifier-free rows
+   so the resolver is exercised.
+3. `curl /api/health`. It reports counts AND the age of the last successful run
+   per job. A silently broken feed looks exactly like a quiet market, and only
+   the age column tells them apart.
+4. After a resolver change, reseed and check `canonical_gear` row count against
+   the number of instruments in `scripts/seed.ts`. If they differ, the resolver
+   is splitting or merging and the counts are the fastest way to see it.
+
+---
+
+## 11. Environment variables
+
+| Var | Gates |
+|---|---|
+| `DATABASE_URL` | Everything. The only hard requirement. |
+| `EBAY_FEED_BASE_URL` | Sandbox by default. Never change the default. |
+| `EBAY_OAUTH_TOKEN` | eBay ingestion. Unset means the jobs skip with a logged reason. |
+| `EBAY_AFFILIATE_CAMPAIGN_ID` | Populates `itemAffiliateWebUrl` in the feed AND builds fallback EPN links. Unset means eBay traffic is unmonetised. |
+| `AWIN_PUBLISHER_ID` / `AWIN_REVERB_MERCHANT_ID` | Reverb deep links. Either missing produces null links, not broken ones. |
+| `AWIN_REVERB_FEED_URL` | Reverb catalogue. Unset is expected; the job no-ops. |
+| `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
+| `REDIS_URL` | BullMQ queues and the shared rate-limit counter. Optional. |
+| `CRON_SECRET` | All four crons. Unset = 503, wrong = 401. Load bearing. |
+| `BETTER_AUTH_SECRET` | Accounts and alerts. Unset = auth routes 503, rest of site unaffected. |
+| `RESEND_API_KEY` / `DISCORD_WEBHOOK_URL` | Alert delivery. Each no-ops with a warning. |
+
+---
+
+## 12. House rules inherited from the sister sites
+
+- **No em dashes anywhere in copy.** Use a comma, colon, or parentheses.
+- **Do not GET an Awin tracking link in testing** (section 5).
+- **Do not broaden an exclusion regex or a placeholder list without checking
+  live values first.** A broad pattern silently hides real inventory, and the
+  diff looks harmless.
+- Prices shown must be prices the shopper can actually get. The footer says
+  feeds can go stale; that is a disclosure, not a licence to ship known-wrong
+  numbers.
+- Affiliate commission never affects ranking. Sorting is price and discount
+  only, and the footer says so.
+
+## 13. Hard "do not" list
+
+- Do NOT call the Reverb API for listings, or add a scraping fallback anywhere.
+- Do NOT write Facebook Marketplace ingestion.
+- Do NOT change `EBAY_FEED_BASE_URL`'s sandbox default.
+- Do NOT link the UI directly to `raw_url`; everything goes through `/go`.
+- Do NOT let an `inferred*` field win over an explicit one.
+- Do NOT unscope MPN or fuzzy matching from the brand.
+- Do NOT publish a market price below `MIN_SAMPLE_SIZE`.
+- Do NOT let the cron guard fail open.
+- Do NOT parse the feed TSV by column position.
+- Do NOT point the test suite at a database you care about; it truncates.

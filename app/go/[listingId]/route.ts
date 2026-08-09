@@ -99,11 +99,17 @@ export async function GET(
 
   // 302 rather than 301: the destination changes whenever affiliate context
   // changes, and a cached permanent redirect would pin shoppers to a stale URL.
+  //
+  // No Referrer-Policy is set here on purpose. next.config.mjs applies
+  // strict-origin-when-cross-origin to every response, and a header set here
+  // loses to it, so overriding would be a comment describing behaviour that
+  // never ships. The global policy is also the one we want: it sends our origin
+  // and not the path, so the marketplace sees the traffic came from MusicTime,
+  // which affiliate attribution wants, while the shopper's search query stays
+  // on our side.
   return NextResponse.redirect(destination, {
     status: 302,
     headers: {
-      // Do not leak our internal search URLs to the marketplace.
-      "Referrer-Policy": "no-referrer",
       "Cache-Control": "no-store, max-age=0",
       "X-Robots-Tag": "noindex, nofollow",
     },

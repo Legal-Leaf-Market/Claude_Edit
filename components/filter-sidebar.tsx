@@ -1,6 +1,7 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { SlidersHorizontal, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -25,6 +26,11 @@ type Props = {
 
 export function FilterSidebar({ facets, found }: Props) {
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  // Portals need a DOM to attach to, which does not exist during SSR.
+  useEffect(() => setMounted(true), [])
 
   // Close the sheet on Escape, and lock body scroll while it is open so the
   // page behind does not scroll under the shopper's finger.
@@ -36,6 +42,9 @@ export function FilterSidebar({ facets, found }: Props) {
     document.addEventListener("keydown", onKey)
     const previous = document.body.style.overflow
     document.body.style.overflow = "hidden"
+    // Move focus into the dialog so a keyboard or screen reader user is not
+    // left behind on the trigger button.
+    closeButtonRef.current?.focus()
     return () => {
       document.removeEventListener("keydown", onKey)
       document.body.style.overflow = previous
@@ -56,32 +65,49 @@ export function FilterSidebar({ facets, found }: Props) {
         <FilterControls facets={facets} found={found} />
       </aside>
 
-      {/* Mobile sheet */}
-      {open && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/70"
-            onClick={() => setOpen(false)}
-            aria-hidden="true"
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Filters"
-            className="absolute inset-y-0 left-0 flex w-[85%] max-w-sm flex-col bg-[var(--popover)] shadow-xl"
-          >
-            <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-              <h2 className="text-sm font-semibold text-[var(--cream)]">Filters</h2>
-              <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Close filters">
-                <X className="h-4 w-4" />
-              </Button>
+      {/*
+        Mobile sheet, rendered through a PORTAL onto document.body.
+        This is load bearing, not stylistic. globals.css gives every direct
+        child of body a stacking context (z-index 1, so the decorative
+        background layer stays behind content), and the site header carries
+        z-40. A sheet rendered in place would be trapped inside <main>'s
+        context, and the header would paint straight over its close button.
+        Portalling to body escapes every ancestor context.
+      */}
+      {mounted &&
+        open &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] lg:hidden">
+            <div
+              className="absolute inset-0 bg-black/70"
+              onClick={() => setOpen(false)}
+              aria-hidden="true"
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Filters"
+              className="absolute inset-y-0 left-0 flex w-[85%] max-w-sm flex-col bg-[var(--popover)] shadow-xl"
+            >
+              <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+                <h2 className="text-sm font-semibold text-[var(--cream)]">Filters</h2>
+                <Button
+                  ref={closeButtonRef}
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close filters"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                <FilterControls facets={facets} found={found} onNavigate={() => setOpen(false)} />
+              </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              <FilterControls facets={facets} found={found} onNavigate={() => setOpen(false)} />
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   )
 }
