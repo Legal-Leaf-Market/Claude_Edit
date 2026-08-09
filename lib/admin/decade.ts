@@ -145,6 +145,104 @@ export function yearReaching(years: DecadeYear[], target: number): number | null
 }
 
 /**
+ * Which path actually happens, and what advisory does to that.
+ *
+ * The three paths above are not equally likely, and the difference between
+ * them is roughly 6x by year 10. So the honest question is not "what does
+ * the base case say" but "what is the probability-weighted outcome".
+ *
+ * Standing monthly advice from operators who have run this kind of business
+ * belongs HERE and nowhere else in the model. It is not revenue, and it is
+ * not a cost saving either: an unpaid advisor is not money saved, because
+ * paid consultants were never in the budget. Booking it as either would be
+ * inventing a number. What experienced advisors actually change is the odds
+ * of executing well, which is exactly what these weights describe.
+ *
+ * The weights themselves are judgement, not measurement. They are the
+ * softest input in this file, which is already the softer of the two models.
+ */
+export type ScenarioWeights = Record<DecadePath["key"], number>
+
+/**
+ * Solo, no outside input. Weighted toward conservative because the common
+ * failure mode of a one-person business is not collapse, it is drift:
+ * plausible-looking work that never compounds, with nobody asking why.
+ */
+export const WEIGHTS_UNADVISED: ScenarioWeights = {
+  conservative: 0.55,
+  base: 0.35,
+  strong: 0.1,
+}
+
+/**
+ * With standing monthly advisory from people who have operated in this
+ * space. The shift is deliberately modest: advisors improve decisions, they
+ * do not change the market, and the biggest risk to this business (a Google
+ * core update) is not one an advisor can avert. Most of the movement is out
+ * of the conservative case rather than into the strong one, because good
+ * advice mostly prevents wasted years rather than manufacturing breakouts.
+ */
+export const WEIGHTS_ADVISED: ScenarioWeights = {
+  conservative: 0.35,
+  base: 0.47,
+  strong: 0.18,
+}
+
+export type Advisor = {
+  name: string
+  relationship: string
+  /** What this person is actually positioned to de-risk. */
+  bringsToTheTable: string
+  cadence: string
+  /** Nothing is agreed yet; every one of these is a conversation not yet had. */
+  status: "confirmed" | "to approach"
+}
+
+export const ADVISORS: Advisor[] = [
+  {
+    name: "George Lawrence",
+    relationship: "Mentor; runs DrumSellers.com, a Sharetribe marketplace",
+    bringsToTheTable:
+      "Has operated a live instrument marketplace for years: seller acquisition, what makes sellers stay, and the operational reality of peer-to-peer listings. The one adviser here with direct sector experience, and a potential inventory partner in his own right.",
+    cadence: "Monthly, proposed",
+    status: "to approach",
+  },
+  {
+    name: "Thomas Hume",
+    relationship: "Mentor; consulting practice, Indianapolis",
+    bringsToTheTable:
+      "Consulting and business operations. Detail to be filled in once the practice is confirmed rather than assumed.",
+    cadence: "Monthly, proposed",
+    status: "to approach",
+  },
+]
+
+/** Probability-weighted outcome across the three paths. */
+export function expectedOutcome(
+  weights: ScenarioWeights,
+  input: DecadeInput,
+): { expectedRevenue10yr: number; expectedRetained10yr: number; expectedYear10RunRate: number } {
+  let revenue = 0
+  let retained = 0
+  let runRate = 0
+
+  for (const path of DECADE_PATHS) {
+    const years = projectDecade(path, input)
+    const final = years[years.length - 1]
+    const w = weights[path.key]
+    revenue += final.cumulativeRevenue * w
+    retained += final.cumulativeRetained * w
+    runRate += final.revenue * w
+  }
+
+  return {
+    expectedRevenue10yr: revenue,
+    expectedRetained10yr: retained,
+    expectedYear10RunRate: runRate,
+  }
+}
+
+/**
  * Maker subscriptions: $5/mo for six months, then $20.
  *
  * Cohort-tracked because the step-up hits each cohort at ITS month six, not
