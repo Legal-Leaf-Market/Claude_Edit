@@ -65,6 +65,7 @@ describe("normalizeShopifyProduct", () => {
     expect(row.brand).toBe("Folkcraft")
     expect(row.mpn).toBe("90712265")
     expect(row.condition).toBe("New")
+    expect(row.platformVariantId).toBe("53828776263993")
     expect(row.rawUrl).toBe("https://folkcraft.com/products/deluxe-rigid-dulcimer-case-tan")
     expect(row.description).toBe("Protect your instrument in style. Fits most models.")
   })

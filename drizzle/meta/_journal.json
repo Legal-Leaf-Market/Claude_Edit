@@ -15,6 +15,13 @@
       "when": 1786279632372,
       "tag": "0001_brand_mpn_index",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786307591230,
+      "tag": "0002_clever_mister_sinister",
+      "breakpoints": true
     }
   ]
 }

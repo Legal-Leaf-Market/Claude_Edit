@@ -13,8 +13,8 @@ export function SiteFooter() {
           <div>
             <p className="text-sm font-semibold text-[var(--cream)]">Gear Avail</p>
             <p className="mt-2 max-w-xs text-sm leading-relaxed text-[var(--muted-foreground)]">
-              Used and vintage gear from across the marketplaces, matched to the same instrument so
-              you can see every live price at once.
+              Real-time inventory from independent music gear makers and retailers, all in one
+              place.
             </p>
           </div>
 
@@ -34,6 +34,11 @@ export function SiteFooter() {
               <li>
                 <Link href="/alerts" className="hover:text-[var(--cream)]">
                   Price alerts
+                </Link>
+              </li>
+              <li>
+                <Link href="/list-your-shop" className="hover:text-[var(--cream)]">
+                  Get your shop listed
                 </Link>
               </li>
             </ul>

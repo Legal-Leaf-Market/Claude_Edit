@@ -87,6 +87,7 @@ export async function upsertListings(rows: NewMarketplaceListing[]): Promise<Ups
           // monetisation off every row it touched.
           affiliateUrl: sql`COALESCE(excluded.affiliate_url, ${marketplaceListings.affiliateUrl})`,
           primaryImageUrl: sql`COALESCE(excluded.primary_image_url, ${marketplaceListings.primaryImageUrl})`,
+          platformVariantId: sql`excluded.platform_variant_id`,
           listingStatus: sql`excluded.listing_status`,
           listedAt: sql`COALESCE(excluded.listed_at, ${marketplaceListings.listedAt})`,
           endsAt: sql`COALESCE(excluded.ends_at, ${marketplaceListings.endsAt})`,

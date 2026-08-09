@@ -1,6 +1,7 @@
 import { Resend } from "resend"
 import { env } from "@/lib/env"
 import { formatPrice, sourceLabel } from "@/lib/utils"
+import type { MerchantLead } from "@/lib/db/schema"
 
 /**
  * Outbound notifications for price alerts.
@@ -158,5 +159,80 @@ export async function sendDiscordAlert(
       `[notify] Discord send failed: ${error instanceof Error ? error.message : String(error)}`,
     )
     return false
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Merchant leads                                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Best-effort notification that a new "get your shop listed" lead came in.
+ * The database row (written by the caller before this runs) is the durable
+ * record; a failed notification here means someone checks the table a little
+ * later, not a lost lead.
+ */
+export async function notifyMerchantLead(lead: MerchantLead): Promise<void> {
+  const client = env.leads.canEmail ? getResend() : null
+  if (client) {
+    try {
+      await client.emails.send({
+        from: env.alerts.fromEmail,
+        to: env.leads.notifyEmail,
+        subject: `New shop lead: ${lead.shopName}`,
+        html: `
+          <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:24px">
+            <p style="margin:0 0 12px;font-size:18px;font-weight:600;color:#111827">${escapeHtml(lead.shopName)}</p>
+            <table style="width:100%;border-collapse:collapse;font-size:14px;color:#374151">
+              <tr><td style="padding:4px 0;color:#6b7280">Contact</td><td>${escapeHtml(lead.contactName)} &lt;${escapeHtml(lead.email)}&gt;${lead.phone ? ` &middot; ${escapeHtml(lead.phone)}` : ""}</td></tr>
+              <tr><td style="padding:4px 0;color:#6b7280">Referred by</td><td>${lead.referredBy === "customer" ? "A customer, on the shop's behalf" : "The shop owner"}</td></tr>
+              <tr><td style="padding:4px 0;color:#6b7280">Location</td><td>${lead.location ? escapeHtml(lead.location) : "—"}</td></tr>
+              <tr><td style="padding:4px 0;color:#6b7280">Online today</td><td>${escapeHtml(lead.hasOnlineCatalog)}</td></tr>
+              <tr><td style="padding:4px 0;color:#6b7280">Existing link</td><td>${lead.existingLink ? escapeHtml(lead.existingLink) : "—"}</td></tr>
+            </table>
+            ${lead.message ? `<p style="margin:16px 0 0;padding:12px;background:#f9fafb;border-radius:8px;color:#374151;font-size:14px;white-space:pre-wrap">${escapeHtml(lead.message)}</p>` : ""}
+          </div>`,
+      })
+    } catch (error) {
+      console.error(
+        `[notify] merchant lead email failed: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  }
+
+  if (env.alerts.canDiscord) {
+    try {
+      const response = await fetch(env.alerts.discordWebhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: "Gear Avail",
+          embeds: [
+            {
+              title: `New shop lead: ${lead.shopName}`.slice(0, 250),
+              color: 0xf0a830,
+              fields: [
+                { name: "Contact", value: `${lead.contactName} (${lead.email})`.slice(0, 1024), inline: false },
+                {
+                  name: "Referred by",
+                  value: lead.referredBy === "customer" ? "A customer" : "The shop owner",
+                  inline: true,
+                },
+                { name: "Online today", value: lead.hasOnlineCatalog.slice(0, 1024), inline: true },
+                ...(lead.location ? [{ name: "Location", value: lead.location.slice(0, 1024), inline: true }] : []),
+                ...(lead.message ? [{ name: "Message", value: lead.message.slice(0, 1024), inline: false }] : []),
+              ],
+            },
+          ],
+        }),
+      })
+      if (!response.ok) {
+        console.error(`[notify] Discord webhook returned ${response.status}`)
+      }
+    } catch (error) {
+      console.error(
+        `[notify] merchant lead Discord send failed: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
   }
 }

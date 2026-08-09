@@ -1,8 +1,10 @@
 import Link from "next/link"
 import { ExternalLink, MapPin, Truck } from "lucide-react"
+import { AddToCartButton } from "@/components/add-to-cart-button"
 import { Badge } from "@/components/ui/badge"
 import { ListingImage } from "./listing-image"
 import { formatMargin, formatPrice, sourceLabel, timeAgo } from "@/lib/utils"
+import type { Source } from "@/lib/db/schema"
 import type { SearchHit } from "@/lib/search/types"
 
 /**
@@ -87,6 +89,17 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
             View on {sourceLabel(hit.source)}
             <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
           </a>
+
+          <AddToCartButton
+            item={{
+              listingId: hit.id,
+              source: hit.source as Source,
+              title: hit.title,
+              priceCents: hit.priceCents,
+              currency: hit.currency,
+              image: hit.primaryImageUrl,
+            }}
+          />
         </div>
       </div>
     </article>

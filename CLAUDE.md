@@ -245,11 +245,29 @@ history of two instruments and every deal badge computed from it.
 
 ---
 
-## 5. Money: the outbound path is `/go/[listingId]` and nothing else
+## 5. Money: the outbound path is `/go/[listingId]` or `/api/cart/checkout`, nothing else
 
-- **Never link a card or a listing row straight to `raw_url`.** That route is
-  what records the click and attaches attribution. A direct link costs revenue
-  and loses the analytics in one move. Everything user-facing links to `/go`.
+- **Never link a card or a listing row straight to `raw_url`.** These two
+  routes are what record the click and attach attribution. A direct link
+  costs revenue and loses the analytics in one move. Everything user-facing
+  links to one of them.
+- **`/api/cart/checkout` is the multi-item sibling of `/go`, not a bypass of
+  it.** The GA Cart (`lib/cart/`) is entirely client-side (localStorage: item
+  id, title, price, image, qty; never a raw or affiliate URL). Checkout is
+  always scoped to ONE store's items at a time, since no unified checkout
+  across unrelated merchants exists anywhere in this space (confirmed against
+  the sister sites' own cart implementations): the route looks up each
+  listing's real `rawUrl`/`affiliateUrl`/`platformVariantId` server-side,
+  builds the best URL the store's platform allows
+  (`lib/cart/checkout.ts`), checks it against the same allowlist as `/go`
+  (`lib/affiliate/allowed-hosts.ts`, shared by both routes), and logs one
+  `outboundClicks` row per item actually included. Shopify's cart permalink
+  (`/cart/{variantId}:{qty},...`) fills the WHOLE group in one URL;
+  WooCommerce's `?add-to-cart={id}&quantity={n}` takes exactly one line, so
+  anything past the first item in a WooCommerce group has to be added by
+  hand once the shopper is there; every other source (the paused eBay/
+  Reverb/CJ/Awin feeds) has no prefillable cart at all, so checkout there is
+  just the first item's own link, same destination `/go` would use for it.
 - **Click logging failures are swallowed on purpose.** A click we cannot bill
   for is a rounding error; a shopper who cannot reach the listing is the
   product failing at the one moment that matters.

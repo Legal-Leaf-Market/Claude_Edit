@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm"
 import { NextResponse, type NextRequest } from "next/server"
 import { db } from "@/lib/db"
 import { marketplaceListings, outboundClicks } from "@/lib/db/schema"
+import { isAllowedDestination } from "@/lib/affiliate/allowed-hosts"
 
 /**
  * Outbound affiliate gateway.
@@ -17,53 +18,6 @@ import { marketplaceListings, outboundClicks } from "@/lib/db/schema"
  */
 
 export const dynamic = "force-dynamic"
-
-/**
- * Hosts we will redirect to. The destination comes from our own ingestion, so
- * this is defence in depth rather than the primary control: a poisoned or
- * misparsed feed row must not turn /go into an open redirect that anyone can
- * use to launder a phishing link through our domain.
- */
-const ALLOWED_HOSTS = [
-  /(^|\.)ebay\.[a-z.]{2,6}$/i,
-  /(^|\.)ebayimg\.com$/i,
-  /(^|\.)reverb\.com$/i,
-  /(^|\.)awin1\.com$/i,
-  /(^|\.)ebay\.to$/i,
-  /(^|\.)sweetwater\.com$/i,
-  /(^|\.)gear4music\.[a-z.]{2,6}$/i,
-  /(^|\.)zzounds\.com$/i,
-  /(^|\.)fullcompass\.com$/i,
-  /(^|\.)pinevillemusic\.com$/i,
-  // CJ Affiliate's own tracking domains, for the pre-built BUY_URL links
-  // zZounds/Full Compass/Pineville Music feeds carry.
-  /(^|\.)(anrdoezrs\.net|apmebf\.com|awltovhc\.com|dpbolvw\.net|ftjcfx\.com|jdoqocy\.com|kqzyfj\.com|tkqlhce\.com|qksrv\.net)$/i,
-  // Small independent Shopify sellers. GoAffPro-style referral links append a
-  // query param to the merchant's own domain rather than redirecting through
-  // a separate tracking host, so the raw and affiliate URLs share a host.
-  /(^|\.)folkcraft\.com$/i,
-  /(^|\.)acousticguitar\.com$/i,
-  /(^|\.)jamstik\.com$/i,
-  /(^|\.)jackson\.audio$/i,
-  /(^|\.)eminence-digital\.com$/i,
-  /(^|\.)hazeguitar\.com\.au$/i,
-  /(^|\.)eartguitar\.com$/i,
-  /(^|\.)playwithauthority\.com$/i,
-  /(^|\.)puresmusic\.com$/i,
-  /(^|\.)squaver\.in$/i,
-  /(^|\.)easonmusicstore\.com$/i,
-  /(^|\.)gokalimba\.com$/i,
-]
-
-function isAllowedDestination(rawUrl: string): boolean {
-  try {
-    const url = new URL(rawUrl)
-    if (url.protocol !== "https:" && url.protocol !== "http:") return false
-    return ALLOWED_HOSTS.some((pattern) => pattern.test(url.hostname))
-  } catch {
-    return false
-  }
-}
 
 export async function GET(
   request: NextRequest,
