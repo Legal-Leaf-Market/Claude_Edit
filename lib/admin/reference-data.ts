@@ -42,10 +42,19 @@ export const SITE_PROFILE: SiteProfile = {
   // automatically with the catalogue rather than being a fixed count worth
   // tracking the same way.
   indexablePages: 15,
+  // Session anchors updated 9 Aug 2026: the original 150/2,500/12,000 predated
+  // two real inputs that materially change month 1 -- a $100/mo paid ad
+  // budget (a real lever specific to this site; see FACTS) and a PROVEN
+  // number from the IG account being actively run for it, averaging ~25
+  // visits/day in its first three weeks (~750/mo), not a projection. Month 1
+  // here is organic cold-start (~350, in line with how the sister sites
+  // opened) + the proven ~750 from IG + ~150 from the $100/mo ad spend.
+  // Months 12/24 keep the same shape, scaled up proportionally pending real
+  // data -- still assumptions, not measurements, same caveat as before.
   assumptions: {
-    sessionsMonth1: 150,
-    sessionsMonth12: 2500,
-    sessionsMonth24: 12000,
+    sessionsMonth1: 1250,
+    sessionsMonth12: 9000,
+    sessionsMonth24: 30000,
     basket: 120,
     commissionPct: 8,
     conversionPct: 1.3,
@@ -187,6 +196,7 @@ export const NEXT_90_DAYS = [
 
 export const METHOD_NOTES = [
   "Traffic follows an S-curve, not a straight line: slow for the first few months while the domain earns trust, steepest in the middle of the horizon, decelerating after. It's fitted to pass through the month-1, month-12 and month-24 anchors below exactly. Monthly seasonality is applied on top — instruments spike hardest around the holidays and Black Friday, which is why a given month's sessions can sit slightly above or below its anchor.",
+  "Month 1's anchor includes two real, current inputs rather than pure projection: a $100/mo paid ad budget (musical instruments carry no advertising restriction, unlike the sister sites) and a proven ~25 visits/day from the IG account already being run for this site in its first three weeks. Months 12 and 24 scale the same shape up proportionally and remain assumptions, not measurements, until real months close.",
   "Conversion rate is the most fragile assumption on this page. The model matures it from 80% to 125% of the stated rate over two years as trust, reviews and returning visitors accumulate. If real conversion comes in at half the stated rate, halve every revenue figure.",
   "Attribution capture starts at roughly two thirds, reflecting the real state of the 11 live stores today: about that share of live catalogue by product count has a confirmed working referral link (see the by-store table). It ramps toward 90%, which assumes the unconfirmed links actually get confirmed and at least one gated feed comes online — the ninety-day list below is exactly that work.",
   "What is not modelled: a merchant terminating its programme, a Google core update, GoAffPro changing its terms, or eBay's production application being denied outright. The last is a real, non-trivial risk for this specific business.",
