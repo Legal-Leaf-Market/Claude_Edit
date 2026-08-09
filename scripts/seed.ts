@@ -44,7 +44,7 @@ const CATALOGUE: GearSpec[] = [
     epid: "240012345",
     mpn: "0144502500",
     marketPrice: 749,
-    image: "https://i.ebayimg.com/images/g/strat/s-l500.jpg",
+    image: "https://upload.wikimedia.org/wikipedia/commons/9/91/Fender_Stratocaster_004.JPG",
   },
   {
     brand: "Gibson",
@@ -58,7 +58,7 @@ const CATALOGUE: GearSpec[] = [
     epid: "240022222",
     mpn: "LPS600HSNH1",
     marketPrice: 2499,
-    image: "https://i.ebayimg.com/images/g/lp/s-l500.jpg",
+    image: "https://upload.wikimedia.org/wikipedia/commons/a/a8/Gibson_Les_Paul_Standard_%28cherry_sunburst%29.jpg",
   },
   {
     brand: "Shure",
@@ -72,7 +72,7 @@ const CATALOGUE: GearSpec[] = [
     epid: "240033333",
     mpn: "SM58-LC",
     marketPrice: 89,
-    image: "https://i.ebayimg.com/images/g/sm58/s-l500.jpg",
+    image: "https://upload.wikimedia.org/wikipedia/commons/7/7d/Micro_Shure_SM58.jpg",
   },
   {
     brand: "Roland",
@@ -86,7 +86,7 @@ const CATALOGUE: GearSpec[] = [
     epid: "240044444",
     mpn: "JUNO-106",
     marketPrice: 1850,
-    image: "https://i.ebayimg.com/images/g/juno/s-l500.jpg",
+    image: "https://upload.wikimedia.org/wikipedia/commons/7/78/Roland-Juno-106.jpg",
   },
   {
     brand: "Boss",
@@ -100,7 +100,7 @@ const CATALOGUE: GearSpec[] = [
     epid: "240055555",
     mpn: "DS-1",
     marketPrice: 45,
-    image: "https://i.ebayimg.com/images/g/ds1/s-l500.jpg",
+    image: "https://upload.wikimedia.org/wikipedia/commons/0/0f/Boss-DS-1.jpg",
   },
   {
     brand: "Marshall",
@@ -114,7 +114,7 @@ const CATALOGUE: GearSpec[] = [
     epid: "240066666",
     mpn: "2203",
     marketPrice: 2200,
-    image: "https://i.ebayimg.com/images/g/jcm/s-l500.jpg",
+    image: "https://upload.wikimedia.org/wikipedia/commons/4/4f/Marshall_JCM800_amplifier.jpg",
   },
   {
     brand: "Martin",
@@ -128,7 +128,7 @@ const CATALOGUE: GearSpec[] = [
     epid: "240077777",
     mpn: "D28",
     marketPrice: 2650,
-    image: "https://i.ebayimg.com/images/g/d28/s-l500.jpg",
+    image: "https://upload.wikimedia.org/wikipedia/commons/e/e0/Martin_D28_Acoustic_Guitar.jpg",
   },
   {
     brand: "Yamaha",
@@ -142,7 +142,7 @@ const CATALOGUE: GearSpec[] = [
     epid: "240088888",
     mpn: "P125B",
     marketPrice: 549,
-    image: "https://i.ebayimg.com/images/g/p125/s-l500.jpg",
+    image: "https://upload.wikimedia.org/wikipedia/commons/5/5d/Yamaha_Digital_Piano_P-155_%282010%29.jpg",
   },
   {
     brand: "Ibanez",
@@ -156,7 +156,7 @@ const CATALOGUE: GearSpec[] = [
     epid: "240099999",
     mpn: "TS9",
     marketPrice: 115,
-    image: "https://i.ebayimg.com/images/g/ts9/s-l500.jpg",
+    image: "https://upload.wikimedia.org/wikipedia/commons/5/5c/Ibanez_ts9_tube_screamer.jpg",
   },
   {
     brand: "Zildjian",
@@ -170,7 +170,7 @@ const CATALOGUE: GearSpec[] = [
     epid: "240010101",
     mpn: "A20516",
     marketPrice: 235,
-    image: "https://i.ebayimg.com/images/g/zild/s-l500.jpg",
+    image: "https://upload.wikimedia.org/wikipedia/commons/7/70/2006-07-06_Crash_Zildjian_14.jpg",
   },
 ]
 
