@@ -208,9 +208,15 @@ function buildListings(): NewMarketplaceListing[] {
       const price = Math.max(5, Math.round(gear.marketPrice * (1 + spread)))
 
       const externalId = `${source}-${gear.mpn}-${i}`
+      // example.test is IETF-reserved (RFC 2606) and can never resolve to a real
+      // site. A real reverb.com/ebay.com URL here previously slipped into
+      // production and rendered as a real-looking, non-functional listing --
+      // see scripts/purge-seed-data.ts. isReverbProductUrl/isEbayListingUrl
+      // check hostname, so affiliateUrl below correctly resolves to null for
+      // these rows rather than building a link that looks real.
       const rawUrl = isReverb
-        ? `https://reverb.com/item/${gearIndex}${i}-${gear.model.toLowerCase().replace(/\s+/g, "-")}`
-        : `https://www.ebay.com/itm/${100000 + gearIndex * 100 + i}`
+        ? `https://example.test/reverb-seed/${gearIndex}${i}-${gear.model.toLowerCase().replace(/\s+/g, "-")}`
+        : `https://example.test/ebay-seed/${100000 + gearIndex * 100 + i}`
 
       // Some listings carry no identifiers at all, which forces the resolver
       // down the fuzzy tier rather than letting every row take Tier 1.
