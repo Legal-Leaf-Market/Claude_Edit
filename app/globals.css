@@ -131,6 +131,89 @@
     background: linear-gradient(90deg, var(--amber), transparent);
     height: 1px;
   }
+
+  /* Admin operating-model page. */
+  .eyebrow {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--amber);
+  }
+
+  .admin-section {
+    padding-top: 2.5rem;
+    padding-bottom: 0.5rem;
+    border-top: 1px solid var(--border);
+  }
+  .admin-section:first-of-type {
+    border-top: none;
+  }
+  .admin-section h2 {
+    margin-top: 0.25rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--cream);
+  }
+
+  .intro {
+    margin-top: 0.5rem;
+    max-width: 48rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--muted-foreground);
+  }
+
+  .section-body {
+    margin-top: 1.25rem;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .model-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+  .model-table th,
+  .model-table td {
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .model-table thead th {
+    text-align: left;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted-foreground);
+    background: var(--secondary);
+  }
+  .model-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+  .model-table td {
+    color: var(--foreground);
+  }
+
+  .table-caption {
+    margin-top: 0.75rem;
+    max-width: 48rem;
+    font-size: 0.72rem;
+    line-height: 1.6;
+    color: var(--muted-foreground);
+  }
+
+  .num-affix {
+    margin: 0 0.15rem;
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+  }
 }
 
 /* Respect a user's reduced-motion preference across every transition. */

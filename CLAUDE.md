@@ -2,7 +2,7 @@
 
 Read this fully before editing. Sister project to **Legal-Leaf Market**,
 **Herbal Leaf Market** and **Nicotia Market**, and it inherits their house
-rules (section 12). The difference: those sites scrape public storefront JSON
+rules (section 13). The difference: those sites scrape public storefront JSON
 from merchants who want the traffic. This one mostly consumes **gated partner
 feeds** whose terms say exactly what you may and may not do with their data.
 That constraint shapes most of the decisions below, and undoing one of them
@@ -404,10 +404,50 @@ Never fork the logic between them. Add work to the job function.
 | `CRON_SECRET` | All nine crons. Unset = 503, wrong = 401. Load bearing. |
 | `BETTER_AUTH_SECRET` | Accounts and alerts. Unset = auth routes 503, rest of site unaffected. |
 | `RESEND_API_KEY` / `DISCORD_WEBHOOK_URL` | Alert delivery. Each no-ops with a warning. |
+| `ADMIN_PASSCODE` | `/admin/operating-model`. Unset = nobody can sign in, ever. See section 12. |
 
 ---
 
-## 12. House rules inherited from the sister sites
+## 12. Admin: the operating-model business projection
+
+`/admin/operating-model`, gated by `ADMIN_PASSCODE` (`lib/admin/gate.ts`): a
+24-month affiliate revenue projection ported from the same engine built for
+legal-leafmarket.com, adapted to one site instead of four.
+
+- **The gate fails closed**, same rule as `CRON_SECRET`. No passcode
+  configured means the sign-in page shows setup instructions instead of a
+  form, never a page that merely hides numbers with CSS. The passcode signs
+  an HMAC session cookie (`lib/admin/gate.ts`), so rotating it signs
+  everyone out. Failed attempts are rate-limited per IP and compared in
+  constant time. The whole `/admin` tree is `noindex, nofollow, nocache` and
+  disallowed in `robots.txt`; it is never in `sitemap.xml` because the
+  sitemap only ever lists routes it explicitly builds.
+- **The math lives in `lib/admin/engine.ts`, unmodified from the sister
+  sites' version.** An S-curve traffic fit through three session anchors,
+  monthly seasonality, Weibull conversion/attribution ramps, and an
+  actuals-driven re-anchoring step once real months close. Do not simplify
+  this math without understanding why each piece exists; the docstring at
+  the top of the file explains the reasoning.
+- **Reference data (`lib/admin/reference-data.ts`) is Gear Avail-specific,
+  not copied.** Two structural facts genuinely differ from the sister
+  sites: this one can legally run paid ads (musical instruments are not a
+  restricted ad category the way THC/hemp/nicotine are), and its
+  `/gear`/`/deals` pages are generated FROM the ingested catalogue rather
+  than hand-authored, so indexable page count already scales with real
+  inventory. The merchant-by-merchant table uses real ingested catalogue
+  counts and reflects which of the 11 live sources actually have a
+  confirmed working referral link versus which are unconfirmed, pending, or
+  paused, as of when it was written; update it as that status changes
+  rather than leaving it to drift.
+- **Every number on the page is a starting assumption, not a measurement.**
+  This was written for a catalogue with no real traffic history yet.
+  Nothing downstream of the assumptions panel is hard-coded, so entering
+  real Vercel Analytics sessions and real earned commission in the monthly
+  tables is what makes the projection reflect reality instead of a guess.
+
+---
+
+## 13. House rules inherited from the sister sites
 
 - **No em dashes anywhere in copy.** Use a comma, colon, or parentheses.
 - **Do not GET an Awin tracking link in testing** (section 5).
@@ -420,7 +460,7 @@ Never fork the logic between them. Add work to the job function.
 - Affiliate commission never affects ranking. Sorting is price and discount
   only, and the footer says so.
 
-## 13. Hard "do not" list
+## 14. Hard "do not" list
 
 - Do NOT call the Reverb API for listings, or add a scraping fallback anywhere.
 - Do NOT write Facebook Marketplace ingestion.
