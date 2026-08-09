@@ -59,6 +59,10 @@ export default async function HomePage() {
           you can browse everything in one place instead of hunting down each store. Sorted by
           price, with the genuinely underpriced gear marked.
         </p>
+        <p className="mt-3 max-w-2xl text-sm font-medium text-[var(--amber)]">
+          No fees. No sellout. Built by a musician who's flipped over a thousand pedals, not a
+          pitch deck.
+        </p>
 
         <div className="mt-7 flex flex-wrap gap-3">
           <Link
