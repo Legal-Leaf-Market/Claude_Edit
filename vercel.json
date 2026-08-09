@@ -7,8 +7,6 @@
     { "path": "/api/cron/ingest-sweetwater", "schedule": "20 */6 * * *" },
     { "path": "/api/cron/ingest-gear4music", "schedule": "0 */6 * * *" },
     { "path": "/api/cron/ingest-zzounds", "schedule": "10 */6 * * *" },
-    { "path": "/api/cron/ingest-fullcompass", "schedule": "50 */6 * * *" },
-    { "path": "/api/cron/ingest-pinevillemusic", "schedule": "0 3 * * *" },
     { "path": "/api/cron/refresh-deals", "schedule": "0 4 * * *" }
   ]
 }
