@@ -359,3 +359,71 @@ export function projectSubscriptions(input: SubscriptionInput = {}) {
     payingAtEnd: cohorts.reduce((sum, c) => sum + c.n, 0),
   }
 }
+
+/**
+ * The subscriber rebate, phased in.
+ *
+ * Structure: a shopper earns a share of the commission the purchase generated.
+ * They can cash it out to PayPal at half value, or spend it at full value with
+ * one of the vendors. That 2x differential is what makes it affordable -- you
+ * only pay full freight on the half that takes credit, unredeemed credit never
+ * costs anything, and credit that IS spent triggers an order you earn
+ * commission on.
+ *
+ * WHY IT IS PHASED RATHER THAN LAUNCHED. At today's mix Gear Avail earns about
+ * $7.64 on a $191 order, roughly 4% of the sale. A rebate at 40% of commission
+ * costs about a quarter of revenue and needs roughly a third more orders just
+ * to break even. Launching it in year one spends margin that does not exist on
+ * retention the community boards already provide free. It becomes affordable
+ * once eBay volume supports better negotiated rates and the boutique share of
+ * orders grows, which is why the schedule below starts in year three.
+ *
+ * Naming matters and is not cosmetic: this is a LOYALTY REBATE, never a
+ * dividend or profit share. Sharing profits with non-shareholders can create a
+ * security, with the registration and disclosure obligations that implies.
+ */
+export type RebatePhase = { fromYear: number; shareOfCommission: number; note: string }
+
+export const REBATE_SCHEDULE: RebatePhase[] = [
+  { fromYear: 1, shareOfCommission: 0, note: "Announced as coming, not yet live. Anticipation costs nothing." },
+  { fromYear: 3, shareOfCommission: 0.20, note: "Reads as ~0.8% back. Small enough to absorb, real enough to matter." },
+  { fromYear: 5, shareOfCommission: 0.40, note: "Reads as ~1.6% back, once volume and rates support it." },
+]
+
+/**
+ * What a rebate actually costs, net of the things that give money back:
+ * half-value cash-outs, breakage on unredeemed credit, and the commission
+ * earned when credit is spent at a vendor.
+ */
+export function rebateNetCost({
+  revenuePerOrder,
+  basket,
+  shareOfCommission,
+  cashOutRate = 0.35,
+  breakage = 0.3,
+}: {
+  revenuePerOrder: number
+  basket: number
+  shareOfCommission: number
+  cashOutRate?: number
+  breakage?: number
+}) {
+  const face = revenuePerOrder * shareOfCommission
+  const cashCost = cashOutRate * face * 0.5
+  const creditRedeemed = (1 - cashOutRate) * face * (1 - breakage)
+  const commissionBack = creditRedeemed * (revenuePerOrder / basket)
+  const net = cashCost + creditRedeemed - commissionBack
+  return {
+    face,
+    net,
+    shareOfRevenue: revenuePerOrder > 0 ? net / revenuePerOrder : 0,
+    readsAsPctOfSale: basket > 0 ? face / basket : 0,
+  }
+}
+
+/** The rebate share in force for a given year. */
+export function rebateShareForYear(year: number): number {
+  let share = 0
+  for (const phase of REBATE_SCHEDULE) if (year >= phase.fromYear) share = phase.shareOfCommission
+  return share
+}
