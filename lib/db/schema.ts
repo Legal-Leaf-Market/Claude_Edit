@@ -407,6 +407,13 @@ export const flipThreads = pgTable(
     askingPriceCents: integer("asking_price_cents"),
     location: varchar("location", { length: 200 }),
     imageUrl: text("image_url"),
+    /**
+     * Optional Patreon page for the poster. Convenience only: a teacher on the
+     * lessons board or a builder posting a run almost certainly already runs
+     * one, and linking it saves the reader hunting for it. Gear Avail earns
+     * nothing from this and no referral relationship is assumed.
+     */
+    patreonUrl: text("patreon_url"),
     /** 'open' | 'closed'. The poster closes it once it's flipped, filled, or off the table. */
     status: varchar("status", { length: 20 }).notNull().default("open"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

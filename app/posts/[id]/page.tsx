@@ -25,6 +25,7 @@ async function loadPost(id: string) {
       askingPriceCents: flipThreads.askingPriceCents,
       location: flipThreads.location,
       imageUrl: flipThreads.imageUrl,
+      patreonUrl: flipThreads.patreonUrl,
       status: flipThreads.status,
       authorId: flipThreads.authorId,
       createdAt: flipThreads.createdAt,
@@ -127,6 +128,17 @@ export default async function PostPage({ params }: PageProps) {
         <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-[var(--cream)]">
           {thread.description}
         </p>
+
+        {thread.patreonUrl && (
+          <a
+            href={thread.patreonUrl}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            className="mt-4 inline-flex h-9 items-center rounded-lg border border-[var(--border)] px-3 text-sm font-medium text-[var(--cream)] transition-colors hover:bg-[var(--secondary)]"
+          >
+            Follow on Patreon
+          </a>
+        )}
       </header>
 
       <section className="mt-8">

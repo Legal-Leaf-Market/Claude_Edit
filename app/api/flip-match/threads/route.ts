@@ -19,6 +19,7 @@ const createSchema = z.object({
   askingPriceDollars: z.number().positive().max(1_000_000).nullable().optional(),
   location: z.string().trim().max(200).nullable().optional(),
   imageUrl: z.string().trim().max(2000).nullable().optional(),
+  patreonUrl: z.string().trim().max(300).nullable().optional(),
   // Honeypot: a real visitor never fills this in, since it is hidden from view.
   website: z.string().max(0).optional(),
 })
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
         data.askingPriceDollars != null ? Math.round(data.askingPriceDollars * 100) : null,
       location: data.location || null,
       imageUrl: data.imageUrl || null,
+      patreonUrl: data.patreonUrl || null,
     })
     .returning()
 

@@ -19,6 +19,13 @@ export type BoardConfig = {
   categories: BoardCategoryOption[]
   defaultCategory: string
   showPrice: boolean
+  /**
+   * Whether to offer a Patreon field. Only on the boards where the poster is
+   * building an ongoing audience (teaching, playing shows, building gear);
+   * on a one-off flip it is noise. Convenience for the poster, not a revenue
+   * channel: Gear Avail takes nothing from it.
+   */
+  showPatreon: boolean
   priceLabel: string
   pricePlaceholder: string
   postCtaLabel: string
@@ -48,6 +55,7 @@ export const BOARDS: BoardConfig[] = [
     ],
     defaultCategory: "other",
     showPrice: true,
+    showPatreon: false,
     priceLabel: "Asking (optional)",
     pricePlaceholder: "Make an offer",
     postCtaLabel: "What are you flipping",
@@ -75,6 +83,7 @@ export const BOARDS: BoardConfig[] = [
     ],
     defaultCategory: "other",
     showPrice: true,
+    showPatreon: false,
     priceLabel: "Budget (optional)",
     pricePlaceholder: "Flexible",
     postCtaLabel: "What are you hunting for",
@@ -100,6 +109,7 @@ export const BOARDS: BoardConfig[] = [
     ],
     defaultCategory: "looking-for",
     showPrice: false,
+    showPatreon: true,
     priceLabel: "",
     pricePlaceholder: "",
     postCtaLabel: "What are you looking for",
@@ -127,6 +137,7 @@ export const BOARDS: BoardConfig[] = [
     ],
     defaultCategory: "other",
     showPrice: true,
+    showPatreon: true,
     priceLabel: "Rate (optional)",
     pricePlaceholder: "Per lesson",
     postCtaLabel: "What are you teaching or want to learn",
@@ -151,6 +162,7 @@ export const BOARDS: BoardConfig[] = [
     ],
     defaultCategory: "playing",
     showPrice: false,
+    showPatreon: true,
     priceLabel: "",
     pricePlaceholder: "",
     postCtaLabel: "What's the show",
@@ -177,6 +189,7 @@ export const BOARDS: BoardConfig[] = [
     ],
     defaultCategory: "other",
     showPrice: false,
+    showPatreon: false,
     priceLabel: "",
     pricePlaceholder: "",
     postCtaLabel: "What are you giving away",
@@ -200,6 +213,7 @@ export const BOARDS: BoardConfig[] = [
     ],
     defaultCategory: "offering",
     showPrice: true,
+    showPatreon: true,
     priceLabel: "Rate (optional)",
     pricePlaceholder: "Per hour/session",
     postCtaLabel: "What's the space",
