@@ -246,6 +246,24 @@ export const env = {
    */
   cronSecret: str("CRON_SECRET"),
 
+  /**
+   * Official Instagram post embeds (embed.js), never a scraped feed widget.
+   * INSTAGRAM_POST_URLS is a comma list of public post permalinks; unset
+   * means the homepage section renders as a plain follow callout instead of
+   * embeds, the same isConfigured-style fallback every other integration in
+   * this file uses, so a missing credential never ships a broken widget.
+   */
+  social: {
+    instagramHandle: str("INSTAGRAM_HANDLE", "stompbox.world"),
+    instagramPostUrls: str("INSTAGRAM_POST_URLS")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+    get hasInstagramPosts(): boolean {
+      return env.social.instagramPostUrls.length > 0
+    },
+  },
+
   /** Skips network calls in tests and lets fixtures drive the ingestion path. */
   offline: bool("MUSICTIME_OFFLINE", false),
 } as const
@@ -265,6 +283,7 @@ export function describeConfig(): string {
     `typesense=${env.typesense.isConfigured ? "set" : "postgres-fallback"}`,
     `redis=${env.redisUrl ? "set" : "absent"}`,
     `leads-notify=${env.leads.canEmail ? "set" : "db-only"}`,
+    `instagram=${env.social.hasInstagramPosts ? "embeds" : "follow-only"}`,
   ]
   return parts.join(" ")
 }

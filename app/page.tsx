@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { sql } from "drizzle-orm"
 import { ArrowRight, BellRing, LineChart, Search as SearchIcon } from "lucide-react"
+import { InstagramStrip } from "@/components/instagram-strip"
 import { ListingCard } from "@/components/listing-card"
 import { db } from "@/lib/db"
 import { search } from "@/lib/search"
@@ -143,6 +144,8 @@ export default async function HomePage() {
           />
         </div>
       </section>
+
+      <InstagramStrip />
     </div>
   )
 }

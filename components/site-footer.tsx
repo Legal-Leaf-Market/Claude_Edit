@@ -1,4 +1,6 @@
 import Link from "next/link"
+import { Instagram } from "lucide-react"
+import { env } from "@/lib/env"
 
 /**
  * Affiliate disclosure lives here and is deliberately plain. We earn on
@@ -16,6 +18,14 @@ export function SiteFooter() {
               Real-time inventory from independent music gear makers and retailers, all in one
               place.
             </p>
+            <a
+              href={`https://instagram.com/${env.social.instagramHandle}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-1.5 text-sm text-[var(--amber)] underline-offset-2 hover:underline"
+            >
+              <Instagram className="h-4 w-4" aria-hidden="true" />@{env.social.instagramHandle}
+            </a>
           </div>
 
           <nav aria-label="Browse">
