@@ -7,6 +7,7 @@ import {
   ingestEbaySnapshot,
 } from "@/lib/ingestion/ebay-ingest"
 import { ingestReverbFeed } from "@/lib/ingestion/reverb-awin"
+import { ingestSweetwaterFeed } from "@/lib/ingestion/sweetwater-linkconnector"
 import { refreshAllDeals } from "@/lib/deals/pricing"
 import { evaluateAlerts } from "@/lib/alerts/evaluate"
 import { syncSearchIndex } from "@/lib/search/sync"
@@ -49,6 +50,11 @@ export function startIngestionWorker(): Worker<IngestionJob> {
         }
         case "reverb-feed": {
           const result = await ingestReverbFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "sweetwater-feed": {
+          const result = await ingestSweetwaterFeed()
           await syncSearchIndex()
           return result
         }

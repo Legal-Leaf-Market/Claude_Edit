@@ -6,6 +6,7 @@ import {
   ingestEbaySnapshot,
 } from "../lib/ingestion/ebay-ingest"
 import { ingestReverbFeed } from "../lib/ingestion/reverb-awin"
+import { ingestSweetwaterFeed } from "../lib/ingestion/sweetwater-linkconnector"
 import { resolveUnmatchedListings } from "../lib/canonical/resolve"
 import { refreshAllDeals } from "../lib/deals/pricing"
 
@@ -16,6 +17,7 @@ import { refreshAllDeals } from "../lib/deals/pricing"
  *   npm run ingest:ebay -- snapshot  hourly reconciliation
  *   npm run ingest:ebay -- bootstrap weekly ALL_ACTIVE
  *   npm run ingest:reverb            Awin product datafeed
+ *   npm run ingest:sweetwater        LinkConnector product datafeed
  *
  * Useful for a first load and for checking credentials without waiting on a
  * schedule.
@@ -35,12 +37,15 @@ async function main() {
   } else if (source === "reverb") {
     const result = await ingestReverbFeed()
     console.log("[ingest] Reverb:", JSON.stringify(result, null, 2))
+  } else if (source === "sweetwater") {
+    const result = await ingestSweetwaterFeed()
+    console.log("[ingest] Sweetwater:", JSON.stringify(result, null, 2))
   } else if (source === "resolve") {
     const tally = await resolveUnmatchedListings()
     console.log("[ingest] resolution tally:", tally)
     console.log("[ingest] deals:", await refreshAllDeals())
   } else {
-    console.error("Usage: run-ingest.ts <ebay|reverb|resolve> [daily|snapshot|bootstrap]")
+    console.error("Usage: run-ingest.ts <ebay|reverb|sweetwater|resolve> [daily|snapshot|bootstrap]")
     process.exitCode = 1
   }
 

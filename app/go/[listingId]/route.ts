@@ -30,6 +30,7 @@ const ALLOWED_HOSTS = [
   /(^|\.)reverb\.com$/i,
   /(^|\.)awin1\.com$/i,
   /(^|\.)ebay\.to$/i,
+  /(^|\.)sweetwater\.com$/i,
 ]
 
 function isAllowedDestination(rawUrl: string): boolean {

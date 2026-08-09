@@ -17,11 +17,28 @@ listings are the same physical instrument, computes a market price per
 instrument, and sends the shopper out to the marketplace through an affiliate
 link. We never take an order and never hold stock.
 
-**Two data sources in v1, and only two:**
+**Data sources, and the rule that governs adding another:** every source must
+have a legitimate feed or partner API meant for third-party aggregation. No
+source is ever added by scraping a storefront or hitting an interface that was
+built for that site's own frontend rather than published for this use.
 
 - **eBay**, via the Buy Feed API (`/buy/feed/v1_beta`). Bulk TSV feeds.
 - **Reverb**, via the **Awin product datafeed**, if and only if Reverb
   publishes one to publishers.
+- **Sweetwater**, via a **LinkConnector product datafeed**, if and only if one
+  is confirmed to exist. `lib/ingestion/sweetwater-linkconnector.ts` no-ops on
+  an unset `LINKCONNECTOR_SWEETWATER_FEED_URL`, the same shape as Reverb's
+  gate. Sweetwater has no published product API; the only channel meant for
+  third parties is whatever datafeed their affiliate program (run on
+  LinkConnector) actually offers. Do not scrape sweetwater.com or its Algolia-
+  backed search/Gear Exchange listings as a substitute.
+- **Guitar Center was evaluated and rejected.** No official product API exists;
+  their `robots.txt` explicitly disallows `/search`, `/pdp/`, `/product-detail-
+  page`, `/category-page`, and the query params their own site search uses;
+  their Terms of Use forbids reproducing/republishing site Content. The
+  "Used Gear API" name floating around online is Guitar Center's own URL
+  taxonomy, not a data API, and the community tools that exist scrape an
+  undocumented frontend Algolia index. Do not build against it.
 
 **Facebook Marketplace is out of scope.** Not "later", not "behind a flag". It
 has no public API, scraping it violates Meta's terms, and it is the exact
@@ -68,11 +85,11 @@ These are not preferences. Each one is a term of service.
   aggregated". Aggregating their catalogue through it is a breach on two
   counts. `lib/ingestion/reverb-awin.ts` reads the Awin datafeed or it no-ops.
   It has no fallback path, deliberately, so nobody can add one "temporarily".
-- **`AWIN_REVERB_FEED_URL` unset is the EXPECTED state**, not a bug to route
-  around. If Reverb turns out not to publish a publisher datafeed, MusicTime
-  ships as an eBay-only aggregator that links out to Reverb through Awin. A
-  single-source aggregator that is fully compliant beats a two-source one that
-  is not.
+- **`AWIN_REVERB_FEED_URL` and `LINKCONNECTOR_SWEETWATER_FEED_URL` unset is the
+  EXPECTED state**, not a bug to route around. Each source ships only if its
+  feed is confirmed; MusicTime degrades gracefully to whichever subset of
+  eBay/Reverb/Sweetwater actually has a working feed. A smaller aggregator that
+  is fully compliant beats a bigger one that is not.
 - **eBay production access is not guaranteed.** `EBAY_FEED_BASE_URL` defaults
   to **sandbox** on purpose. Never flip that default; set it per environment
   once a production keyset is actually approved. A misconfigured deploy sending
@@ -295,9 +312,10 @@ Never fork the logic between them. Add work to the job function.
 | `EBAY_AFFILIATE_CAMPAIGN_ID` | Populates `itemAffiliateWebUrl` in the feed AND builds fallback EPN links. Unset means eBay traffic is unmonetised. |
 | `AWIN_PUBLISHER_ID` / `AWIN_REVERB_MERCHANT_ID` | Reverb deep links. Either missing produces null links, not broken ones. |
 | `AWIN_REVERB_FEED_URL` | Reverb catalogue. Unset is expected; the job no-ops. |
+| `LINKCONNECTOR_SWEETWATER_FEED_URL` | Sweetwater catalogue. Unset is expected; the job no-ops. Never falls back to scraping. |
 | `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
 | `REDIS_URL` | BullMQ queues and the shared rate-limit counter. Optional. |
-| `CRON_SECRET` | All four crons. Unset = 503, wrong = 401. Load bearing. |
+| `CRON_SECRET` | All five crons. Unset = 503, wrong = 401. Load bearing. |
 | `BETTER_AUTH_SECRET` | Accounts and alerts. Unset = auth routes 503, rest of site unaffected. |
 | `RESEND_API_KEY` / `DISCORD_WEBHOOK_URL` | Alert delivery. Each no-ops with a warning. |
 
@@ -320,6 +338,10 @@ Never fork the logic between them. Add work to the job function.
 
 - Do NOT call the Reverb API for listings, or add a scraping fallback anywhere.
 - Do NOT write Facebook Marketplace ingestion.
+- Do NOT scrape Guitar Center or Sweetwater (or hit their frontend search
+  indexes) as a substitute for a confirmed affiliate datafeed.
+- Do NOT add a new data source without first confirming a legitimate feed or
+  partner API exists for it. A retailer having a website is not a source.
 - Do NOT change `EBAY_FEED_BASE_URL`'s sandbox default.
 - Do NOT link the UI directly to `raw_url`; everything goes through `/go`.
 - Do NOT let an `inferred*` field win over an explicit one.

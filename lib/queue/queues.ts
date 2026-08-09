@@ -26,6 +26,7 @@ export type IngestionJob =
   | { kind: "ebay-snapshot"; snapshotDate?: string }
   | { kind: "ebay-bootstrap" }
   | { kind: "reverb-feed" }
+  | { kind: "sweetwater-feed" }
 
 export type MaintenanceJob =
   | { kind: "refresh-deals" }
@@ -121,6 +122,15 @@ export async function registerRepeatableJobs(): Promise<string[]> {
       { name: "reverb-feed", data: { kind: "reverb-feed" } },
     )
     registered.push("reverb-feed @ every 6h")
+  }
+
+  if (env.linkconnector.hasSweetwaterFeed) {
+    await ingestion.upsertJobScheduler(
+      "sweetwater-feed",
+      { pattern: "20 */6 * * *" },
+      { name: "sweetwater-feed", data: { kind: "sweetwater-feed" } },
+    )
+    registered.push("sweetwater-feed @ every 6h")
   }
 
   await maintenance.upsertJobScheduler(

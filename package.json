@@ -15,6 +15,7 @@
     "worker": "tsx scripts/worker.ts",
     "ingest:ebay": "tsx scripts/run-ingest.ts ebay",
     "ingest:reverb": "tsx scripts/run-ingest.ts reverb",
+    "ingest:sweetwater": "tsx scripts/run-ingest.ts sweetwater",
     "search:reindex": "tsx scripts/reindex.ts"
   },
   "dependencies": {
