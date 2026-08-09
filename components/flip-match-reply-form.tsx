@@ -11,10 +11,19 @@ type Props = {
   threadId: string
   authorId: string
   isClosed: boolean
+  /** Board-specific wording; falls back to Flip Match's phrasing. */
+  closeButtonLabel?: string
+  closedCopy?: string
 }
 
-/** The reply box, plus the poster's own "mark as flipped" control. Everything here is public. */
-export function FlipMatchReplyForm({ threadId, authorId, isClosed }: Props) {
+/** The reply box, plus the poster's own "close this" control. Everything here is public. */
+export function FlipMatchReplyForm({
+  threadId,
+  authorId,
+  isClosed,
+  closeButtonLabel = "Mark as flipped / take it down",
+  closedCopy = "This post is closed. It's already flipped or off the table.",
+}: Props) {
   const router = useRouter()
   const { data: session, isPending } = useSession()
   const isAuthor = session?.user?.id === authorId
@@ -67,7 +76,7 @@ export function FlipMatchReplyForm({ threadId, authorId, isClosed }: Props) {
       <div className="panel space-y-4 p-5">
         <Button variant="outline" onClick={closeThread} disabled={closing}>
           {closing && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-          Mark as flipped / take it down
+          {closeButtonLabel}
         </Button>
         {renderReplyForm()}
       </div>
@@ -77,7 +86,7 @@ export function FlipMatchReplyForm({ threadId, authorId, isClosed }: Props) {
   if (isClosed) {
     return (
       <p className="panel p-5 text-sm text-[var(--muted-foreground)]">
-        This post is closed. It's already flipped or off the table.
+        {closedCopy}
       </p>
     )
   }

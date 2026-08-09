@@ -71,7 +71,7 @@ export default async function FeedPage() {
         {[...BOARD_BY_KIND.values()].map((board) => (
           <Link
             key={board.slug}
-            href={`/${board.slug}`}
+            href={`/boards/${board.slug}`}
             className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--muted-foreground)] transition-colors hover:border-[var(--amber)]/40 hover:text-[var(--cream)]"
           >
             {board.navLabel}
@@ -92,7 +92,7 @@ export default async function FeedPage() {
               return (
                 <li key={post.id}>
                   <Link
-                    href={`/flip-match/${post.id}`}
+                    href={`/posts/${post.id}`}
                     className="panel block p-4 transition-colors hover:border-[var(--amber)]/40 hover:bg-[var(--secondary)]"
                   >
                     <div className="flex flex-wrap items-center gap-2">
