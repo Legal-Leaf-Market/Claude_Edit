@@ -93,12 +93,77 @@ export const SOCIAL_WEEKS = [
 ]
 
 /**
- * Typical share of affiliate outbound clicks that end in a purchase. Not
- * measured here, and openly a placeholder: 1 to 5 percent is the usual band,
- * and 3 percent is the middle of it. Every figure derived from it below is an
- * estimate, which is why the range is carried rather than a single number.
+ * Share of affiliate outbound clicks that end in a purchase.
+ *
+ * Started as a placeholder at the middle of the usual 1-to-5-percent band. It is
+ * now corroborated: Awin's own advertiser directory reports a conversion rate
+ * per programme, and across the 227 advertisers reporting one the median is
+ * 2.85 percent. So 3 percent was close to right for a general mix.
+ *
+ * It is NOT right for music. See AWIN_SECTOR_EVIDENCE below: Music & DVD runs a
+ * median of 1.82 percent, so anything scoped to Gear Avail should use that and
+ * will land roughly 40 percent below what this constant produces. Left at 3 here
+ * because every figure derived from it in this file describes Legal Leaf, whose
+ * own sector rate is not in that directory.
  */
 export const ASSUMED_MERCHANT_CONVERSION_PCT = 3
+
+/**
+ * Observed performance from Awin's advertiser directory, 255 programmes across
+ * many sectors (checked 10 Aug 2026). Real reported figures, not assumptions.
+ *
+ * The EPC line is the sharpest independent check on the whole model. Awin
+ * reports earnings per CLICK, which maps onto an outbound click here. At the
+ * measured 2.1 percent outbound-click rate, a $0.17 median EPC implies about
+ * $0.0036 of revenue per session, against the $0.11 per session Legal Leaf's
+ * model assumes. That is a third route to the same conclusion the funnel and
+ * cost analyses reach, and it is the least flattering of the three.
+ *
+ * Carried with a caveat rather than plugged in: these are mostly EU retail
+ * programmes paying 0 to 7 percent, while Legal Leaf's merchants pay 10 to 15,
+ * so EPC does not transfer directly across sites. It transfers to Gear Avail,
+ * which is the music site.
+ */
+export const AWIN_SECTOR_EVIDENCE = {
+  source: "Awin advertiser directory, two exports combined, 11,272 unique advertisers",
+  checkedOn: "10 Aug 2026",
+  allSectors: { advertisersReporting: 227, medianConversionPct: 2.85, medianEpcUsd: 0.17 },
+  /** Combined exports: 187 music advertisers, 78 of them publishing a product feed. */
+  musicAdvertisersCombined: { total: 187, withProductFeed: 78 },
+  musicAndDvd: {
+    advertisers: 26,
+    withProductFeed: 19,
+    medianConversionPct: 1.82,
+    p25ConversionPct: 1.11,
+    p75ConversionPct: 3.68,
+    medianEpcUsd: 0.17,
+  },
+  /** Music programmes with a live product feed, worth evaluating for ingestion. */
+  notableMusicFeeds: [
+    { programme: "Gear 4 Music", awinId: 1117, commissionPct: "3.5-5", cookieDays: 30, conversionPct: 1.546, approvalPct: 92.63, note: "Already named in CLAUDE.md as a target. Feed confirmed to exist" },
+    { programme: "Yamaha (US)", awinId: 52029, commissionPct: "0-0", cookieDays: 30, conversionPct: 0.059, approvalPct: 100, note: "Major brand, 100% approval, but a 0.06% conversion rate and $0.01 EPC" },
+    { programme: "Orangewood", awinId: 91431, commissionPct: "0-0", cookieDays: 30, conversionPct: 0.874, approvalPct: 8.04, note: "Guitars, healthy EPC, but rejects 92% of publisher applications" },
+    { programme: "Zager Guitars", awinId: 97579, commissionPct: "0-0", cookieDays: 45, conversionPct: null, approvalPct: 0, note: "Longest cookie in the sector at 45 days. Launched Aug 2025, no performance history yet" },
+  ],
+  /**
+   * THE ONE THAT MATTERED. Reverb was absent from the first 255-row page and
+   * present in the full 11,038-row export, which is exactly why the negative was
+   * not concluded from page one: Awin advertiser 67144, "Reverb (US)",
+   * feedEnabled=yes, productReporting=yes, 30-day cookie, 100% approval rate,
+   * live since Nov 2023, payment status green, EPC $0.24, conversion 1.06%.
+   *
+   * CLAUDE.md gated Reverb on a datafeed existing "if and only if Reverb
+   * publishes one to publishers". It does. That unlocks the largest used and
+   * vintage catalogue in the category through the one channel section 2 permits.
+   * The API remains off limits and this changes nothing about that.
+   *
+   * Commission is not published in the directory (min and max are both 0), so
+   * the rate stays unknown rather than guessed.
+   */
+  reverbConfirmed: { awinId: 67144, cookieDays: 30, approvalPct: 100, epcUsd: 0.24, conversionPct: 1.06, feedEnabled: true },
+  /** Searched across all 11,272 combined advertisers and genuinely absent. */
+  notOnAwin: ["Anderton's", "Sweetwater", "zZounds", "Thomann", "Full Compass", "Pineville Music", "Guitar Center"],
+} as const
 
 export type FunnelCalibration = {
   visitors: number

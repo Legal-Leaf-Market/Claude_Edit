@@ -146,9 +146,9 @@ export const MERCHANTS: MerchantRow[] = [
   { merchant: "Squaver", platform: "WooCommerce", ratePct: 10, status: "tracking", catalogueCount: 18, note: "Confirmed link; weaker compliance basis (Store API, no agents.md), see CLAUDE.md" },
   { merchant: "Pures Music", platform: "Shopify", ratePct: 4, status: "paused", catalogueCount: 4368, note: "Built but paused: GoAffPro enrollment not confirmed" },
   { merchant: "eBay", platform: "Buy Feed API", ratePct: null, status: "none", catalogueCount: 0, note: "Sandboxed; no production EPN keyset approved yet" },
-  { merchant: "Reverb", platform: "Awin (if published)", ratePct: null, status: "none", catalogueCount: 0, note: "No confirmed publisher datafeed; never scraped, per CLAUDE.md" },
+  { merchant: "Reverb", platform: "Awin 67144", ratePct: null, status: "pending", catalogueCount: 0, note: "DATAFEED CONFIRMED TO EXIST. Awin advertiser 67144, Reverb (US), feedEnabled=yes, productReporting=yes, 30-day cookie, 100% approval rate, live since Nov 2023, payment status green. Commission is not published in the directory (min/max both 0), so ratePct stays null rather than guessed. This is the legitimate path CLAUDE.md section 2 requires; the API is still off limits" },
   { merchant: "Sweetwater", platform: "LinkConnector", ratePct: null, status: "none", catalogueCount: 0, note: "No confirmed feed URL" },
-  { merchant: "Gear4music", platform: "Awin", ratePct: null, status: "none", catalogueCount: 0, note: "No confirmed feed URL" },
+  { merchant: "Gear4music", platform: "Awin 1117", ratePct: 3.5, status: "pending", catalogueCount: 0, note: "Feed CONFIRMED to exist in Awin's advertiser directory: feedEnabled=yes, 3.5-5% commission, 30-day cookie, 92.6% approval rate. Five regional programmes (1117, IE 27588, FR 27586, DK 27600, PL 27598), matching the five domains isGear4MusicProductUrl already recognises. Rate recorded at the 3.5% floor. Needs the feed URL from the Awin dashboard" },
   { merchant: "zZounds / Full Compass / Pineville Music", platform: "CJ Affiliate", ratePct: null, status: "none", catalogueCount: 0, note: "CJ applications not yet through" },
 ]
 
