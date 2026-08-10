@@ -30,7 +30,7 @@ export default async function UnsubscribePage({ searchParams }: PageProps) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 sm:px-6">
         <div className="panel p-7 text-center">
-          <h1 className="text-xl font-semibold text-[var(--cream)]">This link is incomplete</h1>
+          <h1 className="text-xl font-black text-[var(--cream)]">This link is incomplete</h1>
           <p className="mt-3 text-sm leading-relaxed text-[var(--muted-foreground)]">
             Unsubscribe links carry a code that identifies which subscription to end, and this one
             arrived without it. Use the link at the bottom of any email we sent you, or reply to it

@@ -317,7 +317,7 @@ export function CategoryHero({
           </span>
           <span className="eyebrow">{eyebrow}</span>
         </div>
-        <h1 className="text-3xl font-semibold tracking-tight text-[var(--cream)] sm:text-4xl">
+        <h1 className="text-3xl font-black tracking-tight text-[var(--cream)] sm:text-4xl">
           {title}
         </h1>
         {kicker && (

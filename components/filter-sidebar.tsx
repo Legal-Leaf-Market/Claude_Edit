@@ -101,7 +101,7 @@ export function FilterSidebar({ facets, found, hide }: Props) {
               className="absolute inset-y-0 left-0 flex w-[85%] max-w-sm flex-col bg-[var(--popover)] shadow-xl"
             >
               <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-                <h2 className="text-sm font-semibold text-[var(--cream)]">Filters</h2>
+                <h2 className="text-sm font-black text-[var(--cream)]">Filters</h2>
                 <Button
                   ref={closeButtonRef}
                   variant="ghost"

@@ -17,7 +17,7 @@ export function InstagramStrip() {
   return (
     <section className="pb-16">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-xl font-semibold text-[var(--cream)]">From @{handle} on Instagram</h2>
+        <h2 className="text-xl font-black text-[var(--cream)]">From @{handle} on Instagram</h2>
         <a
           href={profileUrl}
           target="_blank"

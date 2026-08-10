@@ -80,7 +80,7 @@ export default async function BoardPage({ params }: PageProps) {
       </nav>
 
       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--amber)]">{board.tagline}</p>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--cream)]">{board.title}</h1>
+      <h1 className="mt-1 text-3xl font-black tracking-tight text-[var(--cream)]">{board.title}</h1>
       <p className="mt-3 max-w-2xl text-base leading-relaxed text-[var(--muted-foreground)]">
         {board.description}
       </p>
@@ -103,7 +103,7 @@ export default async function BoardPage({ params }: PageProps) {
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
         <section>
-          <h2 className="mb-4 text-lg font-semibold text-[var(--cream)]">
+          <h2 className="mb-4 text-lg font-black text-[var(--cream)]">
             {posts.length > 0
               ? `${posts.length} open ${posts.length === 1 ? board.itemNounPlural.replace(/s$/, "") : board.itemNounPlural}`
               : "The board"}
@@ -148,7 +148,7 @@ export default async function BoardPage({ params }: PageProps) {
         </section>
 
         <aside>
-          <h2 className="mb-4 text-lg font-semibold text-[var(--cream)]">Post something</h2>
+          <h2 className="mb-4 text-lg font-black text-[var(--cream)]">Post something</h2>
           <BoardPostForm board={board} />
         </aside>
       </div>

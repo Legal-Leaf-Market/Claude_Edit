@@ -255,7 +255,7 @@ export function OperatingModelDashboard() {
             </button>
           </div>
         </div>
-        <h1 className="mt-1 text-2xl font-semibold text-[var(--cream)] sm:text-3xl">
+        <h1 className="mt-1 text-2xl font-black text-[var(--cream)] sm:text-3xl">
           Can this actually make money?
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)]">

@@ -54,7 +54,7 @@ async function Results({ params }: { params: ReturnType<typeof paramsFromQuery> 
       <section className="min-w-0 flex-1">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-[var(--cream)]">
+            <h1 className="text-xl font-black text-[var(--cream)]">
               {params.q ? `Results for "${params.q}"` : "All used gear"}
             </h1>
             <p className="mt-0.5 text-sm text-[var(--muted-foreground)]">

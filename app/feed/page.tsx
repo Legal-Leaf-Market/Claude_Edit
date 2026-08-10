@@ -61,7 +61,7 @@ export default async function FeedPage() {
       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--amber)]">
         Everything, newest first
       </p>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--cream)]">The Feed</h1>
+      <h1 className="mt-1 text-3xl font-black tracking-tight text-[var(--cream)]">The Feed</h1>
       <p className="mt-3 max-w-2xl text-base leading-relaxed text-[var(--muted-foreground)]">
         Gear being flipped, gear being hunted, bandmates, lessons, shows, free stuff. All of it in
         one place, ordered by what's newest and nothing else. No algorithm deciding what you see, and

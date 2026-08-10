@@ -53,7 +53,7 @@ export default async function ShopIndexPage() {
       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--amber)]">
         Independent makers and shops
       </p>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--cream)]">
+      <h1 className="mt-1 text-3xl font-black tracking-tight text-[var(--cream)]">
         Every store we list
       </h1>
       <p className="mt-3 max-w-2xl text-base leading-relaxed text-[var(--muted-foreground)]">
@@ -92,7 +92,7 @@ export default async function ShopIndexPage() {
       </ul>
 
       <div className="panel mt-10 p-6">
-        <h2 className="text-lg font-semibold text-[var(--cream)]">Run a shop?</h2>
+        <h2 className="text-lg font-black text-[var(--cream)]">Run a shop?</h2>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">
           We list independent sellers for free and take nothing from your sales. If you have gear
           online and want it in front of players who are already looking for it, tell us about it.

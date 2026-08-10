@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function SignUpPage() {
   return (
     <div className="mx-auto max-w-md px-4 py-12 sm:px-6">
-      <h1 className="mb-2 text-2xl font-semibold text-[var(--cream)]">Create an account</h1>
+      <h1 className="mb-2 text-2xl font-black text-[var(--cream)]">Create an account</h1>
       <p className="mb-6 text-sm text-[var(--muted-foreground)]">
         We use your address for one thing: telling you when gear you are watching drops below your
         price. No cart, no checkout, no newsletter.

@@ -97,7 +97,7 @@ export default async function PostPage({ params }: PageProps) {
 
       <header className="panel p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--cream)]">{thread.title}</h1>
+          <h1 className="text-2xl font-black tracking-tight text-[var(--cream)]">{thread.title}</h1>
           {board?.showPrice && (
             <p className="text-xl font-semibold text-[var(--amber)]">
               {thread.askingPriceCents != null
@@ -142,7 +142,7 @@ export default async function PostPage({ params }: PageProps) {
       </header>
 
       <section className="mt-8">
-        <h2 className="mb-3 text-lg font-semibold text-[var(--cream)]">
+        <h2 className="mb-3 text-lg font-black text-[var(--cream)]">
           {replies.length > 0
             ? `${replies.length} repl${replies.length === 1 ? "y" : "ies"}`
             : "No replies yet"}
