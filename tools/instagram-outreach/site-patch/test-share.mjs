@@ -345,5 +345,88 @@ console.log('\n=== multi-strain option labels ===');
      'the cart item still carries the raw label the site cart expects');
 }
 
+// ---------------------------------------------------------------------------
+// Ounce discipline. The pick must be an actual ounce, and must not be a cheaper
+// smaller row on a product whose real ounce costs more than the cap.
+// ---------------------------------------------------------------------------
+console.log('\n=== it has to really be an ounce ===');
+{
+  ok(__test.namesAnOunce('1 oz'), '"1 oz" names an ounce');
+  ok(__test.namesAnOunce('Ounce'), '"Ounce" names an ounce');
+  ok(!__test.namesAnOunce('1/4 oz'), '"1/4 oz" does not, despite containing oz');
+  ok(!__test.namesAnOunce('Half Ounce'), '"Half Ounce" does not');
+  ok(!__test.namesAnOunce('Eighth'), '"Eighth" does not');
+  ok(!__test.namesAnOunce('Quarter Pound'), '"Quarter Pound" does not');
+  ok(!__test.namesAnOunce('Mudslide (Indica Hybrid)'), 'a bare strain does not');
+
+  const opts = { maxPrice: 50, minGrams: 28, maxGrams: 31.5, category: 'THCA Flower' };
+  const base = {
+    store: 'S', storeKey: 's', domain: 's.test', platform: 'shopify', ref: '', coupon: '',
+    category: 'THCA Flower', cur: 'USD', inStock: true,
+    image: 'https://cdn.test/x.jpg', url: 'https://s.test/x',
+  };
+
+  // The reported case: the ounce is $80, a smaller quantity is under $50, and the
+  // smaller row inherits 28g from the product title.
+  const TRAP = { ...base, id: 's__trap', name: 'Premium Flower Ounce', perG: 1,
+    sizes: [
+      ['1 oz', 80, 28, 'V-OZ', 1, null, ''],
+      ['Sampler', 45, 28, 'V-SMALL', 1, null, ''],
+    ] };
+  ok(__test.pickAll([TRAP], opts, 12).length === 0,
+     'nothing from a product whose own ounce row is $80, even though a 28g-tagged row is $45');
+
+  // A genuine ounce under the cap on the same shape still qualifies.
+  const GOOD = { ...base, id: 's__good', name: 'Flower', perG: 1,
+    sizes: [['1 oz', 44, 28, 'V-A', 1, null, '']] };
+  ok(__test.pickAll([GOOD], opts, 12).length === 1, 'a real $44 ounce still qualifies');
+
+  // A product with several explicitly-ounce rows: the cheap one survives even
+  // though a pricier ounce row exists, because each stands on its own label.
+  const MIXED = { ...base, id: 's__mixed', name: 'Flower', perG: 1,
+    sizes: [
+      ['Strain A 1 oz', 42, 28, 'V-A', 1, null, ''],
+      ['Strain B 1 oz', 80, 28, 'V-B', 1, null, ''],
+    ] };
+  const mixed = __test.pickAll([MIXED], opts, 12);
+  ok(mixed.length === 1 && mixed[0].index === 0,
+     'an explicitly-ounce row under the cap is not punished for a pricier sibling');
+
+  // Short rows can no longer masquerade as an ounce.
+  const SHORT = { ...base, id: 's__short', name: 'Flower', perG: 1,
+    sizes: [['25g special', 30, 25, 'V-S', 1, null, '']] };
+  ok(__test.pickAll([SHORT], opts, 12).length === 0, '25g does not count as an ounce');
+  ok(__test.weightLabel(25) === '25g', 'and it would not have displayed as 1oz either');
+}
+
+console.log('\n=== a price with no buyable size is not a dead end ===');
+{
+  const NOSIZE = {
+    id: 's__nosize', name: 'Mystery Flower', store: 'S', storeKey: 's', domain: 's.test',
+    cartDomain: 's.test', platform: 'shopify', ref: 'refcode', coupon: 'CODE',
+    category: 'THCA Flower', cur: 'USD', inStock: true, perG: null,
+    image: 'https://cdn.test/x.jpg', url: 'https://s.test/x?ref=refcode',
+    sizes: [], sale: 25, startsAt: 25,
+  };
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [NOSIZE] }) });
+  const pg = await run('s__nosize');
+  ok(pg.status === 200, 'renders');
+  ok(/\$25/.test(pg.html), 'shows the price it has');
+  ok(/id="add"/.test(pg.html), 'and still offers Add to cart rather than dead-ending');
+  const D = JSON.parse((pg.html.match(/var D = (\{.*?\});\n/) || [])[1]);
+  ok(D.sizes.length === 1, 'one fallback option is offered, got ' + D.sizes.length);
+  ok(D.sizes[0].item.ref === 'refcode' && D.sizes[0].item.coupon === 'CODE',
+     'the fallback item keeps the affiliate ref and coupon');
+  ok(D.sizes[0].price === 25, 'at the price shown');
+
+  // With no price either, there is nothing to add and it should say so.
+  const NOTHING = { ...NOSIZE, id: 's__nothing', sale: 0, startsAt: 0 };
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [NOTHING] }) });
+  const none = await run('s__nothing');
+  ok(!/id="add"/.test(none.html), 'no Add button when there is no price at all');
+  ok(/has not published a buyable size/.test(none.html), 'says why');
+  ok(/consumables/.test(none.html), 'and still offers the comparison');
+}
+
 console.log(fails ? '\n' + fails + ' CHECK(S) FAILED' : '\nALL CHECKS PASSED');
 process.exit(fails ? 1 : 0);

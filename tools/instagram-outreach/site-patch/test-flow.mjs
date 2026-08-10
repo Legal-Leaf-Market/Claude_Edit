@@ -203,6 +203,34 @@ ok(/Browse the store's lab results page/.test(backB) && /directory of results, n
    'words an index link as a directory rather than a result');
 ok(!/21\.14/.test(backB), 'and shows no numbers it does not have');
 
+console.log('\n=== front overlays must not show through the flipped card ===');
+{
+  /* backdrop-filter on those pills gives them their own compositing context, which
+     escapes the face's backface-visibility, so they kept rendering through the
+     turned-away card with their text mirrored. */
+  await page.goto('file:///tmp/pick.html');
+  const opacity = () => page.evaluate(() =>
+    getComputedStyle(document.getElementById('toBack')).opacity);
+  ok(await opacity() === '1', 'the Details pill is visible on the front');
+  ok(await page.evaluate(() =>
+    getComputedStyle(document.getElementById('toBack')).backfaceVisibility) === 'hidden',
+    'its own backface is hidden');
+  await page.click('#toBack');
+  await page.waitForTimeout(700);
+  ok(await opacity() === '0', 'and it is fully transparent once flipped, so nothing reads backwards');
+  ok(await page.evaluate(() =>
+    getComputedStyle(document.getElementById('toBack')).pointerEvents) === 'none',
+    'and not clickable through the back');
+  const shufOpacity = await page.evaluate(() => {
+    const b = document.getElementById('shuf');
+    return b ? getComputedStyle(b).opacity : 'absent';
+  });
+  ok(shufOpacity === '0' || shufOpacity === 'absent', 'same for the shuffle pill: ' + shufOpacity);
+  await page.click('#toFront');
+  await page.waitForTimeout(700);
+  ok(await opacity() === '1', 'and they come back when flipped to the front');
+}
+
 console.log('\n=== the gate on a short viewport ===');
 {
   /* Add to cart sits below the card, so on a short viewport the shopper has

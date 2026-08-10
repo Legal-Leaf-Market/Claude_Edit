@@ -134,6 +134,37 @@ function cartItem(p, idx) {
    pool is capped: the 40th best ounce is not a deal worth showing anybody. */
 var PICK_POOL = 12;
 
+/* Does a size row's own label say "ounce"? Sub-ounce fractions are excluded first,
+   because "1/4 oz" contains "oz" while being a quarter. */
+var SUB_OUNCE = /(eighth|quarter|half|1\s*\/\s*8|1\s*\/\s*4|1\s*\/\s*2)/i;
+var OUNCE_WORD = /(^|[^a-z])(oz|ounce)s?([^a-z]|$)/i;
+function namesAnOunce(label) {
+  var t = String(label || '');
+  if (SUB_OUNCE.test(t)) return false;
+  return OUNCE_WORD.test(t);
+}
+
+/* Rows often inherit their weight from the PRODUCT TITLE rather than their own
+   label: on a multi-strain listing titled "... Smalls Ounce", every strain row is
+   tagged 28g even though the row itself says only the strain. That inference is
+   usually right, but it goes wrong when the same product also sells a row that
+   explicitly IS an ounce at a price above the cap. Picking a title-inferred row
+   from such a product advertises an ounce under $50 when the product's actual
+   ounce costs more, which is the case the user hit: an $80 ounce with a cheaper
+   smaller quantity underneath it.
+
+   So a row whose own label names an ounce is judged on its own price, while a row
+   relying on the title's inference is rejected outright when the product has an
+   explicitly-ounce row over the cap. */
+function ounceRowOverCap(sizes, maxPrice) {
+  for (var j = 0; j < sizes.length; j++) {
+    var row = sizes[j];
+    if (!namesAnOunce(row && row[0])) continue;
+    if (Number(row[1]) > maxPrice) return true;
+  }
+  return false;
+}
+
 function pickAll(list, opts, limit) {
   var out = [];
   for (var i = 0; i < list.length; i++) {
@@ -141,6 +172,7 @@ function pickAll(list, opts, limit) {
     if (!p || p.inStock === false) continue;
     if (opts.category && p.category !== opts.category) continue;
     var sizes = Array.isArray(p.sizes) ? p.sizes : [];
+    var pricierOunce = ounceRowOverCap(sizes, opts.maxPrice);
     for (var j = 0; j < sizes.length; j++) {
       var price = Number(sizes[j] && sizes[j][1]);
       var grams = Number(sizes[j] && sizes[j][2]);
@@ -148,6 +180,10 @@ function pickAll(list, opts, limit) {
       if (!isFinite(grams) || grams < opts.minGrams) continue;
       if (opts.maxGrams && grams > opts.maxGrams) continue;
       if (price > opts.maxPrice) continue;
+      /* A row that names an ounce itself stands on its own price. One relying on
+         the title's inferred weight does not, when this product's real ounce is
+         over the cap. */
+      if (pricierOunce && !namesAnOunce(sizes[j][0])) continue;
       out.push({ product: p, index: j, perG: price / grams, key: p.id + '#' + j });
     }
   }
@@ -395,7 +431,14 @@ a{color:inherit}
 /* Overlay controls sit on the photo so they cost no vertical space. */
 .ov{position:absolute;z-index:2;border:none;cursor:pointer;font:inherit;font-weight:700;
   border-radius:999px;padding:9px 14px;color:#fff;background:rgba(10,14,11,.62);
-  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);line-height:1}
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);line-height:1;
+  /* backdrop-filter puts these pills in their own compositing context, which
+     escapes the face's backface-visibility: they kept rendering through the
+     turned-away card with their text mirrored. Hiding their own backface plus
+     fading them out on flip covers it either way. */
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  transition:opacity .2s ease}
+.flip.flipped .front .ov{opacity:0;pointer-events:none}
 .ov:hover{background:rgba(10,14,11,.78)}
 .ov.shuf{bottom:12px;left:12px;box-shadow:0 0 0 1px rgba(255,255,255,.35),0 0 18px 2px var(--accent);
   animation:pulse 2.6s ease-in-out infinite}
@@ -481,10 +524,12 @@ export default async function handler(req, res) {
   const isPick = rawId.toLowerCase() === 'pick';
   const pickOpts = {
     maxPrice: Number(req.query && req.query.max) > 0 ? Number(req.query.max) : 50,
-    /* An ounce is 28g, and stores label it 28 to 31. The band excludes a half
-       (14g) below and two ounces (56g) above, so "the ounce pick" is an ounce. */
-    minGrams: Number(req.query && req.query.g) > 0 ? Number(req.query.g) : 25,
-    maxGrams: Number(req.query && req.query.gmax) > 0 ? Number(req.query.gmax) : 40,
+    /* A full ounce is 28g and stores label it 28 to 31.5. The floor was 25, which
+       admitted a short row and still called the offer an ounce; it is now a true
+       ounce. The ceiling keeps a half (14g) out below and two ounces (56g) out
+       above. */
+    minGrams: Number(req.query && req.query.g) > 0 ? Number(req.query.g) : 28,
+    maxGrams: Number(req.query && req.query.gmax) > 0 ? Number(req.query.gmax) : 31.5,
     /* ?category=any drops the filter, which is the first thing to try if the pick
        comes up empty: the classifier may label an ounce as something else. */
     category: (function (c) {
@@ -588,6 +633,29 @@ export default async function handler(req, res) {
       : r.label;
   });
 
+  /* A product can carry a headline price with no priced size rows at all: an empty
+     sizes array, or every row missing a price. headline() falls back to p.sale, so
+     the page showed a price while the dropdown held nothing but the placeholder,
+     and the gate then refused forever. A price on screen with no way to buy it is
+     a dead end, and it is a regression the gate introduced: the site's own
+     addToCart covers this case by pushing a "One Size" line, so offer exactly
+     that. Raised by Vercel's review bot on PR #23. */
+  if (!sizeRows.length && Number(h.price) > 0) {
+    sizeRows.push({
+      i: -1,
+      variant: '',
+      label: h.weight || 'One size',
+      display: h.weight || 'One size',
+      price: Number(h.price),
+      perG: h.perG || null,
+      isPick: false,
+      item: cartItem(product, null),
+    });
+  }
+  /* With no price either, there is genuinely nothing to add. Say so rather than
+     showing a button that cannot work. */
+  const canAdd = sizeRows.length > 0;
+
   const options = sizeRows.map((r) => {
     const bits = [r.display, money(r.price, item.cur)];
     if (r.perG) bits.push(money(r.perG, item.cur) + '/g');
@@ -614,14 +682,15 @@ export default async function handler(req, res) {
     </div>
     <div class="face back">
       <div class="bh"><h2>What you are actually getting</h2><button id="toFront" type="button">Photo</button></div>
-      <div class="pickfield">
+      ${canAdd ? `<div class="pickfield">
         <label for="size">1. Choose your size</label>
         <select id="size">
           <option value="">Select a size...</option>
           ${options}
         </select>
         <p class="hint" id="hint2">The price updates once you choose.</p>
-      </div>
+      </div>` : `<p class="caution">This store has not published a buyable size for this
+      product, so it cannot be added to a cart here. The comparison below still has it.</p>`}
       <h2 style="font-size:13px;color:var(--muted);margin:14px 0 6px">2. What the lab found</h2>
       ${labPanel(product)}
     </div>
@@ -630,8 +699,10 @@ export default async function handler(req, res) {
 <h1>${esc(product.name)}</h1>
 <div class="price" id="price">${esc(priceText)}${h.weight ? ' <span class="meta">' + esc(h.weight) + '</span>' : ''}</div>
 <p class="meta">${esc(ogDesc)}</p>
-<p class="hint" id="hint">Tap "Details and size" to see the lab numbers and pick your size.</p>
-<button class="buy" id="add" type="button">Add to cart</button>
+<p class="hint" id="hint">${canAdd
+  ? 'Tap "Details and size" to see the lab numbers and pick your size.'
+  : 'Tap "Details and size" for the lab numbers.'}</p>
+${canAdd ? '<button class="buy" id="add" type="button">Add to cart</button>' : ''}
 <a class="alt" href="${SITE}/consumables">Compare every store on Legal-Leaf Market</a>
 <p class="fine">Price and stock come from ${esc(product.store)}'s own feed and can move without notice.
 Legal-Leaf Market does not take the order or hold the stock. Ranking is never affected by commission.</p>
@@ -641,6 +712,8 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
   var flip = document.getElementById('flip');
   var sel = document.getElementById('size');
   var add = document.getElementById('add');
+  /* Both are absent when the product has no buyable size, so everything below is
+     guarded rather than assuming they exist. */
   var hint = document.getElementById('hint');
   var hint2 = document.getElementById('hint2');
   var priceEl = document.getElementById('price');
@@ -651,14 +724,14 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
     return sym + (Math.round(n * 100) / 100).toFixed(2).replace(/\.00$/, '');
   }
   function chosen(){
-    if (sel.value === '') return null;
+    if (!sel || sel.value === '') return null;
     var i = parseInt(sel.value, 10);
     for (var k = 0; k < D.sizes.length; k++) if (D.sizes[k].i === i) return D.sizes[k];
     return null;
   }
   function setFlipped(on){
     flip.classList.toggle('flipped', !!on);
-    if (!on) return;
+    if (!on || !sel) return;
     /* Bring the card on screen before focusing. Add to cart sits below the card,
        so on a short viewport the shopper has already scrolled past it, and a bare
        focus with preventScroll left the dropdown above the fold: glowing exactly
@@ -674,7 +747,7 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
   document.getElementById('toBack').addEventListener('click', function(){ setFlipped(true); });
   document.getElementById('toFront').addEventListener('click', function(){ setFlipped(false); });
 
-  sel.addEventListener('change', function(){
+  if (sel) sel.addEventListener('change', function(){
     sel.classList.remove('needs');
     var c = chosen();
     if (!c) { hint.textContent = 'Choose a size to see the exact price.'; hint.className = 'hint'; return; }
@@ -691,7 +764,7 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
     try { LL.track('size_selected', { size: c.label, value: c.price }); } catch (e) {}
   });
 
-  add.addEventListener('click', function(){
+  if (add) add.addEventListener('click', function(){
     var c = chosen();
     /* Nobody adds a mystery item to a cart. No selection means walk them to the
        choice rather than guessing on their behalf. */
@@ -758,4 +831,4 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
 }
 
 // Exported for tests. Not part of the route contract.
-export const __test = { esc, httpsOnly, money, weightLabel, headline, description, cartItem, pickBest, pickAll, PICK_POOL, saysWeightAlready };
+export const __test = { esc, httpsOnly, money, weightLabel, headline, description, cartItem, pickBest, pickAll, PICK_POOL, saysWeightAlready, namesAnOunce, ounceRowOverCap };
