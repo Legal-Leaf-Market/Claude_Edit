@@ -132,6 +132,18 @@
     height: 1px;
   }
 
+  /* The pedalboard builder's base plate: a dotted velcro-strip texture on a
+     raised dark surface, so the pedal slots read as mounted to something
+     rather than floating on the page background. */
+  .pedalboard-surface {
+    background:
+      radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.06) 1px, transparent 1.6px) 0 0 /
+        16px 16px,
+      linear-gradient(180deg, #1c1712, #14100c);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+
   /* Admin operating-model page. */
   .eyebrow {
     font-size: 0.7rem;

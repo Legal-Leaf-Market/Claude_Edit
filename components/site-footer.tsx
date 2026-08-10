@@ -37,6 +37,7 @@ export function SiteFooter() {
               <li><Link href="/search" className="hover:text-[var(--cream)]">Browse everything</Link></li>
               <li><Link href="/shop" className="hover:text-[var(--cream)]">All {STORES.length} stores</Link></li>
               <li><Link href="/search?deals=1&sort=deal" className="hover:text-[var(--cream)]">Below market</Link></li>
+              <li><Link href="/pedalboard" className="hover:text-[var(--cream)]">Build your pedalboard</Link></li>
               <li><Link href="/alerts" className="hover:text-[var(--cream)]">Price alerts</Link></li>
               <li><Link href="/list-your-shop" className="hover:text-[var(--cream)]">Get your shop listed</Link></li>
             </ul>

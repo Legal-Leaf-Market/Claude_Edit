@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { sql } from "drizzle-orm"
-import { ArrowRight, BellRing, LineChart, Search as SearchIcon } from "lucide-react"
+import { ArrowRight, BellRing, Cable, LineChart, Search as SearchIcon } from "lucide-react"
 import { InstagramStrip } from "@/components/instagram-strip"
 import { SubscribeForm } from "@/components/subscribe-form"
 import { CategoryIcon, CATEGORY_HUE } from "@/components/category-icon"
@@ -111,6 +111,30 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      <section className="pb-12">
+        <div className="panel flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#c678b422] text-[#c678b4]">
+              <Cable className="h-6 w-6" aria-hidden="true" />
+            </span>
+            <div>
+              <h2 className="text-lg font-semibold text-[var(--cream)]">Build your pedalboard</h2>
+              <p className="mt-1 max-w-xl text-sm leading-relaxed text-[var(--muted-foreground)]">
+                Chain pedals together the way you would actually run them, and see who has each one
+                in stock, new or used, and what it should cost, all in one page.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/pedalboard"
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-[var(--primary)] px-4 text-sm font-medium text-[var(--primary-foreground)] transition-colors hover:bg-[var(--amber-soft)]"
+          >
+            Start building
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </div>
+      </section>
 
       <section className="pb-12">
         <h2 className="mb-4 text-xl font-semibold text-[var(--cream)]">Browse by category</h2>
