@@ -1299,7 +1299,10 @@ function newsletterText() {
      repeating them here just makes the message longer. Text carries the context
      and the opt-out, and the URL goes last so the preview attaches to it. */
   void name; void price;
-  return "This week's pick, the best value ounce we could find. Say the word if you " +
+  /* "Under $50" and not "the best value we could find": the pick leads with the
+     dearest ounce inside the budget, so a superlative here would be a claim the
+     card cannot back. The number is the offer and it stands on its own. */
+  return "This week's pick, an ounce under $50. Say the word if you " +
     "would rather not get these and I'll stop. " + link;
 }
 

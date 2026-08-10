@@ -162,24 +162,39 @@ function cartItem(p, idx) {
 
 /* ---- /p/pick: the weekly pick, computed rather than curated ----
  *
- * "Best value ounce under $50" is a query, not an editorial decision, and this
- * site already holds the one number that answers it: price per gram. So the pick
- * resolves from live data on every request, which means it cannot advertise a
- * product that sold out or a price that moved, and there is no weekly step where
- * somebody pastes a product id into a link.
+ * "An ounce under $50" is a query, not an editorial decision, so the pick
+ * resolves from live data on every request. It cannot advertise a product that
+ * sold out or a price that moved, and there is no weekly step where somebody
+ * pastes a product id into a link.
+ *
+ * Among the rows that qualify it leads with the one CLOSEST TO THE CAP, not the
+ * cheapest per gram. That reversed on 10 Aug 2026, and the reason is what this
+ * card is for: it is the first thing a stranger sees in a DM, and the cheapest
+ * qualifying row was a $20 ounce, which reads as bargain bin and makes the whole
+ * offer look worse than it is. The cap is the promise, so spending it is the
+ * point.
+ *
+ * This is deliberately NOT a value claim, and no copy makes one. The card states
+ * the size, the price and the per gram figure and leaves it there, and the DM
+ * that carries it says "under $50" rather than "the best value we could find".
+ * Ranking on price per gram is what the comparison page is for, and it is one
+ * tap away on every one of these cards.
  *
  * It ranks SIZE ROWS, not products: a product's headline perG can come from a
- * quarter pound, which is not an ounce. Ties break on id so the choice is stable
- * between requests rather than flipping with feed ordering.
+ * quarter pound, which is not an ounce. Equal prices break on per gram and then
+ * on id, so the choice is stable between requests rather than flipping with feed
+ * ordering.
  *
- * The weight window is a BAND, not a floor, and that matters. With a floor alone
- * a quarter pound at $45 wins the "best ounce under $50" query outright: 112g
- * clears a 28g floor and $45 clears the cap, so the card would read "4oz $45"
- * under a message promising an ounce. Better value per gram, wrong promise. The
- * band keeps the pick to the thing that was actually advertised.
+ * The weight window is a BAND, not a floor, and this ordering makes it MORE load
+ * bearing rather than less. With a floor alone a quarter pound at $45 clears a
+ * 28g floor and clears the cap, so the card would read "4oz $45" under a message
+ * promising an ounce: wrong promise, and now it sorts straight to the top rather
+ * than having to be cheap per gram to get there. The band keeps the pick to the
+ * thing that was actually advertised.
  */
-/* Every qualifying size row, best value first. The slideshow walks this list, so
-   the pool is capped: the 40th best ounce is not a deal worth showing anybody. */
+/* Every qualifying size row, the one closest to the cap first. The slideshow
+   walks this list, so the pool is capped: the 40th ounce down is not a thing
+   worth showing anybody. */
 var PICK_POOL = 10;
 
 /* Does a size row's own label say "ounce"? Sub-ounce fractions are excluded first,
@@ -232,12 +247,16 @@ function pickAll(list, opts, limit) {
          the title's inferred weight does not, when this product's real ounce is
          over the cap. */
       if (pricierOunce && !namesAnOunce(sizes[j][0])) continue;
-      out.push({ product: p, index: j, perG: price / grams, key: p.id + '#' + j });
+      out.push({ product: p, index: j, price: price, perG: price / grams, key: p.id + '#' + j });
     }
   }
-  /* Ties break on key so the ordering, and therefore every ?i= link, is stable
-     between requests instead of following feed order. */
+  /* Dearest first, so the card leads with the most the budget buys rather than
+     the least. Two rows at the same price are separated by per gram, which at a
+     fixed price means the bigger ounce, and then by key so the ordering, and
+     therefore every ?i= link, is stable between requests instead of following
+     feed order. */
   out.sort(function (a, b) {
+    if (a.price !== b.price) return b.price - a.price;
     if (a.perG !== b.perG) return a.perG - b.perG;
     return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
   });
@@ -602,8 +621,9 @@ export default async function handler(req, res) {
   if (!rawId) return res.status(404).send(notFound(canonical));
 
   /* A price cap and a minimum weight, both overridable, so the same route can
-     answer "best ounce under $50" or "best quarter under $25" later without a
-     second endpoint. */
+     answer "an ounce under $50" or "a quarter under $25" later without a second
+     endpoint. The cap is a budget the pick spends, not just a ceiling it stays
+     under, so moving ?max= moves the advertised price with it. */
   const isPick = rawId.toLowerCase() === 'pick';
   const pickOpts = {
     maxPrice: Number(req.query && req.query.max) > 0 ? Number(req.query.max) : 50,
@@ -638,9 +658,9 @@ export default async function handler(req, res) {
       if (isPick) {
         /* One slide per PRODUCT. pickAll ranks size rows, so a listing selling two
            qualifying ounces at different prices would occupy two slides, which is
-           the same thing to look at twice. The best-value row wins the slide and
-           that slide's dropdown still offers the product's other rows, so nothing
-           is lost. Deduping before the cap also means ten slides really are ten
+           the same thing to look at twice. The dearest qualifying row wins the
+           slide, matching the ordering above, and that slide's dropdown still
+           offers the product's other rows, so nothing is lost. Deduping before the cap also means ten slides really are ten
            different products. */
         const ranked = pickAll(list, pickOpts);
         const seenProduct = new Set();

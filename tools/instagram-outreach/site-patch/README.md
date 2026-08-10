@@ -11,17 +11,26 @@
 
 ## /p/pick, the self-updating weekly pick
 
-`/p/pick` resolves the best-value ounce under $50 from the live feed on every
-request, so there is no weekly step where a product id gets pasted into a link and
-no stored choice that can go stale or sell out. Point a permanent short link at it
-once and the pick rotates itself.
+`/p/pick` resolves an ounce under $50 from the live feed on every request, so
+there is no weekly step where a product id gets pasted into a link and no stored
+choice that can go stale or sell out. Point a permanent short link at it once and
+the pick rotates itself.
+
+Among the qualifying rows it leads with the **dearest**, the one closest to the
+cap, rather than the cheapest per gram. This flipped on 10 Aug 2026: the cheapest
+qualifying row was a $20 ounce, and as the first thing a stranger sees in a DM it
+read as bargain bin and made the offer look worse than it was. The cap is treated
+as a budget to spend rather than a ceiling to hide under. It is not a value claim
+and nothing in the copy makes one: the card shows size, price and price per gram,
+and the DM says "an ounce under $50", not "the best value we could find".
 
 It ranks size rows rather than products, because a product's headline price per
 gram usually comes from a quarter pound. The weight window is a **band** (25 to
 40g), not a floor, and a test is what forced that: with a floor alone a quarter
-pound at $45 wins a "best ounce under $50" query outright, since 112g clears a 28g
-floor and $45 clears the cap. The card would then read "4oz $45" under a message
-promising an ounce.
+pound at $45 clears a 28g floor and clears the cap, so the card would read
+"4oz $45" under a message promising an ounce. Ranking by price makes the band
+matter more, not less, since an over-weight row no longer has to be cheap per
+gram to reach the top of the list.
 
 Overridable per request: `?max=` price cap, `?g=` / `?gmax=` the weight band,
 `?category=` a different category, `?category=any` to drop the filter. If the pick
@@ -177,8 +186,8 @@ forwarded link with a stale index shows something real. Moving updates the URL v
 
 Ten slides means ten distinct **products**. `pickAll` ranks size rows, so a listing
 selling two qualifying ounces at different prices used to take two slides; dedupe
-keeps the best-value row per product and that slide's dropdown still offers the
-rest.
+keeps the dearest qualifying row per product, matching the ordering, and that
+slide's dropdown still offers the rest.
 
 **A selection never survives a slide change.** Carrying a size choice from one
 product to the next is how somebody adds a thing they never looked at, so the

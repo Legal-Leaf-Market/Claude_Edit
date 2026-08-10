@@ -33,7 +33,11 @@ const B = {
   category: 'THCA Flower', cur: 'USD', inStock: true, perG: 1.6, potency: 22,
   image: 'https://cdn.test/b.jpg', url: 'https://other.test/products/b',
   coa: 'https://other.test/pages/lab-results', coaScope: 'index',
-  sizes: [['1 oz', 45, 28, 'V-B', 1, null, '']],
+  /* Under A's $39 so A still leads the pick, which is what this file needs: the
+     lab panel rules below are all assertions about A's measured COA data, and B
+     exists to give the shuffle a second slide. The pick leads with the DEAREST
+     qualifying ounce, so B being the cheap one is what keeps A on slide 1. */
+  sizes: [['1 oz', 29, 28, 'V-B', 1, null, '']],
 };
 
 globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [A, B] }) });
@@ -285,16 +289,18 @@ console.log('\n=== the photo follows the variant ===');
   globalThis.fetch = saved;
   fs.writeFileSync('/tmp/multi.html', multiHtml);
 
-  /* The cheapest qualifying row is Dank Work, so the card and its og:image should
-     open on THAT strain's photo rather than the listing's lead photo. */
+  /* The picked row is Candy Hustle, the dearest inside the cap, so the card and
+     its og:image should open on THAT strain's photo rather than the listing's
+     lead photo. Which row wins is the pick's business; what this block pins is
+     that the photo tracks whichever row won. */
   const og = (multiHtml.match(/<meta property="og:image" content="([^"]*)"/) || [])[1];
   console.log('  og:image ' + JSON.stringify(og));
-  ok(og === 'https://cdn.test/dank.png', "the shared card shows the picked variant's photo");
+  ok(og === 'https://cdn.test/candy.png', "the shared card shows the picked variant's photo");
 
   const p2 = await browser.newPage();
   await p2.goto('file:///tmp/multi.html');
   const shot = () => p2.getAttribute('#shot', 'src');
-  ok(await shot() === 'https://cdn.test/dank.png', 'and so does the card on load: ' + (await shot()));
+  ok(await shot() === 'https://cdn.test/candy.png', 'and so does the card on load: ' + (await shot()));
 
   await p2.click('#toBack');
   ok(await p2.isHidden('#vshot'), 'no variant thumbnail before a choice is made');

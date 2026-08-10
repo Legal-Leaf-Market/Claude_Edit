@@ -109,7 +109,7 @@ ok((await run('')).status === 404, '404 with no id');
 console.log('\n=== /p/pick selection ===');
 {
   const CATALOG = [
-    // Best per-gram at ounce size, under the cap, in stock. Should win.
+    // Dearest qualifying ounce, under the cap, in stock. Should win.
     { id: 'smallbuds__sour-oz', name: 'Sour Diesel Small Buds', store: 'THCA Small Buds',
       storeKey: 'thcasmallbuds', domain: 'thcasmallbuds.com', cartDomain: 'thcasmallbuds.com',
       platform: 'shopify', ref: 'coffeeandajoint', coupon: 'JACOBKENNEDY',
@@ -134,6 +134,15 @@ console.log('\n=== /p/pick selection ===');
       category: 'THCA Flower', cur: 'USD', inStock: false, perG: 0.1,
       image: 'https://cdn.shopify.com/o.jpg', url: 'https://thcaking.com/products/o',
       sizes: [['1 oz', 10, 28, 'V-OOS', 1, null, '']] },
+    /* Cheaper, and better per gram, at a real ounce. This is what the old
+       value-first ranking led with, and it is the case that prompted the change:
+       a $20 ounce is the first thing a stranger saw in a DM. It still qualifies
+       and still gets a slide, it just no longer leads. */
+    { id: 'king__budget-oz', name: 'Budget Ounce', store: 'THCA King', storeKey: 'thcaking',
+      domain: 'thcaking.com', platform: 'shopify', ref: '', coupon: '',
+      category: 'THCA Flower', cur: 'USD', inStock: true, perG: 0.71,
+      image: 'https://cdn.shopify.com/b.jpg', url: 'https://thcaking.com/products/b',
+      sizes: [['1 oz', 20, 28, 'V-B20', 1, null, '']] },
     // Accessory: grams 0, must never be considered.
     { id: 'chill__pipe', name: 'Steel Pipe', store: 'Chill', storeKey: 'chill',
       domain: 'chill.store', platform: 'shopify', ref: '', coupon: '',
@@ -142,14 +151,27 @@ console.log('\n=== /p/pick selection ===');
       sizes: [['One Size', 20, 0, 'V-P', 1, null, '']] },
   ];
 
-  const best = __test.pickBest(CATALOG, { maxPrice: 50, minGrams: 25, maxGrams: 40, category: 'THCA Flower' });
+  const OZ = { maxPrice: 50, minGrams: 25, maxGrams: 40, category: 'THCA Flower' };
+  const best = __test.pickBest(CATALOG, OZ);
   ok(best && best.product.id === 'smallbuds__sour-oz',
-     'picked the best-value in-stock ounce under the cap: ' + (best && best.product.id));
+     'picked the dearest in-stock ounce under the cap: ' + (best && best.product.id));
   ok(best && best.index === 0, 'picked the 1oz row, not the 4oz: index ' + (best && best.index));
   ok(Math.abs(best.perG - 39 / 28) < 1e-9, 'per gram computed off the chosen row');
 
-  ok(__test.pickBest(CATALOG, { maxPrice: 20, minGrams: 25, maxGrams: 40, category: 'THCA Flower' }) === null,
-     'nothing qualifies at a $20 cap');
+  /* The reversal itself. The $20 ounce is cheaper per gram and would have led
+     under the old rule, so this is the assertion that fails if the sort flips
+     back, and $39 is the number that has to reach the card. */
+  const ranked = __test.pickAll(CATALOG, OZ);
+  ok(ranked.length === 2, 'both real ounces qualify, got ' + ranked.length);
+  ok(ranked[0].price === 39 && ranked[1].price === 20,
+     'dearest first, cheapest last: ' + ranked.map((r) => r.price).join(','));
+  ok(ranked[1].perG < ranked[0].perG,
+     'and the one that lost is genuinely the better value per gram, so this is the tradeoff and not a tie');
+  ok(ranked.some((r) => r.product.id === 'king__budget-oz'),
+     'the cheap ounce still makes the pool, it just does not lead');
+
+  ok(__test.pickBest(CATALOG, { maxPrice: 19, minGrams: 25, maxGrams: 40, category: 'THCA Flower' }) === null,
+     'nothing qualifies at a $19 cap, below every in-stock ounce');
   const qp = __test.pickBest(CATALOG, { maxPrice: 50, minGrams: 112, maxGrams: 200, category: 'THCA Flower' });
   ok(qp && qp.product.id === 'king__cheap-qp',
      'widening the band to a QP changes the winner: ' + (qp && qp.product.id));
@@ -253,9 +275,11 @@ console.log('\n=== shuffle ===');
 
   const ranked = __test.pickAll(POOL, opts, __test.PICK_POOL);
   ok(ranked.length === 3, 'all three ounces qualify, got ' + ranked.length);
-  ok(ranked.map(r => r.product.id).join(',') === 'a,b,c',
-     'ranked by value regardless of feed order: ' + ranked.map(r => r.product.id).join(','));
-  ok(__test.pickBest(POOL, opts).product.id === 'a', 'pickBest is still just the head of that list');
+  /* Dearest first: $47, $44, $39. All three are the same 28g, so this is price
+     order and value order reversed, which is the point. Feed order is 'c,a,b'. */
+  ok(ranked.map(r => r.product.id).join(',') === 'c,b,a',
+     'ranked dearest first regardless of feed order: ' + ranked.map(r => r.product.id).join(','));
+  ok(__test.pickBest(POOL, opts).product.id === 'c', 'pickBest is still just the head of that list');
   ok(__test.pickAll(POOL, opts, 2).length === 2, 'the pool cap truncates');
 
   globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: POOL }) });
@@ -268,12 +292,12 @@ console.log('\n=== shuffle ===');
   ok(/class="ov nav prev"/.test(first.html), 'arrows are photo overlays');
   const b0 = JSON.parse((first.html.match(/var BASE = (\{.*?\});/) || [])[1]);
   ok(b0.rank === 0 && b0.of === 3, 'events carry rank and pool size: rank=' + b0.rank + ' of=' + b0.of);
-  ok(b0.pid === 'a', 'rank 0 is the best value');
+  ok(b0.pid === 'c', 'rank 0 is the dearest ounce inside the cap');
 
   // ?i= moves through the pool, and the card follows it.
   const second = await run('pick', null, { i: '1' });
   const t2 = (n) => (second.html.match(new RegExp('<meta property="' + n + '" content="([^"]*)"')) || [])[1];
-  ok(t2('og:title') === 'Ounce B (1oz) $44', 'i=1 renders the second best: ' + t2('og:title'));
+  ok(t2('og:title') === 'Ounce B (1oz) $44', 'i=1 renders the next one down: ' + t2('og:title'));
   ok(second.html.includes('"variantId":"V-b"'), 'and its cart item is the right product');
   ok(/id="count"[^>]*>2 of 3</.test(second.html), 'counter reflects the requested slide');
 
@@ -282,7 +306,7 @@ console.log('\n=== shuffle ===');
   ok(far.status === 200, 'i=99 still renders, status ' + far.status);
   ok(/id="count"[^>]*>3 of 3</.test(far.html), 'clamped to the last slide');
   const neg = await run('pick', null, { i: '-4' });
-  ok(/id="count"[^>]*>1 of 3</.test(neg.html), 'a negative index falls back to the best');
+  ok(/id="count"[^>]*>1 of 3</.test(neg.html), 'a negative index falls back to the lead slide');
 
   // Moving slides must keep the URL shareable without dropping a custom cap.
   ok(/new URLSearchParams\(location\.search\)/.test(first.html) && /q\.set\('i'/.test(first.html),
@@ -339,7 +363,14 @@ console.log('\n=== multi-strain option labels ===');
      'every option is distinguishable from every other');
   ok(opts.every((o) => /Zkittlez|Mudslide|Biscotti|Punch Breath/.test(o.text)),
      'each option names its strain');
-  ok(/Mudslide[^<]*this week&#39;s pick/.test(page.html), 'the pick is marked, and it is the $20 row');
+  /* This listing is the one that prompted the reversal: its $20 Mudslide row was
+     the cheapest per gram in the whole feed, so it led the card. The pick is now
+     the dearest qualifying row, and with three of them tied at $35.99 and all
+     28g the tie-break falls through per gram to the row index, so the first of
+     the three wins and keeps winning between requests. */
+  ok(/Royal Zkittlez[^<]*this week&#39;s pick/.test(page.html),
+     'the pick is marked, and the tie at $35.99 resolves to the first such row');
+  ok(!/Mudslide[^<]*this week&#39;s pick/.test(page.html), 'the $20 row no longer leads');
   ok(opts.filter((o) => /35\.99/.test(o.text)).length === 3,
      'the three same-priced rows are all present rather than collapsed');
 
@@ -519,8 +550,18 @@ console.log('\n=== the shared card shows the variant, not just the listing ===')
   const pick = await run('pick');
   const ogImg = (pick.html.match(/<meta property="og:image" content="([^"]*)"/) || [])[1];
   console.log('  og:image ' + JSON.stringify(ogImg));
-  ok(ogImg === 'https://cdn.test/dank.png', "the cheapest row's own photo is the shared one");
+  ok(ogImg === 'https://cdn.test/candy.png', "the picked row's own photo is the shared one");
   ok(!/javascript:/.test(pick.html), 'a javascript: photo in the feed reaches the page nowhere');
+
+  /* The pick leads with the dearest row ($39.99 Candy), so its photo is the one
+     shared. A plain /p/<id> names no row, so it still quotes the cheapest price
+     ($29.99 Dank) under the listing's own photo: the ranking change is scoped to
+     the pick and did not quietly move what a direct product share advertises. */
+  const direct = await run('sb__trim');
+  const ogD = (direct.html.match(/<meta property="og:image" content="([^"]*)"/) || [])[1];
+  ok(ogD === 'https://cdn.test/lead.png', 'a direct share still shows the listing photo: ' + ogD);
+  ok(/\$29\.99/.test((direct.html.match(/<meta property="og:title" content="([^"]*)"/) || [])[1] || ''),
+     'and still quotes the cheapest row, which is what a page making no budget claim should do');
 
   const P = JSON.parse((pick.html.match(/var D = (\{[\s\S]*?\});\n/) || [])[1].replace(/\\u003c/g, '<'));
   const imgs = P.slides[0].sizes.map((z) => [z.display, z.img]);
@@ -567,7 +608,11 @@ console.log('\n=== the shared card declares its image ===');
   };
   globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [SHOP] }) });
 
-  const shop = await run('pick');
+  /* Addressed by row rather than through the pick. What these assertions are
+     about is the photo host and the file extension, not which row leads, and
+     hanging them off the pick made them fail the day the ranking changed for
+     reasons that had nothing to do with og:image. */
+  const shop = await run('sb__shop', '0');
   console.log('  og:image ' + meta(shop.html, 'og:image'));
   ok(meta(shop.html, 'og:image') ===
      'https://cdn.shopify.com/s/files/1/1/2/products/runtz.jpg?v=1699999999&amp;width=1200&amp;height=1200&amp;crop=center',
@@ -579,6 +624,16 @@ console.log('\n=== the shared card declares its image ===');
   ok(meta(shop.html, 'og:image:type') === 'image/jpeg', 'and the type, read off the extension');
   ok(meta(shop.html, 'og:image:secure_url') === meta(shop.html, 'og:image'),
      'secure_url is the same url, since only https ever gets this far');
+
+  /* The pick now leads with the dearest row, whose photo happens to sit on a host
+     that cannot be asked for a size. The card must still refuse to claim one: a
+     stated size that is wrong lays the card out on an aspect ratio the picture
+     does not have, which is worse than stating nothing. */
+  const lead = await run('pick');
+  ok(meta(lead.html, 'og:image') === 'https://img.otherstore.test/photo',
+     'the pick leads with the dearest row: ' + meta(lead.html, 'og:image'));
+  ok(meta(lead.html, 'og:image:width') === undefined,
+     'and claims no dimensions for a photo it cannot resize');
 
   // Any other host cannot be asked for a size, so nothing is claimed about it. A
   // wrong number would lay the card out on an aspect ratio the image does not have.

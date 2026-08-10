@@ -20,9 +20,10 @@ const oz = (id, price, sizes) => ({
   cannabinoid: 'THCa', type: 'Hybrid',
   sizes: sizes || [['1 oz', price, 28, 'V-' + id, 1, null, '']],
 });
-/* Three ounces, ascending price, so slide order is deterministic. Slide 2's two
-   strains each carry their own photo, the live multi-strain shape, so a swap on one
-   slide has something to leak onto the next. */
+/* Three ounces at distinct prices, so slide order is deterministic. The pick runs
+   dearest first, so the display order is c, b, a rather than the order written
+   here. Slide 2's two strains each carry their own photo, the live multi-strain
+   shape, so a swap on one slide has something to leak onto the next. */
 const POOL = [oz('a', 39), oz('b', 44, [
   ['Strain One 1 oz', 44, 28, 'V-b1', 1, null, 'https://cdn.test/b-one.png'],
   ['Strain Two 1 oz', 46, 28, 'V-b2', 1, null, 'https://cdn.test/b-two.png'],
@@ -56,10 +57,10 @@ const shown = () => page.evaluate(() => ({
   fine: document.getElementById('fine').textContent.slice(0, 40),
 }));
 
-console.log('=== it starts on the best value ===');
+console.log('=== it starts on the dearest ounce inside the cap ===');
 let v = await shown();
 console.log('  ' + JSON.stringify({ name: v.name, count: v.count, price: v.price }));
-ok(v.name === 'Ounce A' && v.count === '1 of 3', 'slide 1 is the cheapest ounce');
+ok(v.name === 'Ounce C' && v.count === '1 of 3', 'slide 1 is the dearest ounce');
 
 console.log('\n=== next advances without a reload ===');
 const url0 = page.url();
@@ -68,11 +69,12 @@ await page.waitForTimeout(250);
 v = await shown();
 console.log('  ' + JSON.stringify({ name: v.name, count: v.count, price: v.price, img: v.img }));
 ok(v.name === 'Ounce B' && v.count === '2 of 3', 'moved to slide 2');
-ok(/\$44/.test(v.price), 'price followed the slide');
+ok(/\$46/.test(v.price), 'price followed the slide');
 /* The picked row's own photo, not the listing's lead photo: this slide advertises
-   Strain One at $44, so that strain's picture is the honest one to open on. Slides A
+   Strain Two at $46, the dearer of the listing's two strains and so the one the
+   pick lands on, and that strain's picture is the honest one to open on. Slides A
    and C give their rows no photo, so they show the product image. */
-ok(v.img === 'https://cdn.test/b-one.png',
+ok(v.img === 'https://cdn.test/b-two.png',
    "photo followed the slide, and is the picked strain's: " + v.img);
 ok(/Store B/.test(v.fine), 'the store disclaimer followed too');
 ok(v.opts.length === 3, "slide 2's own two sizes are offered, got " + (v.opts.length - 1));
@@ -102,7 +104,7 @@ await page.click('#next');
 await page.waitForTimeout(300);
 ok((await page.textContent('#add')).trim() === 'Add to cart', 'the button resets on the next slide');
 ok(await page.evaluate(() => document.getElementById('size').value) === '', 'and no size is selected');
-ok(await page.getAttribute('#shot', 'src') === 'https://cdn.test/c.png',
+ok(await page.getAttribute('#shot', 'src') === 'https://cdn.test/a.png',
    "the photo is the new slide's, not the last variant's: " + (await page.getAttribute('#shot', 'src')));
 ok(await page.isHidden('#vshot'), 'and the thumbnail is gone until they choose again');
 await page.click('#add');
@@ -116,8 +118,8 @@ await page.click('#add');
 await page.waitForTimeout(400);
 const cart = JSON.parse(writes.filter((w) => w.k === 'll_cart').pop().v);
 console.log('  added: ' + JSON.stringify({ id: cart[0].id, v: cart[0].variantId, ref: cart[0].ref }));
-ok(cart[0].id === 's__c' && cart[0].variantId === 'V-c', 'the item is slide 3, the one on screen');
-ok(cart[0].ref === 'refc' && cart[0].coupon === 'CODEc', "and carries that store's own ref and coupon");
+ok(cart[0].id === 's__a' && cart[0].variantId === 'V-a', 'the item is slide 3, the one on screen');
+ok(cart[0].ref === 'refa' && cart[0].coupon === 'CODEa', "and carries that store's own ref and coupon");
 ok(writes.filter((w) => w.k === 'll_cart').length === 1, 'exactly one cart write happened');
 
 console.log('\n=== wrapping, keyboard and back-to-photo ===');
