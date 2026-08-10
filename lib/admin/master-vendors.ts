@@ -16,12 +16,24 @@ import { SISTER_SITE_PROFILES } from "./sister-sites"
  * reference-data.ts so this file can never drift from the page next door.
  *
  * WHAT `ratePct: null` MEANS. It means no rate is on record anywhere in the
- * family's repos, NOT that the merchant pays nothing. eBay, Reverb, Sweetwater
- * and the CJ programmes all publish rates in the real world; none of them is
- * written down in any of these five codebases, so inventing a number here
- * would put a fabricated figure into a revenue projection. Those rows carry
+ * family's repos, NOT that the merchant pays nothing. Inventing a number here
+ * would put a fabricated figure into a revenue projection, so those rows carry
  * null and are counted as unknown, including under the optimistic assumption
  * below. Fill them in from the affiliate dashboards, not from a guess.
+ *
+ * That set has shrunk as the network directories came in. The CJ programmes
+ * (zZounds 6%, Pineville Music 7%, Full Compass Systems 4%, Nicokick 3%) and
+ * Gear4music (3.5%) are now real numbers read off CJ's and Awin's own
+ * advertiser directories. Still null: eBay, Reverb and Sweetwater. Reverb is
+ * the notable one, since its Awin listing publishes min and max commission as
+ * 0, which means "not disclosed in the directory", not "pays nothing".
+ *
+ * STATUS IS NOT ALWAYS A PER-MERCHANT FACT. Black Buffalo reads as a pending
+ * merchant approval but the pending thing is the Refersion ACCOUNT itself
+ * (confirmed 10 Aug 2026), one level up. Any future Refersion merchant
+ * inherits that blocker on day one, so treat a row's status as the state of
+ * the whole path to attribution, network account included, not just the
+ * merchant's own answer.
  *
  * KAWAIIKATZ WAS WRONG HERE AND IS NOW CORRECTED. This file previously carried
  * Legal Leaf's admin view, which recorded eight of the nine KawaiiKatz vendors
@@ -109,7 +121,7 @@ const SISTER_VENDORS: Record<string, MasterVendorRow[]> = {
     { merchant: "Kind Juice", platform: "Awin feed", ratePct: 10, status: "tracking", sharePct: 8, note: "" },
     { merchant: "Others (4 stores)", platform: "mixed", ratePct: 9, status: "partial", sharePct: 5, note: "" },
     { merchant: "Nicokick", platform: "CJ 5497560", ratePct: 3, status: "pending", sharePct: 0, note: "Rate CONFIRMED at 3% in CJ's advertiser directory, and the directory shows metrics rather than an apply link, which reads as already joined. EPC $30.28 (3mo) / $36.68 (7d), the strongest in Nicotia's set. The CJ publisher and advertiser IDs are still empty in code" },
-    { merchant: "Black Buffalo", platform: "Refersion", ratePct: 10, status: "none", sharePct: 0, note: "Not yet approved, page states it earns nothing" },
+    { merchant: "Black Buffalo", platform: "Refersion", ratePct: 10, status: "pending", sharePct: 0, note: "Confirmed 10 Aug 2026: the whole Refersion ACCOUNT is pending, not just this programme, so the blocker is one approval upstream of the merchant rather than a Black Buffalo decision. Nothing on Refersion can attribute until it clears, and Black Buffalo is currently the only Refersion merchant across all five sites, so the account approval and this row's revenue are the same event. Earns nothing today either way" },
   ],
 }
 
