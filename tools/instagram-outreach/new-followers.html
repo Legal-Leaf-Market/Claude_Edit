@@ -121,14 +121,33 @@
 
   <div class="card">
     <h2>2. Open the tabs</h2>
+    <p class="sub" style="margin: 0 0 10px">
+      Chrome allows exactly one new tab per click, so out of the box this walks the
+      list one at a time: click "Open next tab" or press <kbd>O</kbd>. Allow pop-ups
+      for this page once (see below) and "Open batch" gives you ten per click instead.
+    </p>
     <div class="row-controls">
-      <button class="primary" id="openDms">Open DM tabs</button>
-      <button id="openProfiles">Open profile tabs</button>
-      <label class="inline"><input type="number" id="batchSize" value="10" min="1" max="50"> per click</label>
-      <button id="openNext" disabled>Open next batch</button>
-      <button id="resetQueue" disabled>Reset</button>
+      <button class="primary" id="openDms">Queue DM tabs</button>
+      <button id="openProfiles">Queue profile tabs</button>
+      <button id="clearQueue" disabled>Clear queue</button>
+    </div>
+    <div class="row-controls" style="margin-top: 8px">
+      <button id="openNext" disabled>Open next tab</button>
+      <button id="openBatch" disabled>Open batch of</button>
+      <label class="inline"><input type="number" id="batchSize" value="10" min="2" max="50"> tabs</label>
     </div>
     <div id="status">Nothing queued yet.</div>
+    <details>
+      <summary>How to get ten tabs per click instead of one</summary>
+      <p class="sub" style="margin: 10px 0 0">
+        Click "Open batch" once. Chrome opens one tab, blocks the other nine, and puts a
+        blocked-pop-ups icon at the right hand end of the address bar. Click that icon,
+        choose to always allow pop-ups and redirects from this page, then click "Open
+        batch" again. The blocked nine were never lost, they are still in the queue.
+        If Chrome will not keep that setting for a local file, the one-at-a-time path
+        works everywhere and needs no setting at all.
+      </p>
+    </details>
   </div>
 
   <div class="card">
@@ -155,9 +174,12 @@
     <div class="row-controls" style="margin-top: 14px">
       <a class="bmk" id="bmk" href="#" title="Drag me to your bookmarks bar">Send 3 replies</a>
       <button id="copyBmk">Copy bookmarklet code</button>
+      <button id="dlUser">Download as userscript</button>
     </div>
 
     <p class="sub" style="margin: 14px 0 0"><strong>How to use it:</strong> on an Instagram DM tab, click the bookmark once. A small panel appears in the top right and the hotkeys go live for that tab. Click "Send all 3" or press the hotkey. Repeat on the next tab.</p>
+
+    <p class="sub" style="margin: 8px 0 0"><strong>To skip that per-tab click:</strong> a bookmarklet cannot arm itself, so one click per tab is unavoidable. If you already run Violentmonkey or Tampermonkey, take the userscript instead. It arms itself on every Instagram DM page, so each tab is just the hotkey and then <kbd>Ctrl</kbd> + <kbd>W</kbd>.</p>
 
     <ul class="keys">
       <li><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd> sends all three. This is the main binding.</li>
@@ -613,7 +635,8 @@ const profileUrl = f => f.exact ? "https://www.instagram.com/" + encodeURICompon
 const listEl = document.getElementById("list");
 const statusEl = document.getElementById("status");
 const openNextBtn = document.getElementById("openNext");
-const resetBtn = document.getElementById("resetQueue");
+const openBatchBtn = document.getElementById("openBatch");
+const clearBtn = document.getElementById("clearQueue");
 
 function badge(text, flag) {
   const b = document.createElement("span");
@@ -687,13 +710,55 @@ document.querySelectorAll("[data-select]").forEach(btn => {
 });
 
 /* ---------- tab queue ----------
- * Every window.open runs inside a real click handler. A popup opened from a
- * timer has lost the user gesture and Chrome blocks it, so batches are
- * advanced by clicking rather than on a delay.
+ * Measured in Chrome, and both facts shape this code:
+ *
+ * 1. One window.open per user gesture. Five calls in a single click handler
+ *    open one tab and the other four are blocked, so a "batch of ten on one
+ *    click" only works once the page is allowed to show pop-ups.
+ * 2. Passing 'noopener' makes window.open return null even when the tab opened
+ *    fine, which is per spec. So it is omitted here: without it the return
+ *    value actually distinguishes opened from blocked.
+ *
+ * A blocked item stays at the head of the queue rather than being counted as
+ * done, so nothing is silently dropped.
  */
 let queue = [];
 let opened = 0;
 let total = 0;
+
+const BLOCKED_HELP = "Chrome blocked that tab. Click the blocked-pop-ups icon at the " +
+  "right of the address bar, allow pop-ups for this page, then click again. Nothing was lost.";
+
+function nextUp() { return queue.length ? FOLLOWERS[queue[0].index] : null; }
+
+function refreshQueueUI(extra) {
+  const nxt = nextUp();
+  openNextBtn.disabled = !nxt;
+  openBatchBtn.disabled = !nxt;
+  clearBtn.disabled = total === 0;
+  openNextBtn.textContent = nxt
+    ? "Open next tab: " + (nxt.exact ? "@" + nxt.handle : nxt.handle)
+    : "Open next tab";
+
+  let msg;
+  if (!total) msg = "Nothing queued yet.";
+  else if (!queue.length) msg = "All " + total + " opened. Queue is empty.";
+  else msg = "Opened " + opened + " of " + total + ", " + queue.length + " to go.";
+  statusEl.textContent = extra ? msg + " " + extra : msg;
+}
+
+/* Returns false when Chrome blocked the tab, leaving the item queued. */
+function openOne() {
+  const item = queue[0];
+  if (!item) return false;
+  const win = window.open(item.url, "_blank");
+  if (!win) return false;
+  queue.shift();
+  opened++;
+  const li = listEl.querySelector('li[data-index="' + item.index + '"]');
+  if (li) li.classList.add("done");
+  return true;
+}
 
 function startQueue(urlFor, labelPlural) {
   const picked = checkboxes().map((cb, i) => (cb.checked ? i : -1)).filter(i => i >= 0);
@@ -705,41 +770,45 @@ function startQueue(urlFor, labelPlural) {
   total = queue.length;
   opened = 0;
   listEl.querySelectorAll("li.done").forEach(li => li.classList.remove("done"));
-  statusEl.textContent = "Queued " + total + " " + labelPlural + ".";
-  openBatch();
+  /* The click that queued is itself a gesture, so spend it on the first tab. */
+  const ok = openOne();
+  refreshQueueUI(ok ? "Queued " + total + " " + labelPlural + "." : BLOCKED_HELP);
 }
 
 function openBatch() {
-  const size = Math.max(1, parseInt(document.getElementById("batchSize").value, 10) || 10);
-  let blocked = 0;
+  const size = Math.max(2, parseInt(document.getElementById("batchSize").value, 10) || 10);
+  let got = 0;
   for (let k = 0; k < size && queue.length; k++) {
-    const item = queue.shift();
-    if (!window.open(item.url, "_blank", "noopener")) blocked++;
-    opened++;
-    const li = listEl.querySelector('li[data-index="' + item.index + '"]');
-    if (li) li.classList.add("done");
+    if (!openOne()) break;
+    got++;
   }
-  const left = queue.length;
-  let msg = "Opened " + opened + " of " + total + ".";
-  msg += left ? " " + left + " still queued." : " Queue is empty.";
-  if (blocked) {
-    msg += " Chrome blocked " + blocked + " tab" + (blocked === 1 ? "" : "s") +
-      ": click the blocked-popup icon in the address bar, always allow this page, then reset and run it again.";
+  if (!got) return refreshQueueUI(BLOCKED_HELP);
+  if (got < size && queue.length) {
+    return refreshQueueUI("Chrome allowed " + got + " tab" + (got === 1 ? "" : "s") +
+      " from that click and blocked the rest, which are still queued. Allow pop-ups for " +
+      "this page to get the whole batch at once.");
   }
-  statusEl.textContent = msg;
-  openNextBtn.disabled = left === 0;
-  resetBtn.disabled = false;
+  refreshQueueUI("Opened " + got + " in that batch.");
 }
 
 document.getElementById("openDms").addEventListener("click", () => startQueue(dmUrl, "DM tabs"));
 document.getElementById("openProfiles").addEventListener("click", () => startQueue(profileUrl, "profile tabs"));
-openNextBtn.addEventListener("click", openBatch);
-resetBtn.addEventListener("click", () => {
+openNextBtn.addEventListener("click", () => refreshQueueUI(openOne() ? "" : BLOCKED_HELP));
+openBatchBtn.addEventListener("click", openBatch);
+clearBtn.addEventListener("click", () => {
   queue = []; opened = 0; total = 0;
   listEl.querySelectorAll("li.done").forEach(li => li.classList.remove("done"));
-  statusEl.textContent = "Queue cleared.";
-  openNextBtn.disabled = true;
-  resetBtn.disabled = true;
+  refreshQueueUI();
+});
+
+/* A keydown is a user gesture too, so O opens one tab per press. */
+window.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey || (e.key !== "o" && e.key !== "O")) return;
+  const t = e.target;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+  if (!queue.length) return;
+  e.preventDefault();
+  refreshQueueUI(openOne() ? "" : BLOCKED_HELP);
 });
 
 /* ---------- bookmarklet build ----------
@@ -767,6 +836,31 @@ function refreshBookmarklet() {
 replyBoxes.concat([gapBox]).forEach(el => el.addEventListener("input", refreshBookmarklet));
 refreshBookmarklet();
 
+/* Same single source, wrapped in a userscript header. Matched to /direct/ only
+ * so the panel does not turn up over the feed. */
+document.getElementById("dlUser").addEventListener("click", () => {
+  const header = [
+    "// ==UserScript==",
+    "// @name         Instagram quick replies",
+    "// @namespace    legal-leaf-market.outreach",
+    "// @version      1.0",
+    "// @description  Type three saved replies into the open Instagram DM thread and send them",
+    "// @match        https://www.instagram.com/direct/*",
+    "// @match        https://instagram.com/direct/*",
+    "// @run-at       document-idle",
+    "// @grant        none",
+    "// ==/UserScript==",
+    ""
+  ].join("\n");
+  const blob = new Blob([header + buildSource()], { type: "text/javascript" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "instagram-quick-replies.user.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+});
+
 document.getElementById("copyBmk").addEventListener("click", async () => {
   const btn = document.getElementById("copyBmk");
   try {
@@ -777,6 +871,8 @@ document.getElementById("copyBmk").addEventListener("click", async () => {
   }
   setTimeout(() => { btn.textContent = "Copy bookmarklet code"; }, 2600);
 });
+
+refreshQueueUI();
 
 const exactCount = FOLLOWERS.filter(f => f.exact).length;
 document.getElementById("foot").textContent =

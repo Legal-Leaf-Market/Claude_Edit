@@ -17,6 +17,32 @@ Chrome. It does two things:
 There is no build step and no dependency. Open the file, edit the replies, drag
 the blue button to the bookmarks bar.
 
+## Workflow
+
+1. Open `new-followers.html` in Chrome and tick who you want.
+2. Click "Queue DM tabs". That click opens the first tab and queues the rest.
+3. Advance with <kbd>O</kbd> or "Open next tab", one tab per press. To get ten
+   per click, allow pop-ups for the page once and use "Open batch" (see below).
+4. In each DM tab: click the bookmarklet, press `Alt` `Shift` `I`, close the tab.
+   Installing the userscript instead removes that per-tab click.
+
+### Why only one tab opens per click
+
+Measured in Chromium, both facts drive the queue code:
+
+- **Chrome allows exactly one `window.open` per user gesture.** Five calls in one
+  click handler open one tab; the other four are blocked. A ten-per-click batch
+  only works once the page is allowed to show pop-ups (click the blocked-pop-ups
+  icon in the address bar and allow it), which the "Open batch" button explains
+  in place.
+- **Passing `noopener` makes `window.open` return `null` even on success**, per
+  spec. The first version used it, so blocked-versus-opened was indistinguishable:
+  every item was counted as opened and dropped from the queue, losing nine of
+  every ten. It is omitted now, and a blocked item stays at the head of the queue.
+
+A keydown is also a user gesture, which is why <kbd>O</kbd> opens one tab per
+press and works with no Chrome setting changed.
+
 ## Hotkeys, once the bookmarklet has been clicked on a tab
 
 | Keys | Action |
@@ -27,8 +53,12 @@ the blue button to the bookmarks bar.
 | `Ctrl` `Shift` `I` | Also bound, but Chrome claims it for DevTools and normally intercepts it before the page sees it. Spare, not the one to reach for. |
 
 A bookmarklet cannot arm itself, so it needs one click per tab. Nothing in a
-bookmark can register a hotkey across tabs on its own; that would take an
-extension.
+bookmark can register a hotkey across tabs on its own.
+
+To drop that per-tab click, use "Download as userscript" and load the result in
+Violentmonkey or Tampermonkey. Same code from the same source block, wrapped in a
+userscript header matched to `/direct/*`, so it arms itself on every DM page and
+each tab becomes hotkey then `Ctrl` `W`.
 
 ## Two things worth knowing before using it
 
@@ -60,7 +90,16 @@ blanks.
 ```
 npm i playwright        # the browser is already on the image, do not run playwright install
 node tools/instagram-outreach/test/test-bookmarklet.mjs
+node tools/instagram-outreach/test/test-tab-queue.mjs
 ```
+
+`test-tab-queue.mjs` drives the launcher with Chrome's pop-up blocker left on,
+which is what a normal profile does. It checks that the queueing click opens
+exactly one tab, that "Open batch" opens what Chrome allows and leaves the
+blocked remainder queued rather than dropping it, that <kbd>O</kbd> advances one
+per press but types normally inside a textarea, that truncated handles become
+searches rather than 404 profile URLs, and that with pop-ups allowed a batch
+opens in a single click.
 
 `test/mock-dm.html` stands in for a DM thread in two editor styles: `?mode=model`
 mimics the Lexical-style, model-owning editor Instagram actually uses, and
