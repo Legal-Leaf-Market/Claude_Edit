@@ -62,6 +62,60 @@ export function sortByCategoryPriority<T extends { value: string }>(items: T[]):
   })
 }
 
+/**
+ * A "cool" headline per category page, replacing the literal category name
+ * as the big on-page title. The <title> tag and breadcrumb still say the
+ * literal "Used {category}" for search and orientation; this is purely the
+ * expressive layer, so the SEO-bearing text is never lost, only supplemented.
+ */
+export const CATEGORY_TITLE: Partial<Record<Category, string>> = {
+  "Electric Guitars": "The Riff",
+  "Acoustic Guitars": "The Woods",
+  "Bass Guitars": "Deep Foundations",
+  Amplifiers: "Power and Presence",
+  "Effects Pedals": "The Chain",
+  Synthesizers: "Patina and Parts",
+  "Keyboards & Pianos": "Weighted Keys",
+  "Drums & Percussion": "The Backbeat",
+  Microphones: "True Voice",
+  "Recording & Audio": "The Upgrade Cycle",
+  "DJ Equipment": "The Blend",
+  "Orchestral Strings": "Bow and Bridge",
+  "Brass & Woodwind": "The Horn Section",
+  "Folk & Traditional": "Wood and Hands",
+  "Parts & Accessories": "One Piece at a Time",
+}
+
+/**
+ * A one-line mood-setting subhead under CATEGORY_TITLE. Distinct from
+ * CATEGORY_INTRO below: the intro is a practical buying tip, this is pure
+ * voice, meant to make each category page feel like its own track on the
+ * same album rather than the same template with the noun swapped.
+ */
+export const CATEGORY_KICKER: Partial<Record<Category, string>> = {
+  "Electric Guitars":
+    "Where prices shift by the hour and the same model costs differently every day.",
+  "Acoustic Guitars":
+    "Condition and case inclusion shape the value here as much as the model name does.",
+  "Bass Guitars":
+    "They move slower through markets, which means more time to negotiate and more genuine bargains to find.",
+  Amplifiers:
+    "Weight matters here: factor shipping into the cost, or hunt local where the best deals live.",
+  "Effects Pedals": "Prices stay tight here, which makes real bargains obvious and worth the look.",
+  Synthesizers:
+    "Service history shapes the sound and the value; a maintained vintage synth often beats a neglected newer model.",
+  "Keyboards & Pianos": "Steep depreciation in the first years means real value for those buying used.",
+  "Drums & Percussion": "Shells and cymbals are sold separately; the exact configuration shapes the value completely.",
+  Microphones: "They hold value well and ship cheaply, but verify authenticity on the most famous models.",
+  "Recording & Audio":
+    "Studio upgrades drive constant turnover, which means competitive prices and deep selection for you.",
+  "DJ Equipment": "Great mixing demands gear that responds exactly as your hands intend.",
+  "Orchestral Strings": "Where classical tradition meets the player seeking their instrument's voice.",
+  "Brass & Woodwind": "Every valve and reed carries its own voice and history.",
+  "Folk & Traditional": "Folk instruments are as much about heritage as they are about sound.",
+  "Parts & Accessories": "Every part you choose shapes how your instrument feels and sounds.",
+}
+
 /** Short blurb per category. Real copy beats a templated sentence for indexing. */
 export const CATEGORY_INTRO: Partial<Record<Category, string>> = {
   "Electric Guitars":
@@ -84,4 +138,14 @@ export const CATEGORY_INTRO: Partial<Record<Category, string>> = {
     "Studio microphones hold value well and are cheap to ship. Watch for counterfeits on the most cloned models by buying from listings with real photos.",
   "Recording & Audio":
     "Interfaces and outboard gear turn over quickly as studios upgrade, so the used market here is deep and prices are competitive.",
+  "DJ Equipment":
+    "Turntables and mixers rarely come as matched pairs, so you are assembling your rig piece by piece from different sources. Check connector types and electrical specs between components: mixing incompatible standards will leave you with gear that will not integrate.",
+  "Orchestral Strings":
+    "Orchestral strings live or die by setup and maintenance, so a documented luthier history can be worth more than a lower price from an unknown source. Check whether the listing includes a professional bow and case, since many omit them, which means your true cost is higher than the advertised price.",
+  "Brass & Woodwind":
+    "Repairs on brass and reeds require specialized technicians, so a documented service history is often worth a price premium over a cheaper neglected instrument. Many listings omit the mouthpiece entirely, so check carefully, since your actual cost is higher than the advertised price without one.",
+  "Folk & Traditional":
+    "Folk instruments are handcrafted one by one, so maker reputation and construction quality matter far more than the model name. Check the wood for cracks and past repairs, and look for documented maker marks: the voice of a well-built traditional instrument is worth the search.",
+  "Parts & Accessories":
+    "Parts and accessories let you customize and repair without full-price replacements, but incompatibility will waste your money. Bridges, pickups, tuning machines, and hardware are usually model-specific, so verify that a part actually fits your instrument before buying.",
 }
