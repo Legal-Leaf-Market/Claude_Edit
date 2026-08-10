@@ -1,0 +1,787 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New followers: open DM tabs</title>
+<style>
+  :root {
+    --bg: #ffffff; --panel: #f6f7f9; --panel-2: #eceef1; --border: #d8dce2;
+    --text: #16181d; --muted: #5f6672; --accent: #2f6df6; --accent-text: #ffffff;
+    --warn-bg: #fff6e5; --warn-border: #e8c88a; --warn-text: #6b4a04;
+    --badge-bg: #e3e6eb; --badge-text: #4a5160;
+    --flag-bg: #ffe9e3; --flag-text: #8a3416; --flag-border: #f0bfae;
+    --code-bg: #eceef1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101216; --panel: #171a20; --panel-2: #1e222a; --border: #2b313b;
+      --text: #e7eaef; --muted: #98a1af; --accent: #4d82ff; --accent-text: #0b0d11;
+      --warn-bg: #2a2110; --warn-border: #5c4818; --warn-text: #f0d79a;
+      --badge-bg: #262b34; --badge-text: #aab3c0;
+      --flag-bg: #33190f; --flag-text: #f6b79c; --flag-border: #5e2e1c;
+      --code-bg: #1e222a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101216; --panel: #171a20; --panel-2: #1e222a; --border: #2b313b;
+    --text: #e7eaef; --muted: #98a1af; --accent: #4d82ff; --accent-text: #0b0d11;
+    --warn-bg: #2a2110; --warn-border: #5c4818; --warn-text: #f0d79a;
+    --badge-bg: #262b34; --badge-text: #aab3c0;
+    --flag-bg: #33190f; --flag-text: #f6b79c; --flag-border: #5e2e1c;
+    --code-bg: #1e222a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px 64px; background: var(--bg); color: var(--text);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+  .warn { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-text); }
+  .warn strong { display: block; margin-bottom: 4px; }
+  .warn ul { margin: 8px 0 0; padding-left: 20px; }
+  .row-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
+    padding: 8px 12px;
+  }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: transparent; }
+  button:hover { filter: brightness(1.06); }
+  button:disabled { opacity: 0.45; cursor: default; filter: none; }
+  .link-btn { background: none; border: none; color: var(--accent); padding: 4px 6px; font-weight: 500; text-decoration: underline; }
+  label.inline { color: var(--muted); font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
+  input[type="number"] { font: inherit; width: 64px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+  textarea { width: 100%; min-height: 64px; font: inherit; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); resize: vertical; }
+  #status { margin-top: 10px; font-size: 14px; color: var(--muted); min-height: 20px; }
+  ol { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  li { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  li:last-child { border-bottom: none; }
+  li.done { background: var(--panel-2); }
+  .idx { width: 28px; color: var(--muted); font-size: 13px; text-align: right; flex: none; }
+  .who { flex: 1 1 auto; min-width: 0; }
+  .handle { font-weight: 600; word-break: break-all; }
+  .name { color: var(--muted); font-size: 13px; word-break: break-word; }
+  .badges { display: flex; gap: 6px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
+  .badge { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 3px 7px; border-radius: 5px; background: var(--badge-bg); color: var(--badge-text); }
+  .badge.flag { background: var(--flag-bg); color: var(--flag-text); border: 1px solid var(--flag-border); }
+  .acts { display: flex; gap: 2px; flex: none; }
+  h2 { font-size: 15px; margin: 0 0 8px; }
+  .foot { color: var(--muted); font-size: 13px; margin-top: 18px; }
+  .reply-field { margin-bottom: 10px; }
+  .reply-field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .bmk {
+    display: inline-block; padding: 9px 16px; border-radius: 8px; font-weight: 700;
+    background: var(--accent); color: var(--accent-text); text-decoration: none;
+    border: 1px solid transparent; cursor: grab;
+  }
+  kbd {
+    font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--code-bg); border: 1px solid var(--border); border-bottom-width: 2px;
+    border-radius: 5px; padding: 3px 6px; white-space: nowrap;
+  }
+  .keys { margin: 10px 0 0; padding: 0; list-style: none; font-size: 14px; }
+  .keys li { display: block; background: none; border: none; padding: 3px 0; }
+  details { margin-top: 12px; }
+  summary { cursor: pointer; font-size: 14px; color: var(--muted); font-weight: 600; }
+  details pre {
+    max-height: 320px; overflow: auto; background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    margin-top: 10px;
+  }
+  @media (max-width: 620px) {
+    li { flex-wrap: wrap; }
+    .who { flex-basis: 100%; order: 2; }
+    .badges, .acts { order: 3; }
+  }
+</style>
+
+<div class="wrap">
+  <h1>New followers of legal_leaf_market</h1>
+  <p class="sub">Newest first, read off the 8 screenshots (the list was sorted by "Date followed: latest"). Tick who you want, open a DM tab for each, then use the bookmarklet in step 3 to fire your three replies per tab.</p>
+
+  <div class="card warn">
+    <strong>Read this before you automate 60 DMs</strong>
+    Two separate risks, and the second one is the account-threatening one.
+    <ul>
+      <li>Sending the same three messages to dozens of accounts in one sitting is the exact pattern Instagram's spam heuristics watch for. The usual result is a temporary block on messaging, sometimes on the whole account.</li>
+      <li>Scripted sending (which is what the bookmarklet does) is against Instagram's terms, which prohibit automated interaction with the service. Your account is the thing at stake, so pace it: 10 to 15 people per session, spread across days, and vary the wording rather than firing three identical lines at everyone.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>1. Pick who</h2>
+    <div class="row-controls">
+      <button data-select="all">Select all</button>
+      <button data-select="none">Select none</button>
+      <button data-select="clean">Select only exact handles</button>
+      <button data-select="first">Select first</button>
+      <label class="inline"><input type="number" id="firstN" value="10" min="1" max="99"> accounts</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. Open the tabs</h2>
+    <div class="row-controls">
+      <button class="primary" id="openDms">Open DM tabs</button>
+      <button id="openProfiles">Open profile tabs</button>
+      <label class="inline"><input type="number" id="batchSize" value="10" min="1" max="50"> per click</label>
+      <button id="openNext" disabled>Open next batch</button>
+      <button id="resetQueue" disabled>Reset</button>
+    </div>
+    <div id="status">Nothing queued yet.</div>
+  </div>
+
+  <div class="card">
+    <h2>3. Your three quick replies, and the bookmarklet that sends them</h2>
+    <p class="sub" style="margin:0 0 12px">Edit these, then drag the blue button to your bookmarks bar. The replies are baked into the bookmarklet, so re-drag it whenever you change them. Instagram cannot prefill a message from a link, which is why this has to type into the box for you.</p>
+
+    <div class="reply-field">
+      <label for="r0">Reply 1</label>
+      <textarea id="r0">Hey, thanks for the follow. We run Legal Leaf Market, a price comparison site for legal hemp across a few hundred US shops.</textarea>
+    </div>
+    <div class="reply-field">
+      <label for="r1">Reply 2</label>
+      <textarea id="r1">If you sell online, we can list your products alongside everyone else's at no cost to you. Shoppers find you through search, you keep the order and the customer.</textarea>
+    </div>
+    <div class="reply-field">
+      <label for="r2">Reply 3</label>
+      <textarea id="r2">Either way, happy to answer anything. What are you working on at the moment?</textarea>
+    </div>
+
+    <div class="row-controls" style="margin: 14px 0 4px">
+      <label class="inline">Pause between messages <input type="number" id="gapMs" value="1800" min="300" max="20000" step="100"> ms</label>
+    </div>
+
+    <div class="row-controls" style="margin-top: 14px">
+      <a class="bmk" id="bmk" href="#" title="Drag me to your bookmarks bar">Send 3 replies</a>
+      <button id="copyBmk">Copy bookmarklet code</button>
+    </div>
+
+    <p class="sub" style="margin: 14px 0 0"><strong>How to use it:</strong> on an Instagram DM tab, click the bookmark once. A small panel appears in the top right and the hotkeys go live for that tab. Click "Send all 3" or press the hotkey. Repeat on the next tab.</p>
+
+    <ul class="keys">
+      <li><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd> sends all three. This is the main binding.</li>
+      <li><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> sends just that one reply.</li>
+      <li><kbd>Esc</kbd> hides the panel. Clicking the bookmark again brings it back.</li>
+      <li><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd> is also wired to send all three, but Chrome claims it for DevTools and normally takes it first, so treat it as a spare rather than the one to reach for.</li>
+    </ul>
+
+    <details>
+      <summary>What the bookmarklet does, in readable source</summary>
+      <pre id="srcView"></pre>
+    </details>
+  </div>
+
+  <ol id="list"></ol>
+
+  <p class="foot" id="foot"></p>
+</div>
+
+<script type="text/plain" id="qr-source">
+(function () {
+  'use strict';
+
+  var REPLIES_KEY = 'gaQuickReplies.v1';
+  var SENT_KEY = 'gaQuickReplies.sent.v1';
+  var BAKED = __REPLIES_JSON__;
+  var GAP_MS = __GAP_MS__;
+
+  if (window.__gaQR) { window.__gaQR.show(); return; }
+
+  /* ---------- stored state, shared across every instagram.com tab ---------- */
+
+  function loadReplies() {
+    try {
+      var raw = localStorage.getItem(REPLIES_KEY);
+      if (raw) {
+        var a = JSON.parse(raw);
+        if (Array.isArray(a) && a.length === 3) return a;
+      }
+    } catch (e) {}
+    return BAKED.slice();
+  }
+  function saveReplies(a) {
+    try { localStorage.setItem(REPLIES_KEY, JSON.stringify(a)); } catch (e) {}
+  }
+  function alreadySentHere() {
+    try { return !!(JSON.parse(localStorage.getItem(SENT_KEY)) || {})[location.pathname]; }
+    catch (e) { return false; }
+  }
+  function markSentHere() {
+    try {
+      var s = JSON.parse(localStorage.getItem(SENT_KEY)) || {};
+      s[location.pathname] = 1;
+      localStorage.setItem(SENT_KEY, JSON.stringify(s));
+    } catch (e) {}
+  }
+
+  /* ---------- finding and driving Instagram's message box ---------- */
+
+  function visible(el) { return !!(el && el.offsetParent !== null); }
+
+  /* The composer is the last visible editable on the page. Selectors are tried
+     from most specific to least so a markup change degrades instead of breaking. */
+  function findComposer() {
+    var sels = [
+      'div[role="textbox"][contenteditable="true"]',
+      'div[contenteditable="true"]',
+      'textarea'
+    ];
+    for (var i = 0; i < sels.length; i++) {
+      var els = document.querySelectorAll(sels[i]);
+      for (var j = els.length - 1; j >= 0; j--) {
+        if (visible(els[j])) return els[j];
+      }
+    }
+    return null;
+  }
+
+  function readText(el) {
+    if (!el) return '';
+    return el.tagName === 'TEXTAREA' ? el.value : (el.innerText || el.textContent || '');
+  }
+
+  function caretToEnd(el) {
+    var sel = window.getSelection();
+    var range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  /* Instagram's composer keeps its own model and renders that model into the
+     contenteditable, so writing to the DOM proves nothing: the text can sit on
+     screen while the model stays empty, and Enter then posts a blank message.
+     Measured in Chrome: document.execCommand('insertText') fires only 'input',
+     never 'beforeinput', while real typing fires both. An editor driven off
+     beforeinput therefore ignores execCommand completely.
+
+     Hence the cascade below. It leads with the two routes that go through the
+     editor's own model (paste, then beforeinput), confirms each attempt before
+     trying the next, and reports whether the model really took the text. */
+
+  function pasteInto(el, text) {
+    try {
+      var dt = new DataTransfer();
+      dt.setData('text/plain', text);
+      el.dispatchEvent(new ClipboardEvent('paste', {
+        clipboardData: dt, bubbles: true, cancelable: true
+      }));
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function beforeInputInto(el, text) {
+    var ev = new InputEvent('beforeinput', {
+      inputType: 'insertText', data: text, bubbles: true, cancelable: true
+    });
+    /* dispatchEvent returns false when a listener called preventDefault, which
+       is how an editor says it has taken the text into its own model. */
+    return el.dispatchEvent(ev) === false;
+  }
+
+  function changedFrom(el, before) {
+    return function () { return readText(el) !== before; };
+  }
+
+  /* Resolves true when the text reached the editor's model, false when it got
+     no further than the DOM. */
+  async function insertText(el, text) {
+    el.focus();
+    if (el.tagName === 'TEXTAREA') {
+      var setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+      setter.call(el, readText(el) + text);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    }
+    caretToEnd(el);
+    var before = readText(el);
+
+    if (pasteInto(el, text)) {
+      try { await waitFor(changedFrom(el, before), 400); return true; } catch (e) {}
+    }
+    if (beforeInputInto(el, text)) {
+      try { await waitFor(changedFrom(el, before), 400); return true; } catch (e) {}
+    }
+    var ok = false;
+    try { ok = document.execCommand('insertText', false, text); } catch (e) {}
+    if (ok) {
+      try { await waitFor(changedFrom(el, before), 400); } catch (e) {}
+    }
+    return false;
+  }
+
+  function pressEnter(el) {
+    var o = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true };
+    el.dispatchEvent(new KeyboardEvent('keydown', o));
+    el.dispatchEvent(new KeyboardEvent('keypress', o));
+    el.dispatchEvent(new KeyboardEvent('keyup', o));
+  }
+
+  /* A live Send control is a model-derived signal: Instagram only enables it
+     once its own model holds text. Returns null when absent or disabled. */
+  function sendControl() {
+    var nodes = document.querySelectorAll('div[role="button"], span[role="button"], button');
+    for (var i = nodes.length - 1; i >= 0; i--) {
+      var n = nodes[i];
+      if ((n.innerText || '').trim().toLowerCase() !== 'send' || !visible(n)) continue;
+      var off = n.disabled === true || n.getAttribute('aria-disabled') === 'true';
+      return off ? null : n;
+    }
+    return null;
+  }
+
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function waitFor(test, ms) {
+    return new Promise(function (resolve, reject) {
+      var t0 = Date.now();
+      (function tick() {
+        if (test()) return resolve();
+        if (Date.now() - t0 > ms) return reject(new Error('timed out'));
+        setTimeout(tick, 120);
+      })();
+    });
+  }
+
+  /* An emptied composer is the only honest confirmation that a message left. */
+  function composerEmpty(fallback) {
+    return !readText(findComposer() || fallback).trim();
+  }
+
+  async function sendOne(text) {
+    var el = findComposer();
+    if (!el) throw new Error('no message box on this tab, open the DM thread first');
+
+    var inModel = await insertText(el, text);
+    var btn = sendControl();
+
+    /* Refuse rather than fire Enter at a box whose model we could not reach.
+       Pressing on regardless is how you post three blank messages. */
+    if (!inModel && !btn) {
+      throw new Error('the message box would not take the text, so nothing was sent');
+    }
+
+    if (btn) btn.click(); else pressEnter(el);
+    try {
+      await waitFor(function () { return composerEmpty(el); }, 3000);
+      return;
+    } catch (e) {}
+
+    /* One retry down the other route before giving up. */
+    var again = sendControl();
+    if (again) again.click(); else pressEnter(el);
+    await waitFor(function () { return composerEmpty(el); }, 3000);
+  }
+
+  /* ---------- panel ---------- */
+
+  var host = document.createElement('div');
+  host.style.cssText = 'position:fixed;top:14px;right:14px;z-index:2147483647;';
+  var root = host.attachShadow({ mode: 'open' });
+  root.innerHTML = [
+    '<style>',
+    ':host,*{box-sizing:border-box}',
+    '.box{width:290px;background:#15181d;color:#e8ebf0;border:1px solid #2c333d;border-radius:11px;',
+    'box-shadow:0 10px 30px rgba(0,0,0,.45);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overflow:hidden}',
+    '.hd{display:flex;align-items:center;gap:8px;padding:9px 11px;background:#1b1f26;border-bottom:1px solid #2c333d}',
+    '.ttl{font-weight:700;font-size:12px;letter-spacing:.02em;flex:1}',
+    '.hd button{background:none;border:none;color:#98a1af;cursor:pointer;font-size:15px;line-height:1;padding:2px 4px}',
+    '.hd button:hover{color:#e8ebf0}',
+    '.bd{padding:11px}',
+    '.warn{background:#33240f;color:#f0cf98;border:1px solid #5c4818;border-radius:7px;padding:7px 9px;margin-bottom:9px;font-size:12px}',
+    'button.act{width:100%;font:inherit;font-weight:700;padding:9px;border-radius:7px;border:none;',
+    'background:#4d82ff;color:#0b0d11;cursor:pointer}',
+    'button.act:disabled{opacity:.45;cursor:default}',
+    '.trio{display:flex;gap:6px;margin-top:7px}',
+    '.trio button{flex:1;font:inherit;font-weight:600;padding:6px 0;border-radius:6px;border:1px solid #2c333d;',
+    'background:#1e232b;color:#c9d1dc;cursor:pointer}',
+    '.trio button:disabled{opacity:.45;cursor:default}',
+    '.log{margin-top:9px;font-size:12px;color:#98a1af;min-height:32px;word-break:break-word}',
+    '.log.err{color:#f6a58c}',
+    '.keys{margin:9px 0 0;font-size:11px;color:#7d8695;line-height:1.6}',
+    'textarea{width:100%;min-height:44px;font:inherit;font-size:12px;padding:6px;margin-bottom:6px;border-radius:6px;',
+    'border:1px solid #2c333d;background:#0f1216;color:#e8ebf0;resize:vertical}',
+    '.edit{display:none;border-top:1px solid #2c333d;margin-top:9px;padding-top:9px}',
+    '.edit.open{display:block}',
+    '.edit label{display:block;font-size:11px;font-weight:700;color:#98a1af;margin-bottom:3px}',
+    '</style>',
+    '<div class="box">',
+    '  <div class="hd">',
+    '    <span class="ttl">Quick replies</span>',
+    '    <button id="pencil" title="Edit replies">edit</button>',
+    '    <button id="close" title="Hide (Esc)">&times;</button>',
+    '  </div>',
+    '  <div class="bd">',
+    '    <div class="warn" id="dupe" style="display:none">Already sent on this thread.</div>',
+    '    <button class="act" id="all">Send all 3</button>',
+    '    <div class="trio">',
+    '      <button data-one="0">1</button><button data-one="1">2</button><button data-one="2">3</button>',
+    '    </div>',
+    '    <div class="log" id="log">Ready.</div>',
+    '    <div class="keys">Alt+Shift+I all three · Alt+Shift+1/2/3 one · Esc hide<br>Ctrl+Shift+I also bound, Chrome may take it for DevTools.</div>',
+    '    <div class="edit" id="edit">',
+    '      <label>Reply 1</label><textarea data-r="0"></textarea>',
+    '      <label>Reply 2</label><textarea data-r="1"></textarea>',
+    '      <label>Reply 3</label><textarea data-r="2"></textarea>',
+    '    </div>',
+    '  </div>',
+    '</div>'
+  ].join('');
+  (document.body || document.documentElement).appendChild(host);
+
+  var $ = function (s) { return root.querySelector(s); };
+  var logEl = $('#log');
+  var allBtn = $('#all');
+  var oneBtns = Array.prototype.slice.call(root.querySelectorAll('[data-one]'));
+  var areas = Array.prototype.slice.call(root.querySelectorAll('[data-r]'));
+
+  function log(msg, isErr) {
+    logEl.textContent = msg;
+    logEl.className = isErr ? 'log err' : 'log';
+  }
+  function setBusy(b) {
+    allBtn.disabled = b;
+    oneBtns.forEach(function (x) { x.disabled = b; });
+  }
+
+  areas.forEach(function (t, i) {
+    t.value = loadReplies()[i] || '';
+    t.addEventListener('input', function () {
+      var current = loadReplies();
+      current[i] = t.value;
+      saveReplies(current);
+    });
+  });
+  if (alreadySentHere()) $('#dupe').style.display = 'block';
+
+  $('#close').addEventListener('click', function () { host.style.display = 'none'; });
+  $('#pencil').addEventListener('click', function () { $('#edit').classList.toggle('open'); });
+
+  /* ---------- the actual run ---------- */
+
+  var busy = false;
+
+  async function run(indexes) {
+    if (busy) { log('Still sending, hold on.'); return; }
+    busy = true; setBusy(true);
+    var replies = loadReplies();
+    var sent = 0;
+    try {
+      for (var i = 0; i < indexes.length; i++) {
+        var n = indexes[i];
+        var text = (replies[n] || '').trim();
+        if (!text) { log('Reply ' + (n + 1) + ' is empty, skipped.'); continue; }
+        log('Sending reply ' + (n + 1) + ' of ' + indexes.length + '...');
+        await sendOne(text);
+        sent++;
+        if (i < indexes.length - 1) await sleep(GAP_MS);
+      }
+      if (sent) { markSentHere(); $('#dupe').style.display = 'block'; }
+      log(sent + (sent === 1 ? ' message' : ' messages') + ' sent. Move to the next tab.');
+    } catch (e) {
+      log('Stopped after ' + sent + ' sent: ' + e.message, true);
+    }
+    busy = false; setBusy(false);
+  }
+
+  allBtn.addEventListener('click', function () { run([0, 1, 2]); });
+  oneBtns.forEach(function (b) {
+    b.addEventListener('click', function () { run([parseInt(b.dataset.one, 10)]); });
+  });
+
+  /* ---------- hotkeys ---------- */
+
+  function onKey(e) {
+    if (e.repeat || e.metaKey) return;
+    var isI = e.code === 'KeyI' || e.key === 'I' || e.key === 'i';
+    var fire = null;
+
+    /* Requested binding. Chrome normally intercepts this for DevTools and the
+       page never sees it, so Alt+Shift+I exists as the one that always lands. */
+    if (e.ctrlKey && e.shiftKey && !e.altKey && isI) fire = [0, 1, 2];
+    else if (e.altKey && e.shiftKey && !e.ctrlKey && isI) fire = [0, 1, 2];
+    else if (e.altKey && e.shiftKey && !e.ctrlKey) {
+      var d = ['Digit1', 'Digit2', 'Digit3'].indexOf(e.code);
+      if (d >= 0) fire = [d];
+    } else if (e.key === 'Escape' && host.style.display !== 'none') {
+      host.style.display = 'none';
+      return;
+    }
+
+    if (!fire) return;
+    e.preventDefault();
+    e.stopPropagation();
+    host.style.display = '';
+    run(fire);
+  }
+  window.addEventListener('keydown', onKey, true);
+
+  window.__gaQR = {
+    show: function () { host.style.display = ''; log('Ready.'); },
+    run: run
+  };
+  log('Armed on this tab. Hotkeys are live.');
+})();
+</script>
+
+<script>
+/* ------------------------------------------------------------------ *
+ * Follower list read off the 8 screenshots, newest first.
+ * handle: the Instagram username. exact:false means the screenshot cut
+ * the handle off, so its link goes to Instagram search rather than a
+ * profile URL that would 404.
+ * ------------------------------------------------------------------ */
+const FOLLOWERS = [
+  { handle: "j.a.k.50a", name: "jak", exact: true },
+  { handle: "alexa_n6738", name: "", exact: true },
+  { handle: "hebborns_family_f", name: "Hebborns Family Fu...", exact: false },
+  { handle: "blazeone", name: "Blazeone45__", exact: false, note: "trailing underscores unclear" },
+  { handle: "the_10.10_2026", name: "10/10", exact: true },
+  { handle: "charliemalandro", name: "Neko Hashi", exact: true },
+  { handle: "evo.bubba.420", name: "", exact: true },
+  { handle: "spareman87", name: "Alieu saidykhan", exact: true },
+  { handle: "afterlifedropss", name: "AfterlifeDrops", exact: true, requested: true },
+  { handle: "paul1531993", name: "Paul", exact: true },
+  { handle: "tuftonez.creations", name: "Beanie", exact: true },
+  { handle: "waynewell10", name: "Wayne well", exact: true },
+  { handle: "subscribe_1m_peo", name: "100 day challenge", exact: false },
+  { handle: "sacpl.ug420", name: "Sacplug", exact: true },
+  { handle: "geeklights.company", name: "Geeklights company", exact: true },
+  { handle: "jerry967997", name: "", exact: true },
+  { handle: "kids05tj", name: "baby kids", exact: true },
+  { handle: "hellboy999m", name: "BABY KILO", exact: true },
+  { handle: "premocremo420", name: "Cremo Premo", exact: true },
+  { handle: "la.reserve.bcn", name: "La Reserve backup", exact: true },
+  { handle: "muggle_born92", name: "Chico_O'malley", exact: true },
+  { handle: "thesnacklabrva", name: "The Snack Lab RVA", exact: true },
+  { handle: "flaco_weed4.20", name: "Flacoweed", exact: true },
+  { handle: "vape_pod_supplier", name: "HuaWen Vape-Kevin", exact: true },
+  { handle: "tribu.pampa.comu", name: "TRIBU PAMPA - Co...", exact: false },
+  { handle: "lidupofficial", name: "LidUp", exact: true },
+  { handle: "rwandan_que", name: "Rwanda Queens in E...", exact: false, requested: true, note: "real handle starts with four underscores" },
+  { handle: "calidispensary018", name: "cali dispensary", exact: true },
+  { handle: "extractmanthailand", name: "extract man Thailand", exact: true },
+  { handle: "capo_corleone8", name: "Teflon Don Cloudz", exact: true },
+  { handle: "chris.9897174", name: "", exact: true },
+  { handle: "labelbackup", name: "Logistic king", exact: true },
+  { handle: "josecreams__041", name: "rikinho__creams", exact: true },
+  { handle: "ddgreens349", name: "DdGreens349", exact: true },
+  { handle: "xwizard_kgx", name: "", exact: true },
+  { handle: "giraffe.39609308", name: "", exact: true },
+  { handle: "puertoricospaceag", name: "puertoricospaceage...", exact: false },
+  { handle: "bigamoni", name: "", exact: true },
+  { handle: "cloudyvibes881", name: "", exact: true, requested: true },
+  { handle: "functionjordan", name: "Jordan function", exact: true },
+  { handle: "grimsplix", name: "Splix", exact: true },
+  { handle: "mbembacalvados", name: "Mbemba Calvados", exact: true },
+  { handle: "lilkidmsa", name: "African Kid Voice", exact: true },
+  { handle: "saputra.4111757", name: "FARDA SAPUTRA", exact: true },
+  { handle: "chelmodank710", name: "", exact: true },
+  { handle: "blackstamptriercof", name: "Black Stamp Trier", exact: false },
+  { handle: "kaiquenascimento", name: "Kaique Nascimento", exact: false },
+  { handle: "khaneshaqzaai", name: "Khan_Eshaqzaai", exact: true },
+  { handle: "Kourtney Eaken", name: "handle was scrolled off screen", exact: false, note: "search by display name" },
+  { handle: "squashbros710", name: "", exact: true },
+  { handle: "anna.p.bergholm", name: "Anna Bergholm", exact: true },
+  { handle: "tenerifesocialclub", name: "Happy Island", exact: true },
+  { handle: "exotic_kingdom_g", name: "Exotic Kingdom CS...", exact: false },
+  { handle: "whv.headgrower", name: "Chief Cultivator", exact: true },
+  { handle: "puredry_eu", name: "Pure Dry", exact: true },
+  { handle: "cannatrak", name: "Cannatrak", exact: true },
+  { handle: "qihe.biotech", name: "nickqi", exact: true },
+  { handle: "drakensbergtattoos", name: "Wolf Moon Tattoos", exact: true },
+  { handle: "velvetsmoking", name: "Velvet smoking", exact: true },
+  { handle: "jellojayy191", name: "", exact: true },
+  { handle: "smith_feff", name: "Jeff Smith", exact: true },
+  { handle: "verdelion__cannabi", name: "Verdelion | Cannabis...", exact: false },
+  { handle: "uniqueconnoisseurs", name: "Unique Connoisseur's", exact: true },
+  { handle: "mediiicaliiius", name: "MediiiCaliii", exact: true },
+  { handle: "arianamariah209", name: "Ariana M", exact: true },
+  { handle: "mark.8447642", name: "", exact: true },
+  { handle: "scouseshell_420", name: "", exact: true },
+  { handle: "certifiedgreen1", name: "", exact: true }
+];
+
+const searchUrl = f => "https://www.instagram.com/explore/search/keyword/?q=" + encodeURIComponent(f.handle);
+const dmUrl = f => f.exact ? "https://ig.me/m/" + encodeURIComponent(f.handle) : searchUrl(f);
+const profileUrl = f => f.exact ? "https://www.instagram.com/" + encodeURIComponent(f.handle) + "/" : searchUrl(f);
+
+/* ---------- list rendering ---------- */
+
+const listEl = document.getElementById("list");
+const statusEl = document.getElementById("status");
+const openNextBtn = document.getElementById("openNext");
+const resetBtn = document.getElementById("resetQueue");
+
+function badge(text, flag) {
+  const b = document.createElement("span");
+  b.className = "badge" + (flag ? " flag" : "");
+  b.textContent = text;
+  return b;
+}
+function linkBtn(text, url) {
+  const a = document.createElement("a");
+  a.className = "link-btn";
+  a.textContent = text;
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  return a;
+}
+
+FOLLOWERS.forEach((f, i) => {
+  const li = document.createElement("li");
+  li.dataset.index = i;
+
+  const cb = document.createElement("input");
+  cb.type = "checkbox";
+  cb.checked = f.exact;
+
+  const idx = document.createElement("span");
+  idx.className = "idx";
+  idx.textContent = (i + 1) + ".";
+
+  const who = document.createElement("div");
+  who.className = "who";
+  const h = document.createElement("div");
+  h.className = "handle";
+  h.textContent = f.exact ? "@" + f.handle : f.handle + " (partial)";
+  who.appendChild(h);
+  const bits = [f.name, f.note].filter(Boolean);
+  if (bits.length) {
+    const n = document.createElement("div");
+    n.className = "name";
+    n.textContent = bits.join(" · ");
+    who.appendChild(n);
+  }
+
+  const badges = document.createElement("div");
+  badges.className = "badges";
+  if (f.requested) badges.appendChild(badge("requested", false));
+  if (!f.exact) badges.appendChild(badge("needs lookup", true));
+
+  const acts = document.createElement("div");
+  acts.className = "acts";
+  acts.appendChild(linkBtn(f.exact ? "DM" : "Search", dmUrl(f)));
+  if (f.exact) acts.appendChild(linkBtn("Profile", profileUrl(f)));
+
+  li.append(cb, idx, who, badges, acts);
+  listEl.appendChild(li);
+});
+
+const checkboxes = () => Array.from(listEl.querySelectorAll('input[type="checkbox"]'));
+
+document.querySelectorAll("[data-select]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const mode = btn.dataset.select;
+    const n = parseInt(document.getElementById("firstN").value, 10) || 0;
+    checkboxes().forEach((cb, i) => {
+      if (mode === "all") cb.checked = true;
+      else if (mode === "none") cb.checked = false;
+      else if (mode === "clean") cb.checked = FOLLOWERS[i].exact;
+      else if (mode === "first") cb.checked = i < n;
+    });
+  });
+});
+
+/* ---------- tab queue ----------
+ * Every window.open runs inside a real click handler. A popup opened from a
+ * timer has lost the user gesture and Chrome blocks it, so batches are
+ * advanced by clicking rather than on a delay.
+ */
+let queue = [];
+let opened = 0;
+let total = 0;
+
+function startQueue(urlFor, labelPlural) {
+  const picked = checkboxes().map((cb, i) => (cb.checked ? i : -1)).filter(i => i >= 0);
+  if (!picked.length) {
+    statusEl.textContent = "Nothing ticked, so nothing to open.";
+    return;
+  }
+  queue = picked.map(i => ({ index: i, url: urlFor(FOLLOWERS[i]) }));
+  total = queue.length;
+  opened = 0;
+  listEl.querySelectorAll("li.done").forEach(li => li.classList.remove("done"));
+  statusEl.textContent = "Queued " + total + " " + labelPlural + ".";
+  openBatch();
+}
+
+function openBatch() {
+  const size = Math.max(1, parseInt(document.getElementById("batchSize").value, 10) || 10);
+  let blocked = 0;
+  for (let k = 0; k < size && queue.length; k++) {
+    const item = queue.shift();
+    if (!window.open(item.url, "_blank", "noopener")) blocked++;
+    opened++;
+    const li = listEl.querySelector('li[data-index="' + item.index + '"]');
+    if (li) li.classList.add("done");
+  }
+  const left = queue.length;
+  let msg = "Opened " + opened + " of " + total + ".";
+  msg += left ? " " + left + " still queued." : " Queue is empty.";
+  if (blocked) {
+    msg += " Chrome blocked " + blocked + " tab" + (blocked === 1 ? "" : "s") +
+      ": click the blocked-popup icon in the address bar, always allow this page, then reset and run it again.";
+  }
+  statusEl.textContent = msg;
+  openNextBtn.disabled = left === 0;
+  resetBtn.disabled = false;
+}
+
+document.getElementById("openDms").addEventListener("click", () => startQueue(dmUrl, "DM tabs"));
+document.getElementById("openProfiles").addEventListener("click", () => startQueue(profileUrl, "profile tabs"));
+openNextBtn.addEventListener("click", openBatch);
+resetBtn.addEventListener("click", () => {
+  queue = []; opened = 0; total = 0;
+  listEl.querySelectorAll("li.done").forEach(li => li.classList.remove("done"));
+  statusEl.textContent = "Queue cleared.";
+  openNextBtn.disabled = true;
+  resetBtn.disabled = true;
+});
+
+/* ---------- bookmarklet build ----------
+ * The injector source lives in the text/plain block above so there is one copy
+ * of it to read and edit. The three replies and the pause are substituted in,
+ * then the whole thing is percent-encoded into a javascript: URL.
+ */
+const RAW_SOURCE = document.getElementById("qr-source").textContent;
+const replyBoxes = [0, 1, 2].map(i => document.getElementById("r" + i));
+const gapBox = document.getElementById("gapMs");
+const bmkLink = document.getElementById("bmk");
+
+function buildSource() {
+  const replies = replyBoxes.map(t => t.value);
+  const gap = Math.max(300, parseInt(gapBox.value, 10) || 1800);
+  return RAW_SOURCE
+    .replace("__REPLIES_JSON__", JSON.stringify(replies))
+    .replace("__GAP_MS__", String(gap));
+}
+function refreshBookmarklet() {
+  const src = buildSource();
+  bmkLink.href = "javascript:" + encodeURIComponent(src);
+  document.getElementById("srcView").textContent = src.trim();
+}
+replyBoxes.concat([gapBox]).forEach(el => el.addEventListener("input", refreshBookmarklet));
+refreshBookmarklet();
+
+document.getElementById("copyBmk").addEventListener("click", async () => {
+  const btn = document.getElementById("copyBmk");
+  try {
+    await navigator.clipboard.writeText(bmkLink.href);
+    btn.textContent = "Copied, paste it as a bookmark URL";
+  } catch (e) {
+    btn.textContent = "Copy failed, drag the blue button instead";
+  }
+  setTimeout(() => { btn.textContent = "Copy bookmarklet code"; }, 2600);
+});
+
+const exactCount = FOLLOWERS.filter(f => f.exact).length;
+document.getElementById("foot").textContent =
+  FOLLOWERS.length + " accounts read off the screenshots: " + exactCount +
+  " with an exact handle, " + (FOLLOWERS.length - exactCount) +
+  " truncated by the screenshot and pointed at Instagram search instead. " +
+  "One row between bigamoni and cloudyvibes881 may have fallen in a gap between two screenshots.";
+</script>

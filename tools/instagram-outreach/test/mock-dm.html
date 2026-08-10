@@ -1,0 +1,83 @@
+<meta charset="utf-8">
+<title>Mock DM thread</title>
+<style>
+  body { font: 15px sans-serif; margin: 0; padding: 20px; background: #000; color: #eee; }
+  #thread { min-height: 120px; border: 1px solid #333; padding: 10px; margin-bottom: 12px; }
+  #thread div { padding: 6px 10px; background: #2b2b3a; border-radius: 12px; margin: 4px 0; display: inline-block; }
+  .composer { display: flex; gap: 8px; align-items: center; border: 1px solid #333; border-radius: 20px; padding: 8px 12px; }
+  [role="textbox"] { flex: 1; min-height: 22px; outline: none; }
+  [role="button"] { color: #4d82ff; font-weight: 600; cursor: pointer; }
+  [role="button"][aria-disabled="true"] { color: #445; cursor: default; }
+</style>
+
+<h3>Mock Instagram DM thread</h3>
+<div id="thread"></div>
+<div class="composer">
+  <div role="textbox" contenteditable="true" aria-label="Message" id="box"></div>
+  <div role="button" id="send" aria-disabled="true">Send</div>
+</div>
+
+<script>
+/* Two editor styles, chosen with ?mode=model (default) or ?mode=dom.
+ *
+ * mode=model mimics a Lexical/Draft style editor as Instagram uses: it owns a
+ * model, takes text only from beforeinput and paste, renders the model into the
+ * contenteditable, and enables Send only when the model is non-empty. Text
+ * poked straight into the DOM is invisible to it.
+ *
+ * mode=dom mimics a naive editor that reads the DOM on 'input'.
+ *
+ * Either way every commit is recorded, including blank ones, so a test can
+ * assert that no empty message was ever posted. */
+const MODE = new URLSearchParams(location.search).get('mode') || 'model';
+window.__sent = [];
+window.__mode = MODE;
+
+const box = document.getElementById('box');
+const send = document.getElementById('send');
+const thread = document.getElementById('thread');
+let model = '';
+
+function refreshSend() {
+  send.setAttribute('aria-disabled', model.trim() ? 'false' : 'true');
+}
+function render() {
+  if (box.textContent !== model) box.textContent = model;
+  refreshSend();
+}
+function commit() {
+  const text = model.trim();
+  window.__sent.push(text);
+  if (text) {
+    const d = document.createElement('div');
+    d.textContent = text;
+    thread.appendChild(d);
+  }
+  model = '';
+  render();
+}
+
+if (MODE === 'model') {
+  box.addEventListener('beforeinput', (e) => {
+    if (e.inputType === 'insertText' && e.data != null) {
+      e.preventDefault();
+      model += e.data;
+      render();
+    }
+  });
+  box.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const t = e.clipboardData && e.clipboardData.getData('text/plain');
+    if (t) { model += t; render(); }
+  });
+} else {
+  box.addEventListener('input', () => { model = box.textContent; refreshSend(); });
+}
+
+box.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commit(); }
+});
+send.addEventListener('click', () => {
+  if (send.getAttribute('aria-disabled') !== 'true') commit();
+});
+</script>
