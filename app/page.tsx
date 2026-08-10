@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm"
 import { ArrowRight, BellRing, Cable, LineChart, Search as SearchIcon } from "lucide-react"
 import { InstagramStrip } from "@/components/instagram-strip"
 import { SubscribeForm } from "@/components/subscribe-form"
-import { CategoryIcon, CATEGORY_HUE } from "@/components/category-icon"
+import { CategoryIcon, CATEGORY_HUE, FALLBACK_HUE } from "@/components/category-icon"
 import { indexableCategories } from "@/lib/categories"
 import { StoreMark } from "@/components/store-mark"
 import { STORES } from "@/lib/stores"
@@ -166,8 +166,8 @@ export default async function HomePage() {
               <span
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
                 style={{
-                  background: `${CATEGORY_HUE[category.slug] ?? "#f0a830"}22`,
-                  color: CATEGORY_HUE[category.slug] ?? "#f0a830",
+                  background: `${CATEGORY_HUE[category.slug] ?? FALLBACK_HUE}22`,
+                  color: CATEGORY_HUE[category.slug] ?? FALLBACK_HUE,
                 }}
               >
                 <CategoryIcon slug={category.slug} />

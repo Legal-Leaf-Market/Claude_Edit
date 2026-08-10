@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { SlidersHorizontal, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { CategoryIcon, CATEGORY_HUE } from "@/components/category-icon"
+import { CategoryIcon, CATEGORY_HUE, FALLBACK_HUE } from "@/components/category-icon"
 import { StoreMark } from "@/components/store-mark"
 import { sortByCategoryPriority } from "@/lib/categories"
 import { sourceLabel, slugifyCategory } from "@/lib/utils"
@@ -261,8 +261,8 @@ function FilterControls({
           <span
             className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
             style={{
-              background: `${CATEGORY_HUE[slugifyCategory(v)] ?? "#f0a830"}22`,
-              color: CATEGORY_HUE[slugifyCategory(v)] ?? "#f0a830",
+              background: `${CATEGORY_HUE[slugifyCategory(v)] ?? FALLBACK_HUE}22`,
+              color: CATEGORY_HUE[slugifyCategory(v)] ?? FALLBACK_HUE,
             }}
           >
             <CategoryIcon slug={slugifyCategory(v)} className="h-3.5 w-3.5" />

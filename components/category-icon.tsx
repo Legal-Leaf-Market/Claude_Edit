@@ -24,6 +24,18 @@ const S = {
   strokeLinejoin: "round" as const,
 }
 
+/**
+ * Hue used for a category with no entry in CATEGORY_HUE below.
+ *
+ * Kept as a hex literal rather than `var(--copper)` on purpose: several call
+ * sites build a translucent wash by appending a two-digit alpha to this string
+ * ("...22"), which is only valid on a hex colour. It must therefore track
+ * --copper in app/globals.css by hand. It exists as a constant because the old
+ * value (#f0a830, the pre-house amber) was duplicated at four call sites and
+ * was left behind by the palette change at every one of them.
+ */
+export const FALLBACK_HUE = "#d2703a"
+
 /** Slug -> accent. Keyed by slug so a rename is a visible edit, not a silent reshuffle. */
 export const CATEGORY_HUE: Record<string, string> = {
   "electric-guitars": "#f0a830",
