@@ -69,3 +69,17 @@ export function sourceLabel(source: string): string {
 export function titleCase(input: string): string {
   return input.replace(/\w\S*/g, (t) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase())
 }
+
+/**
+ * Category name to slug. Must stay identical to slugify() in
+ * lib/canonical/model-parse.ts, including turning "&" into " and " -- getting
+ * that wrong is what left three homepage category links 404ing. Duplicated
+ * rather than imported because the filter rail is a client component.
+ */
+export function slugifyCategory(category: string): string {
+  return category
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+}

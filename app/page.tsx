@@ -3,6 +3,8 @@ import { sql } from "drizzle-orm"
 import { ArrowRight, BellRing, LineChart, Search as SearchIcon } from "lucide-react"
 import { InstagramStrip } from "@/components/instagram-strip"
 import { SubscribeForm } from "@/components/subscribe-form"
+import { CategoryIcon, CATEGORY_HUE } from "@/components/category-icon"
+import { indexableCategories } from "@/lib/categories"
 import { StoreMark } from "@/components/store-mark"
 import { STORES } from "@/lib/stores"
 import { BOARDS } from "@/lib/boards"
@@ -12,18 +14,15 @@ import { search } from "@/lib/search"
 
 export const revalidate = 300
 
-const CATEGORIES = [
-  { slug: "electric-guitars", label: "Electric guitars" },
-  { slug: "acoustic-guitars", label: "Acoustic guitars" },
-  { slug: "bass-guitars", label: "Bass guitars" },
-  { slug: "amplifiers", label: "Amplifiers" },
-  { slug: "effects-pedals", label: "Effects pedals" },
-  { slug: "synthesizers", label: "Synthesizers" },
-  { slug: "keyboards-pianos", label: "Keyboards" },
-  { slug: "drums-percussion", label: "Drums" },
-  { slug: "microphones", label: "Microphones" },
-  { slug: "recording-audio", label: "Studio gear" },
-]
+/**
+ * Derived from lib/categories rather than hand-listed.
+ *
+ * The hardcoded version drifted: it used "keyboards-pianos" while slugify
+ * turns "&" into "and", so /used/keyboards-pianos, /used/drums-percussion and
+ * /used/recording-audio were all 404ing from the homepage. Deriving the list
+ * means a category rename cannot silently break a link again.
+ */
+const CATEGORIES = indexableCategories()
 
 /** Headline counts. Wrapped because an empty database is the normal first-run state. */
 async function siteStats() {
@@ -120,9 +119,18 @@ export default async function HomePage() {
             <Link
               key={category.slug}
               href={`/used/${category.slug}`}
-              className="panel px-4 py-3 text-sm text-[var(--cream)] transition-colors hover:border-[var(--amber)]/40 hover:bg-[var(--secondary)]"
+              className="panel flex items-center gap-3 px-4 py-3.5 text-sm text-[var(--cream)] transition-colors hover:border-[var(--amber)]/40 hover:bg-[var(--secondary)]"
             >
-              {category.label}
+              <span
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                style={{
+                  background: `${CATEGORY_HUE[category.slug] ?? "#f0a830"}22`,
+                  color: CATEGORY_HUE[category.slug] ?? "#f0a830",
+                }}
+              >
+                <CategoryIcon slug={category.slug} />
+              </span>
+              <span className="truncate">{category.label}</span>
             </Link>
           ))}
         </div>

@@ -5,7 +5,9 @@ import { createPortal } from "react-dom"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { SlidersHorizontal, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { sourceLabel } from "@/lib/utils"
+import { CategoryIcon, CATEGORY_HUE } from "@/components/category-icon"
+import { StoreMark } from "@/components/store-mark"
+import { sourceLabel, slugifyCategory } from "@/lib/utils"
 import type { Facets, FacetValue } from "@/lib/search/types"
 
 /**
@@ -240,11 +242,12 @@ function FilterControls({
 
       {!hidden.has("source") && (
       <FacetGroup
-        title="Marketplace"
+        title="Store"
         values={facets.source}
         selected={selected("source")}
         onToggle={(v) => toggleValue("source", v)}
         renderLabel={sourceLabel}
+        renderMark={(v) => <StoreMark source={v} name={sourceLabel(v)} size="sm" />}
       />
       )}
       {!hidden.has("category") && (
@@ -253,6 +256,17 @@ function FilterControls({
         values={facets.category}
         selected={selected("category")}
         onToggle={(v) => toggleValue("category", v)}
+        renderMark={(v) => (
+          <span
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
+            style={{
+              background: `${CATEGORY_HUE[slugifyCategory(v)] ?? "#f0a830"}22`,
+              color: CATEGORY_HUE[slugifyCategory(v)] ?? "#f0a830",
+            }}
+          >
+            <CategoryIcon slug={slugifyCategory(v)} className="h-3.5 w-3.5" />
+          </span>
+        )}
       />
       )}
       {!hidden.has("brand") && (
@@ -330,6 +344,7 @@ function FacetGroup({
   selected,
   onToggle,
   renderLabel,
+  renderMark,
   collapsibleAfter,
 }: {
   title: string
@@ -337,6 +352,8 @@ function FacetGroup({
   selected: string[]
   onToggle: (value: string) => void
   renderLabel?: (value: string) => string
+  /** Optional leading glyph, so store and category rows read visually. */
+  renderMark?: (value: string) => React.ReactNode
   collapsibleAfter?: number
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -365,6 +382,7 @@ function FacetGroup({
                 onChange={() => onToggle(facet.value)}
                 className="h-4 w-4 shrink-0 accent-[var(--amber)]"
               />
+              {renderMark?.(facet.value)}
               <span className="truncate">{renderLabel ? renderLabel(facet.value) : facet.value}</span>
             </span>
             <span className="shrink-0 text-xs text-[var(--muted-foreground)]">{facet.count}</span>
