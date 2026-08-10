@@ -427,3 +427,55 @@ export function rebateShareForYear(year: number): number {
   for (const phase of REBATE_SCHEDULE) if (year >= phase.fromYear) share = phase.shareOfCommission
   return share
 }
+
+/**
+ * Local shops.
+ *
+ * A different animal from every other source here, and priced differently on
+ * purpose. A local shop with a few hundred instruments and no e-commerce
+ * checkout cannot be paid on commission, because there is usually no
+ * trackable online sale: the referral ends in someone walking through a door.
+ * Charging a flat subscription is the honest description of what is actually
+ * delivered, which is presence and traffic, not conversion.
+ *
+ * It is also the diversification the affiliate model lacks. Subscription
+ * revenue does not move with search rankings, which is the risk most likely
+ * to break everything else in this projection.
+ *
+ * Same sequencing rule as the maker subscriptions: unsellable until the site
+ * can show a shop real referral numbers, which is why the schedule starts in
+ * year three rather than at launch. Listing itself stays free -- the fee buys
+ * a richer store page, never rank.
+ */
+export type LocalShopInput = {
+  /** Shops signed per month once the programme opens. */
+  addPerMonth?: number
+  monthlyPrice?: number
+  /** Local businesses churn less than online merchants once they see walk-ins. */
+  monthlyChurn?: number
+  startMonth?: number
+  months?: number
+}
+
+export function projectLocalShops(input: LocalShopInput = {}) {
+  const {
+    addPerMonth = 1,
+    monthlyPrice = 35,
+    monthlyChurn = 0.03,
+    startMonth = 25, // year 3
+    months = 120,
+  } = input
+
+  let paying = 0
+  let total = 0
+  const monthly: number[] = []
+
+  for (let m = 1; m <= months; m += 1) {
+    if (m >= startMonth) paying = paying * (1 - monthlyChurn) + addPerMonth
+    const revenue = paying * monthlyPrice
+    monthly.push(revenue)
+    total += revenue
+  }
+
+  return { total, monthly, payingAtEnd: paying }
+}
