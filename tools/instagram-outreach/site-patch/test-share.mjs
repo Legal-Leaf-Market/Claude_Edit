@@ -493,5 +493,48 @@ console.log('\n=== the size dropdown honours the pick constraints ===');
   ok(/Quarter Pound/.test(direct.html), 'including the quarter pound');
 }
 
+// ---------------------------------------------------------------------------
+// The card a crawler reads should show the variant being advertised, not the
+// listing's lead photo. On a multi-strain listing they are different pictures.
+// ---------------------------------------------------------------------------
+console.log('\n=== the shared card shows the variant, not just the listing ===');
+{
+  const MULTI = {
+    id: 'sb__trim', name: 'Cheap THCA Flower Trim', store: 'THCA Small Buds',
+    storeKey: 'sb', domain: 'sb.test', cartDomain: 'sb.test', platform: 'shopify',
+    ref: 'refsb', coupon: 'CODESB', category: 'THCA Flower', cur: 'USD', inStock: true,
+    perG: 1.07, image: 'https://cdn.test/lead.png', url: 'https://sb.test/p',
+    sizes: [
+      ['Dank Work 1 oz', 29.99, 28, 'V-DANK', 1, null, 'https://cdn.test/dank.png'],
+      ['Candy Hustle 1 oz', 39.99, 28, 'V-CANDY', 1, null, 'https://cdn.test/candy.png'],
+      ['House Blend 1 oz', 34.99, 28, 'V-HOUSE', 1, null, ''],
+      ['Hostile 1 oz', 31.99, 28, 'V-BAD', 1, null, 'javascript:alert(1)'],
+    ],
+  };
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [MULTI] }) });
+
+  const pick = await run('pick');
+  const ogImg = (pick.html.match(/<meta property="og:image" content="([^"]*)"/) || [])[1];
+  console.log('  og:image ' + JSON.stringify(ogImg));
+  ok(ogImg === 'https://cdn.test/dank.png', "the cheapest row's own photo is the shared one");
+  ok(!/javascript:/.test(pick.html), 'a javascript: photo in the feed reaches the page nowhere');
+
+  const P = JSON.parse((pick.html.match(/var D = (\{[\s\S]*?\});\n/) || [])[1].replace(/\\u003c/g, '<'));
+  const imgs = P.slides[0].sizes.map((z) => [z.display, z.img]);
+  imgs.forEach((z) => console.log('    ' + JSON.stringify(z)));
+  ok(P.slides[0].baseImg === 'https://cdn.test/lead.png',
+     'the listing photo is kept as the fallback for rows without one');
+  ok(imgs.find((z) => /Candy/.test(z[0]))[1] === 'https://cdn.test/candy.png', 'each row carries its own');
+  ok(imgs.find((z) => /House/.test(z[0]))[1] === '', 'a row with none carries an empty string, not the lead photo');
+  ok(imgs.find((z) => /Hostile/.test(z[0]))[1] === '', 'and the hostile one is dropped to empty');
+
+  // ?s= should move the shared photo with the shared price.
+  const second = await run('sb__trim', '1');
+  const ogB = (second.html.match(/<meta property="og:image" content="([^"]*)"/) || [])[1];
+  ok(ogB === 'https://cdn.test/candy.png', '?s= moves the shared photo too: ' + ogB);
+  ok(/\$39\.99/.test((second.html.match(/<meta property="og:title" content="([^"]*)"/) || [])[1] || ''),
+     'along with the price it advertises');
+}
+
 console.log(fails ? '\n' + fails + ' CHECK(S) FAILED' : '\nALL CHECKS PASSED');
 process.exit(fails ? 1 : 0);

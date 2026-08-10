@@ -258,6 +258,75 @@ console.log('\n=== front overlays must not show through the flipped card ===');
   ok(await opacity() === '1', 'and they come back when flipped to the front');
 }
 
+console.log('\n=== the photo follows the variant ===');
+{
+  /* Shape taken from the live feed: one listing, several strains, each with its own
+     photo at row[6], and one row the store gave no photo of its own. 3,434 live
+     size rows carry one and 460 listings differ per variant, so the product's lead
+     photo is the wrong picture for most rows on a multi-strain listing. */
+  const MULTI = {
+    id: 'sb__trim', name: 'Cheap THCA Flower Trim', store: 'THCA Small Buds',
+    storeKey: 'thcasmallbuds', domain: 'thcasmallbuds.com', cartDomain: 'thcasmallbuds.com',
+    platform: 'shopify', ref: 'coffeeandajoint', coupon: 'JACOBKENNEDY',
+    category: 'THCA Flower', cur: 'USD', inStock: true, perG: 1.2,
+    image: 'https://cdn.test/product-lead.png',
+    url: 'https://thcasmallbuds.com/products/trim',
+    sizes: [
+      ['Dank Work 1 oz', 29.99, 28, 'V-DANK', 1, null, 'https://cdn.test/dank.png'],
+      ['Candy Hustle 1 oz', 39.99, 28, 'V-CANDY', 1, null, 'https://cdn.test/candy.png'],
+      ['House Blend 1 oz', 34.99, 28, 'V-HOUSE', 1, null, ''],
+      // A poisoned feed row: the photo must be dropped, not rendered.
+      ['Hostile 1 oz', 31.99, 28, 'V-BAD', 1, null, 'javascript:alert(1)'],
+    ],
+  };
+  const saved = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [MULTI] }) });
+  const multiHtml = await render({ id: 'pick' });
+  globalThis.fetch = saved;
+  fs.writeFileSync('/tmp/multi.html', multiHtml);
+
+  /* The cheapest qualifying row is Dank Work, so the card and its og:image should
+     open on THAT strain's photo rather than the listing's lead photo. */
+  const og = (multiHtml.match(/<meta property="og:image" content="([^"]*)"/) || [])[1];
+  console.log('  og:image ' + JSON.stringify(og));
+  ok(og === 'https://cdn.test/dank.png', "the shared card shows the picked variant's photo");
+
+  const p2 = await browser.newPage();
+  await p2.goto('file:///tmp/multi.html');
+  const shot = () => p2.getAttribute('#shot', 'src');
+  ok(await shot() === 'https://cdn.test/dank.png', 'and so does the card on load: ' + (await shot()));
+
+  await p2.click('#toBack');
+  ok(await p2.isHidden('#vshot'), 'no variant thumbnail before a choice is made');
+
+  await p2.selectOption('#size', '1');
+  ok(await shot() === 'https://cdn.test/candy.png',
+     'choosing Candy Hustle swaps the main photo: ' + (await shot()));
+  /* The main photo is on the other face, so a swap there alone is invisible at the
+     moment of choosing. The thumbnail beside the dropdown is what they can see. */
+  ok(await p2.isVisible('#vshot'), 'the thumbnail beside the dropdown appears');
+  ok(await p2.getAttribute('#vimg', 'src') === 'https://cdn.test/candy.png',
+     'and shows that variant too');
+  ok(/Candy Hustle/.test(await p2.textContent('#vcap')), 'captioned with the variant it is');
+
+  await p2.selectOption('#size', '2');
+  ok(await shot() === 'https://cdn.test/product-lead.png',
+     'a row with no photo of its own falls back to the product photo, not the last variant');
+  ok(/one photo for every size/.test(await p2.textContent('#vcap')),
+     'and says so rather than implying the picture is of that size');
+
+  await p2.selectOption('#size', '3');
+  ok(await shot() === 'https://cdn.test/product-lead.png',
+     'a javascript: photo in the feed is dropped, not rendered: ' + (await shot()));
+  ok(!/javascript:/.test(multiHtml), 'and it is nowhere in the page source');
+
+  // Adding still carries the right variant, so the photo work changed nothing there.
+  await p2.selectOption('#size', '1');
+  ok(/Add 1oz for \$39\.99 to cart/.test((await p2.textContent('#add')).trim()),
+     'the button still states the chosen row: ' + (await p2.textContent('#add')).trim());
+  await p2.close();
+}
+
 console.log('\n=== the gate on a short viewport ===');
 {
   /* Add to cart sits below the card, so on a short viewport the shopper has

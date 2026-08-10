@@ -484,6 +484,18 @@ select.needs{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,v
 @keyframes glow{0%,100%{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
   50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--accent) 55%,transparent)}}
 @media (prefers-reduced-motion:reduce){select.needs{animation:none}}
+/* The variant's photo, on the BACK beside the dropdown. The card's big photo is on
+   the other face, so swapping only that one is invisible at the exact moment the
+   shopper is choosing. This is the confirmation that the thing they picked is the
+   thing they were looking at. */
+.vshot{display:flex;align-items:center;gap:10px;margin:9px 0 0}
+/* An author display rule outranks the UA sheet's [hidden]{display:none}, so without
+   this the empty thumbnail box shows before anything has been chosen. */
+.vshot[hidden]{display:none}
+.vshot img{width:56px;height:56px;flex:0 0 56px;object-fit:cover;border-radius:9px;
+  border:1px solid var(--line);background:var(--bg)}
+.vshot span{font-size:12px;color:var(--muted);line-height:1.35}
+@media (prefers-reduced-motion:no-preference){.vshot img{transition:opacity .18s ease}}
 .hint{font-size:13px;color:var(--muted);margin:8px 0 0;min-height:18px}
 .hint.warn{color:var(--accent);font-weight:600}
 h1{font-size:22px;line-height:1.25;margin:18px 0 6px}
@@ -660,6 +672,13 @@ export default async function handler(req, res) {
           price,
           perG: grams > 0 ? Math.round((price / grams) * 100) / 100 : null,
           isPick: marked && i === rowIndex,
+          /* The variant's own photo, row[6] in the feed (Shopify's
+             variant.featured_image, plus any admin override). 35% of live size rows
+             carry one and 460 listings give each variant a DIFFERENT one, which is
+             exactly the multi-strain case where the product photo is the wrong
+             picture for the row being bought. Same httpsOnly gate as the product
+             image, since it comes from the same third-party feed. */
+          img: httpsOnly(row[6], ''),
           item: cartItem(prod, i),
         };
       });
@@ -691,11 +710,20 @@ export default async function handler(req, res) {
       : '';
 
     const priceText = head.price != null ? money(head.price, cur) : '';
+    /* The photo shown, and shared, is the CHOSEN row's own where the store gave it
+       one: this page advertises a specific row at a specific price, so the product's
+       lead photo is the wrong picture whenever the variant has its own. baseImg is
+       kept alongside it as the fallback for rows that carry none, so switching to
+       one of those returns to the product photo instead of leaving the previous
+       variant's picture on screen. */
+    const baseImg = httpsOnly(prod.image, FALLBACK_IMG);
+    const headRow = rows.find((r) => r.i === rowIndex);
     return {
       pid: prod.id,
       name: String(prod.name || ''),
       store: String(prod.store || ''),
-      img: httpsOnly(prod.image, FALLBACK_IMG),
+      img: (headRow && headRow.img) || baseImg,
+      baseImg,
       priceText,
       weight: head.weight || '',
       perG: head.perG || null,
@@ -730,12 +758,13 @@ export default async function handler(req, res) {
 
   const payload = JSON.stringify({
     slides: slides.map((sl) => ({
-      pid: sl.pid, name: sl.name, store: sl.store, img: sl.img, priceText: sl.priceText,
+      pid: sl.pid, name: sl.name, store: sl.store, img: sl.img, baseImg: sl.baseImg,
+      priceText: sl.priceText,
       weight: sl.weight, perG: sl.perG, desc: sl.desc, lab: sl.lab, cur: sl.cur,
       canAdd: sl.canAdd, value: sl.value, limitNote: sl.limitNote,
       sizes: sl.sizes.map((r) => ({
         i: r.i, label: r.label, display: r.display, price: r.price, perG: r.perG,
-        isPick: r.isPick, item: r.item,
+        isPick: r.isPick, img: r.img, item: r.item,
       })),
     })),
     start: isPick ? rank : 0,
@@ -767,6 +796,10 @@ export default async function handler(req, res) {
             <option value="">Select a size...</option>
             ${optionsFor(slide)}
           </select>
+          <div class="vshot" id="vshot" hidden>
+            <img id="vimg" src="" alt=""/>
+            <span id="vcap"></span>
+          </div>
           <p class="hint" id="hint2">The price updates once you choose.</p>
           <p class="caution" id="limitnote"${slide.limitNote ? '' : ' hidden'}>${esc(slide.limitNote)}</p>
         </div>` : `<p class="caution">This store has not published a buyable size for this
@@ -824,6 +857,30 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
     setTimeout(function(){ try { s.focus({ preventScroll: true }); } catch (e) { s.focus(); } }, 260);
   }
 
+  /* The photo follows the choice, on both faces. The feed carries a per-variant
+     image on about a third of size rows, and on a multi-strain listing each strain
+     has its own, so the product's lead photo is the wrong picture for the row being
+     bought. A row with no image of its own falls back to the product photo rather
+     than leaving the previous variant's picture up. */
+  function showPhoto(c){
+    var sl = cur(), shot = document.getElementById('shot');
+    var wrap = document.getElementById('vshot');
+    var vimg = document.getElementById('vimg');
+    var vcap = document.getElementById('vcap');
+    var src = (c && c.img) || sl.baseImg || sl.img;
+    if (shot && src) { shot.src = src; shot.alt = c ? sl.name + ', ' + c.display : sl.name; }
+    if (!wrap || !vimg) return;
+    if (!c) { wrap.hidden = true; vimg.removeAttribute('src'); if (vcap) vcap.textContent = ''; return; }
+    vimg.src = src;
+    vimg.alt = c.display;
+    if (vcap) {
+      vcap.textContent = c.img
+        ? c.display
+        : c.display + '. This store publishes one photo for every size.';
+    }
+    wrap.hidden = false;
+  }
+
   function wireSelect(){
     var s = document.getElementById('size');
     if (!s) return;
@@ -831,6 +888,7 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
       s.classList.remove('needs');
       var c = chosen(), sl = cur();
       var h2 = document.getElementById('hint2');
+      showPhoto(c);
       if (!c) { hint.textContent = 'Choose a size to see the exact price.'; hint.className = 'hint'; return; }
       priceEl.innerHTML = '';
       priceEl.appendChild(document.createTextNode(money(c.price, sl.cur)));
@@ -889,6 +947,8 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
     if (sl.canAdd) {
       wrap.innerHTML = '\\u003cdiv class="pickfield"\\u003e\\u003clabel for="size"\\u003e1. Choose your size\\u003c/label\\u003e' +
         '\\u003cselect id="size"\\u003e' + optionHtml(sl) + '\\u003c/select\\u003e' +
+        '\\u003cdiv class="vshot" id="vshot" hidden\\u003e\\u003cimg id="vimg" src="" alt=""/\\u003e' +
+        '\\u003cspan id="vcap"\\u003e\\u003c/span\\u003e\\u003c/div\\u003e' +
         '\\u003cp class="hint" id="hint2"\\u003eThe price updates once you choose.\\u003c/p\\u003e' +
         '\\u003cp class="caution" id="limitnote"\\u003e\\u003c/p\\u003e\\u003c/div\\u003e';
       /* Set as text, and hidden when empty. Every slide's dropdown is already built

@@ -20,8 +20,13 @@ const oz = (id, price, sizes) => ({
   cannabinoid: 'THCa', type: 'Hybrid',
   sizes: sizes || [['1 oz', price, 28, 'V-' + id, 1, null, '']],
 });
-// Three ounces, ascending price, so slide order is deterministic.
-const POOL = [oz('a', 39), oz('b', 44, [['Strain One 1 oz', 44, 28, 'V-b1', 1, null, ''], ['Strain Two 1 oz', 46, 28, 'V-b2', 1, null, '']]), oz('c', 47)];
+/* Three ounces, ascending price, so slide order is deterministic. Slide 2's two
+   strains each carry their own photo, the live multi-strain shape, so a swap on one
+   slide has something to leak onto the next. */
+const POOL = [oz('a', 39), oz('b', 44, [
+  ['Strain One 1 oz', 44, 28, 'V-b1', 1, null, 'https://cdn.test/b-one.png'],
+  ['Strain Two 1 oz', 46, 28, 'V-b2', 1, null, 'https://cdn.test/b-two.png'],
+]), oz('c', 47)];
 globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: POOL }) });
 
 let html = '';
@@ -64,7 +69,11 @@ v = await shown();
 console.log('  ' + JSON.stringify({ name: v.name, count: v.count, price: v.price, img: v.img }));
 ok(v.name === 'Ounce B' && v.count === '2 of 3', 'moved to slide 2');
 ok(/\$44/.test(v.price), 'price followed the slide');
-ok(v.img === 'https://cdn.test/b.png', 'photo followed the slide');
+/* The picked row's own photo, not the listing's lead photo: this slide advertises
+   Strain One at $44, so that strain's picture is the honest one to open on. Slides A
+   and C give their rows no photo, so they show the product image. */
+ok(v.img === 'https://cdn.test/b-one.png',
+   "photo followed the slide, and is the picked strain's: " + v.img);
 ok(/Store B/.test(v.fine), 'the store disclaimer followed too');
 ok(v.opts.length === 3, "slide 2's own two sizes are offered, got " + (v.opts.length - 1));
 ok(page.url().includes('i=1'), 'the URL tracks the slide: ' + page.url().split('/').pop());
@@ -83,12 +92,19 @@ console.log('  button: ' + JSON.stringify(btn2));
 console.log('  hint:   ' + JSON.stringify(hint2));
 ok(/^Add 1oz for \$44 to cart$/.test(btn2), 'the button states weight and price');
 ok(/Adding Strain One 1 oz, \$44, from Store B\./.test(hint2), 'the hint names the strain');
+/* The photo follows the strain, and must not follow it onto the next slide. */
+ok(await page.getAttribute('#shot', 'src') === 'https://cdn.test/b-one.png',
+   "the card shows Strain One's own photo: " + (await page.getAttribute('#shot', 'src')));
+ok(await page.isVisible('#vshot'), 'with the thumbnail beside the dropdown to confirm it');
 await page.click('#toFront');
 await page.waitForTimeout(600);
 await page.click('#next');
 await page.waitForTimeout(300);
 ok((await page.textContent('#add')).trim() === 'Add to cart', 'the button resets on the next slide');
 ok(await page.evaluate(() => document.getElementById('size').value) === '', 'and no size is selected');
+ok(await page.getAttribute('#shot', 'src') === 'https://cdn.test/c.png',
+   "the photo is the new slide's, not the last variant's: " + (await page.getAttribute('#shot', 'src')));
+ok(await page.isHidden('#vshot'), 'and the thumbnail is gone until they choose again');
 await page.click('#add');
 await page.waitForTimeout(600);
 ok(writes.filter((w) => w.k === 'll_cart').length === 0, 'so Add cannot fire with a stale choice');

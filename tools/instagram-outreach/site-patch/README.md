@@ -81,6 +81,34 @@ explanation reads as a bug rather than a budget. A plain `/p/<id>` share passes 
 constraints and lists every real size, since that page makes no claim about weight
 or price.
 
+### The photo follows the variant
+
+The feed already carries a per-variant photo at `sizes[i][6]`, taken from Shopify's
+`variant.featured_image` with the admin `varImg` override on top. Measured against
+the live feed: **3,434 of 9,877 size rows have one, and 460 listings give each
+variant a different one.** On those (a multi-strain "Cheap THCA Flower Trim" is the
+typical case) the listing's lead photo is the wrong picture for most rows.
+
+So the photo tracks the choice in three places:
+
+- **The shared card.** `og:image` is the advertised row's own photo, so the DM
+  preview shows the strain the price refers to. `?s=` moves it with the price.
+- **The card's main photo**, on selection and on load.
+- **A thumbnail beside the dropdown.** The main photo is on the *front* face and the
+  size control is on the *back*, so swapping only the front is invisible at the exact
+  moment the shopper is choosing. The thumbnail is what they can actually see.
+
+A row the store gave no photo of its own falls back to the listing photo rather than
+leaving the previous variant's picture up, and says so in the caption ("This store
+publishes one photo for every size") rather than implying the picture is of that size.
+Variant URLs go through the same `httpsOnly()` gate as the product image, since they
+come from the same third-party feed; `test-flow.mjs` feeds it a `javascript:` photo.
+
+Worth knowing: **the main site does not do this.** `consumables.html` builds the same
+dropdown but its `change` handler only stops propagation, and its back face carries no
+image at all, so `sizes[i][6]` is collected and overridable but never rendered
+anywhere. This page is the first thing that uses it.
+
 The lab panel follows this repo's existing honesty rules rather than inventing new
 ones. `totalThc` leads, since `coa-data.js` calls it the number a buyer actually
 gets. The lab-tested badge needs `labTested` or `coaScope === 'product'`. A
