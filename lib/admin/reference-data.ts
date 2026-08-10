@@ -143,7 +143,7 @@ export const MERCHANTS: MerchantRow[] = [
   { merchant: "Jamstik", platform: "Shopify", ratePct: 5, status: "unconfirmed", catalogueCount: 93, note: "GoAffPro signup done, no confirmed link handed over yet" },
   { merchant: "Play With Authority", platform: "Shopify", ratePct: 10, status: "pending", catalogueCount: 39, note: "Real link in hand, GoAffPro approval still pending" },
   { merchant: "Eminence Digital", platform: "Shopify", ratePct: 20, status: "tracking", catalogueCount: 60, note: "Confirmed link; digital impulse-response packs, not physical gear" },
-  { merchant: "Squaver", platform: "WooCommerce", ratePct: 10, status: "tracking", catalogueCount: 18, note: "Confirmed link; weaker compliance basis (Store API, no agents.md) — see CLAUDE.md" },
+  { merchant: "Squaver", platform: "WooCommerce", ratePct: 10, status: "tracking", catalogueCount: 18, note: "Confirmed link; weaker compliance basis (Store API, no agents.md), see CLAUDE.md" },
   { merchant: "Pures Music", platform: "Shopify", ratePct: 4, status: "paused", catalogueCount: 4368, note: "Built but paused: GoAffPro enrollment not confirmed" },
   { merchant: "eBay", platform: "Buy Feed API", ratePct: null, status: "none", catalogueCount: 0, note: "Sandboxed; no production EPN keyset approved yet" },
   { merchant: "Reverb", platform: "Awin (if published)", ratePct: null, status: "none", catalogueCount: 0, note: "No confirmed publisher datafeed; never scraped, per CLAUDE.md" },

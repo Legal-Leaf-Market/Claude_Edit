@@ -6,6 +6,7 @@ import { SCENARIOS, SCENARIO_ORDER, PREPARED_ON } from "@/lib/admin/reference-da
 import { SISTER_SITES_PREPARED_ON } from "@/lib/admin/sister-sites"
 import { runAllSites, combinedMonths, ALL_SITE_PROFILES } from "@/lib/admin/all-sites"
 import { RevenueChart } from "./revenue-chart"
+import { MasterVendorTable } from "./master-vendor-table"
 
 type ScenarioKey = keyof typeof SCENARIOS
 const HORIZONS = [
@@ -263,6 +264,8 @@ export function AllSitesDashboard() {
           </div>
         </div>
       </section>
+
+      <MasterVendorTable />
     </div>
   )
 }
