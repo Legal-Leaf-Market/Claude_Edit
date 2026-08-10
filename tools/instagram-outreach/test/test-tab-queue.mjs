@@ -83,13 +83,13 @@ await withBrowser(true, async ({ page }) => {
   /* The first five include hebborns_family_f and blazeone, whose handles the
      screenshots truncated. Those must fall back to search rather than a profile
      URL that would 404. */
-  const dm = all.filter(u => u.startsWith('https://ig.me/m/'));
+  const dm = all.filter(u => u.startsWith('https://www.instagram.com/direct/new/#ll='));
   const search = all.filter(u => u.startsWith('https://www.instagram.com/explore/search/keyword/?q='));
   ok(dm.length + search.length === 5, 'every tab is a DM link or a search fallback: ' + JSON.stringify(all));
-  ok(dm.length === 3, 'the three exact handles became DM deep links, got ' + dm.length);
+  ok(dm.length === 3, 'the three exact handles became new-message links, got ' + dm.length);
   ok(search.length === 2, 'the two truncated handles became searches, got ' + search.length);
   ok(all.length === new Set(all).size, 'no duplicate tabs');
-  ok(all[0] === 'https://ig.me/m/j.a.k.50a', 'first tab is the newest follower: ' + all[0]);
+  ok(all[0] === 'https://www.instagram.com/direct/new/#ll=j.a.k.50a', 'first tab is the newest follower: ' + all[0]);
 
   // Typing in a reply box must not be hijacked by the O shortcut.
   await page.fill('#r0', '');

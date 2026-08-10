@@ -45,8 +45,31 @@ JavaScript. See `site-patch/README.md`.
 2. Click "Queue DM tabs". That click opens the first tab and queues the rest.
 3. Advance with <kbd>O</kbd> or "Open next tab", one tab per press. To get ten
    per click, allow pop-ups for the page once and use "Open batch" (see below).
-4. In each DM tab: click the bookmarklet, press `Alt` `Shift` `I`, close the tab.
+4. In each tab: click the bookmarklet, press `Alt` `Shift` `I`, close the tab.
    Installing the userscript instead removes that per-tab click.
+
+### How a tab becomes a thread
+
+`ig.me/m/<handle>` is a mobile app deep link and does not open a thread on desktop
+web, and Instagram has no URL that accepts a recipient. So each tab lands on
+`/direct/new/#ll=<handle>`, and the injected panel fills the recipient in: it types
+the handle into the search box (via the native value setter, since React owns that
+input), waits for results, and clicks the row that matches.
+
+**Exact match or refuse.** A row only counts when one of its whole text tokens
+equals the handle. A fuzzy pick would open a thread with a stranger and then send
+them three messages, which is far worse than doing nothing, so a near miss stops
+with a specific reason and selects nobody. `test-recipient.mjs` pins that with a
+directory full of prefix matches and no exact one.
+
+Instagram's router drops the hash after boot, so the handle is read once at arm
+time and stashed in `sessionStorage`, which is per tab and therefore exactly one
+recipient per tab.
+
+The selectors for the picker are written against Instagram's current shape with
+fallbacks, but unlike everything else here they have not been run against the live
+site. Check the first one by hand: the panel says "Armed for @handle", and it
+should open that thread and no other.
 
 ### Why only one tab opens per click
 

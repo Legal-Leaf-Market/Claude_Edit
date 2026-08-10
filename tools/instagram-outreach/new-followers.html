@@ -467,6 +467,122 @@
     return !readText(findComposer() || fallback).trim();
   }
 
+  /* ---------- opening a thread from the new-message composer ----------
+     Instagram has no URL that accepts a recipient, so the launcher lands the tab
+     on /direct/new/ with the handle in the hash and this fills it in.
+
+     Instagram's router drops the hash once it has booted, so the handle is read
+     once at arm time and stashed in sessionStorage, which is per tab and so is
+     exactly one recipient per tab.
+
+     THE RULE HERE IS EXACT MATCH OR REFUSE. A fuzzy pick would open a thread with
+     a stranger and then send them three messages, which is far worse than doing
+     nothing, so a result row only counts when one of its text tokens equals the
+     handle outright. */
+
+  var HANDLE_KEY = 'gaQuickReplies.handle';
+
+  function wantedHandle() {
+    var m = /[#&]ll=([^&]+)/.exec(location.hash || '');
+    if (m) {
+      var h = decodeURIComponent(m[1]).replace(/^@/, '');
+      try { sessionStorage.setItem(HANDLE_KEY, h); } catch (e) {}
+      return h;
+    }
+    try { return sessionStorage.getItem(HANDLE_KEY) || ''; } catch (e) { return ''; }
+  }
+
+  function recipientBox() {
+    var sels = ['input[name="queryBox"]', 'input[placeholder*="earch"]', 'input[type="text"]'];
+    for (var i = 0; i < sels.length; i++) {
+      var els = document.querySelectorAll(sels[i]);
+      for (var j = 0; j < els.length; j++) if (visible(els[j])) return els[j];
+    }
+    return null;
+  }
+
+  /* React owns this input's value, so assigning .value directly is ignored. The
+     native setter plus an input event is what the framework listens for. */
+  function setInputValue(el, text) {
+    var setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    el.focus();
+    setter.call(el, text);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function clickableAncestor(el) {
+    for (var n = el; n && n !== document.body; n = n.parentElement) {
+      var role = n.getAttribute && n.getAttribute('role');
+      if (role === 'button' || role === 'option' || n.tagName === 'BUTTON' || n.tagName === 'LABEL') return n;
+    }
+    return el;
+  }
+
+  /* A row matches only when some whole token of its text equals the handle. */
+  function exactRow(handle) {
+    var want = String(handle).toLowerCase();
+    var rows = document.querySelectorAll('div[role="button"], div[role="option"], li, label');
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      if (!visible(row)) continue;
+      var txt = (row.innerText || '').trim();
+      if (!txt || txt.length > 200) continue;
+      var tokens = txt.split(/[\s\n\u00b7,]+/);
+      for (var t = 0; t < tokens.length; t++) {
+        if (tokens[t].replace(/^@/, '').toLowerCase() === want) return clickableAncestor(row);
+      }
+    }
+    return null;
+  }
+
+  function labelledButton(names) {
+    var nodes = document.querySelectorAll('div[role="button"], button');
+    for (var i = 0; i < nodes.length; i++) {
+      var t = (nodes[i].innerText || '').trim().toLowerCase();
+      if (names.indexOf(t) >= 0 && visible(nodes[i])) {
+        var off = nodes[i].disabled === true || nodes[i].getAttribute('aria-disabled') === 'true';
+        if (!off) return nodes[i];
+      }
+    }
+    return null;
+  }
+
+  /* Resolves once a composer is on screen. Opens the thread first if needed. */
+  async function ensureThread(log) {
+    if (findComposer()) return;
+
+    var handle = wantedHandle();
+    if (!handle) {
+      throw new Error('no message box, and no handle in the URL to open one with');
+    }
+
+    var box = recipientBox();
+    if (!box) throw new Error('could not find the recipient search box on this page');
+
+    log('Looking up @' + handle + '...');
+    setInputValue(box, handle);
+
+    var row = null;
+    try {
+      await waitFor(function () { return (row = exactRow(handle)); }, 6000);
+    } catch (e) {
+      throw new Error('no result exactly matching @' + handle + ', so nothing was opened');
+    }
+
+    row.click();
+    await sleep(300);
+
+    var go = labelledButton(['chat', 'next', 'done']);
+    if (go) { go.click(); }
+
+    try {
+      await waitFor(function () { return !!findComposer(); }, 8000);
+    } catch (e) {
+      throw new Error('picked @' + handle + ' but no message box appeared');
+    }
+    log('Thread open with @' + handle + '.');
+  }
+
   async function sendOne(text) {
     var el = findComposer();
     if (!el) throw new Error('no message box on this tab, open the DM thread first');
@@ -604,6 +720,7 @@
     var texts = kind === 'newsletter' ? [loadNews()] : indexes.map(function (n) { return loadIntro()[n]; });
     var sent = 0;
     try {
+      await ensureThread(log);
       for (var i = 0; i < texts.length; i++) {
         var text = (texts[i] || '').trim();
         if (!text) { log('Message ' + (i + 1) + ' is empty, skipped.'); continue; }
@@ -659,7 +776,10 @@
     show: function () { host.style.display = ''; log('Ready.'); },
     run: run
   };
-  log('Armed on this tab. Hotkeys are live.');
+  var armedFor = wantedHandle();
+  log(armedFor
+    ? 'Armed for @' + armedFor + '. Hotkeys are live.'
+    : 'Armed on this tab. Hotkeys are live.');
 })();
 </script>
 
@@ -749,7 +869,14 @@ const FOLLOWERS = [
 ];
 
 const searchUrl = f => "https://www.instagram.com/explore/search/keyword/?q=" + encodeURIComponent(f.handle);
-const dmUrl = f => f.exact ? "https://ig.me/m/" + encodeURIComponent(f.handle) : searchUrl(f);
+/* ig.me/m/<handle> is a mobile app deep link and does not open a thread on
+ * desktop web. Instagram has no URL that takes a recipient, so the tab lands on
+ * the new-message composer with the handle in the hash, and the injected panel
+ * fills the recipient in from there. The hash survives the load; Instagram's
+ * router may drop it afterwards, which is why the panel stashes it per tab. */
+const dmUrl = f => f.exact
+  ? "https://www.instagram.com/direct/new/#ll=" + encodeURIComponent(f.handle)
+  : searchUrl(f);
 const profileUrl = f => f.exact ? "https://www.instagram.com/" + encodeURIComponent(f.handle) + "/" : searchUrl(f);
 
 /* ---------- contact ledger ----------
