@@ -155,6 +155,11 @@ function cartItem(p, idx) {
        from it, and the name is not always "ref": CBD Hemp Direct tracks on sld, Nothing But Canna
        on sca_ref. Dropping it here would hand the cart a link that works and pays nobody. */
     ref: p.ref || '', refParam: p.refParam || '', refLink: p.refLink || '', coupon: p.coupon || '',
+    /* Same reason, for WooCommerce specifically: the site cart builds ?add-to-cart=<id> from the
+       variation id, falling back to the parent when the product is simple, and sends it to the
+       store's own cart path. Without these two the link degrades to the bare product page with
+       an empty cart, which is what the owner reported on CBD Hemp Direct. */
+    productId: p.productId || '', cartPath: p.cartPath || '',
     url: (s && s[5]) || p.url || '',
     price: s ? s[1] : p.sale,
     size: s ? s[0] : 'One Size',
@@ -299,8 +304,14 @@ var PICK_POOL = POOL_MIX.reduce(function (n, s) { return n + s.want; }, 0);
    'CBD'), and an absent field means THCa there too, so it means THCa here.
    Anything else the classifier recognises, the D8/HHC/THCP family, belongs to none
    of the three and is left out of the pool rather than quietly counted as THCa. */
-function bucketOf(p, rowLabel) {
-  if (isTrimProduct(p) || isTrimShake(rowLabel)) return 'trim';
+/* Takes either a size row or a bare label. The row is preferred: slot 7 is the feed's
+   own per-row grade, which sees the store's category and description and so catches a
+   row whose label alone gives nothing away. */
+function bucketOf(p, row) {
+  var isRow = Array.isArray(row);
+  var rowLabel = isRow ? row[0] : row;
+  var rowTrim = (isRow && row[7] != null) ? !!row[7] : isTrimShake(rowLabel);
+  if (isTrimProduct(p) || rowTrim) return 'trim';
   var c = String((p && p.cannabinoid) || 'THCa');
   if (c === 'CBD') return 'cbd';
   if (c === 'THCa') return 'thca';
@@ -354,7 +365,7 @@ function pickAll(list, opts, limit) {
          over the cap. */
       if (pricierOunce && !namesAnOunce(sizes[j][0])) continue;
       out.push({ product: p, index: j, price: price, perG: price / grams, key: p.id + '#' + j,
-        bucket: bucketOf(p, sizes[j][0]) });
+        bucket: bucketOf(p, sizes[j]) });
     }
   }
   /* Dearest first, so the card leads with the most the budget buys rather than
@@ -927,8 +938,15 @@ export default async function handler(req, res) {
           perG: grams > 0 ? Math.round((price / grams) * 100) / 100 : null,
           isPick: marked && i === rowIndex,
           /* Per row, because a listing can sell whole buds and trim side by side.
-             The banner follows the dropdown for exactly that case. */
-          trim: isTrimShake(variant),
+             The banner follows the dropdown for exactly that case.
+
+             Slot 7 is the feed's own answer for this row, decided at scrape time from
+             the same word-boundary test. It is preferred where present because the
+             scraper sees the store's category and description as well as the label:
+             a row called "Ounce" under a listing the store files as shake is trim,
+             and nothing in the label says so. The label test stays as the fallback
+             for feeds that predate the flag. */
+          trim: row[7] != null ? !!row[7] : isTrimShake(variant),
           /* The variant's own photo, row[6] in the feed (Shopify's
              variant.featured_image, plus any admin override). 35% of live size rows
              carry one and 460 listings give each variant a DIFFERENT one, which is

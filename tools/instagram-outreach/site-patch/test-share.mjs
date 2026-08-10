@@ -79,8 +79,19 @@ const sitePath = CANDIDATES.find((c) => fs.existsSync(c));
 ok(!!sitePath, 'found the site checkout builder to test against');
 console.log('  reading the site builder from: ' + sitePath);
 const html = fs.readFileSync(sitePath, 'utf8');
-const fnSrc = html.match(/function storeCheckoutUrl\(domain, items\)\{[\s\S]*?\n  \}/)[0];
-const storeCheckoutUrl = new Function('return ' + fnSrc)();
+/* storeCheckoutUrl now delegates the WooCommerce case, so its helpers come along. Lifting them
+   as a group keeps this testing the shipped code rather than a paraphrase of it. */
+const grab = (sig) => {
+  const m = html.match(new RegExp('function ' + sig.replace(/[()]/g, '\\$&') + '\\{[\\s\\S]*?\\n  \\}'));
+  ok(!!m, 'lifted ' + sig + ' out of the page');
+  return m ? m[0] : '';
+};
+const site = new Function('return (function(){' +
+  grab('wooCheckoutUrl(first, domain, items)') + '\n' +
+  grab('wooPartial(items)') + '\n' +
+  grab('storeCheckoutUrl(domain, items)') + '\n' +
+  'return {storeCheckoutUrl:storeCheckoutUrl,wooCheckoutUrl:wooCheckoutUrl,wooPartial:wooPartial};})()')();
+const storeCheckoutUrl = site.storeCheckoutUrl;
 const checkout = storeCheckoutUrl(item.domain, [item]);
 console.log('  checkout URL the site builds: ' + checkout);
 ok(/^https:\/\/ounceco\.test\/cart\/4411:1\?/.test(checkout), 'real cart permalink built');
@@ -110,6 +121,50 @@ ok(checkout.includes('discount=JACOBKENNEDY'), 'coupon present in checkout');
   const plain = { ...sld, ref: 'coffeeandajoint', refParam: '' };
   ok(storeCheckoutUrl(plain.domain, [plain]).includes('ref=coffeeandajoint'),
      'stores with no refParam keep the ref= default');
+}
+
+/* Reported by the owner as "it went to the product not to checkout with the product added to the
+   cart". WooCommerce checkout used to return the product page and nothing else, so the shopper
+   arrived at an empty cart and had to pick the size a second time. */
+console.log('\n=== WooCommerce checkout arrives with the item in the cart ===');
+{
+  const woo = { id: 'cbdhempdirect__candy-paint', name: 'Candy Paint', store: 'CBD Hemp Direct',
+    storeKey: 'cbdhempdirect', domain: 'cbdhemp.direct', platform: 'woocommerce',
+    ref: '161', refParam: 'sld', refLink: '', coupon: '', productId: '153500', cartPath: '/cart',
+    url: 'https://cbdhemp.direct/products/thca-flower-candy-paint?sld=161',
+    variantId: '153530', price: 114.99, size: 'Net Weight: 28 Grams', cur: 'USD' };
+  const url = storeCheckoutUrl(woo.domain, [woo]);
+  console.log('  woo checkout: ' + url);
+  ok(url.startsWith('https://cbdhemp.direct/cart?'), 'lands on the cart page, not the product page');
+  ok(url.includes('add-to-cart=153530'), 'the VARIATION id is what is added, so the chosen size is the one in the cart');
+  ok(url.includes('quantity=1'), 'with a quantity');
+  ok(url.includes('sld=161'), 'and the store\'s own affiliate param survives: ' + url);
+  ok(!/attribute_/.test(url), 'no attribute_* is hand-built, since a wrong one fails validation and adds nothing');
+
+  // Two of the same variation is a quantity, not two links.
+  const two = storeCheckoutUrl(woo.domain, [woo, { ...woo }]);
+  ok(two.includes('quantity=2'), 'duplicates of one size become a quantity: ' + two);
+  ok(!site.wooPartial([woo, { ...woo }]), 'and that is not a partial group');
+
+  // An unverified cart slug is never guessed: a 404 loses the sale, the product page cannot.
+  const noPath = { ...woo, cartPath: '' };
+  const u2 = storeCheckoutUrl(noPath.domain, [noPath]);
+  console.log('  woo without a known cart path: ' + u2);
+  ok(u2.startsWith('https://cbdhemp.direct/products/'), 'falls back to the product page rather than guessing /cart');
+  ok(u2.includes('add-to-cart=153530'), 'and still adds the item on arrival');
+  ok(u2.includes('sld=161'), 'the product url is already ref-stamped, so it is not double-stamped: ' + u2);
+  ok((u2.match(/sld=161/g) || []).length === 1, 'exactly once');
+
+  // A simple Woo product has no variation id; the parent is what gets added.
+  const simple = { ...woo, variantId: '' };
+  ok(storeCheckoutUrl(simple.domain, [simple]).includes('add-to-cart=153500'),
+     'a simple product adds its parent id instead');
+
+  // Woo takes ONE item per link. The drawer says so rather than letting them find out.
+  ok(site.wooPartial([woo, { ...woo, variantId: '153529' }]),
+     'a group of different sizes is flagged as partial');
+  ok(!site.wooPartial([{ ...woo, platform: 'shopify' }, { ...woo, platform: 'shopify', variantId: '9' }]),
+     'and Shopify is not, since its permalink really does carry them all');
 }
 
 // A chosen size must win over cheapest, same as picking a size on a card.
@@ -827,6 +882,32 @@ console.log('\n=== trim and shake are declared ===');
   ok(!/Trim and shake, not whole buds\./.test(
      (m.html.match(/<meta property="og:description" content="([^"]*)"/) || [])[1] || ''),
      'and the card text makes no claim the advertised row does not carry');
+
+  /* The label is not the only evidence, and on CBD Hemp Direct it is often not the evidence at
+     all: their offcut listings say so in the CATEGORY and the description while every variation
+     is labelled by weight alone. api/products.js settles it per row at scrape time and publishes
+     the answer in slot 7, so the banner follows the feed rather than re-guessing from a string
+     that never had the word in it. */
+  const CLEAN_ROW = ['Net Weight: 28 Grams', 49, 28, '153529', 1, null, '', 0];
+  const FLAGGED_ROW = ['Bulk Budget 28 Grams', 44, 28, '153530', 1, null, '', 1];
+  const FLAGGED = { ...TRIM, id: 'cbdhempdirect__mixed', name: 'House Ounce',
+    sizes: [CLEAN_ROW, FLAGGED_ROW] };
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [FLAGGED] }) });
+  const f = await run('pick');
+  const F = JSON.parse((f.html.match(/var D = (\{[\s\S]*?\});\n/) || [])[1].replace(/\\u003c/g, '<'));
+  const frows = F.slides[0].sizes;
+  console.log('  flagged rows: ' + JSON.stringify(frows.map((r) => [r.display, r.trim])));
+  ok(frows.find((r) => /Net Weight/.test(r.display)).trim === false,
+     'a row the feed cleared is clean, though nothing in its label says either way');
+  ok(frows.find((r) => /Bulk Budget/.test(r.display)).trim === true,
+     'and the row the feed flagged is trim, on evidence the label never carried');
+  ok(F.slides[0].trimProd === false, 'without dragging the whole listing in with it');
+  ok(__test.bucketOf({ name: 'House Ounce' }, FLAGGED_ROW) === 'trim',
+     'and the pool buckets that row as trim, so it competes for the three trim slots');
+  ok(__test.bucketOf({ name: 'House Ounce' }, CLEAN_ROW) === 'thca',
+     'while its sibling still competes for the six THCa ones');
+  ok(__test.bucketOf({ name: 'House Ounce' }, 'Trim 1 oz') === 'trim',
+     'a feed with no slot 7 at all still falls back to reading the label');
 }
 
 // ---------------------------------------------------------------------------
