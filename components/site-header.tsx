@@ -4,13 +4,28 @@ import { CartBadge } from "./cart-badge"
 import { LogoMark } from "./logo-mark"
 import { SearchBox } from "./search-box"
 
+/**
+ * Primary navigation.
+ *
+ * Named for the two halves of the site rather than for five arbitrary
+ * categories. The previous version listed Guitars/Amps/Synths/Studio plus a
+ * lone Feed link, which meant the eleven store pages were unreachable without
+ * typing a URL and six of the seven community boards were invisible.
+ *
+ * Each entry now points at an index that branches, so a visitor can find
+ * everything by following the nav rather than by knowing it exists:
+ *   Browse     -> /search, every listing with filters
+ *   Stores     -> /shop, the eleven storefronts
+ *   Deals      -> below-market listings
+ *   Community  -> /feed, which lists all seven boards
+ * Categories moved to the homepage mesh and the footer, where a long list
+ * costs nothing.
+ */
 const NAV = [
+  { href: "/search", label: "Browse" },
+  { href: "/shop", label: "Stores" },
   { href: "/search?deals=1&sort=deal", label: "Deals" },
-  { href: "/used/electric-guitars", label: "Guitars" },
-  { href: "/used/amplifiers", label: "Amps" },
-  { href: "/used/synthesizers", label: "Synths" },
-  { href: "/used/recording-audio", label: "Studio" },
-  { href: "/feed", label: "Feed" },
+  { href: "/feed", label: "Community" },
 ]
 
 export function SiteHeader() {
@@ -37,7 +52,7 @@ export function SiteHeader() {
           </Suspense>
         </div>
 
-        <nav aria-label="Gear categories" className="order-2 sm:order-3">
+        <nav aria-label="Main" className="order-2 sm:order-3">
           <ul className="flex items-center gap-1 text-sm">
             {NAV.map((item) => (
               <li key={item.href}>
