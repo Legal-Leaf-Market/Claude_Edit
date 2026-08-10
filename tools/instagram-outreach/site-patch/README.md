@@ -126,6 +126,46 @@ Two defects `test-flow.mjs` caught that review would not have:
   could not be seen**. Measured at 1280x720: `scrollY 329`, dropdown at `y -229`.
   `setFlipped` now scrolls the card into view before focusing.
 
+### The card has to say how big its picture is
+
+A crawler puts the picture in the card on the first scrape only if the tags say what
+size it is. Without `og:image:width` and `og:image:height` it has to fetch and measure
+the image first, and the card that goes out in the meantime has no picture in it. The
+site's own static pages (`index.html`, `consumables.html`) have always declared
+1200x630 for `/og-image.png`. This route declared nothing, which was survivable while
+`og:image` was the listing's lead photo, because those few URLs were already scraped
+from earlier shares. It stopped being survivable the moment the advertised row's own
+photo took over: a per-variant URL nothing has ever seen is now the normal case, so
+the first send of a link was the one that rendered bare.
+
+Dimensions are only stated where they are true:
+
+- `/og-image.png` is 1200x630, measured off the file.
+- A **Shopify CDN** url can be asked for the size we then declare, since that CDN
+  reads `width`, `height` and `crop` as query params. It is asked for a square 1200
+  and told to crop centre, which is the same treatment every Shopify theme gives a
+  product thumbnail. The CDN never upscales past the original, so a smaller original
+  comes back smaller, still square: the ratio the card lays out on holds either way,
+  which is the part a wrong number would visibly break.
+- **Any other host** ships with no dimensions at all rather than a guess.
+
+`og:image:secure_url`, `og:image:type` and `twitter:image:alt` go out with them. The
+404 and empty-pick cards declare their image too, since those are links somebody sent
+as well.
+
+One related defect went with it: the variant thumbnail rendered as `<img src="">`,
+and an empty `src` resolves to the page's own URL, so every view of a card made the
+browser fetch that card again as an image. It now ships with no `src` attribute until
+something is chosen.
+
+Worth knowing about the feed side: `variant.featured_image` now passes the same
+`isCoa()` screen the product images already passed. A store that attaches its lab
+sheet to a variant would otherwise have made a certificate scan the shared card's
+photo.
+
+If a card is already wrong in Meta's cache, re-scrape it in the Sharing Debugger.
+Nothing here can evict a preview Meta has already stored.
+
 ### The slideshow
 
 Ten slides, walked with prev/next arrows and a position counter on the photo, in
@@ -258,7 +298,8 @@ node test-slideshow.mjs  # real Chromium: the ten slides, and the reset on each 
 Stubs `fetch` with product rows in the real shape, then checks the og: tags a
 crawler would read, that exactly one primary action exists and it is Add to cart,
 that no vendor button or capture flow crept in, that affiliate refs and the coupon
-survive into a real checkout URL, that `?s=` selects a size, that the size list
+survive into a real checkout URL, that the image is declared at a size that is true of it and nothing is claimed for a
+host that cannot be asked, that `?s=` selects a size, that the size list
 honours the pick's own cap and minimum quantity while a direct share lists
 everything, that the hostile row is neutralised, and that a dead id 404s with a
 noindex fallback card.

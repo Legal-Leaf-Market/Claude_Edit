@@ -40,7 +40,10 @@ console.log('  og:image       ' + tag('og:image'));
 ok(good.status === 200, 'status 200');
 ok(tag('og:title') === 'Blue Dream THCa Flower (1oz) $44', 'title has product, size, price');
 ok(/1oz, \$1\.57 per gram, at THCA King/.test(tag('og:description')), 'description carries the value case');
-ok(tag('og:image') === 'https://cdn.shopify.com/blue-dream.jpg', 'image is the product photo');
+// The photo is the product's, asked for at the size the tags go on to declare. The
+// dedicated block at the bottom covers that mechanism.
+ok(tag('og:image').startsWith('https://cdn.shopify.com/blue-dream.jpg?'), 'image is the product photo');
+ok(tag('og:image:width') === '1200', 'and the card states its size, so it renders on first scrape');
 ok(tag('og:type') === 'product', 'og:type product');
 ok(tag('og:url') === 'https://legal-leafmarket.com/p/thcaking__blue-dream-oz', 'canonical on our domain');
 
@@ -534,6 +537,87 @@ console.log('\n=== the shared card shows the variant, not just the listing ===')
   ok(ogB === 'https://cdn.test/candy.png', '?s= moves the shared photo too: ' + ogB);
   ok(/\$39\.99/.test((second.html.match(/<meta property="og:title" content="([^"]*)"/) || [])[1] || ''),
      'along with the price it advertises');
+}
+
+// ---------------------------------------------------------------------------
+// A crawler will only put the picture in the card on the first scrape if the tags
+// say how big it is. Without that it renders the card bare and attaches the image
+// later, which is the send nobody sees. So: dimensions stated wherever they are
+// known to be true, and never stated otherwise.
+// ---------------------------------------------------------------------------
+console.log('\n=== the shared card declares its image ===');
+{
+  const meta = (html, p) =>
+    (html.match(new RegExp('<meta property="' + p + '" content="([^"]*)"')) || [])[1];
+
+  const SHOP = {
+    id: 'sb__shop', name: 'Runtz THCa Flower', store: 'THCA Small Buds', storeKey: 'sb',
+    domain: 'sb.test', cartDomain: 'sb.test', platform: 'shopify', ref: 'refsb', coupon: '',
+    category: 'THCA Flower', cur: 'USD', inStock: true, perG: 1.42,
+    image: 'https://cdn.shopify.com/s/files/1/1/2/products/lead.jpg?v=1',
+    url: 'https://sb.test/p',
+    sizes: [
+      ['Runtz 1 oz', 39.99, 28, 'V-OZ', 1, null,
+        'https://cdn.shopify.com/s/files/1/1/2/products/runtz.jpg?v=1699999999'],
+      ['Gelato 1 oz', 44.99, 28, 'V-GEL', 1, null, 'https://img.otherstore.test/gelato.png'],
+      ['Zkittlez 1 oz', 46.99, 28, 'V-ZK', 1, null,
+        'https://cdn.shopify.com/s/files/1/1/2/products/zk.webp'],
+      ['Mystery 1 oz', 47.99, 28, 'V-MY', 1, null, 'https://img.otherstore.test/photo'],
+    ],
+  };
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [SHOP] }) });
+
+  const shop = await run('pick');
+  console.log('  og:image ' + meta(shop.html, 'og:image'));
+  ok(meta(shop.html, 'og:image') ===
+     'https://cdn.shopify.com/s/files/1/1/2/products/runtz.jpg?v=1699999999&amp;width=1200&amp;height=1200&amp;crop=center',
+     'a Shopify CDN photo is asked for the exact size we then declare');
+  ok(meta(shop.html, 'og:image').includes('v=1699999999'),
+     "and the store's own cache-busting query survives being asked");
+  ok(meta(shop.html, 'og:image:width') === '1200' && meta(shop.html, 'og:image:height') === '1200',
+     'the dimensions are declared, which is what puts the picture in the first card');
+  ok(meta(shop.html, 'og:image:type') === 'image/jpeg', 'and the type, read off the extension');
+  ok(meta(shop.html, 'og:image:secure_url') === meta(shop.html, 'og:image'),
+     'secure_url is the same url, since only https ever gets this far');
+
+  // Any other host cannot be asked for a size, so nothing is claimed about it. A
+  // wrong number would lay the card out on an aspect ratio the image does not have.
+  const other = await run('sb__shop', '1');
+  console.log('  og:image ' + meta(other.html, 'og:image'));
+  ok(meta(other.html, 'og:image') === 'https://img.otherstore.test/gelato.png',
+     'a photo on any other host is passed through untouched');
+  ok(meta(other.html, 'og:image:width') === undefined &&
+     meta(other.html, 'og:image:height') === undefined,
+     'and ships with no dimensions rather than a guess');
+  ok(meta(other.html, 'og:image:type') === 'image/png', 'the type is still safe to state');
+
+  const webp = await run('sb__shop', '2');
+  ok(meta(webp.html, 'og:image:type') === 'image/webp', 'webp is named correctly');
+  ok(meta(webp.html, 'og:image:width') === '1200', 'and is still asked for a declared size');
+
+  const bare = await run('sb__shop', '3');
+  ok(meta(bare.html, 'og:image:type') === undefined,
+     'a url with no extension claims no type at all');
+
+  // The generic card matters as much as the product one: an empty pick or a dead id
+  // is still a link somebody sent.
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [] }) });
+  const gone = await run('sb__vanished');
+  ok(gone.status === 404, 'a dead id still 404s');
+  ok(meta(gone.html, 'og:image') === 'https://legal-leafmarket.com/og-image.png',
+     'the fallback card keeps the site image');
+  ok(meta(gone.html, 'og:image:width') === '1200' && meta(gone.html, 'og:image:height') === '630',
+     'declared at the size that file actually is, measured: 1200x630');
+  ok(meta(gone.html, 'og:image:type') === 'image/png', 'and as a png');
+
+  const empty = await run('pick');
+  ok(empty.status === 200, 'an empty pick is still a 200');
+  ok(meta(empty.html, 'og:image:width') === '1200',
+     'and its card declares an image too, rather than rendering as a bare link');
+
+  // An empty src attribute resolves to the page's own URL, so the browser fetches
+  // this page again as an image: a second render of the pick for every view.
+  ok(!/src=""/.test(shop.html), 'no element ships with an empty src');
 }
 
 console.log(fails ? '\n' + fails + ' CHECK(S) FAILED' : '\nALL CHECKS PASSED');

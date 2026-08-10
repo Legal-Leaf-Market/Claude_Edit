@@ -47,6 +47,54 @@ function httpsOnly(u, fallback = '') {
   }
 }
 
+/* A crawler decides whether to show a picture from the tags alone. Given
+   og:image:width and og:image:height it can lay the card out on the first scrape;
+   without them it has to fetch and measure the image first, and what goes out in
+   the meantime is a card with no picture in it. That was survivable while og:image
+   was the listing's lead photo, because those few URLs were already in Meta's cache
+   from earlier shares. It stopped being survivable when the advertised ROW's own
+   photo took over: a per-variant URL nothing has ever scraped is now the normal
+   case, so the send that matters is the one that renders bare.
+
+   Dimensions are only ever stated when they are true:
+
+   - our own og-image.png is 1200x630, measured,
+   - a Shopify CDN url can be ASKED for a square 1200 (that CDN reads width, height
+     and crop as query params), and it never upscales past the original, so what
+     comes back is at most 1200 and always square. The ratio the card lays out on
+     holds either way, which is the part a wrong number would visibly break.
+
+   Any other host ships with no dimensions rather than with a guess. */
+const OG_SQUARE = 1200;
+const SHOPIFY_CDN = /(^|\.)cdn\.shopify\.com$|\.myshopify\.com$/;
+
+function imageType(pathname) {
+  const m = /\.(jpe?g|png|webp|gif|avif)$/i.exec(String(pathname));
+  if (!m) return '';
+  const ext = m[1].toLowerCase();
+  return 'image/' + (ext === 'jpg' || ext === 'jpeg' ? 'jpeg' : ext);
+}
+
+function ogImageMeta(u) {
+  let url;
+  try {
+    url = new URL(String(u));
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:') return null;
+  if (url.origin === SITE && url.pathname === '/og-image.png') {
+    return { url: url.toString(), w: 1200, h: 630, type: 'image/png' };
+  }
+  if (SHOPIFY_CDN.test(url.hostname.toLowerCase())) {
+    url.searchParams.set('width', String(OG_SQUARE));
+    url.searchParams.set('height', String(OG_SQUARE));
+    url.searchParams.set('crop', 'center');
+    return { url: url.toString(), w: OG_SQUARE, h: OG_SQUARE, type: imageType(url.pathname) };
+  }
+  return { url: url.toString(), w: null, h: null, type: imageType(url.pathname) };
+}
+
 function money(n, cur = 'USD') {
   const v = Number(n);
   if (!isFinite(v)) return '';
@@ -384,6 +432,10 @@ function labPanel(p) {
 }
 
 function page({ title, ogTitle, ogDesc, ogImage, canonical, body, noindex, track }) {
+  /* Falling back to the site image rather than emitting a bare og:image: a card with
+     the wrong picture still renders, a card with an unfetchable one renders as a
+     link. */
+  const shot = ogImageMeta(ogImage) || ogImageMeta(FALLBACK_IMG);
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -399,12 +451,17 @@ ${noindex ? '<meta name="robots" content="noindex"/>' : ''}
 <meta property="og:url" content="${esc(canonical)}"/>
 <meta property="og:title" content="${esc(ogTitle)}"/>
 <meta property="og:description" content="${esc(ogDesc)}"/>
-<meta property="og:image" content="${esc(ogImage)}"/>
+<meta property="og:image" content="${esc(shot.url)}"/>
+<meta property="og:image:secure_url" content="${esc(shot.url)}"/>${shot.type ? `
+<meta property="og:image:type" content="${esc(shot.type)}"/>` : ''}${shot.w ? `
+<meta property="og:image:width" content="${shot.w}"/>
+<meta property="og:image:height" content="${shot.h}"/>` : ''}
 <meta property="og:image:alt" content="${esc(ogTitle)}"/>
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:title" content="${esc(ogTitle)}"/>
 <meta name="twitter:description" content="${esc(ogDesc)}"/>
-<meta name="twitter:image" content="${esc(ogImage)}"/>
+<meta name="twitter:image" content="${esc(shot.url)}"/>
+<meta name="twitter:image:alt" content="${esc(ogTitle)}"/>
 <style>
 :root{color-scheme:light dark;--bg:#fff;--fg:#16181d;--muted:#5f6672;--line:#e2e5ea;--accent:#1c7a3e}
 @media(prefers-color-scheme:dark){:root{--bg:#0f1216;--fg:#e7eaef;--muted:#98a1af;--line:#2b313b;--accent:#4ec97a}}
@@ -796,8 +853,11 @@ export default async function handler(req, res) {
             <option value="">Select a size...</option>
             ${optionsFor(slide)}
           </select>
+          <!-- No src attribute until something is chosen. An empty one resolves to
+               the page's own URL, so the browser re-requests this page as an image:
+               a second render of the pick for every view of it. -->
           <div class="vshot" id="vshot" hidden>
-            <img id="vimg" src="" alt=""/>
+            <img id="vimg" alt=""/>
             <span id="vcap"></span>
           </div>
           <p class="hint" id="hint2">The price updates once you choose.</p>
@@ -947,7 +1007,7 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
     if (sl.canAdd) {
       wrap.innerHTML = '\\u003cdiv class="pickfield"\\u003e\\u003clabel for="size"\\u003e1. Choose your size\\u003c/label\\u003e' +
         '\\u003cselect id="size"\\u003e' + optionHtml(sl) + '\\u003c/select\\u003e' +
-        '\\u003cdiv class="vshot" id="vshot" hidden\\u003e\\u003cimg id="vimg" src="" alt=""/\\u003e' +
+        '\\u003cdiv class="vshot" id="vshot" hidden\\u003e\\u003cimg id="vimg" alt=""/\\u003e' +
         '\\u003cspan id="vcap"\\u003e\\u003c/span\\u003e\\u003c/div\\u003e' +
         '\\u003cp class="hint" id="hint2"\\u003eThe price updates once you choose.\\u003c/p\\u003e' +
         '\\u003cp class="caution" id="limitnote"\\u003e\\u003c/p\\u003e\\u003c/div\\u003e';
