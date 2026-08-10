@@ -109,6 +109,23 @@ ok(await page.isVisible('#size'), 'the size dropdown is on the back');
 await page.click('#toFront');
 ok(await flipped() === false, 'Photo flips it back');
 
+console.log('\n=== the dropdown obeys the page\'s own promise ===');
+/* The bug: /p/pick screened which PRODUCT won, then offered every priced row of
+   it, so a page headlined "ounce under $50" let a $74 two-ounce (and in
+   production a $175 quarter pound) be selected and added. Checked in the browser
+   because the dropdown is where a shopper meets it. */
+{
+  const opts = await page.$$eval('#size option', (os) =>
+    os.map((o) => ({ v: o.value, t: o.textContent.trim() })).filter((o) => o.v !== ''));
+  console.log('  offered: ' + JSON.stringify(opts.map((o) => o.t)));
+  ok(opts.length === 1, 'only the qualifying ounce is offered, got ' + opts.length);
+  ok(!/\$74/.test(await page.content()), 'the over-budget 2 oz appears nowhere on the page');
+  const note = (await page.textContent('#limitnote')).trim();
+  console.log('  note: ' + JSON.stringify(note));
+  ok(/1 other size[\s\S]*not shown here[\s\S]*ounce under \$50/.test(note),
+     'and the short list explains itself rather than looking broken');
+}
+
 console.log('\n=== the gate: no size, no add ===');
 await page.click('#add');
 ok(await flipped() === true, 'clicking Add with nothing chosen forces the flip');
@@ -139,7 +156,9 @@ ok(await page.evaluate(() => document.activeElement && document.activeElement.id
    'focus lands on the dropdown');
 
 console.log('\n=== choosing walks them through ===');
-await page.selectOption('#size', { index: 1 });
+/* By row value rather than DOM position, so a change in what the constraints
+   offer fails loudly here instead of shifting which row is under test. */
+await page.selectOption('#size', '0');
 ok(!(await page.evaluate(() => document.getElementById('size').classList.contains('needs'))),
    'the glow clears on selection');
 const priceTxt = (await page.textContent('#price')).replace(/\s+/g, ' ').trim();
@@ -165,9 +184,17 @@ ok(cart[0].ref === 'coffeeandajoint' && cart[0].coupon === 'JACOBKENNEDY', 'affi
 ok(cart[0].price === 39 && cart[0].size === '1 oz', 'price and size match the selection');
 
 console.log('\n=== switching size switches what gets added ===');
-await page.goto('file:///tmp/pick.html');
+/* On a direct product share, not the pick: that page makes no claim about weight
+   or budget, so all of a product's real sizes belong in the dropdown and the 2 oz
+   is a legitimate choice. On /p/pick it is correctly filtered out, which is what
+   the constraints block above checks. */
+fs.writeFileSync('/tmp/share.html', await render({ id: 'smallbuds__sour' }));
+await page.goto('file:///tmp/share.html');
 await page.click('#toBack');
-await page.selectOption('#size', { index: 2 });
+ok(await page.$$eval('#size option', (os) => os.filter((o) => o.value !== '').length) === 2,
+   'a direct share lists both real sizes');
+ok(await page.isHidden('#limitnote'), 'and carries no constraint note, having no constraint');
+await page.selectOption('#size', '1');
 ok(await page.inputValue('#size') === '1', 'the second size row is selected');
 ok(/Add 2oz for \$74 to cart/.test((await page.textContent('#add')).trim()),
    'button restates the new choice: ' + (await page.textContent('#add')).trim());

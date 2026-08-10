@@ -438,5 +438,60 @@ console.log('\n=== a price with no buyable size is not a dead end ===');
   ok(/consumables/.test(none.html), 'and still offers the comparison');
 }
 
+// ---------------------------------------------------------------------------
+// The dropdown must obey the same minimum quantity and budget the pick does.
+// Reported case: a $175 bulk row was selectable on a page advertising an ounce
+// under $50, because only the PRODUCT was screened and the rows were not.
+// ---------------------------------------------------------------------------
+console.log('\n=== the size dropdown honours the pick constraints ===');
+{
+  const BULK = {
+    id: 'sb__bulk', name: 'THCA Flower', store: 'Bulk Store', storeKey: 'sb',
+    domain: 'sb.test', cartDomain: 'sb.test', platform: 'shopify',
+    ref: 'refsb', coupon: 'CODESB', category: 'THCA Flower', cur: 'USD',
+    inStock: true, perG: 0.7, image: 'https://cdn.test/b.png', url: 'https://sb.test/p',
+    sizes: [
+      ['1 oz', 39, 28, 'V-OZ', 1, null, ''],           // qualifies
+      ['Half Ounce', 24, 14, 'V-HALF', 1, null, ''],   // under the minimum quantity
+      ['Quarter Pound', 175, 112, 'V-QP', 1, null, ''],// over budget and over the band
+      ['2 oz', 70, 56, 'V-2OZ', 1, null, ''],          // over budget and over the band
+    ],
+  };
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [BULK] }) });
+
+  const pick = await run('pick');
+  const opts = [...pick.html.matchAll(/<option value="(-?\d+)">([^<]*)<\/option>/g)].map((m) => m[2]);
+  console.log('  offered on /p/pick:');
+  opts.forEach((o) => console.log('    ' + o));
+  ok(opts.length === 1, 'only the qualifying ounce is offered, got ' + opts.length);
+  ok(/1 oz/.test(opts[0]) && /\$39/.test(opts[0]), 'and it is the $39 ounce');
+  ok(!/175/.test(pick.html), 'the $175 quarter pound appears nowhere on the page');
+  ok(!/V-QP/.test(pick.html), 'and its variant is not embedded in the payload either');
+  ok(!/V-HALF/.test(pick.html), 'the half ounce is out too, being under the minimum quantity');
+  ok(!/V-2OZ/.test(pick.html), 'and the 2oz, being over budget');
+
+  const D = JSON.parse((pick.html.match(/var D = (\{[\s\S]*?\});\n/) || [])[1]);
+  ok(D.slides[0].sizes.length === 1, 'the payload carries one size, got ' + D.slides[0].sizes.length);
+  ok(D.slides[0].sizes[0].item.variantId === 'V-OZ', 'the ounce variant');
+  ok(D.slides[0].sizes[0].item.ref === 'refsb', 'with the affiliate ref intact');
+  console.log('  note: ' + JSON.stringify(D.slides[0].limitNote));
+  ok(/3 other sizes .*not shown here: this page is the ounce under \$50\./.test(D.slides[0].limitNote),
+     'the page explains why the list is short');
+  ok(/other sizes/.test(pick.html), 'and says it in the rendered HTML too');
+
+  // A raised cap should let more through, proving the filter reads the request.
+  const loose = await run('pick', null, { max: '200', gmax: '120' });
+  const looseOpts = [...loose.html.matchAll(/<option value="(-?\d+)">([^<]*)<\/option>/g)].map((m) => m[2]);
+  ok(looseOpts.length === 3, '?max=200&gmax=120 widens it to three, got ' + looseOpts.length);
+  ok(/175/.test(loose.html), 'and the quarter pound is then legitimately offered');
+
+  // A plain /p/<id> share makes no claim about weight or budget, so it stays honest
+  // about what the product actually sells.
+  const direct = await run('sb__bulk');
+  const directOpts = [...direct.html.matchAll(/<option value="(-?\d+)">([^<]*)<\/option>/g)].map((m) => m[2]);
+  ok(directOpts.length === 4, 'a direct product share still lists all four sizes, got ' + directOpts.length);
+  ok(/Quarter Pound/.test(direct.html), 'including the quarter pound');
+}
+
 console.log(fails ? '\n' + fails + ' CHECK(S) FAILED' : '\nALL CHECKS PASSED');
 process.exit(fails ? 1 : 0);

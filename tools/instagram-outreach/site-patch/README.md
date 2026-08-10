@@ -66,6 +66,21 @@ nobody adds a mystery item. Every option is pre-built into the exact item
 `addToCart()` would push, affiliate ref and coupon included, so the choice cannot
 drift from what lands in the cart.
 
+**The dropdown obeys the page's own promise.** The size list is screened by the same
+constraints that chose the product, so on a page headlined "the ounce under $50"
+nothing over the cap or under a true ounce is selectable. It did not used to be: only
+the PRODUCT was screened, so the row could fail every test the page advertised and
+nothing downstream re-checked. A **$175 quarter pound** sat in the dropdown of a $50
+offer, one click from the cart. The row the pick actually chose always survives, so
+the advertised deal can never be filtered off its own page by a rounding edge, and
+`?max=`/`?g=`/`?gmax=` move the size list with them rather than only the product.
+
+When rows are hidden the page says why ("1 other size this store sells is not shown
+here: this page is the ounce under $50"), because a one-option dropdown with no
+explanation reads as a bug rather than a budget. A plain `/p/<id>` share passes no
+constraints and lists every real size, since that page makes no claim about weight
+or price.
+
 The lab panel follows this repo's existing honesty rules rather than inventing new
 ones. `totalThc` leads, since `coa-data.js` calls it the number a buyer actually
 gets. The lab-tested badge needs `labTested` or `coaScope === 'product'`. A
@@ -207,15 +222,22 @@ The test suite includes a deliberately hostile feed row covering each of these.
 ## Tests
 
 ```
-node test-share.mjs   # server rendering: og tags, pick selection, escaping
-node test-flow.mjs    # real Chromium: the flip, the size gate, the lab panel
+node test-share.mjs      # server rendering: og tags, pick selection, escaping
+node test-flow.mjs       # real Chromium: the flip, the size gate, the lab panel
+node test-slideshow.mjs  # real Chromium: the ten slides, and the reset on each move
 ```
 
 Stubs `fetch` with product rows in the real shape, then checks the og: tags a
 crawler would read, that exactly one primary action exists and it is Add to cart,
 that no vendor button or capture flow crept in, that affiliate refs and the coupon
-survive into a real checkout URL, that `?s=` selects a size, that the hostile row
-is neutralised, and that a dead id 404s with a noindex fallback card.
+survive into a real checkout URL, that `?s=` selects a size, that the size list
+honours the pick's own cap and minimum quantity while a direct share lists
+everything, that the hostile row is neutralised, and that a dead id 404s with a
+noindex fallback card.
+
+The two browser suites need `npm i playwright`. The browser is already on the
+image, so do not run `playwright install`; the path
+`/opt/pw-browsers/chromium-1194/chrome-linux/chrome` is pinned in both.
 
 ## Two things to decide
 

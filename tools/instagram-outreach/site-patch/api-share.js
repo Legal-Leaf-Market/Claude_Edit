@@ -605,7 +605,14 @@ export default async function handler(req, res) {
    * Everything the page shows for a single product, built server side so the
    * slideshow can swap slides without another round trip and without duplicating
    * the lab panel's honesty rules in the client. */
-  function buildSlide(prod, rowIndex, marked) {
+  /* `limit` carries the pick's own constraints when this is a pick slide. Without
+     it the dropdown offered EVERY priced row of the product, so a page advertising
+     an ounce under $50 happily let a quarter pound at $175 be selected and added:
+     the product qualified, the row did not, and nothing downstream re-checked.
+     A plain /p/<id> share passes no limit, because there the page makes no claim
+     about weight or budget and a product's real sizes are the honest thing to
+     show. */
+  function buildSlide(prod, rowIndex, marked, limit) {
     const cur = prod.cur || 'USD';
     const head = rowIndex != null && Array.isArray(prod.sizes) && prod.sizes[rowIndex]
       ? (function (row) {
@@ -618,9 +625,24 @@ export default async function handler(req, res) {
         })(prod.sizes[rowIndex])
       : headline(prod);
 
+    const priced = (Array.isArray(prod.sizes) ? prod.sizes : [])
+      .filter((row) => isFinite(Number(row && row[1])) && Number(row[1]) > 0);
     const rows = (Array.isArray(prod.sizes) ? prod.sizes : [])
       .map((row, i) => ({ i, row }))
       .filter(({ row }) => isFinite(Number(row && row[1])) && Number(row[1]) > 0)
+      .filter(({ row, i }) => {
+        if (!limit) return true;
+        /* The row the pick actually chose always survives, so the advertised deal
+           can never be filtered off its own page by a rounding edge. */
+        if (i === rowIndex) return true;
+        const price = Number(row[1]);
+        const grams = Number(row[2]);
+        if (price > limit.maxPrice) return false;
+        if (!isFinite(grams) || grams < limit.minGrams) return false;
+        if (limit.maxGrams && grams > limit.maxGrams) return false;
+        return true;
+      })
+
       .map(({ i, row }) => {
         const price = Number(row[1]);
         const grams = Number(row[2]);
@@ -646,7 +668,8 @@ export default async function handler(req, res) {
        headline() falls back to sale/startsAt, so the page would show a price the
        gate could never let anyone add. The site's own addToCart covers that case
        with a "One Size" line, so offer exactly that. Raised on PR #23. */
-    if (!rows.length && Number(head.price) > 0) {
+    if (!rows.length && Number(head.price) > 0 &&
+        !(limit && Number(head.price) > limit.maxPrice)) {
       rows.push({
         i: -1,
         label: head.weight || 'One size',
@@ -657,6 +680,15 @@ export default async function handler(req, res) {
         item: cartItem(prod, null),
       });
     }
+
+    /* When the pick's constraints hide some of a product's real sizes, say so.
+       Otherwise a single-option dropdown reads like a bug rather than a budget. */
+    const hiddenCount = limit ? priced.length - rows.length : 0;
+    const limitNote = hiddenCount > 0
+      ? hiddenCount + (hiddenCount === 1 ? ' other size' : ' other sizes') +
+        ' this store sells ' + (hiddenCount === 1 ? 'is' : 'are') + ' not shown here: ' +
+        'this page is the ounce under ' + money(limit.maxPrice, cur) + '.'
+      : '';
 
     const priceText = head.price != null ? money(head.price, cur) : '';
     return {
@@ -673,6 +705,7 @@ export default async function handler(req, res) {
         : String(prod.name || 'Legal-Leaf Market'),
       lab: labPanel(prod),
       sizes: rows,
+      limitNote,
       canAdd: rows.length > 0,
       cur,
       size: rows.length ? (rows.find((r) => r.isPick) || rows[0]).item.size : '',
@@ -683,7 +716,7 @@ export default async function handler(req, res) {
   /* The pick is a slideshow over the qualifying pool; a plain /p/<id> is a single
      slide with no controls. */
   const slides = isPick && candidates.length
-    ? candidates.map((c) => buildSlide(c.product, c.index, true))
+    ? candidates.map((c) => buildSlide(c.product, c.index, true, pickOpts))
     : [buildSlide(product, chosenIndex, false)];
   const slide = slides[isPick ? rank : 0] || slides[0];
   const total = slides.length;
@@ -699,9 +732,10 @@ export default async function handler(req, res) {
     slides: slides.map((sl) => ({
       pid: sl.pid, name: sl.name, store: sl.store, img: sl.img, priceText: sl.priceText,
       weight: sl.weight, perG: sl.perG, desc: sl.desc, lab: sl.lab, cur: sl.cur,
-      canAdd: sl.canAdd, value: sl.value,
+      canAdd: sl.canAdd, value: sl.value, limitNote: sl.limitNote,
       sizes: sl.sizes.map((r) => ({
-        i: r.i, label: r.label, display: r.display, price: r.price, perG: r.perG, item: r.item,
+        i: r.i, label: r.label, display: r.display, price: r.price, perG: r.perG,
+        isPick: r.isPick, item: r.item,
       })),
     })),
     start: isPick ? rank : 0,
@@ -734,6 +768,7 @@ export default async function handler(req, res) {
             ${optionsFor(slide)}
           </select>
           <p class="hint" id="hint2">The price updates once you choose.</p>
+          <p class="caution" id="limitnote"${slide.limitNote ? '' : ' hidden'}>${esc(slide.limitNote)}</p>
         </div>` : `<p class="caution">This store has not published a buyable size for this
         product, so it cannot be added to a cart here. The comparison below still has it.</p>`}
       </div>
@@ -854,7 +889,14 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
     if (sl.canAdd) {
       wrap.innerHTML = '\\u003cdiv class="pickfield"\\u003e\\u003clabel for="size"\\u003e1. Choose your size\\u003c/label\\u003e' +
         '\\u003cselect id="size"\\u003e' + optionHtml(sl) + '\\u003c/select\\u003e' +
-        '\\u003cp class="hint" id="hint2"\\u003eThe price updates once you choose.\\u003c/p\\u003e\\u003c/div\\u003e';
+        '\\u003cp class="hint" id="hint2"\\u003eThe price updates once you choose.\\u003c/p\\u003e' +
+        '\\u003cp class="caution" id="limitnote"\\u003e\\u003c/p\\u003e\\u003c/div\\u003e';
+      /* Set as text, and hidden when empty. Every slide's dropdown is already built
+         under the pick's constraints, but only this line says so, and a
+         single-option dropdown with no explanation reads as a bug. */
+      var ln = document.getElementById('limitnote');
+      ln.textContent = sl.limitNote || '';
+      ln.hidden = !sl.limitNote;
       wireSelect();
     } else {
       wrap.innerHTML = '\\u003cp class="caution"\\u003eThis store has not published a buyable size for this ' +
