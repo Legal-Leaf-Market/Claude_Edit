@@ -16,8 +16,11 @@ import {
   FULL_TIME,
   YEAR_3_PROJECTION,
   availableHoursPerWeek,
+  MONTHLY_COSTS_USD,
+  annualCostsUsd,
   fullTimeHourly,
   fullTimeHoursPerMonth,
+  pnl,
   breakeven,
   budgetOutlook,
   discountedByFunnel,
@@ -342,11 +345,13 @@ export function MeasuredReality() {
           Year {FIRST_DRAW_YEAR}, the first draw
         </h3>
         <p className="table-caption mb-3 mt-0">
-          No money comes out before year {FIRST_DRAW_YEAR}. So the question is not what the business
-          earns now, it is what year {FIRST_DRAW_YEAR} supports at {availableHoursPerWeek()} hours a
-          week ({YEAR_3_PROJECTION.hoursPerMonth} a month). The right column is the same projection
-          discounted by the optimism the measured funnel implies, and it is the honest one until the
-          funnel is fixed.
+          No money comes out before year {FIRST_DRAW_YEAR}, so the question is what year{" "}
+          {FIRST_DRAW_YEAR} supports at {availableHoursPerWeek()} hours a week (
+          {YEAR_3_PROJECTION.hoursPerMonth} a month). Costs are the real{" "}
+          {money(MONTHLY_COSTS_USD)}/month run-rate, {money(annualCostsUsd())} a year, all in across
+          five Vercel projects, five domains, database, email and AI tooling. The last two columns are
+          the same projection discounted by the optimism the measured funnel implies, and they are the
+          honest ones until the funnel is fixed.
         </p>
         <div className="table-wrap">
           <table className="model-table">
@@ -354,7 +359,8 @@ export function MeasuredReality() {
               <tr>
                 <th className="text-left">Case</th>
                 <th className="text-right">Year {FIRST_DRAW_YEAR} revenue</th>
-                <th className="text-right">Per month</th>
+                <th className="text-right">Costs</th>
+                <th className="text-right">Net</th>
                 <th className="text-right">As an hourly rate</th>
                 <th className="text-right">Hourly, funnel-corrected</th>
                 <th className="text-right">Full time, corrected</th>
@@ -367,7 +373,10 @@ export function MeasuredReality() {
                   <tr key={c.scenario}>
                     <td className="font-semibold text-[var(--cream)]">{c.scenario}</td>
                     <td className="text-right">{money(c.annual)}</td>
-                    <td className="text-right">{money(c.monthly)}</td>
+                    <td className="text-right text-[var(--muted-foreground)]">
+                      ({money(pnl(c.annual).costs)})
+                    </td>
+                    <td className="text-right">{money(pnl(c.annual).net)}</td>
                     <td className="text-right text-[var(--muted-foreground)]">
                       ${c.hourly.toFixed(2)}/h
                     </td>
@@ -387,6 +396,13 @@ export function MeasuredReality() {
           </table>
         </div>
         <p className="table-caption">
+          Two figures elsewhere in this codebase disagreed with that cost number and both were wrong:
+          the method footnote says &quot;well under $100/month&quot; (about $1,200 a year, omitting AI
+          tooling entirely, now the largest line) and decade.ts floors costs at $12,000 a year, four
+          times high. Neither had been checked against a statement. Note also that engine.ts has no
+          cost field at all, so every other figure on these dashboards is gross.
+        </p>
+        <p className="table-caption">
           This is the whole business case in one row. The base case reads as{" "}
           <strong className="text-[var(--cream)]">$95.69 an hour in year {FIRST_DRAW_YEAR}</strong>,
           which is a real wage for the time being put in. Corrected for the funnel actually measured,
@@ -398,7 +414,13 @@ export function MeasuredReality() {
           , which is not. The gap between those two numbers is not traffic and it is not more hours:
           it is the 2.1% of visitors who currently reach a merchant. Fixing that is what turns a
           token year-{FIRST_DRAW_YEAR} draw into a wage, and it is 40 hours of the{" "}
-          {OUTLOOK.backlogHours}-hour backlog.
+          {OUTLOOK.backlogHours}-hour backlog. The cost line makes the same point from the other
+          side: at {money(MONTHLY_COSTS_USD)} a month, costs are 2% of the base case and{" "}
+          <strong className="text-[var(--cream)]">
+            48% of the funnel-corrected low case
+          </strong>
+          . Today they are {money(annualCostsUsd())} a year against $0 of revenue, which is{" "}
+          {money(MONTHLY_COSTS_USD)} a month of genuine investment rather than a rounding error.
         </p>
         <p className="table-caption">
           <strong className="text-[var(--cream)]">

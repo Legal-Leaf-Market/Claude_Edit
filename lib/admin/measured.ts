@@ -485,3 +485,57 @@ export function fullTimeHoursPerMonth(): number {
 export function fullTimeHourly(monthlyRevenue: number): number {
   return monthlyRevenue / fullTimeHoursPerMonth()
 }
+
+/* ------------------------------------------------------------
+   COSTS. The side of the ledger the model does not have.
+   ------------------------------------------------------------ */
+
+/**
+ * Real all-in monthly run-rate, stated by the operator on 10 Aug 2026:
+ * hosting across five Vercel projects, five domains, database, email, and AI
+ * tooling including Claude. Grown over time and treated as necessary spend
+ * rather than discretionary.
+ *
+ * This figure supersedes two others in this codebase, and BOTH were wrong:
+ *
+ *   reference-data.ts METHOD_FOOTNOTE  "well under $100/month"   ~$1,200/yr
+ *   decade.ts costFloor                 $12,000/yr floor
+ *   actual                              $250/month              = $3,000/yr
+ *
+ * The footnote understates by two and a half times, mostly because it lists
+ * Vercel, Neon and Resend and omits AI tooling entirely, which is now the
+ * largest line. The decade.ts floor overstates by four times. Neither was
+ * checked against a bank statement, which is the whole reason this constant
+ * exists.
+ *
+ * Note also what `engine.ts` does with costs: nothing. It has no cost field and
+ * emits revenue only, so every headline figure on both dashboards is GROSS.
+ */
+export const MONTHLY_COSTS_USD = 250
+
+export function annualCostsUsd(): number {
+  return MONTHLY_COSTS_USD * 12
+}
+
+export type Pnl = {
+  revenue: number
+  costs: number
+  /** Revenue less costs. No salary is drawn before FIRST_DRAW_YEAR. */
+  net: number
+  costsAsPctOfRevenue: number
+  /** Net per hour at the declared forward availability. */
+  netPerHour: number
+}
+
+/** A year's P&L at the real cost run-rate. */
+export function pnl(annualRevenue: number): Pnl {
+  const costs = annualCostsUsd()
+  const net = annualRevenue - costs
+  return {
+    revenue: annualRevenue,
+    costs,
+    net,
+    costsAsPctOfRevenue: annualRevenue > 0 ? (costs / annualRevenue) * 100 : Infinity,
+    netPerHour: net / (availableHoursPerWeek() * 4.333 * 12),
+  }
+}

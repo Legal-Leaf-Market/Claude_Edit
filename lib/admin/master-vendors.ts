@@ -23,19 +23,21 @@ import { SISTER_SITE_PROFILES } from "./sister-sites"
  * null and are counted as unknown, including under the optimistic assumption
  * below. Fill them in from the affiliate dashboards, not from a guess.
  *
- * ONE KNOWN DISAGREEMENT, deliberately preserved rather than silently
- * resolved. KawaiiKatz's own repo (`lib/data.ts`, VENDORS) carries a
- * per-vendor `commissionPct` for all nine of its vendors: Plushible 20,
- * Kore Kawaii 15, Hello Kitty Camp 10, Squishy Bottle 25, Autoplush 20,
- * Montessori & Me 15, Mintie Lunchboxes 10, jigsawdepot 10, BRKOX 0. The
- * Legal Leaf admin table says something different: BRKOX 9 and tracking,
- * everything else null and earning nothing. Both are honest, because they
- * measure different things. The repo figures are the rates those programmes
- * ADVERTISE; the admin figures are what is actually wired up and attributing.
- * A vendor with a 20% advertised rate and no affiliate ID in the code earns
- * 20% of nothing. The admin view is the one used for revenue here, and the
- * advertised rate is carried alongside it in `advertisedPct` so the gap is
- * visible instead of averaged away.
+ * KAWAIIKATZ WAS WRONG HERE AND IS NOW CORRECTED. This file previously carried
+ * Legal Leaf's admin view, which recorded eight of the nine KawaiiKatz vendors
+ * as having no affiliate IDs and earning $0. That was stale. The codes are set:
+ * GoAffPro lets an affiliate choose a custom referral code per store, so one
+ * `kawaiikatz` code across eight independent GoAffPro shops is exactly what
+ * enrollment looks like rather than evidence of a guess.
+ *
+ * Every rate is now verified against GoAffPro's own merchant directory
+ * (22,428 programmes, checked 10 Aug 2026) and all twenty rates across
+ * KawaiiKatz and Gear Avail matched their repos exactly. The repos were right.
+ *
+ * BRKOX remains unresolved and is the one row still carrying a conflict: the
+ * KawaiiKatz repo records commissionPct 0 while Legal Leaf's admin records 9%
+ * and tracking. It runs on Awin rather than GoAffPro, so the directory cannot
+ * settle it. `advertisedPct` keeps both numbers visible.
  */
 
 export type MasterVendorRow = {
@@ -77,9 +79,15 @@ const SISTER_VENDORS: Record<string, MasterVendorRow[]> = {
     { merchant: "Accessories (6 stores)", platform: "mixed", ratePct: 8, status: "partial", sharePct: 4, note: "Grasscity, Chill, Hitoki, Zam, YLLVAPE, Mein-Grinder" },
   ],
   kawaii: [
-    { merchant: "BRKOX", platform: "Awin 129093", ratePct: 9, status: "tracking", sharePct: 64, advertisedPct: 0, note: "Verified end to end, showcase page. Repo records commissionPct 0" },
-    { merchant: "Kore Kawaii", platform: "Shopify", ratePct: null, status: "none", sharePct: 12, advertisedPct: 15, note: "No affiliate programme wired; repo advertises 15%" },
-    { merchant: "Seven other vendors", platform: "Shopify", ratePct: null, status: "none", sharePct: 24, note: "No affiliate IDs, all clicks earn $0. Repo advertises 10 to 25% across Plushible, Hello Kitty Camp, Squishy Bottle, Autoplush, Montessori & Me, Mintie Lunchboxes, jigsawdepot" },
+    { merchant: "BRKOX", platform: "Awin 129093", ratePct: 9, status: "tracking", sharePct: 64, advertisedPct: 0, note: "Verified end to end, showcase page. Awin rather than GoAffPro, so the rate conflict with the repo's commissionPct 0 is unresolved" },
+    { merchant: "Squishy Bottle", platform: "GoAffPro", ratePct: 25, status: "tracking", sharePct: 8, note: "Rate verified against GoAffPro's directory. 7-day cookie" },
+    { merchant: "Plushible", platform: "GoAffPro", ratePct: 20, status: "tracking", sharePct: 6, note: "Rate verified against GoAffPro's directory. 7-day cookie" },
+    { merchant: "Autoplush", platform: "GoAffPro", ratePct: 20, status: "tracking", sharePct: 4, note: "Rate verified against GoAffPro's directory. 7-day cookie" },
+    { merchant: "Kore Kawaii", platform: "GoAffPro", ratePct: 15, status: "tracking", sharePct: 12, note: "Rate verified against GoAffPro's directory (listed as Kawaii Crafts Shop). 7-day cookie" },
+    { merchant: "Montessori & Me", platform: "GoAffPro", ratePct: 15, status: "tracking", sharePct: 3, note: "Rate verified. 30-day cookie, the longest of the nine" },
+    { merchant: "Hello Kitty Camp", platform: "GoAffPro", ratePct: 10, status: "tracking", sharePct: 2, note: "Rate verified against GoAffPro's directory. 7-day cookie" },
+    { merchant: "Mintie Lunchboxes", platform: "GoAffPro", ratePct: 10, status: "tracking", sharePct: 1, note: "Rate verified against GoAffPro's directory. 7-day cookie" },
+    { merchant: "jigsawdepot", platform: "GoAffPro", ratePct: 10, status: "tracking", sharePct: 1, note: "Rate verified against GoAffPro's directory. 7-day cookie" },
   ],
   herbal: [
     { merchant: "Rishi Tea", platform: "Awin 53225", ratePct: 10, status: "tracking", sharePct: 34, note: "Approved 8 Aug, 187 products, healthiest feed" },
