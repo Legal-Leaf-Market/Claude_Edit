@@ -131,6 +131,28 @@ export const env = {
     },
   },
 
+  impact: {
+    /**
+     * Impact.com (formerly Impact Radius). Anderton's affiliate application
+     * was submitted through it; the site's Universal Tracking Tag is already
+     * live sitewide (app/layout.tsx) for that application's own site
+     * verification step, independent of catalogue ingestion.
+     *
+     * Unlike CJ or Awin, Impact has no fixed product-feed schema: brands
+     * configure their own field names per catalogue (confirmed against
+     * Impact's own "File Formats for Product Catalogs" help docs), so there
+     * is nothing here to write a row-normaliser against yet. This var is a
+     * placeholder for once the application is actually approved and
+     * Anderton's specific feed URL and column names are in hand; unset is
+     * the fully expected state until then, same as every other unconfirmed
+     * source in this file.
+     */
+    andertonsFeedUrl: str("IMPACT_ANDERTONS_FEED_URL"),
+    get hasAndertonsFeed(): boolean {
+      return Boolean(env.impact.andertonsFeedUrl)
+    },
+  },
+
   /**
    * Small independent Shopify sellers, confirmed enrolled in GoAffPro (or a
    * similar affiliate app) and verified per-store to publish an agents.md
@@ -293,6 +315,7 @@ export function describeConfig(): string {
     `zzounds-feed=${env.cj.hasZzoundsFeed ? "set" : "absent"}`,
     `fullcompass-feed=${env.cj.hasFullCompassFeed ? "set" : "absent"}`,
     `pinevillemusic-feed=${env.cj.hasPinevilleMusicFeed ? "set" : "absent"}`,
+    `andertons-feed=${env.impact.hasAndertonsFeed ? "set" : "absent"}`,
     `typesense=${env.typesense.isConfigured ? "set" : "postgres-fallback"}`,
     `redis=${env.redisUrl ? "set" : "absent"}`,
     `leads-notify=${env.leads.canEmail ? "set" : "db-only"}`,
