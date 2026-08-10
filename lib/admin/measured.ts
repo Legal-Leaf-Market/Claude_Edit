@@ -162,7 +162,7 @@ export const AWIN_SECTOR_EVIDENCE = {
    */
   reverbConfirmed: { awinId: 67144, cookieDays: 30, approvalPct: 100, epcUsd: 0.24, conversionPct: 1.06, feedEnabled: true },
   /** Searched across all 11,272 combined advertisers and genuinely absent. */
-  notOnAwin: ["Anderton's", "Sweetwater", "zZounds", "Thomann", "Full Compass", "Pineville Music", "Guitar Center"],
+  notOnAwin: ["Anderton's", "zZounds", "Thomann", "Full Compass", "Pineville Music", "Guitar Center"],
 } as const
 
 export type FunnelCalibration = {
@@ -386,7 +386,7 @@ export const BACKLOG: BacklogItem[] = [
     task: "Land the gated feeds already applied for",
     hours: 30,
     unlocks:
-      "eBay production access, Reverb, Sweetwater, Gear4music, the CJ trio, Anderton's via Impact. Catalogue depth, and the largest addressable used-gear inventory there is.",
+      "eBay production access, Reverb, Gear4music, the CJ trio, Anderton's via Impact. Catalogue depth, and the largest addressable used-gear inventory there is.",
     category: "sales",
   },
   {

@@ -24,7 +24,7 @@ import { SISTER_SITE_PROFILES } from "./sister-sites"
  * That set has shrunk as the network directories came in. The CJ programmes
  * (zZounds 6%, Pineville Music 7%, Full Compass Systems 4%, Nicokick 3%) and
  * Gear4music (3.5%) are now real numbers read off CJ's and Awin's own
- * advertiser directories. Still null: eBay, Reverb and Sweetwater. Reverb is
+ * advertiser directories. Still null: eBay and Reverb. Reverb is
  * the notable one, since its Awin listing publishes min and max commission as
  * 0, which means "not disclosed in the directory", not "pays nothing".
  *

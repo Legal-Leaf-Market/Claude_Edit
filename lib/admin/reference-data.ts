@@ -73,7 +73,7 @@ export const SCENARIOS: Record<"bear" | "base" | "bull", Scenario> = {
     label: "Bear",
     headline: "The referral links never get confirmed",
     detail:
-      "Folkcraft, Acoustic Guitar and Jamstik stay unconfirmed, Play With Authority's approval never lands, and eBay/Reverb/Sweetwater/Gear4music/CJ stay paused indefinitely. Category pages and the pedal-board builder ship but nothing promotes them. Traffic lands around 40% of plan by month 24 and conversion at 85% of the stated rate.",
+      "Folkcraft, Acoustic Guitar and Jamstik stay unconfirmed, Play With Authority's approval never lands, and eBay/Reverb/Gear4music/CJ stay paused indefinitely. Category pages and the pedal-board builder ship but nothing promotes them. Traffic lands around 40% of plan by month 24 and conversion at 85% of the stated rate.",
     sessions12: 0.55,
     sessions24: 0.4,
     conversion: 0.85,
@@ -84,7 +84,7 @@ export const SCENARIOS: Record<"bear" | "base" | "bull", Scenario> = {
     label: "Base",
     headline: "Steady confirmation and shipping",
     detail:
-      "The unconfirmed GoAffPro codes get confirmed, Play With Authority approves, and at least one of the gated feeds (eBay production, or an Awin/LinkConnector/CJ datafeed) actually materialises. Category pages, the flip-card redesign and the pedal-board builder ship on the roadmap already in motion. Attribution ramps to its month-24 target because the applications actually got filed.",
+      "The unconfirmed GoAffPro codes get confirmed, Play With Authority approves, and at least one of the gated feeds (eBay production, or an Awin/CJ datafeed) actually materialises. Category pages, the flip-card redesign and the pedal-board builder ship on the roadmap already in motion. Attribution ramps to its month-24 target because the applications actually got filed.",
     sessions12: 1,
     sessions24: 1,
     conversion: 1,
@@ -151,7 +151,6 @@ export const MERCHANTS: MerchantRow[] = [
   { merchant: "Pures Music", platform: "Shopify", ratePct: 4, status: "paused", catalogueCount: 4368, note: "Built but paused: GoAffPro enrollment not confirmed" },
   { merchant: "eBay", platform: "Buy Feed API", ratePct: null, status: "none", catalogueCount: 0, note: "Sandboxed; no production EPN keyset approved yet" },
   { merchant: "Reverb", platform: "Awin 67144", ratePct: null, status: "pending", catalogueCount: 0, note: "DATAFEED CONFIRMED TO EXIST. Awin advertiser 67144, Reverb (US), feedEnabled=yes, productReporting=yes, 30-day cookie, 100% approval rate, live since Nov 2023, payment status green. Commission is not published in the directory (min/max both 0), so ratePct stays null rather than guessed. This is the legitimate path CLAUDE.md section 2 requires; the API is still off limits" },
-  { merchant: "Sweetwater", platform: "LinkConnector", ratePct: null, status: "none", catalogueCount: 0, note: "No confirmed feed URL" },
   { merchant: "Gear4music", platform: "Awin 1117", ratePct: 3.5, status: "pending", catalogueCount: 0, note: "Feed CONFIRMED to exist in Awin's advertiser directory: feedEnabled=yes, 3.5-5% commission, 30-day cookie, 92.6% approval rate. Five regional programmes (1117, IE 27588, FR 27586, DK 27600, PL 27598), matching the five domains isGear4MusicProductUrl already recognises. Rate recorded at the 3.5% floor. Needs the feed URL from the Awin dashboard" },
   { merchant: "zZounds", platform: "CJ 1779394", ratePct: 6, status: "pending", catalogueCount: 0, note: "Rate CONFIRMED at 6% in CJ's advertiser directory. The directory shows performance metrics rather than an apply link for this row, which reads as already joined, so verify in the CJ dashboard. EPC $1.94 (3mo) / $1.75 (7d). Needs CJ_ZZOUNDS_FEED_URL" },
   { merchant: "Pineville Music", platform: "CJ 6425392", ratePct: 7, status: "unconfirmed", catalogueCount: 0, note: "Rate CONFIRMED at 7%, the highest of the three CJ music retailers. Directory shows APPLY TO PROGRAM with manual review, so not yet joined. EPC $3.29 (3mo)" },
@@ -183,7 +182,7 @@ export const FACTS = [
   {
     tag: "Fixable · fastest money",
     title: "The payout rates are lower than the site was modelled on",
-    body: "Checked store by store against the GoAffPro export rather than estimated: the catalogue-weighted rate across live stores is 6.77%, not the 8% this model previously assumed. The two biggest catalogues, Haze Guitar (1,240 listings) and EART Guitar (806), both pay 5%. Jackson Audio pays 0%, so its clicks are tracked and credited at nothing. Folkcraft's cookie is twelve hours, short enough that most conversions will never be attributed. Separately, Folkcraft, Acoustic Guitar and Jamstik (roughly 1,952 listings) still have no confirmed link at all, and eBay, Reverb, Sweetwater, Gear4music and the CJ trio are built and paused pending an approval or a feed URL.",
+    body: "Checked store by store against the GoAffPro export rather than estimated: the catalogue-weighted rate across live stores is 6.77%, not the 8% this model previously assumed. The two biggest catalogues, Haze Guitar (1,240 listings) and EART Guitar (806), both pay 5%. Jackson Audio pays 0%, so its clicks are tracked and credited at nothing. Folkcraft's cookie is twelve hours, short enough that most conversions will never be attributed. Separately, Folkcraft, Acoustic Guitar and Jamstik (roughly 1,952 listings) still have no confirmed link at all, and eBay, Reverb, Gear4music and the CJ trio are built and paused pending an approval or a feed URL. Sweetwater was dropped outright: no lawful channel to its catalogue exists.",
   },
 ]
 
@@ -214,8 +213,8 @@ export const NEXT_90_DAYS = [
     why: "Historically the slowest item in this project by a wide margin, so start it now, not later.",
   },
   {
-    title: "Confirm or drop the gated Awin/LinkConnector/CJ/Impact feeds",
-    body: "Reverb, Sweetwater and Gear4music each need a confirmed publisher datafeed. On CJ the picture is now specific rather than a lump: zZounds (6%) appears to be joined already and only needs its feed URL pulled, while Pineville Music (7%) and Full Compass Systems (4%) both still show APPLY TO PROGRAM with manual review. Full Compass is the one to file first at $28.69 EPC, an order of magnitude above the other two. Avid sits in the same directory at 10% with an $89.14 EPC and is not wired up at all yet. Anderton's application went in on 10 Aug 2026; that one has an engineering step approval does not remove, since Impact lets each brand define its own feed columns, so the normaliser waits on the real schema. Each is a real, compliant source the moment it's confirmed, and a dead end worth dropping if it stalls indefinitely.",
+    title: "Confirm or drop the gated Awin/CJ/Impact feeds",
+    body: "Reverb and Gear4music each need a confirmed publisher datafeed. Sweetwater is gone: LinkConnector approval came through with no active Sweetwater program behind it, and with no product API and scraping ruled out there is no lawful way to carry their prices. On CJ the picture is now specific rather than a lump: zZounds (6%) appears to be joined already and only needs its feed URL pulled, while Pineville Music (7%) and Full Compass Systems (4%) both still show APPLY TO PROGRAM with manual review. Full Compass is the one to file first at $28.69 EPC, an order of magnitude above the other two. Avid sits in the same directory at 10% with an $89.14 EPC and is not wired up at all yet. Anderton's application went in on 10 Aug 2026; that one has an engineering step approval does not remove, since Impact lets each brand define its own feed columns, so the normaliser waits on the real schema. Each is a real, compliant source the moment it's confirmed, and a dead end worth dropping if it stalls indefinitely.",
     why: "A smaller aggregator that's fully compliant beats a bigger one that isn't, but a confirmed feed beats either.",
   },
   {

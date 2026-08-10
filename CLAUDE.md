@@ -36,13 +36,19 @@ built for that site's own frontend rather than published for this use.
   is still unknown rather than assumed. This does NOT relax section 2: the
   Reverb API remains off limits, and the Awin feed is precisely the legitimate
   channel that rule points at.
-- **Sweetwater**, via a **LinkConnector product datafeed**, if and only if one
-  is confirmed to exist. `lib/ingestion/sweetwater-linkconnector.ts` no-ops on
-  an unset `LINKCONNECTOR_SWEETWATER_FEED_URL`, the same shape as Reverb's
-  gate. Sweetwater has no published product API; the only channel meant for
-  third parties is whatever datafeed their affiliate program (run on
-  LinkConnector) actually offers. Do not scrape sweetwater.com or its Algolia-
-  backed search/Gear Exchange listings as a substitute.
+- **Sweetwater was REMOVED on 10 Aug 2026, and the reason is not money.** The
+  LinkConnector application was approved, and there turned out to be no active
+  Sweetwater program behind it, so no product datafeed to request. Sweetwater
+  publishes no product API, their Terms forbid reproducing site content, and
+  their Algolia-backed search and Gear Exchange listings are a frontend index,
+  not a published feed. That leaves no lawful channel to their catalogue at all,
+  which is a section 14 failure, NOT the section 13 case about a merchant who
+  does not pay. Non-payment would never have justified delisting them. The
+  ingestion module, affiliate builder, cron route, queue registration, env var,
+  tests and the sweetwater.com allowlist entry are all gone rather than paused,
+  because leaving a LinkConnector integration in place for a programme that does
+  not exist is how someone later points it at a scrape "temporarily". If a
+  confirmed feed ever appears, rebuild it against that feed's real schema.
 - **Gear4music**, via their **Awin product datafeed** (`lib/ingestion/
   gear4music-awin.ts`, gated on `AWIN_GEAR4MUSIC_FEED_URL`). Confirmed in
   Awin's directory: advertiser **1117**, `feedEnabled=yes`, **3.5-5%**
@@ -64,8 +70,7 @@ built for that site's own frontend rather than published for this use.
   merchant-URL column, only a pre-built `BUY_URL`; `isCjTrackingUrl` in
   `lib/affiliate/cj.ts` checks it resolves to one of CJ's own tracking domains
   before trusting it as the affiliate link, the same "trust the network's own
-  link, verify the host, never hand-build one" rule as Sweetwater and
-  Gear4music. All three default an empty condition to "New" like Gear4music:
+  link, verify the host, never hand-build one" rule as Gear4music. All three default an empty condition to "New" like Gear4music:
   new-inventory retailers, not peer marketplaces.
 - **Small independent sellers, via public Shopify storefront JSON
   (`/products.json`)**, on a per-merchant basis, the same pattern the sister
@@ -74,7 +79,7 @@ built for that site's own frontend rather than published for this use.
   traffic, not a blanket license to hit any Shopify store's JSON endpoint.
   Verify the endpoint is actually public and check the individual merchant's
   own affiliate terms before wiring one in; this is a per-store decision, not
-  a feed that covers many merchants at once the way Awin/LinkConnector do. The
+  a feed that covers many merchants at once the way Awin/CJ do. The
   concrete basis for each store is its own `/agents.md`, which Shopify now
   ships platform-wide with a "Read-Only Browsing (No Authentication
   Required)" section explicitly naming `/products.json` as the sanctioned
@@ -176,14 +181,14 @@ These are not preferences. Each one is a term of service.
   aggregated". Aggregating their catalogue through it is a breach on two
   counts. `lib/ingestion/reverb-awin.ts` reads the Awin datafeed or it no-ops.
   It has no fallback path, deliberately, so nobody can add one "temporarily".
-- **`LINKCONNECTOR_SWEETWATER_FEED_URL` unset is the EXPECTED state**, not a
-  bug to route around. `AWIN_REVERB_FEED_URL` and `AWIN_GEAR4MUSIC_FEED_URL`
-  are a different case as of 10 Aug 2026: both feeds are confirmed to exist in
-  Awin's advertiser directory (Reverb 67144, Gear4music 1117 plus four
-  regional programmes), so those two are pending retrieval from the Awin
-  dashboard rather than pending existence. Each source ships only if its feed is confirmed; Gear Avail degrades
-  gracefully to whichever subset of eBay/Reverb/Sweetwater/Gear4music actually
-  has a working feed. A smaller aggregator that is fully compliant beats a
+- **An unset feed URL is the EXPECTED state for a gated source**, not a bug to
+  route around. `AWIN_REVERB_FEED_URL` and `AWIN_GEAR4MUSIC_FEED_URL` are a
+  particular case as of 10 Aug 2026: both feeds are confirmed to exist in Awin's
+  advertiser directory (Reverb 67144, Gear4music 1117 plus four regional
+  programmes), so those two are pending retrieval from the Awin dashboard rather
+  than pending existence. Each source ships only if its feed is confirmed; Gear
+  Avail degrades gracefully to whichever subset of eBay/Reverb/Gear4music
+  actually has a working feed. A smaller aggregator that is fully compliant beats a
   bigger one that is not.
 - **eBay production access is not guaranteed.** `EBAY_FEED_BASE_URL` defaults
   to **sandbox** on purpose. Never flip that default; set it per environment
@@ -425,7 +430,6 @@ Never fork the logic between them. Add work to the job function.
 | `EBAY_AFFILIATE_CAMPAIGN_ID` | Populates `itemAffiliateWebUrl` in the feed AND builds fallback EPN links. Unset means eBay traffic is unmonetised. |
 | `AWIN_PUBLISHER_ID` / `AWIN_REVERB_MERCHANT_ID` | Reverb deep links. Either missing produces null links, not broken ones. |
 | `AWIN_REVERB_FEED_URL` | Reverb catalogue. Feed CONFIRMED to exist (Awin 67144, 100% approval); pending retrieval, not pending existence. The job no-ops until set. |
-| `LINKCONNECTOR_SWEETWATER_FEED_URL` | Sweetwater catalogue. Unset is expected; the job no-ops. Never falls back to scraping. |
 | `AWIN_GEAR4MUSIC_MERCHANT_ID` / `AWIN_GEAR4MUSIC_FEED_URL` | Gear4music catalogue and deep links. Same shape as the Reverb pair, independent ids. |
 | `CJ_ZZOUNDS_FEED_URL` / `CJ_FULLCOMPASS_FEED_URL` / `CJ_PINEVILLEMUSIC_FEED_URL` | Three independent CJ Affiliate programmes. Each no-ops when unset. |
 | `IMPACT_ANDERTONS_FEED_URL` | Reserved for Anderton's via Impact.com; application pending, no ingestion module exists yet since Impact's product-feed schema is brand-configured, not fixed. Unset is expected. |
@@ -506,7 +510,10 @@ legal-leafmarket.com, adapted to one site instead of four.
 - Do NOT call the Reverb API for listings, or add a scraping fallback anywhere.
 - Do NOT write Facebook Marketplace ingestion.
 - Do NOT scrape Guitar Center or Sweetwater (or hit their frontend search
-  indexes) as a substitute for a confirmed affiliate datafeed.
+  indexes) as a substitute for a confirmed affiliate datafeed. Sweetwater is now
+  off the site entirely for want of a lawful channel, which makes this rule more
+  load bearing rather than less: the way it gets broken is somebody deciding a
+  removed merchant is fair game.
 - Do NOT add a new data source without first confirming a legitimate feed or
   partner API exists for it. A retailer having a website is not a source.
 - Do NOT treat "it's a Shopify store with `/products.json` public" as a

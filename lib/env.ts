@@ -95,20 +95,6 @@ export const env = {
     },
   },
 
-  linkconnector: {
-    /**
-     * Sweetwater's affiliate program runs on LinkConnector. Their datafeed
-     * URL, if a Sweetwater product feed is confirmed to exist there. Unset is
-     * the expected state until confirmed; when unset the Sweetwater worker
-     * logs and no-ops. It never falls back to scraping sweetwater.com or its
-     * search index.
-     */
-    sweetwaterFeedUrl: str("LINKCONNECTOR_SWEETWATER_FEED_URL"),
-    get hasSweetwaterFeed(): boolean {
-      return Boolean(env.linkconnector.sweetwaterFeedUrl)
-    },
-  },
-
   cj: {
     /**
      * CJ Affiliate (formerly Commission Junction). Each advertiser is a
@@ -310,7 +296,6 @@ export function describeConfig(): string {
     `ebay=${env.ebay.isConfigured ? (env.ebay.isSandbox ? "sandbox" : "production") : "unconfigured"}`,
     `awin=${env.awin.isConfigured ? "set" : "unconfigured"}`,
     `reverb-feed=${env.awin.hasFeed ? "set" : "absent"}`,
-    `sweetwater-feed=${env.linkconnector.hasSweetwaterFeed ? "set" : "absent"}`,
     `gear4music-feed=${env.awin.hasGear4musicFeed ? "set" : "absent"}`,
     `zzounds-feed=${env.cj.hasZzoundsFeed ? "set" : "absent"}`,
     `fullcompass-feed=${env.cj.hasFullCompassFeed ? "set" : "absent"}`,

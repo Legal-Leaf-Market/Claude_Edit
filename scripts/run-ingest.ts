@@ -6,7 +6,6 @@ import {
   ingestEbaySnapshot,
 } from "../lib/ingestion/ebay-ingest"
 import { ingestReverbFeed } from "../lib/ingestion/reverb-awin"
-import { ingestSweetwaterFeed } from "../lib/ingestion/sweetwater-linkconnector"
 import { ingestGear4MusicFeed } from "../lib/ingestion/gear4music-awin"
 import { ingestZzoundsFeed } from "../lib/ingestion/zzounds-cj"
 import { ingestFullCompassFeed } from "../lib/ingestion/fullcompass-cj"
@@ -33,7 +32,6 @@ import { refreshAllDeals } from "../lib/deals/pricing"
  *   npm run ingest:ebay -- snapshot  hourly reconciliation
  *   npm run ingest:ebay -- bootstrap weekly ALL_ACTIVE
  *   npm run ingest:reverb            Awin product datafeed
- *   npm run ingest:sweetwater        LinkConnector product datafeed
  *   npm run ingest:gear4music        Awin product datafeed
  *   npm run ingest:zzounds           CJ Affiliate product feed
  *   npm run ingest:fullcompass       CJ Affiliate product feed
@@ -69,9 +67,6 @@ async function main() {
   } else if (source === "reverb") {
     const result = await ingestReverbFeed()
     console.log("[ingest] Reverb:", JSON.stringify(result, null, 2))
-  } else if (source === "sweetwater") {
-    const result = await ingestSweetwaterFeed()
-    console.log("[ingest] Sweetwater:", JSON.stringify(result, null, 2))
   } else if (source === "gear4music") {
     const result = await ingestGear4MusicFeed()
     console.log("[ingest] Gear4music:", JSON.stringify(result, null, 2))
@@ -126,7 +121,7 @@ async function main() {
     console.log("[ingest] deals:", await refreshAllDeals())
   } else {
     console.error(
-      "Usage: run-ingest.ts <ebay|reverb|sweetwater|gear4music|zzounds|fullcompass|pinevillemusic|folkcraft|acousticguitar|jamstik|jacksonaudio|eminencedigital|hazeguitar|eartguitar|playwithauthority|puresmusic|squaver|easonmusicstore|gokalimba|resolve> [daily|snapshot|bootstrap]",
+      "Usage: run-ingest.ts <ebay|reverb|gear4music|zzounds|fullcompass|pinevillemusic|folkcraft|acousticguitar|jamstik|jacksonaudio|eminencedigital|hazeguitar|eartguitar|playwithauthority|puresmusic|squaver|easonmusicstore|gokalimba|resolve> [daily|snapshot|bootstrap]",
     )
     process.exitCode = 1
   }

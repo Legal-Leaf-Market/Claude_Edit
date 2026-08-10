@@ -76,7 +76,7 @@ export function storeCartConfig(source: Source): StoreCartConfig {
         ...env.goaffpro.squaver,
       }
     default:
-      // eBay, Reverb, Sweetwater, Gear4music, and the CJ trio: no platform
+      // eBay, Reverb, Gear4music, and the CJ trio: no platform
       // this module knows how to prefill a cart for, paused or not.
       return { platform: "none", baseUrl: "" }
   }

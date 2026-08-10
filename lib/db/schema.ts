@@ -134,7 +134,7 @@ export const marketplaceListings = pgTable(
       onDelete: "set null",
     }),
 
-    /** 'ebay' | 'reverb' | 'sweetwater' | 'gear4music' | 'zzounds' | 'fullcompass' | 'pinevillemusic' | 'folkcraft' | 'acousticguitar' | 'jamstik' | 'jacksonaudio'. Facebook Marketplace is deliberately out of scope. */
+    /** 'ebay' | 'reverb' | 'gear4music' | 'zzounds' | 'fullcompass' | 'pinevillemusic' | 'folkcraft' | 'acousticguitar' | 'jamstik' | 'jacksonaudio'. Facebook Marketplace is deliberately out of scope. */
     source: varchar("source", { length: 20 }).notNull(),
     externalId: varchar("external_id", { length: 255 }).notNull(),
 
@@ -500,7 +500,6 @@ export type NewMerchantLead = typeof merchantLeads.$inferInsert
 export const SOURCES = [
   "ebay",
   "reverb",
-  "sweetwater",
   "gear4music",
   "zzounds",
   "fullcompass",

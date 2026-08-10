@@ -7,7 +7,6 @@ import {
   ingestEbaySnapshot,
 } from "@/lib/ingestion/ebay-ingest"
 import { ingestReverbFeed } from "@/lib/ingestion/reverb-awin"
-import { ingestSweetwaterFeed } from "@/lib/ingestion/sweetwater-linkconnector"
 import { ingestGear4MusicFeed } from "@/lib/ingestion/gear4music-awin"
 import { ingestZzoundsFeed } from "@/lib/ingestion/zzounds-cj"
 import { ingestFullCompassFeed } from "@/lib/ingestion/fullcompass-cj"
@@ -66,11 +65,6 @@ export function startIngestionWorker(): Worker<IngestionJob> {
         }
         case "reverb-feed": {
           const result = await ingestReverbFeed()
-          await syncSearchIndex()
-          return result
-        }
-        case "sweetwater-feed": {
-          const result = await ingestSweetwaterFeed()
           await syncSearchIndex()
           return result
         }
