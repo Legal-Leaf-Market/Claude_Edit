@@ -160,6 +160,12 @@ function cartItem(p, idx) {
        store's own cart path. Without these two the link degrades to the bare product page with
        an empty cart, which is what the owner reported on CBD Hemp Direct. */
     productId: p.productId || '', cartPath: p.cartPath || '',
+    /* And slot 8, the chosen variation's attribute query, because the parent id and variation id
+       are NOT sufficient on their own: Woo's handler answers a bare ?add-to-cart=<variation id>
+       with "please choose product options by visiting <product>" and an empty cart. Omitting it
+       here degraded every Woo product shared through /p/<id> and /p/pick to exactly the failure
+       this pair was added to fix, on the size the shopper was actually shown. */
+    attrQuery: (s && s[8]) || '',
     url: (s && s[5]) || p.url || '',
     price: s ? s[1] : p.sale,
     size: s ? s[0] : 'One Size',

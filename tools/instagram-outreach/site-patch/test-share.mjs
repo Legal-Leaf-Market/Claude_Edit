@@ -67,6 +67,30 @@ ok(item.url.includes('ref=coffeeandajoint'), 'url keeps its affiliate stamp');
 ok(item.variantId === '4411', 'variantId carried, needed for the cart permalink');
 ok(item.price === 44 && item.size === '1 oz', 'cheapest size chosen by default');
 
+/* The Woo checkout test below builds its item BY HAND, so it kept passing while cartItem -- the
+   thing that actually builds items from feed rows -- dropped attrQuery on the floor. Every Woo
+   product shared through /p/<id> and /p/pick therefore degraded to an empty cart, the exact
+   failure the parent/variation pair was added to fix. Assert the builder's own output carries
+   the whole trio, on the size the shopper was shown, not just that the URL builder can use them. */
+{
+  const wooProd = {
+    ...PRODUCTS[0], platform: 'woocommerce', productId: 153500, cartPath: '/cart',
+    sizes: [['7 Grams', 33.53, 7, '153528', true, null, '', 0, 'attribute_pa_net-weight=7-grams'],
+            ['28 Grams', 114.99, 28, '153530', true, null, '', 0, 'attribute_pa_net-weight=28-grams']],
+  };
+  const first = __test.cartItem(wooProd, null);
+  const ounce = __test.cartItem(wooProd, 1);
+  console.log('  woo item (default): ' + JSON.stringify([first.productId, first.variantId, first.attrQuery, first.cartPath]));
+  ok('attrQuery' in first, 'cartItem emits attrQuery at all, which is what regressed');
+  ok(first.productId === 153500 && first.cartPath === '/cart', 'with the parent id and cart path beside it');
+  ok(first.attrQuery === 'attribute_pa_net-weight=7-grams',
+     'the attributes match the size cartItem actually chose: ' + first.attrQuery);
+  ok(ounce.attrQuery === 'attribute_pa_net-weight=28-grams' && ounce.variantId === '153530',
+     'and follow an explicitly picked row rather than the default: ' + ounce.attrQuery);
+  ok(__test.cartItem(PRODUCTS[0], null).attrQuery === '',
+     'a Shopify row with no slot 8 yields empty, never undefined');
+}
+
 /* Pull the site's own checkout builder out of consumables.html and run it. The path is RESOLVED
    rather than hardcoded, and the resolved one is printed, because a single hardcoded path silently
    read a stale second clone: this test was validating a checkout builder four commits behind the
