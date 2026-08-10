@@ -151,7 +151,10 @@ function cartItem(p, idx) {
   return {
     id: p.id, name: p.name, store: p.store, storeKey: p.storeKey, domain: p.domain,
     cartDomain: p.cartDomain || '', platform: p.platform || 'shopify',
-    ref: p.ref || '', refLink: p.refLink || '', coupon: p.coupon || '',
+    /* refParam travels with the item because the site cart builds the multi-item checkout URL
+       from it, and the name is not always "ref": CBD Hemp Direct tracks on sld, Nothing But Canna
+       on sca_ref. Dropping it here would hand the cart a link that works and pays nobody. */
+    ref: p.ref || '', refParam: p.refParam || '', refLink: p.refLink || '', coupon: p.coupon || '',
     url: (s && s[5]) || p.url || '',
     price: s ? s[1] : p.sale,
     size: s ? s[0] : 'One Size',
@@ -227,6 +230,20 @@ function isTrimShake(text) {
   return TRIM_WORD.test(String(text || ''));
 }
 
+/* The feed's own verdict, and it outranks the title, because it was reached with evidence this
+   page cannot see. products.js sets `offcut` at scrape time off title + tags + body_html, so a
+   store that only admits the grade in its marketing copy is still caught: CBD Hemp Direct sells
+   "Budget Buds THCA Flower" whose description says the category "may feature shake, trim, and
+   smalls", and the title alone reads as whole buds. Descriptions cannot ship in the feed (payload
+   doubles), so the boolean travels instead of the copy.
+
+   Falls back to the title test when the flag is absent, which is any older cached feed and every
+   test fixture written before it existed. */
+function isTrimProduct(p) {
+  if (p && p.offcut === true) return true;
+  return isTrimShake(p && p.name);
+}
+
 /* Rows often inherit their weight from the PRODUCT TITLE rather than their own
    label: on a multi-strain listing titled "... Smalls Ounce", every strain row is
    tagged 28g even though the row itself says only the strain. That inference is
@@ -283,7 +300,7 @@ var PICK_POOL = POOL_MIX.reduce(function (n, s) { return n + s.want; }, 0);
    Anything else the classifier recognises, the D8/HHC/THCP family, belongs to none
    of the three and is left out of the pool rather than quietly counted as THCa. */
 function bucketOf(p, rowLabel) {
-  if (isTrimShake(p && p.name) || isTrimShake(rowLabel)) return 'trim';
+  if (isTrimProduct(p) || isTrimShake(rowLabel)) return 'trim';
   var c = String((p && p.cannabinoid) || 'THCa');
   if (c === 'CBD') return 'cbd';
   if (c === 'THCa') return 'thca';
@@ -964,7 +981,7 @@ export default async function handler(req, res) {
     /* Two flags, not one. trimProd is the whole listing, so it holds whatever row
        is chosen; trim is the state to show right now, which before a choice is
        made means the row this page is advertising. */
-    const trimProd = isTrimShake(prod.name);
+    const trimProd = isTrimProduct(prod);
     /* Product-level only, since a cannabinoid is a property of the plant and not of
        the size somebody buys. It does not follow the dropdown the way trim does. */
     const cbd = String(prod.cannabinoid || 'THCa') === 'CBD';
@@ -1405,4 +1422,4 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
 }
 
 // Exported for tests. Not part of the route contract.
-export const __test = { esc, httpsOnly, money, weightLabel, headline, description, cartItem, pickBest, pickAll, PICK_POOL, saysWeightAlready, namesAnOunce, ounceRowOverCap, isTrimShake, bucketOf, composePool, POOL_MIX };
+export const __test = { esc, httpsOnly, money, weightLabel, headline, description, cartItem, pickBest, pickAll, PICK_POOL, saysWeightAlready, namesAnOunce, ounceRowOverCap, isTrimShake, isTrimProduct, bucketOf, composePool, POOL_MIX };

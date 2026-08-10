@@ -59,7 +59,7 @@ ok(good.html.includes("LL.track('add_to_cart'"), 'fires the same analytics event
 console.log('\n=== affiliate references survive, checked against the real builder ===');
 const item = __test.cartItem(PRODUCTS[0], null);
 console.log('  cart item: ' + JSON.stringify(item));
-const siteFields = ['id','name','store','storeKey','domain','cartDomain','platform','ref','refLink','coupon','url','price','size','variantId','cur'];
+const siteFields = ['id','name','store','storeKey','domain','cartDomain','platform','ref','refParam','refLink','coupon','url','price','size','variantId','cur'];
 ok(siteFields.every(k => k in item), 'item has every field addToCart pushes');
 ok(item.ref === 'coffeeandajoint', 'ref carried: ' + item.ref);
 ok(item.coupon === 'JACOBKENNEDY', 'coupon carried: ' + item.coupon);
@@ -67,8 +67,18 @@ ok(item.url.includes('ref=coffeeandajoint'), 'url keeps its affiliate stamp');
 ok(item.variantId === '4411', 'variantId carried, needed for the cart permalink');
 ok(item.price === 44 && item.size === '1 oz', 'cheapest size chosen by default');
 
-// Pull the site's own checkout builder out of consumables.html and run it.
-const html = fs.readFileSync('/workspace/code_backup/public/consumables.html', 'utf8');
+/* Pull the site's own checkout builder out of consumables.html and run it. The path is RESOLVED
+   rather than hardcoded, and the resolved one is printed, because a single hardcoded path silently
+   read a stale second clone: this test was validating a checkout builder four commits behind the
+   one being shipped, which is worse than not testing it at all. */
+const CANDIDATES = [
+  '/home/user/code_backup/public/consumables.html',
+  '/workspace/code_backup/public/consumables.html',
+];
+const sitePath = CANDIDATES.find((c) => fs.existsSync(c));
+ok(!!sitePath, 'found the site checkout builder to test against');
+console.log('  reading the site builder from: ' + sitePath);
+const html = fs.readFileSync(sitePath, 'utf8');
 const fnSrc = html.match(/function storeCheckoutUrl\(domain, items\)\{[\s\S]*?\n  \}/)[0];
 const storeCheckoutUrl = new Function('return ' + fnSrc)();
 const checkout = storeCheckoutUrl(item.domain, [item]);
@@ -76,6 +86,31 @@ console.log('  checkout URL the site builds: ' + checkout);
 ok(/^https:\/\/ounceco\.test\/cart\/4411:1\?/.test(checkout), 'real cart permalink built');
 ok(checkout.includes('ref=coffeeandajoint'), 'affiliate ref present in checkout');
 ok(checkout.includes('discount=JACOBKENNEDY'), 'coupon present in checkout');
+
+/* The param NAME is the store's, not always "ref". CBD Hemp Direct tracks on sld and Nothing But
+   Canna on sca_ref, and the multi-item builder hardcoded "ref", so the link worked, the customer
+   bought, and the commission was zero with nothing to show it. Two items so this is genuinely the
+   multi-item path, which is the only one that was broken: single-item links ride p.url, which the
+   scraper already stamps server-side with the right name. */
+{
+  const sld = { ...__test.cartItem(PRODUCTS[0], 0), storeKey: 'cbdhempdirect',
+    domain: 'cbdhemp.direct', cartDomain: 'cbdhemp.direct', ref: '161', refParam: 'sld',
+    coupon: '', variantId: '111' };
+  const second = { ...sld, variantId: '222' };
+  const url = storeCheckoutUrl(sld.domain, [sld, second]);
+  console.log('  sld checkout: ' + url);
+  ok(url.startsWith('https://cbdhemp.direct/cart/111:1,222:1?'), 'both items in one permalink: ' + url);
+  ok(url.includes('sld=161'), 'stamped with the store\'s own param: ' + url);
+  ok(!/[?&]ref=/.test(url), 'and not with a "ref=" that would have paid nobody');
+  const sca = { ...sld, storeKey: 'nothingbutcanna', domain: 'www.nothingbutcanna.net',
+    cartDomain: 'www.nothingbutcanna.net', ref: '12004448.LnI8hOQm4EoHjZD', refParam: 'sca_ref' };
+  ok(storeCheckoutUrl(sca.domain, [sca]).includes('sca_ref=12004448'),
+     'and the same fix covers the store that was already losing it');
+  // A store with no refParam still gets the historical default rather than a broken link.
+  const plain = { ...sld, ref: 'coffeeandajoint', refParam: '' };
+  ok(storeCheckoutUrl(plain.domain, [plain]).includes('ref=coffeeandajoint'),
+     'stores with no refParam keep the ref= default');
+}
 
 // A chosen size must win over cheapest, same as picking a size on a card.
 const big = __test.cartItem(PRODUCTS[0], 1);
@@ -732,6 +767,33 @@ console.log('\n=== trim and shake are declared ===');
      'the front copy fades on flip, so the two are never both on screen mid-turn');
   ok(!/\.tsb\{[^}]*backdrop-filter/.test(t.html),
      'and uses no backdrop-filter, which is what made the .ov pills bleed through mirrored');
+
+  /* The feed's own verdict outranks the title. This is CBD Hemp Direct's real shape: the title
+     says "Budget Buds THCA Flower" and reads as whole buds, while their own description says the
+     category "may feature shake, trim, and smalls". products.js decides that at scrape time off
+     title + tags + body_html and ships one boolean, because descriptions cannot ride in the feed.
+     Without this the cheapest ounce on the site goes out on a card as buds. */
+  const SILENT = { ...TRIM, id: 'cbdhempdirect__budget-buds-thca-flower',
+    name: 'Budget Buds THCA Flower', store: 'CBD Hemp Direct', storeKey: 'cbdhempdirect',
+    offcut: true, sizes: [['1 oz', 16, 28, 'V-BB', 1, null, '']] };
+  ok(__test.isTrimShake(SILENT.name) === false, 'the title alone does not give it away');
+  ok(__test.isTrimProduct(SILENT) === true, 'but the feed flag does');
+  ok(__test.bucketOf(SILENT, '1 oz') === 'trim', 'so it lands in the trim bucket, not the THCa six');
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [SILENT] }) });
+  const s = await run('pick');
+  const sDesc = (s.html.match(/<meta property="og:description" content="([^"]*)"/) || [])[1];
+  console.log('  og:description ' + sDesc);
+  ok(/^This 1oz is trim\/shake, not whole buds\./.test(sDesc),
+     'and the card says so even though the name never did');
+  ok([...s.html.matchAll(/<div class="tsb" id="tsb[FB]"(?![^>]*hidden)/g)].length === 2,
+     'both banners show');
+
+  /* The flag must not be inventable by a feed that never set it: absent means fall back to the
+     title, which is how every cached feed written before this behaves. */
+  const OLD = { ...SILENT, offcut: undefined };
+  ok(__test.isTrimProduct(OLD) === false, 'no flag and an innocent title means no claim');
+  ok(__test.isTrimProduct({ ...OLD, name: 'THCA Flower Trim Shake' }) === true,
+     'and the title test still works on its own for older feeds');
 
   // A whole-bud listing must not be branded.
   const CLEAN = { ...TRIM, id: 'blacktiecbd__grape-milkshake-greenhouse-thca-flower',
