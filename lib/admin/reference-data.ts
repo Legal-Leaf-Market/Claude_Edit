@@ -15,7 +15,7 @@ import type { Scenario, SiteProfile } from "./engine"
  *     inventory rather than being a hand-written handful.
  *   - Of the 11 live small-seller sources, 7 (by product count, roughly two
  *     thirds of live catalogue) have a confirmed real GoAffPro referral link;
- *     the rest are unconfirmed, pending approval, or paused — see MERCHANTS.
+ *     the rest are unconfirmed, pending approval, or paused (see MERCHANTS).
  *
  * All figures below are starting assumptions, not measurements: this is a
  * brand-new catalogue with no real traffic history yet. Every number is
@@ -95,7 +95,7 @@ export const SCENARIOS: Record<"bear" | "base" | "bull", Scenario> = {
     label: "Bull",
     headline: "One channel breaks out",
     detail:
-      "Not every gated feed lands — one does, and it's a big one (eBay production access, unlocking the largest addressable used-gear catalogue there is), or the pedal-board builder gets shared organically and becomes the site's front door. Traffic runs a little over 2× plan by month 24 and conversion 15% above the stated rate on the back of a stronger brand and returning visitors.",
+      "Not every gated feed lands: one does, and it's a big one (eBay production access, unlocking the largest addressable used-gear catalogue there is), or the pedal-board builder gets shared organically and becomes the site's front door. Traffic runs a little over 2× plan by month 24 and conversion 15% above the stated rate on the back of a stronger brand and returning visitors.",
     sessions12: 1.6,
     sessions24: 2.2,
     conversion: 1.15,
@@ -116,10 +116,14 @@ export type MerchantRow = {
 
 /**
  * Real store names, real catalogue counts (from the ingestion runs that
- * populated production), and real commission rates: every ratePct below was
- * read off the GoAffPro export on 9 Aug 2026, store by store, rather than
- * estimated. Catalogue-weighted that comes to 6.77% across the live stores,
- * which is what SITE_PROFILE.assumptions.commissionPct now carries.
+ * populated production), and real commission rates. Every ratePct below was
+ * read off a network's own directory rather than estimated: the GoAffPro
+ * export on 9 Aug 2026 for the Shopify/WooCommerce stores, the Awin
+ * advertiser directory for Reverb and Gear4music, and the CJ advertiser
+ * directory for zZounds, Pineville Music and Full Compass Systems.
+ * Catalogue-weighted the live stores come to 6.77%, which is what
+ * SITE_PROFILE.assumptions.commissionPct now carries. The gated feeds carry
+ * a rate but no catalogue, so they do not move that weighted figure.
  *
  * Two rows worth acting on rather than just recording:
  *   - Jackson Audio pays 0%. The referral link works, so clicks are tracked
@@ -143,13 +147,16 @@ export const MERCHANTS: MerchantRow[] = [
   { merchant: "Jamstik", platform: "Shopify", ratePct: 5, status: "unconfirmed", catalogueCount: 93, note: "GoAffPro signup done, no confirmed link handed over yet" },
   { merchant: "Play With Authority", platform: "Shopify", ratePct: 10, status: "pending", catalogueCount: 39, note: "Real link in hand, GoAffPro approval still pending" },
   { merchant: "Eminence Digital", platform: "Shopify", ratePct: 20, status: "tracking", catalogueCount: 60, note: "Confirmed link; digital impulse-response packs, not physical gear" },
-  { merchant: "Squaver", platform: "WooCommerce", ratePct: 10, status: "tracking", catalogueCount: 18, note: "Confirmed link; weaker compliance basis (Store API, no agents.md) — see CLAUDE.md" },
+  { merchant: "Squaver", platform: "WooCommerce", ratePct: 10, status: "tracking", catalogueCount: 18, note: "Confirmed link; weaker compliance basis (Store API, no agents.md), see CLAUDE.md" },
   { merchant: "Pures Music", platform: "Shopify", ratePct: 4, status: "paused", catalogueCount: 4368, note: "Built but paused: GoAffPro enrollment not confirmed" },
   { merchant: "eBay", platform: "Buy Feed API", ratePct: null, status: "none", catalogueCount: 0, note: "Sandboxed; no production EPN keyset approved yet" },
-  { merchant: "Reverb", platform: "Awin (if published)", ratePct: null, status: "none", catalogueCount: 0, note: "No confirmed publisher datafeed; never scraped, per CLAUDE.md" },
+  { merchant: "Reverb", platform: "Awin 67144", ratePct: null, status: "pending", catalogueCount: 0, note: "DATAFEED CONFIRMED TO EXIST. Awin advertiser 67144, Reverb (US), feedEnabled=yes, productReporting=yes, 30-day cookie, 100% approval rate, live since Nov 2023, payment status green. Commission is not published in the directory (min/max both 0), so ratePct stays null rather than guessed. This is the legitimate path CLAUDE.md section 2 requires; the API is still off limits" },
   { merchant: "Sweetwater", platform: "LinkConnector", ratePct: null, status: "none", catalogueCount: 0, note: "No confirmed feed URL" },
-  { merchant: "Gear4music", platform: "Awin", ratePct: null, status: "none", catalogueCount: 0, note: "No confirmed feed URL" },
-  { merchant: "zZounds / Full Compass / Pineville Music", platform: "CJ Affiliate", ratePct: null, status: "none", catalogueCount: 0, note: "CJ applications not yet through" },
+  { merchant: "Gear4music", platform: "Awin 1117", ratePct: 3.5, status: "pending", catalogueCount: 0, note: "Feed CONFIRMED to exist in Awin's advertiser directory: feedEnabled=yes, 3.5-5% commission, 30-day cookie, 92.6% approval rate. Five regional programmes (1117, IE 27588, FR 27586, DK 27600, PL 27598), matching the five domains isGear4MusicProductUrl already recognises. Rate recorded at the 3.5% floor. Needs the feed URL from the Awin dashboard" },
+  { merchant: "zZounds", platform: "CJ 1779394", ratePct: 6, status: "pending", catalogueCount: 0, note: "Rate CONFIRMED at 6% in CJ's advertiser directory. The directory shows performance metrics rather than an apply link for this row, which reads as already joined, so verify in the CJ dashboard. EPC $1.94 (3mo) / $1.75 (7d). Needs CJ_ZZOUNDS_FEED_URL" },
+  { merchant: "Pineville Music", platform: "CJ 6425392", ratePct: 7, status: "unconfirmed", catalogueCount: 0, note: "Rate CONFIRMED at 7%, the highest of the three CJ music retailers. Directory shows APPLY TO PROGRAM with manual review, so not yet joined. EPC $3.29 (3mo)" },
+  { merchant: "Full Compass Systems", platform: "CJ 6382932", ratePct: 4, status: "unconfirmed", catalogueCount: 0, note: "Rate CONFIRMED at 4%, the lowest of the three, but by far the strongest EPC at $28.69 (3mo) / $21.62 (7d). Not yet joined, manual review" },
+  { merchant: "Anderton's", platform: "Impact.com", ratePct: null, status: "pending", catalogueCount: 0, note: "Application SUBMITTED 10 Aug 2026 with a written pitch, awaiting a decision. Impact publishes no advertiser directory of rates, so ratePct stays null rather than guessed. Two things are true at once here: the Impact tracking tag is already live sitewide (app/layout.tsx) so the publisher-verification step is satisfied, and approval still does not unblock ingestion, because Impact lets each brand name its own product-feed columns. The row-normaliser gets written against Anderton's real schema once the feed URL and column names arrive, not before. On approval, check the tag's transformLinks() against /go and /api/cart/checkout first, see the layout.tsx comment" },
 ]
 
 export function attributableCatalogueCount(): number {
@@ -166,12 +173,12 @@ export const FACTS = [
   {
     tag: "Structural · a real advantage",
     title: "This one can actually buy traffic",
-    body: "Google, Meta and TikTok all restrict or outright ban ads for THC, hemp, vapes and nicotine — the category the sister sites live in. Musical instruments carry none of that restriction. Paid acquisition, creator partnerships and ordinary retargeting are all real, legal levers here in a way they structurally are not for Legal Leaf, Herbal Leaf or Nicotia Market.",
+    body: "Google, Meta and TikTok all restrict or outright ban ads for THC, hemp, vapes and nicotine, the category the sister sites live in. Musical instruments carry none of that restriction. Paid acquisition, creator partnerships and ordinary retargeting are all real, legal levers here in a way they structurally are not for Legal Leaf, Herbal Leaf or Nicotia Market.",
   },
   {
     tag: "Fixable · already in motion",
     title: "The catalogue already writes its own pages",
-    body: "Legal Leaf's sitemap problem was 15 hand-authored URLs against a 3,576-product catalogue. Gear Avail doesn't have that problem: every ingested listing resolves to a canonical instrument page and, where a market price exists, a deals page — thousands of pages already, growing with every ingestion run, no hand-authoring required. The category redesign and pedal-board builder add depth on top of that, they don't create the base layer from nothing.",
+    body: "Legal Leaf's sitemap problem was 15 hand-authored URLs against a 3,576-product catalogue. Gear Avail doesn't have that problem: every ingested listing resolves to a canonical instrument page and, where a market price exists, a deals page: thousands of pages already, growing with every ingestion run, no hand-authoring required. The category redesign and pedal-board builder add depth on top of that, they don't create the base layer from nothing.",
   },
   {
     tag: "Fixable · fastest money",
@@ -204,31 +211,31 @@ export const NEXT_90_DAYS = [
   {
     title: "File for eBay production access",
     body: "EBAY_FEED_BASE_URL is still sandboxed. Production access is a real application process, not a config flip, and it's the single largest addressable used-gear catalogue available to this site.",
-    why: "Historically the slowest item in this project by a wide margin — start it now, not later.",
+    why: "Historically the slowest item in this project by a wide margin, so start it now, not later.",
   },
   {
-    title: "Confirm or drop the gated Awin/LinkConnector/CJ feeds",
-    body: "Reverb, Sweetwater and Gear4music each need a confirmed publisher datafeed; zZounds, Full Compass and Pineville Music each need a CJ Affiliate application to clear. Each is a real, compliant source the moment it's confirmed — and a dead end worth dropping if it stalls indefinitely.",
+    title: "Confirm or drop the gated Awin/LinkConnector/CJ/Impact feeds",
+    body: "Reverb, Sweetwater and Gear4music each need a confirmed publisher datafeed. On CJ the picture is now specific rather than a lump: zZounds (6%) appears to be joined already and only needs its feed URL pulled, while Pineville Music (7%) and Full Compass Systems (4%) both still show APPLY TO PROGRAM with manual review. Full Compass is the one to file first at $28.69 EPC, an order of magnitude above the other two. Avid sits in the same directory at 10% with an $89.14 EPC and is not wired up at all yet. Anderton's application went in on 10 Aug 2026; that one has an engineering step approval does not remove, since Impact lets each brand define its own feed columns, so the normaliser waits on the real schema. Each is a real, compliant source the moment it's confirmed, and a dead end worth dropping if it stalls indefinitely.",
     why: "A smaller aggregator that's fully compliant beats a bigger one that isn't, but a confirmed feed beats either.",
   },
   {
     title: "Ship the category redesign and the pedal-board builder",
-    body: "Distinct per-category pages, real product photography treatment, and an interactive pedal-chain builder that shows going rates across every store carrying that pedal — all already in motion.",
+    body: "Distinct per-category pages, real product photography treatment, and an interactive pedal-chain builder that shows going rates across every store carrying that pedal, all already in motion.",
     why: "This is the site's actual differentiator: no other aggregator in this space lets a shopper build a rig and see the market price for every piece of it.",
   },
 ]
 
 export const METHOD_NOTES = [
-  "Traffic follows an S-curve, not a straight line: slow for the first few months while the domain earns trust, steepest in the middle of the horizon, decelerating after. It's fitted to pass through the month-1, month-12 and month-24 anchors below exactly. Monthly seasonality is applied on top — instruments spike hardest around the holidays and Black Friday, which is why a given month's sessions can sit slightly above or below its anchor.",
+  "Traffic follows an S-curve, not a straight line: slow for the first few months while the domain earns trust, steepest in the middle of the horizon, decelerating after. It's fitted to pass through the month-1, month-12 and month-24 anchors below exactly. Monthly seasonality is applied on top, since instruments spike hardest around the holidays and Black Friday, which is why a given month's sessions can sit slightly above or below its anchor.",
   "Month 1's anchor includes two real, current inputs rather than pure projection: a $100/mo paid ad budget (musical instruments carry no advertising restriction, unlike the sister sites) and a proven ~25 visits/day from the IG account already being run for this site in its first three weeks. Months 12 and 24 scale the same shape up proportionally and remain assumptions, not measurements, until real months close.",
   "Conversion rate is the most fragile assumption on this page. The model matures it from 80% to 125% of the stated rate over two years as trust, reviews and returning visitors accumulate. If real conversion comes in at half the stated rate, halve every revenue figure.",
-  "Attribution capture starts at roughly two thirds, reflecting the real state of the 11 live stores today: about that share of live catalogue by product count has a confirmed working referral link (see the by-store table). It ramps toward 90%, which assumes the unconfirmed links actually get confirmed and at least one gated feed comes online — the ninety-day list below is exactly that work.",
+  "Attribution capture starts at roughly two thirds, reflecting the real state of the 11 live stores today: about that share of live catalogue by product count has a confirmed working referral link (see the by-store table). It ramps toward 90%, which assumes the unconfirmed links actually get confirmed and at least one gated feed comes online: the ninety-day list below is exactly that work.",
   "What is not modelled: a merchant terminating its programme, a Google core update, GoAffPro changing its terms, or eBay's production application being denied outright. The last is a real, non-trivial risk for this specific business.",
-  "Costs are excluded because they're immaterial next to the revenue: Vercel, Neon and Resend land well under $100/month at this scale. Affiliate commission has no cost of goods. What this business actually costs is engineering and merchant-relationship hours.",
+  "Costs are excluded from the revenue engine, not because they're zero but because they're flat and small next to it: $250/month all-in across all five sites, covering Vercel, Neon, Resend, domains and Claude, so $3,000/year. Affiliate commission has no cost of goods. The measured-reality panel carries that figure against the year-3 draw cases; what this business actually costs is engineering and merchant-relationship hours.",
 ]
 
 export const METHOD_FOOTNOTE =
-  "Every figure here is a starting assumption for a catalogue that went from 80 seed listings to real inventory across 11 stores in a single day. There is no real traffic history yet to calibrate against. Enter real Vercel Analytics sessions and real earned commission in the monthly tables as soon as a month closes, and the model stops guessing about that month and re-anchors everything after it. Projections are estimates under stated assumptions, not forecasts or guarantees — this is a planning tool for this business, not investment advice."
+  "Every figure here is a starting assumption for a catalogue that went from 80 seed listings to real inventory across 11 stores in a single day. There is no real traffic history yet to calibrate against. Enter real Vercel Analytics sessions and real earned commission in the monthly tables as soon as a month closes, and the model stops guessing about that month and re-anchors everything after it. Projections are estimates under stated assumptions, not forecasts or guarantees. This is a planning tool for this business, not investment advice."
 
 export const INCOME_TARGETS = [500, 1000, 2500, 5000, 8333, 20000]
 

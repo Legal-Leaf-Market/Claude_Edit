@@ -296,13 +296,24 @@ export function CategoryHero({
   title: string
   kicker?: string
 }) {
-  const hue = CATEGORY_HUE[slug] ?? "#f0a830"
+  /*
+   * Falls back to the site accent rather than the old hardcoded #f0a830,
+   * which was the pre-house amber and would now be the one colour on the page
+   * belonging to no palette at all.
+   */
+  const hue = CATEGORY_HUE[slug] ?? "var(--copper)"
 
   return (
     <div
       className="panel relative mb-8 overflow-hidden px-5 py-7 sm:px-8 sm:py-9"
       style={{
-        background: `radial-gradient(ellipse at 75% 30%, ${hue}14, var(--card) 65%)`,
+        /* `--hero-hue` is the same variable the homepage hero reads, so a
+           category page tints its own headline and wash by setting one value
+           instead of restyling. color-mix rather than an appended hex alpha,
+           because the fallback is now a var() and `var(--copper)14` is not a
+           colour. */
+        ["--hero-hue" as string]: hue,
+        background: `radial-gradient(ellipse at 75% 30%, color-mix(in srgb, ${hue} 8%, transparent), var(--card) 65%)`,
         color: hue,
       }}
     >
@@ -311,13 +322,13 @@ export function CategoryHero({
         <div className="mb-3 flex items-center gap-3">
           <span
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: `${hue}22`, color: hue }}
+            style={{ background: `color-mix(in srgb, ${hue} 13%, transparent)`, color: hue }}
           >
             <CategoryIcon slug={slug} className="h-6 w-6" />
           </span>
           <span className="eyebrow">{eyebrow}</span>
         </div>
-        <h1 className="text-3xl font-semibold tracking-tight text-[var(--cream)] sm:text-4xl">
+        <h1 className="text-3xl font-black tracking-tight text-[var(--cream)] sm:text-4xl">
           {title}
         </h1>
         {kicker && (

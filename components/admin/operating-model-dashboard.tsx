@@ -7,6 +7,7 @@ import {
   count,
   rps,
   signedPercent,
+  HORIZON_MONTHS,
   type Assumptions,
   type ActualsForSite,
 } from "@/lib/admin/engine"
@@ -27,6 +28,17 @@ import { RevenueChart } from "./revenue-chart"
 
 const STORAGE_KEY = "gearavail.operating-model.v1"
 type ScenarioKey = keyof typeof SCENARIOS
+
+/*
+ * Same two horizons the all-sites rollup offers, so the pair of pages agree.
+ * 24 is the anchor horizon the model is actually fit against; 120 carries
+ * that same fit out to ten years.
+ */
+const HORIZONS = [
+  { key: "24", label: "2 years", months: 24 },
+  { key: "120", label: "10 years", months: 120 },
+] as const
+type HorizonKey = (typeof HORIZONS)[number]["key"]
 
 type Persisted = {
   version: 1
@@ -77,6 +89,13 @@ const SECTIONS = [
 
 export function OperatingModelDashboard() {
   const [scenario, setScenario] = useState<ScenarioKey>("base")
+  /*
+   * Ten years is the default view. The model's anchors are still the 24-month
+   * ones (see the note rendered next to this control): a longer horizon is a
+   * display and summation choice, carrying the same fitted curve out to its
+   * own asymptote, not a second fit against decade-length evidence.
+   */
+  const [horizon, setHorizon] = useState<HorizonKey>("120")
   const [overrides, setOverrides] = useState<Partial<Assumptions>>({})
   const [actuals, setActuals] = useState<ActualsForSite>({})
   const [hydrated, setHydrated] = useState(false)
@@ -112,7 +131,7 @@ export function OperatingModelDashboard() {
       )
       setSavedAt(stamp)
     } catch {
-      setNotice("Could not save to this browser — storage is full or blocked.")
+      setNotice("Could not save to this browser: storage is full or blocked.")
     }
   }, [scenario, overrides, actuals, hydrated])
 
@@ -122,15 +141,17 @@ export function OperatingModelDashboard() {
     return () => window.clearTimeout(timer)
   }, [notice])
 
+  const horizonMonths = HORIZONS.find((h) => h.key === horizon)!.months
+
   const models = useMemo(() => {
     const byKey = { [SITE_PROFILE.key]: overrides }
     const actualsByKey = { [SITE_PROFILE.key]: actuals }
     return {
-      bear: runModel([SITE_PROFILE], byKey, SCENARIOS.bear, actualsByKey),
-      base: runModel([SITE_PROFILE], byKey, SCENARIOS.base, actualsByKey),
-      bull: runModel([SITE_PROFILE], byKey, SCENARIOS.bull, actualsByKey),
+      bear: runModel([SITE_PROFILE], byKey, SCENARIOS.bear, actualsByKey, horizonMonths),
+      base: runModel([SITE_PROFILE], byKey, SCENARIOS.base, actualsByKey, horizonMonths),
+      bull: runModel([SITE_PROFILE], byKey, SCENARIOS.bull, actualsByKey, horizonMonths),
     }
-  }, [overrides, actuals])
+  }, [overrides, actuals, horizonMonths])
 
   const model = models[scenario]
   const site = model.sites[SITE_PROFILE.key]
@@ -234,19 +255,19 @@ export function OperatingModelDashboard() {
             </button>
           </div>
         </div>
-        <h1 className="mt-1 text-2xl font-semibold text-[var(--cream)] sm:text-3xl">
+        <h1 className="mt-1 text-2xl font-black text-[var(--cream)] sm:text-3xl">
           Can this actually make money?
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)]">
-          A 24-month projection for Gear Avail, built from the real live catalogue and the
-          affiliate links that are actually confirmed today.
+          A {horizonMonths === 24 ? "two-year" : "ten-year"} projection for Gear Avail, built from
+          the real live catalogue and the affiliate links that are actually confirmed today.
         </p>
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
           <span className="rounded-full bg-[var(--secondary)] px-3 py-1 font-medium text-[var(--amber)]">
             {model.monthLabels[0]} → {model.monthLabels[model.monthLabels.length - 1]}
           </span>
           <span className="rounded-full bg-[var(--secondary)] px-3 py-1 text-[var(--muted-foreground)]">
-            24 months · 8 quarters
+            {horizonMonths} months · {horizonMonths / 3} quarters
           </span>
           <span className="rounded-full bg-[var(--secondary)] px-3 py-1 text-[var(--muted-foreground)]">
             {closedTotal > 0 ? `Re-anchored on ${closedTotal} closed month${closedTotal === 1 ? "" : "s"}` : "Recalculates from your actuals"}
@@ -286,13 +307,13 @@ export function OperatingModelDashboard() {
               Fix those two things and the base case is realistic: roughly{" "}
               <strong className="text-[var(--cream)]">{money(models.base.totals.year1Revenue)}</strong> in
               year one, <strong className="text-[var(--cream)]">{money(models.base.totals.year2Revenue)}</strong> in
-              year two, exiting month 24 around{" "}
-              <strong className="text-[var(--cream)]">{money(models.base.totals.month24Revenue)}/month</strong>. Leave
+              year two, exiting month {horizonMonths} around{" "}
+              <strong className="text-[var(--cream)]">{money(models.base.totals.finalMonthRevenue)}/month</strong>. Leave
               them unfixed and it's the bear column, about{" "}
-              <strong className="text-[var(--cream)]">{money(models.bear.totals.totalRevenue)}</strong> across two
-              years. The upside case is a genuine{" "}
+              <strong className="text-[var(--cream)]">{money(models.bear.totals.totalRevenue)}</strong> across the
+              full {horizonMonths} months. The upside case is a genuine{" "}
               <strong className="text-[var(--cream)]">{money(models.bull.totals.exitRunRate)}</strong> exit
-              run-rate if one channel — most likely eBay production access — actually breaks
+              run-rate if one channel (most likely eBay production access) actually breaks
               through.
             </p>
           </div>
@@ -303,9 +324,9 @@ export function OperatingModelDashboard() {
               value={money(t.year2Revenue)}
               sub={`${(t.year1Revenue > 0 ? t.year2Revenue / t.year1Revenue : 0).toFixed(1)}× year 1`}
             />
-            <Stat label="Exit run-rate" value={`${money(t.exitRunRate)}/yr`} sub={`${money(t.month24Revenue)} in month 24`} />
+            <Stat label="Exit run-rate" value={`${money(t.exitRunRate)}/yr`} sub={`${money(t.finalMonthRevenue)} in month ${horizonMonths}`} />
             <Stat label="Blended rev / session" value={`$${t.blendedRevPerSession.toFixed(3)}`} sub={money(t.blendedRevPerSession * 1000) + " per 1,000"} />
-            <Stat label="Sessions needed, mo 24" value={count(t.month24Sessions)} sub={`≈ ${count(Math.round(t.month24Sessions / 30))} a day`} />
+            <Stat label={`Sessions needed, mo ${horizonMonths}`} value={count(t.finalMonthSessions)} sub={`≈ ${count(Math.round(t.finalMonthSessions / 30))} a day`} />
             <Stat label="Indexable pages today" value={String(t.indexablePages)} sub="category pages; gear pages scale automatically" />
           </div>
         </div>
@@ -401,7 +422,7 @@ export function OperatingModelDashboard() {
             Ecommerce affiliate conversion benchmarks sit at 1–3% of sessions; average affiliate AOV
             runs around $125. GoAffPro (and similar small-merchant programmes) typically run 5–15%
             commission, but none of these 11 stores' actual rates have been confirmed from their
-            dashboards yet — the 8% shown is a placeholder, not a measurement.
+            dashboards yet: the 8% shown is a placeholder, not a measurement.
           </p>
         </div>
       </section>
@@ -433,9 +454,39 @@ export function OperatingModelDashboard() {
             <strong className="text-[var(--cream)]">{active.headline}.</strong> {active.detail}
           </p>
           <p className="mt-1.5 text-xs text-[var(--muted-foreground)]">
-            The scenario multiplies the assumptions below — it does not replace them. Edit a number
+            The scenario multiplies the assumptions below, it does not replace them. Edit a number
             and all three scenarios move with it.
           </p>
+
+          <div role="radiogroup" aria-label="Horizon" className="mt-4 flex gap-2">
+            {HORIZONS.map((h) => (
+              <button
+                key={h.key}
+                type="button"
+                role="radio"
+                aria-checked={h.key === horizon}
+                onClick={() => setHorizon(h.key)}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                  h.key === horizon
+                    ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                    : "border border-[var(--line)] text-[var(--cream)] hover:bg-[var(--secondary)]"
+                }`}
+              >
+                {h.label}
+              </button>
+            ))}
+          </div>
+          {horizon === "120" && (
+            <p className="mt-2 max-w-[68ch] text-xs leading-relaxed text-[var(--muted-foreground)]">
+              The ten-year view is the same fitted curve carried out to its own asymptote, not a new
+              fit: every anchor still sits inside the first 24 months, and nothing past month 24 is
+              new evidence. Conversion and attribution are both fully matured there (clamped, not
+              extrapolated further up), so the traffic S-curve is doing all the remaining work. Read
+              the later years as the shape the assumptions imply if nothing changes for a decade,
+              which is the least likely thing about them. The further out you read, the softer the
+              number.
+            </p>
+          )}
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <button type="button" onClick={exportData} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--cream)] hover:bg-[var(--secondary)]">
@@ -487,7 +538,12 @@ export function OperatingModelDashboard() {
         <p className="eyebrow">Trajectory</p>
         <h2>Monthly revenue</h2>
         <p className="intro">
-          {active.label} case — {money(t.month24Revenue)} in {model.monthLabels[23]}.
+          {/* finalMonthRevenue is the FINAL month of the selected horizon, not
+              month 24, so the calendar label has to come from the end of the
+              label array. Pinned to index 23 it read the month-120 revenue
+              under a month-24 date on the default view. */}
+          {active.label} case, {money(t.finalMonthRevenue)} in{" "}
+          {model.monthLabels[model.monthLabels.length - 1]}.
         </p>
         <div className="section-body">
           <RevenueChart months={site.months} color={SITE_PROFILE.color} />
@@ -529,7 +585,7 @@ export function OperatingModelDashboard() {
                   </tr>
                 ))}
                 <tr className="border-t border-[var(--border)] font-semibold">
-                  <td colSpan={2}>Total (24 months)</td>
+                  <td colSpan={2}>Total ({horizonMonths} months)</td>
                   <td className="text-right">{count(site.totalSessions)}</td>
                   <td className="text-right">{count(Math.round(site.totalOrders))}</td>
                   <td className="text-right">{money(site.totalGmv)}</td>
@@ -552,6 +608,15 @@ export function OperatingModelDashboard() {
           month that has closed. As soon as a month has both, the model stops guessing about that
           month and re-anchors everything after it. Entries save to this browser automatically.
         </p>
+        {horizonMonths > HORIZON_MONTHS && (
+          <p className="intro">
+            This table stays at the first {HORIZON_MONTHS} months even on the ten-year view, because
+            that is the window the model is anchored in. An actual entered for month 87 has nothing
+            to re-anchor: the curve is already fully matured by then, so it would be a number the
+            model quietly ignores. The chart and the totals above do run the full{" "}
+            {horizonMonths} months.
+          </p>
+        )}
         <div className="section-body">
           <div className="table-wrap">
             <table className="model-table">
@@ -569,7 +634,7 @@ export function OperatingModelDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {site.months.map((m) => {
+                {site.months.slice(0, HORIZON_MONTHS).map((m) => {
                   const varianceCls =
                     m.revenueVariancePct === null
                       ? "text-[var(--muted-foreground)]"

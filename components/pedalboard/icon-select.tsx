@@ -55,7 +55,7 @@ export function IconSelect({
   return (
     <div className="space-y-3">
       <div>
-        <h2 className="text-sm font-semibold text-[var(--cream)]">Iconic rigs</h2>
+        <h2 className="text-sm font-black text-[var(--cream)]">Iconic rigs</h2>
         <p className="mt-1 max-w-xl text-xs leading-relaxed text-[var(--muted-foreground)]">
           Pick a player, see the pedal that made their tone famous. Well-documented gear history, not
           an endorsement or partnership with anyone listed here.

@@ -30,7 +30,7 @@ export function UnsubscribeConfirm({ token }: { token: string }) {
   if (status === "done") {
     return (
       <div className="panel p-7 text-center">
-        <h1 className="text-xl font-semibold text-[var(--cream)]">You're unsubscribed.</h1>
+        <h1 className="text-xl font-black text-[var(--cream)]">You're unsubscribed.</h1>
         <p className="mt-3 text-sm leading-relaxed text-[var(--muted-foreground)]">
           No more weekly emails. Your address stays on file only so we do not accidentally add you
           back later, and it is never sold or shared.
@@ -50,7 +50,7 @@ export function UnsubscribeConfirm({ token }: { token: string }) {
 
   return (
     <div className="panel p-7 text-center">
-      <h1 className="text-xl font-semibold text-[var(--cream)]">Stop the weekly email?</h1>
+      <h1 className="text-xl font-black text-[var(--cream)]">Stop the weekly email?</h1>
       <p className="mt-3 text-sm leading-relaxed text-[var(--muted-foreground)]">
         One click and it stops. No survey, no "are you sure", no offer to win you back.
       </p>

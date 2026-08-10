@@ -85,7 +85,7 @@ export default async function DealsPage({ params }: PageProps) {
   const saving = market - cheapest
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+    <div className="shell py-8">
       <nav aria-label="Breadcrumb" className="mb-4 text-sm text-[var(--muted-foreground)]">
         <ol className="flex flex-wrap items-center gap-1.5">
           <li>
@@ -105,7 +105,7 @@ export default async function DealsPage({ params }: PageProps) {
       </nav>
 
       <header className="mb-8 max-w-3xl">
-        <h1 className="text-3xl font-semibold tracking-tight text-[var(--cream)]">
+        <h1 className="text-3xl font-black tracking-tight text-[var(--cream)]">
           Cheap used {name}
         </h1>
         <p className="mt-3 text-base leading-relaxed text-[var(--muted-foreground)]">

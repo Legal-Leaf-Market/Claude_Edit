@@ -28,8 +28,14 @@ source is ever added by scraping a storefront or hitting an interface that was
 built for that site's own frontend rather than published for this use.
 
 - **eBay**, via the Buy Feed API (`/buy/feed/v1_beta`). Bulk TSV feeds.
-- **Reverb**, via the **Awin product datafeed**, if and only if Reverb
-  publishes one to publishers.
+- **Reverb**, via the **Awin product datafeed**. This is now CONFIRMED to
+  exist: Awin advertiser **67144** ("Reverb (US)"), `feedEnabled=yes`,
+  `productReporting=yes`, 30-day cookie, **100% approval rate**, live since
+  November 2023, payment status green. Checked against Awin's own advertiser
+  directory on 10 Aug 2026. The commission rate is not published there, so it
+  is still unknown rather than assumed. This does NOT relax section 2: the
+  Reverb API remains off limits, and the Awin feed is precisely the legitimate
+  channel that rule points at.
 - **Sweetwater**, via a **LinkConnector product datafeed**, if and only if one
   is confirmed to exist. `lib/ingestion/sweetwater-linkconnector.ts` no-ops on
   an unset `LINKCONNECTOR_SWEETWATER_FEED_URL`, the same shape as Reverb's
@@ -38,7 +44,11 @@ built for that site's own frontend rather than published for this use.
   LinkConnector) actually offers. Do not scrape sweetwater.com or its Algolia-
   backed search/Gear Exchange listings as a substitute.
 - **Gear4music**, via their **Awin product datafeed** (`lib/ingestion/
-  gear4music-awin.ts`, gated on `AWIN_GEAR4MUSIC_FEED_URL`). Same network as
+  gear4music-awin.ts`, gated on `AWIN_GEAR4MUSIC_FEED_URL`). Confirmed in
+  Awin's directory: advertiser **1117**, `feedEnabled=yes`, **3.5-5%**
+  commission, 30-day cookie, 92.6% approval. The four regional programmes
+  (IE 27588, FR 27586, DK 27600, PL 27598) match the five domains
+  `isGear4MusicProductUrl` already recognises. Same network as
   Reverb, different merchant account and feed URL. Primarily NEW retail
   inventory, which is why its condition normalizer defaults an empty condition
   column to "New" rather than "Unspecified" the way Reverb's does. Ships
@@ -106,8 +116,8 @@ built for that site's own frontend rather than published for this use.
   "Used Gear API" name floating around online is Guitar Center's own URL
   taxonomy, not a data API, and the community tools that exist scrape an
   undocumented frontend Algolia index. Do not build against it.
-- **Anderton's, applied for via Impact.com (formerly Impact Radius), application
-  pending as of when this was written.** The site's Universal Tracking Tag
+- **Anderton's, applied for via Impact.com (formerly Impact Radius). Application
+  submitted 10 Aug 2026 with a written pitch, decision pending.** The site's Universal Tracking Tag
   (`app/layout.tsx`) is already live sitewide for Impact's own site-verification
   step; that is independent of catalogue ingestion and does not mean the
   affiliate program itself is approved. Unlike CJ or Awin, Impact has no fixed
@@ -166,9 +176,12 @@ These are not preferences. Each one is a term of service.
   aggregated". Aggregating their catalogue through it is a breach on two
   counts. `lib/ingestion/reverb-awin.ts` reads the Awin datafeed or it no-ops.
   It has no fallback path, deliberately, so nobody can add one "temporarily".
-- **`AWIN_REVERB_FEED_URL`, `LINKCONNECTOR_SWEETWATER_FEED_URL` and
-  `AWIN_GEAR4MUSIC_FEED_URL` unset is the EXPECTED state**, not a bug to route
-  around. Each source ships only if its feed is confirmed; Gear Avail degrades
+- **`LINKCONNECTOR_SWEETWATER_FEED_URL` unset is the EXPECTED state**, not a
+  bug to route around. `AWIN_REVERB_FEED_URL` and `AWIN_GEAR4MUSIC_FEED_URL`
+  are a different case as of 10 Aug 2026: both feeds are confirmed to exist in
+  Awin's advertiser directory (Reverb 67144, Gear4music 1117 plus four
+  regional programmes), so those two are pending retrieval from the Awin
+  dashboard rather than pending existence. Each source ships only if its feed is confirmed; Gear Avail degrades
   gracefully to whichever subset of eBay/Reverb/Sweetwater/Gear4music actually
   has a working feed. A smaller aggregator that is fully compliant beats a
   bigger one that is not.
@@ -411,7 +424,7 @@ Never fork the logic between them. Add work to the job function.
 | `EBAY_OAUTH_TOKEN` | eBay ingestion. Unset means the jobs skip with a logged reason. |
 | `EBAY_AFFILIATE_CAMPAIGN_ID` | Populates `itemAffiliateWebUrl` in the feed AND builds fallback EPN links. Unset means eBay traffic is unmonetised. |
 | `AWIN_PUBLISHER_ID` / `AWIN_REVERB_MERCHANT_ID` | Reverb deep links. Either missing produces null links, not broken ones. |
-| `AWIN_REVERB_FEED_URL` | Reverb catalogue. Unset is expected; the job no-ops. |
+| `AWIN_REVERB_FEED_URL` | Reverb catalogue. Feed CONFIRMED to exist (Awin 67144, 100% approval); pending retrieval, not pending existence. The job no-ops until set. |
 | `LINKCONNECTOR_SWEETWATER_FEED_URL` | Sweetwater catalogue. Unset is expected; the job no-ops. Never falls back to scraping. |
 | `AWIN_GEAR4MUSIC_MERCHANT_ID` / `AWIN_GEAR4MUSIC_FEED_URL` | Gear4music catalogue and deep links. Same shape as the Reverb pair, independent ids. |
 | `CJ_ZZOUNDS_FEED_URL` / `CJ_FULLCOMPASS_FEED_URL` / `CJ_PINEVILLEMUSIC_FEED_URL` | Three independent CJ Affiliate programmes. Each no-ops when unset. |

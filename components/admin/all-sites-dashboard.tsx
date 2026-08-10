@@ -6,11 +6,13 @@ import { SCENARIOS, SCENARIO_ORDER, PREPARED_ON } from "@/lib/admin/reference-da
 import { SISTER_SITES_PREPARED_ON } from "@/lib/admin/sister-sites"
 import { runAllSites, combinedMonths, ALL_SITE_PROFILES } from "@/lib/admin/all-sites"
 import { RevenueChart } from "./revenue-chart"
+import { MasterVendorTable } from "./master-vendor-table"
+import { MeasuredReality } from "./measured-reality"
 
 type ScenarioKey = keyof typeof SCENARIOS
 const HORIZONS = [
-  { key: "24", label: "24 months", months: 24 },
-  { key: "120", label: "Decade", months: 120 },
+  { key: "24", label: "2 years", months: 24 },
+  { key: "120", label: "10 years", months: 120 },
 ] as const
 type HorizonKey = (typeof HORIZONS)[number]["key"]
 
@@ -23,12 +25,12 @@ const COMBINED_COLOR = "#f0a830"
  * domain) is the place assumptions get tuned and real months get entered,
  * and this page would silently drift out of sync with that if it kept a
  * second, separate copy of the same state. This page answers one question
- * — "what does the whole family add up to" — from each site's last-known
+ * ("what does the whole family add up to") from each site's last-known
  * shipped assumptions, nothing more.
  */
 export function AllSitesDashboard() {
   const [scenario, setScenario] = useState<ScenarioKey>("base")
-  const [horizon, setHorizon] = useState<HorizonKey>("24")
+  const [horizon, setHorizon] = useState<HorizonKey>("120")
 
   const horizonMonths = HORIZONS.find((h) => h.key === horizon)!.months
 
@@ -77,13 +79,13 @@ export function AllSitesDashboard() {
             </button>
           </div>
         </div>
-        <h1 className="mt-1 text-2xl font-semibold text-[var(--cream)] sm:text-3xl">
+        <h1 className="mt-1 text-2xl font-black text-[var(--cream)] sm:text-3xl">
           The whole affiliate family, combined
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)]">
           Gear Avail plus Legal Leaf Market, Herbal Leaf Market, Nicotia Market and KawaiiKatz, run
           through the same projection engine each site's own admin page uses. This page is a
-          read-only rollup of each site's last-known shipped assumptions — it does not edit them,
+          read-only rollup of each site's last-known shipped assumptions, and it does not edit them,
           and it does not see real actuals entered on any site's own page. Go there to change what a
           site actually assumes about itself.
         </p>
@@ -99,9 +101,9 @@ export function AllSitesDashboard() {
 
       {horizon === "120" && (
         <p className="mb-6 rounded-lg border border-[var(--border)] bg-[var(--secondary)]/40 px-4 py-3 text-xs leading-relaxed text-[var(--muted-foreground)]">
-          The decade view is the same fitted traffic curve carried out to its own natural asymptote,
+          The ten-year view is the same fitted traffic curve carried out to its own natural asymptote,
           not a new fit: nothing past month 24 is a new anchor point. Conversion and attribution are
-          both fully matured (clamped, not extrapolated further upward) for every month past 24 —
+          both fully matured (clamped, not extrapolated further upward) for every month past 24,
           see the Method section on each site's own page for why that clamp is the mathematically
           honest choice rather than letting either ratio climb past 100% of its stated ceiling the
           longer the horizon runs.
@@ -152,12 +154,12 @@ export function AllSitesDashboard() {
 
       <section className="admin-section" id="totals">
         <p className="eyebrow">Combined</p>
-        <h2>{horizon === "120" ? "Decade" : "24-month"} totals, all five sites</h2>
+        <h2>{horizon === "120" ? "Ten-year" : "Two-year"} totals, all five sites</h2>
         <div className="section-body grid grid-cols-2 gap-4 sm:grid-cols-3">
           <Stat label="Total revenue" value={money(t.totalRevenue)} sub={`${active.label} case, ${horizonMonths} months`} />
-          <Stat label="Exit run-rate" value={`${money(t.exitRunRate)}/yr`} sub={`${money(t.month24Revenue)} in the final month`} />
+          <Stat label="Exit run-rate" value={`${money(t.exitRunRate)}/yr`} sub={`${money(t.finalMonthRevenue)} in the final month`} />
           <Stat label="Blended rev / session" value={rps(t.blendedRevPerSession)} sub={money(t.blendedRevPerSession * 1000) + " per 1,000"} />
-          <Stat label="Total sessions" value={count(t.totalSessions)} sub={`${count(t.month24Sessions)} in the final month`} />
+          <Stat label="Total sessions" value={count(t.totalSessions)} sub={`${count(t.finalMonthSessions)} in the final month`} />
           <Stat label="Indexable pages" value={String(t.indexablePages)} sub="across all five sites today" />
           <Stat label="Sites combined" value={String(ALL_SITE_PROFILES.length)} sub="Gear Avail + 4 sister sites" />
         </div>
@@ -167,7 +169,7 @@ export function AllSitesDashboard() {
         <p className="eyebrow">Trajectory</p>
         <h2>Combined monthly revenue</h2>
         <p className="intro">
-          {active.label} case, summed across all five sites — {money(t.month24Revenue)} in the final
+          {active.label} case, summed across all five sites, {money(t.finalMonthRevenue)} in the final
           month shown.
         </p>
         <div className="section-body">
@@ -221,7 +223,7 @@ export function AllSitesDashboard() {
             current with real ingestion and referral-confirmation status. The four sister sites'
             figures are ported from their own admin page as of {SISTER_SITES_PREPARED_ON}
             {" "}(lib/admin/sister-sites.ts) and will drift from whatever that page shows today if
-            their assumptions have changed since — re-port from there rather than trusting this page
+            their assumptions have changed since, so re-port from there rather than trusting this page
             as current for those four.
           </p>
         </div>
@@ -263,11 +265,15 @@ export function AllSitesDashboard() {
           </div>
         </div>
       </section>
+
+      <MasterVendorTable />
+
+      <MeasuredReality />
     </div>
   )
 }
 
-/** Combined quarters, summed the same way combinedMonths sums months — no per-site engine call needed. */
+/** Combined quarters, summed the same way combinedMonths sums months, with no per-site engine call needed. */
 function combinedQuarters(
   siteRows: ReturnType<typeof runAllSites>["sites"][string][],
   monthLabels: string[],

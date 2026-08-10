@@ -33,7 +33,7 @@ export default async function AdminSignInPage({
       <p className="eyebrow text-xs font-semibold uppercase tracking-wide text-[var(--amber)]">
         Admin mode
       </p>
-      <h1 className="mb-2 mt-1 text-2xl font-semibold text-[var(--cream)]">This page is private</h1>
+      <h1 className="mb-2 mt-1 text-2xl font-black text-[var(--cream)]">This page is private</h1>
 
       {configured ? (
         <>

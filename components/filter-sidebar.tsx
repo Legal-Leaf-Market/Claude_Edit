@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { SlidersHorizontal, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { CategoryIcon, CATEGORY_HUE } from "@/components/category-icon"
+import { CategoryIcon, CATEGORY_HUE, FALLBACK_HUE } from "@/components/category-icon"
 import { StoreMark } from "@/components/store-mark"
 import { sortByCategoryPriority } from "@/lib/categories"
 import { sourceLabel, slugifyCategory } from "@/lib/utils"
@@ -101,7 +101,7 @@ export function FilterSidebar({ facets, found, hide }: Props) {
               className="absolute inset-y-0 left-0 flex w-[85%] max-w-sm flex-col bg-[var(--popover)] shadow-xl"
             >
               <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-                <h2 className="text-sm font-semibold text-[var(--cream)]">Filters</h2>
+                <h2 className="text-sm font-black text-[var(--cream)]">Filters</h2>
                 <Button
                   ref={closeButtonRef}
                   variant="ghost"
@@ -216,7 +216,7 @@ function FilterControls({
         <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
           Delivery
         </legend>
-        <div className="flex rounded-lg border border-[var(--border)] p-0.5">
+        <div className="flex rounded-full border border-[var(--line)] p-0.5">
           {(
             [
               ["any", "All"],
@@ -229,7 +229,7 @@ function FilterControls({
               type="button"
               onClick={() => setParam("shipping", value === "any" ? null : value)}
               aria-pressed={shipping === value}
-              className={`flex-1 rounded-md px-2 py-1.5 text-xs transition-colors ${
+              className={`flex-1 rounded-full px-2 py-1.5 text-xs font-semibold transition-colors ${
                 shipping === value
                   ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
                   : "text-[var(--muted-foreground)] hover:text-[var(--cream)]"
@@ -261,8 +261,8 @@ function FilterControls({
           <span
             className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
             style={{
-              background: `${CATEGORY_HUE[slugifyCategory(v)] ?? "#f0a830"}22`,
-              color: CATEGORY_HUE[slugifyCategory(v)] ?? "#f0a830",
+              background: `${CATEGORY_HUE[slugifyCategory(v)] ?? FALLBACK_HUE}22`,
+              color: CATEGORY_HUE[slugifyCategory(v)] ?? FALLBACK_HUE,
             }}
           >
             <CategoryIcon slug={slugifyCategory(v)} className="h-3.5 w-3.5" />
@@ -333,7 +333,7 @@ function PriceInput({
             commit()
           }
         }}
-        className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-2 text-sm text-[var(--cream)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+        className="h-9 w-full rounded-full border border-[var(--line)] bg-[var(--chip)] px-3 text-sm text-[var(--cream)] placeholder:text-[var(--dim)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
       />
     </label>
   )

@@ -31,11 +31,11 @@ export function SearchBox({ className = "" }: { className?: string }) {
       <label htmlFor="site-search" className="sr-only">
         Search used music gear
       </label>
-      <div className="relative">
-        <Search
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)]"
-          aria-hidden="true"
-        />
+      {/* The family's .searchbox: a full pill that borders sage on focus, with
+          the caret in sage too. Focus turning green rather than the accent
+          colour is shared across all four sites. */}
+      <div className="flex items-center gap-[9px] rounded-full border border-[var(--line)] bg-[var(--panel2)] px-4 py-[9px] transition-colors focus-within:border-[var(--sage)]">
+        <Search className="h-4 w-4 shrink-0 text-[var(--dim)]" aria-hidden="true" />
         <input
           id="site-search"
           name="q"
@@ -43,7 +43,7 @@ export function SearchBox({ className = "" }: { className?: string }) {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="Stratocaster, SM58, Juno-106..."
-          className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] pl-9 pr-3 text-sm text-[var(--cream)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+          className="w-full min-w-0 border-0 bg-transparent text-[0.95rem] text-[var(--cream)] caret-[var(--sage)] placeholder:text-[var(--dim)] focus:outline-none"
         />
       </div>
     </form>

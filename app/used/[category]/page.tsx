@@ -97,7 +97,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+    <div className="shell py-8">
       <nav aria-label="Breadcrumb" className="mb-4 text-sm text-[var(--muted-foreground)]">
         <ol className="flex items-center gap-1.5">
           <li>
@@ -130,7 +130,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
 
       {models.length > 0 && (
         <section className="mb-10">
-          <h2 className="mb-3 text-lg font-semibold text-[var(--cream)]">
+          <h2 className="mb-3 text-lg font-black text-[var(--cream)]">
             Most listed {category.toLowerCase()}
           </h2>
           <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -160,7 +160,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
 
         <section className="min-w-0 flex-1">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold text-[var(--cream)]">
+            <h2 className="text-lg font-black text-[var(--cream)]">
               {results.found.toLocaleString()} {results.found === 1 ? "listing" : "listings"}
             </h2>
             <SortSelect />

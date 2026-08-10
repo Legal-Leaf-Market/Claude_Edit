@@ -1,6 +1,5 @@
 import { Analytics } from "@vercel/analytics/next"
 import type { Metadata, Viewport } from "next"
-import { Inter } from "next/font/google"
 import Script from "next/script"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
@@ -8,7 +7,18 @@ import { CartProvider } from "@/lib/cart/context"
 import { env } from "@/lib/env"
 import "./globals.css"
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
+/*
+ * The three house faces are loaded with the SAME Google Fonts request the
+ * sister sites make, byte for byte, and that is deliberate rather than lazy.
+ * Nicotia's own CLAUDE.md (section 4) records the reason: a visitor crossing
+ * between the family's sites gets a browser cache hit on the font files
+ * instead of a second download. next/font/google would self-host these and
+ * silently break that, which is why this site does not use it despite being
+ * the only one of the four on Next.js.
+ */
+const HOUSE_FONTS_HREF =
+  "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900" +
+  "&family=Cormorant+Garamond:ital,wght@1,600&family=Jost:wght@300;400;500;600;700&display=swap"
 
 const SITE_NAME = "Gear Avail"
 const SITE_DESCRIPTION =
@@ -61,7 +71,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: "dark",
-  themeColor: "#0f0c0a",
+  /* Matches --bg, so the phone chrome meets the masthead without a seam. */
+  themeColor: "#0d0b09",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -69,7 +80,12 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href={HOUSE_FONTS_HREF} />
+      </head>
       <body className="font-sans antialiased">
         {/*
           Impact Radius (impact.com) publisher verification/tracking tag,

@@ -31,7 +31,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const params = paramsFromQuery(query)
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+    <div className="shell py-6">
       <Suspense fallback={<ResultsSkeleton />}>
         <Results params={params} />
       </Suspense>
@@ -54,7 +54,7 @@ async function Results({ params }: { params: ReturnType<typeof paramsFromQuery> 
       <section className="min-w-0 flex-1">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-[var(--cream)]">
+            <h1 className="text-xl font-black text-[var(--cream)]">
               {params.q ? `Results for "${params.q}"` : "All used gear"}
             </h1>
             <p className="mt-0.5 text-sm text-[var(--muted-foreground)]">

@@ -26,12 +26,12 @@ describe("sister-site reference data", () => {
   it("lands within 5% of the sister sites' own pinned 24-month base-case acceptance numbers", () => {
     const model = runModel(SISTER_SITE_PROFILES, undefined, SCENARIOS.base, undefined)
     const t = model.totals
-    expect(t.month24Revenue).toBeGreaterThan(8390 * 0.95)
-    expect(t.month24Revenue).toBeLessThan(8390 * 1.05)
+    expect(t.finalMonthRevenue).toBeGreaterThan(8390 * 0.95)
+    expect(t.finalMonthRevenue).toBeLessThan(8390 * 1.05)
     expect(t.exitRunRate).toBeGreaterThan(100679 * 0.95)
     expect(t.exitRunRate).toBeLessThan(100679 * 1.05)
-    expect(t.month24Sessions).toBeGreaterThan(68241 * 0.95)
-    expect(t.month24Sessions).toBeLessThan(68241 * 1.05)
+    expect(t.finalMonthSessions).toBeGreaterThan(68241 * 0.95)
+    expect(t.finalMonthSessions).toBeLessThan(68241 * 1.05)
   })
 
   it("lands within 5% of the pinned bear/bull acceptance numbers too", () => {

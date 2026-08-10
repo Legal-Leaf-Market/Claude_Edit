@@ -30,15 +30,37 @@ const NAV = [
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[#0f0c0a]/85 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
+    /*
+     * The family masthead: sticky, saturated blur, and a 2px accent underline
+     * carrying the site's own hue. The underline plus its warm glow is what
+     * makes the header read as a masthead rather than as content that happens
+     * to be pinned, and all four sites share the construction.
+     */
+    <header
+      className="sticky top-0 z-40 border-b-2 border-[var(--copper)]"
+      style={{
+        background: "linear-gradient(180deg, rgba(10,8,6,.98), rgba(10,8,6,.94))",
+        backdropFilter: "blur(16px) saturate(1.5)",
+        WebkitBackdropFilter: "blur(16px) saturate(1.5)",
+        boxShadow: "0 2px 24px rgba(210,112,58,.18)",
+      }}
+    >
+      <div className="shell flex flex-wrap items-center gap-x-5 gap-y-3 py-3">
+        {/* Mark, then display wordmark, then an italic script tagline stacked
+            under it. The tagline is the piece that was missing: every sister
+            carries one, and it is where the Cormorant italic first appears. */}
         <Link
           href="/"
-          className="flex shrink-0 items-center gap-2 text-[var(--amber)] transition-opacity hover:opacity-85"
+          className="flex shrink-0 items-center gap-[11px] transition-opacity hover:opacity-85"
         >
           <LogoMark />
-          <span className="text-lg font-semibold tracking-tight text-[var(--cream)]">
-            Gear<span className="text-[var(--amber)]">Avail</span>
+          <span className="block leading-none">
+            <span className="block font-display text-[1.24rem] font-black uppercase tracking-[0.04em] text-[var(--cream)]">
+              Gear Avail
+            </span>
+            <span className="mt-px hidden font-script text-[0.74rem] font-semibold uppercase italic tracking-[0.16em] text-[var(--copper)] sm:block">
+              Used, vintage and new
+            </span>
           </span>
         </Link>
 
@@ -47,19 +69,20 @@ export function SiteHeader() {
             useSearchParams, and the header renders on every route including the
             statically prerendered ones. */}
         <div className="order-3 w-full sm:order-2 sm:w-auto sm:flex-1">
-          <Suspense fallback={<div className="h-10 rounded-lg border border-[var(--border)] bg-[var(--input)]" />}>
+          <Suspense
+            fallback={
+              <div className="h-[42px] rounded-full border border-[var(--line)] bg-[var(--panel2)]" />
+            }
+          >
             <SearchBox />
           </Suspense>
         </div>
 
         <nav aria-label="Main" className="order-2 sm:order-3">
-          <ul className="flex items-center gap-1 text-sm">
+          <ul className="flex items-center gap-2">
             {NAV.map((item) => (
               <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="rounded-lg px-2.5 py-1.5 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--secondary)] hover:text-[var(--cream)]"
-                >
+                <Link href={item.href} className="pill">
                   {item.label}
                 </Link>
               </li>

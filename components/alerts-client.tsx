@@ -202,7 +202,7 @@ export function AlertsClient() {
       </form>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-[var(--cream)]">Your alerts</h2>
+        <h2 className="mb-3 text-lg font-black text-[var(--cream)]">Your alerts</h2>
         {loading ? (
           <p className="text-sm text-[var(--muted-foreground)]">Loading</p>
         ) : alerts.length === 0 ? (
