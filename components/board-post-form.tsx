@@ -49,6 +49,7 @@ export function BoardPostForm({ board }: { board: BoardConfig }) {
           askingPriceDollars: board.showPrice && price ? Number(price) : null,
           location: String(form.get("location") ?? "").trim() || null,
           imageUrl: String(form.get("imageUrl") ?? "").trim() || null,
+          patreonUrl: String(form.get("patreonUrl") ?? "").trim() || null,
           website: String(form.get("website") ?? ""),
         }),
       })
@@ -223,6 +224,25 @@ export function BoardPostForm({ board }: { board: BoardConfig }) {
         </label>
         <input id="board-image" name="imageUrl" type="url" maxLength={2000} className={inputClass} />
       </div>
+
+      {board.showPatreon && (
+        <div>
+          <label htmlFor="board-patreon" className={labelClass}>
+            Your Patreon (optional)
+          </label>
+          <input
+            id="board-patreon"
+            name="patreonUrl"
+            type="url"
+            maxLength={300}
+            placeholder="patreon.com/yourname"
+            className={inputClass}
+          />
+          <p className="mt-1.5 text-xs text-[var(--muted-foreground)]">
+            Shown on your post so people can follow your work directly. We take nothing from it.
+          </p>
+        </div>
+      )}
 
       {/* Honeypot: hidden from real visitors via CSS, not just off-screen positioning. */}
       <div className="hidden" aria-hidden="true">

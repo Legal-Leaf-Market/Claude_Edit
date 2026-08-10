@@ -34,6 +34,16 @@ export type StoreProfile = {
   name: string
   tagline: string
   blurb: string
+  /**
+   * Merchant logo, served from GoAffPro's own creatives CDN.
+   *
+   * These are assets the affiliate network distributes to publishers for
+   * exactly this use, taken from the Logo column of the programme export.
+   * They are NOT scraped from the merchant's own site, which would be taking
+   * a mark rather than being given one. A store without a logo simply falls
+   * back to its monogram in StoreMark; nothing breaks.
+   */
+  logoUrl?: string
 }
 
 export const STORES: StoreProfile[] = [
@@ -44,6 +54,7 @@ export const STORES: StoreProfile[] = [
     tagline: "Direct-from-maker electric and acoustic guitars",
     blurb:
       "EART builds and sells its own guitars direct, without a middleman markup between the workshop and your case. Every listing here is real, current inventory read from their own storefront, not a scrape.",
+    logoUrl: "https://creatives.goaffpro.com/167713/files/AkLbDVVAmgwE.png",
   },
   {
     source: "hazeguitar",
@@ -52,6 +63,7 @@ export const STORES: StoreProfile[] = [
     tagline: "Strings, cables and small amps at real prices",
     blurb:
       "Haze carries the everyday gear every player restocks constantly -- strings, cables, small practice amps -- at prices that make it worth checking before you default to whatever's nearest.",
+    logoUrl: "https://creatives.goaffpro.com/160437/files/tfrqwllk.png",
   },
   {
     source: "easonmusicstore",
@@ -60,6 +72,7 @@ export const STORES: StoreProfile[] = [
     tagline: "A long-running independent shop, broad catalogue",
     blurb:
       "A long-running independent shop in Singapore carrying a broad instrument catalogue, from beginner gear to the specialist pieces bigger retailers stop stocking.",
+    logoUrl: "https://static.goaffpro.com/75415/files/KgnZvNriWaV.jpg",
   },
   {
     source: "gokalimba",
@@ -68,6 +81,7 @@ export const STORES: StoreProfile[] = [
     tagline: "Kalimbas and folk hand percussion",
     blurb:
       "A specialist in kalimbas and related folk instruments -- the kind of niche catalogue that's easy to overlook if you're only searching for guitars and amps.",
+    logoUrl: "https://creatives.goaffpro.com/110511/files/6cRpG0HQ11gS.png",
   },
   {
     source: "jacksonaudio",
@@ -76,6 +90,7 @@ export const STORES: StoreProfile[] = [
     tagline: "Boutique pedal maker, direct storefront",
     blurb:
       "Jackson Audio is a boutique effects-pedal maker selling direct. The catalogue is small by design, the way boutique pedal runs always are: short builds, high spec, no filler.",
+    logoUrl: "https://static.goaffpro.com/11672/images/1566063088358.png",
   },
   {
     source: "eminencedigital",
@@ -84,6 +99,7 @@ export const STORES: StoreProfile[] = [
     tagline: "Digital impulse-response packs for cab simulation",
     blurb:
       "Eminence Digital sells impulse-response packs -- digital cabinet simulation profiles, not physical gear -- for anyone modelling amp tone without a mic'd-up cab in the room.",
+    logoUrl: "https://creatives.goaffpro.com/115114/files/KbksEfHn-Jug.jpg",
   },
   {
     source: "squaver",
@@ -92,6 +108,7 @@ export const STORES: StoreProfile[] = [
     tagline: "An independent WooCommerce storefront",
     blurb:
       "Squaver runs on WooCommerce rather than Shopify like most of the family here, with a smaller, hand-picked catalogue.",
+    logoUrl: "https://creatives.goaffpro.com/7188251/files/jqzzwspt.png",
   },
   {
     source: "folkcraft",
@@ -100,6 +117,7 @@ export const STORES: StoreProfile[] = [
     tagline: "Dulcimers and traditional folk instruments, built in Indiana",
     blurb:
       "Folkcraft has been building mountain and hammered dulcimers for decades, alongside the strings, cases and parts that keep them playing. The kind of catalogue that exists nowhere else because almost nobody else makes these.",
+    logoUrl: "https://static.goaffpro.com/62254/files/1_W8GnC4viG.png",
   },
   {
     source: "acousticguitar",
@@ -108,6 +126,7 @@ export const STORES: StoreProfile[] = [
     tagline: "Books, lessons and gear from the magazine's own store",
     blurb:
       "The storefront attached to Acoustic Guitar: instruction books, songbooks, transcriptions and accessories, aimed at players who want to get better rather than just buy more.",
+    logoUrl: "https://creatives.goaffpro.com/160052/files/fabnQfqB6S02s.png",
   },
   {
     source: "jamstik",
@@ -116,6 +135,7 @@ export const STORES: StoreProfile[] = [
     tagline: "MIDI guitars and practice tools that plug into your DAW",
     blurb:
       "Jamstik builds smart guitars and MIDI controllers designed for players who learn and record on a screen. Narrow catalogue, unusually specific: nothing else here does what these do.",
+    logoUrl: "https://static.goaffpro.com/66466/files/2uVEp7WaXPn.png",
   },
   {
     source: "playwithauthority",
@@ -124,6 +144,7 @@ export const STORES: StoreProfile[] = [
     tagline: "An independent shop for players",
     blurb:
       "A small independent storefront with a tightly chosen catalogue, the sort of shop that carries what its owner actually believes in rather than everything a distributor offers.",
+    logoUrl: "https://creatives.goaffpro.com/7099382/files/EjHjMQSZO7j1o.jpg",
   },
 ]
 

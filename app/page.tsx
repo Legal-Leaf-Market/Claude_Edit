@@ -2,6 +2,10 @@ import Link from "next/link"
 import { sql } from "drizzle-orm"
 import { ArrowRight, BellRing, LineChart, Search as SearchIcon } from "lucide-react"
 import { InstagramStrip } from "@/components/instagram-strip"
+import { SubscribeForm } from "@/components/subscribe-form"
+import { StoreMark } from "@/components/store-mark"
+import { STORES } from "@/lib/stores"
+import { BOARDS } from "@/lib/boards"
 import { ListingCard } from "@/components/listing-card"
 import { db } from "@/lib/db"
 import { search } from "@/lib/search"
@@ -124,6 +128,55 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section className="pb-12">
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-xl font-semibold text-[var(--cream)]">Shop by store</h2>
+          <Link href="/shop" className="text-sm text-[var(--amber)] underline-offset-2 hover:underline">
+            All {STORES.length} stores
+          </Link>
+        </div>
+        <p className="mb-4 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">
+          Independent makers and shops, each with their own page. None of them paid to be listed,
+          and none of them can pay to rank higher.
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {STORES.slice(0, 8).map((store) => (
+            <Link
+              key={store.slug}
+              href={`/shop/${store.slug}`}
+              className="panel flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--cream)] transition-colors hover:border-[var(--amber)]/40 hover:bg-[var(--secondary)]"
+            >
+              <StoreMark source={store.source} name={store.name} size="sm" />
+              <span className="truncate">{store.name}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="pb-12">
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-xl font-semibold text-[var(--cream)]">The community</h2>
+          <Link href="/feed" className="text-sm text-[var(--amber)] underline-offset-2 hover:underline">
+            See the feed
+          </Link>
+        </div>
+        <p className="mb-4 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">
+          Public boards, no DMs and no fees. Flip your gear, find a bandmate, book a lesson, post a
+          show. Whatever changes hands is between you and the other person.
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {BOARDS.map((board) => (
+            <Link
+              key={board.slug}
+              href={`/boards/${board.slug}`}
+              className="panel px-4 py-3 text-sm text-[var(--cream)] transition-colors hover:border-[var(--amber)]/40 hover:bg-[var(--secondary)]"
+            >
+              {board.navLabel}
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section className="pb-16">
         <h2 className="mb-4 text-xl font-semibold text-[var(--cream)]">How Gear Avail works</h2>
         <div className="grid gap-4 sm:grid-cols-3">
@@ -142,6 +195,13 @@ export default async function HomePage() {
             title="Alerts for the gear you want"
             body="Save a search with a price ceiling. When something matching drops below it, you get an email or a Discord ping, usually within the hour."
           />
+        </div>
+      </section>
+
+      <section className="pb-16">
+        <h2 className="mb-4 text-xl font-semibold text-[var(--cream)]">Get the weekly hunt</h2>
+        <div className="max-w-2xl">
+          <SubscribeForm source="home" />
         </div>
       </section>
 

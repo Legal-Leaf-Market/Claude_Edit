@@ -122,7 +122,8 @@ app/
     health                  Freshness and config, read this first when confused
     alerts                  Saved alert CRUD
     auth/[...all]           Better Auth
-    cron/*                  4 jobs, all fail closed on CRON_SECRET
+    cron/*                  Ingest per source, refresh-deals, weekly-digest.
+                            All fail closed on CRON_SECRET
 lib/
   env.ts                    Every integration exposes isConfigured; nothing throws
   ingestion/ebay-feed.ts    Transport + TSV parsing (section 3)
@@ -321,7 +322,7 @@ The job functions live in `lib/ingestion/`. There are two triggers:
 
 Never fork the logic between them. Add work to the job function.
 
-- All four cron routes **fail closed on `CRON_SECRET`**: unset returns 503,
+- Every cron route **fails closed on `CRON_SECRET`**: unset returns 503,
   wrong bearer returns 401. Unset mattering more than wrong is the point, these
   routes burn the eBay call budget and send email.
 - Ingestion worker concurrency is **1** on purpose. These jobs are bounded by
@@ -401,7 +402,7 @@ Never fork the logic between them. Add work to the job function.
 | `GOAFFPRO_*_REF_PARAM` / `GOAFFPRO_*_REF_CODE` | One pair per small independent Shopify/WooCommerce seller (Folkcraft, Acoustic Guitar, Jamstik, Jackson Audio, Eminence Digital, Haze Guitar, EART Guitar, Play With Authority, Pures Music, Squaver, Eason Music Store, Go Kalimba). Catalogue ingestion needs no credential at all; an unset code just means a null `affiliate_url` until the referral is confirmed. |
 | `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
 | `REDIS_URL` | BullMQ queues and the shared rate-limit counter. Optional. |
-| `CRON_SECRET` | All nine crons. Unset = 503, wrong = 401. Load bearing. |
+| `CRON_SECRET` | Every `/api/cron/*` route. Unset = 503, wrong = 401. Load bearing: these burn the eBay call budget and send mail to the whole subscriber list. |
 | `BETTER_AUTH_SECRET` | Accounts and alerts. Unset = auth routes 503, rest of site unaffected. |
 | `RESEND_API_KEY` / `DISCORD_WEBHOOK_URL` | Alert delivery. Each no-ops with a warning. |
 | `ADMIN_PASSCODE` | `/admin/operating-model`. Unset = nobody can sign in, ever. See section 12. |
@@ -459,8 +460,16 @@ legal-leafmarket.com, adapted to one site instead of four.
 - Prices shown must be prices the shopper can actually get. The footer says
   feeds can go stale; that is a disclosure, not a licence to ship known-wrong
   numbers.
-- Affiliate commission never affects ranking. Sorting is price and discount
-  only, and the footer says so.
+- Affiliate commission never affects ranking. Sorting is price, discount,
+  recency or shuffle, and the footer says so.
+- **Whether a merchant pays us is not a reason to delist them.** A merchant is
+  listed if shoppers get a fair deal and a real delivery; payout is not an
+  input to that decision. Delisting a good merchant for not paying is the same
+  act as ranking by commission, just performed at the merchant level, and the
+  footer's promise covers both. This cuts the other way too: a merchant who
+  pays well but fails shoppers goes, and the reason recorded is the failure,
+  never the money. The two cases look identical from outside, so write down
+  which one it was.
 
 ## 14. Hard "do not" list
 

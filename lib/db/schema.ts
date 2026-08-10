@@ -407,6 +407,13 @@ export const flipThreads = pgTable(
     askingPriceCents: integer("asking_price_cents"),
     location: varchar("location", { length: 200 }),
     imageUrl: text("image_url"),
+    /**
+     * Optional Patreon page for the poster. Convenience only: a teacher on the
+     * lessons board or a builder posting a run almost certainly already runs
+     * one, and linking it saves the reader hunting for it. Gear Avail earns
+     * nothing from this and no referral relationship is assumed.
+     */
+    patreonUrl: text("patreon_url"),
     /** 'open' | 'closed'. The poster closes it once it's flipped, filled, or off the table. */
     status: varchar("status", { length: 20 }).notNull().default("open"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -434,6 +441,46 @@ export const flipReplies = pgTable(
   },
   (t) => [index("idx_flip_replies_thread").on(t.threadId, t.createdAt)],
 )
+
+/**
+ * Newsletter subscribers.
+ *
+ * The one asset here that a search-ranking change cannot take away: rankings
+ * are rented, a list is owned. That is the main reason this exists, ahead of
+ * any revenue it drives.
+ *
+ * Deliberately thin. An email and where they signed up is enough to send a
+ * weekly digest; anything more would be collecting data we have no use for.
+ * `source` records which page earned the signup so it is possible to tell
+ * which surfaces actually work.
+ */
+export const subscribers = pgTable(
+  "subscribers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: varchar("email", { length: 320 }).notNull(),
+    /** Which page the signup came from: 'feed' | 'board' | 'store' | 'home' | 'gear'. */
+    source: varchar("source", { length: 40 }).notNull().default("unknown"),
+    /** Optional free text: the gear they are hunting for, if they told us. */
+    hunting: varchar("hunting", { length: 200 }),
+    /**
+     * Unsubscribes are kept as rows rather than deleted, so a later signup
+     * cannot silently resurrect someone who opted out.
+     */
+    isActive: boolean("is_active").notNull().default(true),
+    unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
+    /** Random, unguessable, and stable: it goes in the unsubscribe link of every send. */
+    unsubscribeToken: uuid("unsubscribe_token").notNull().defaultRandom(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("subscribers_email_key").on(t.email),
+    index("idx_subscribers_active").on(t.isActive),
+  ],
+)
+
+export type Subscriber = typeof subscribers.$inferSelect
+export type NewSubscriber = typeof subscribers.$inferInsert
 
 export type FlipThread = typeof flipThreads.$inferSelect
 export type NewFlipThread = typeof flipThreads.$inferInsert

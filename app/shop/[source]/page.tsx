@@ -2,9 +2,11 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { FilterSidebar } from "@/components/filter-sidebar"
+import { StoreMark } from "@/components/store-mark"
 import { ListingCard } from "@/components/listing-card"
 import { Pagination } from "@/components/pagination"
 import { SortSelect } from "@/components/sort-select"
+import { SubscribeForm } from "@/components/subscribe-form"
 import { STORES, storeFromSlug } from "@/lib/stores"
 import { paramsFromQuery, queryFromParams, search } from "@/lib/search"
 
@@ -87,7 +89,10 @@ export default async function StorePage({ params, searchParams }: PageProps) {
 
       <header className="mb-8 max-w-3xl">
         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--amber)]">Store</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--cream)]">{store.name}</h1>
+        <div className="mt-1 flex items-center gap-3">
+          <StoreMark source={store.source} name={store.name} size="lg" />
+          <h1 className="text-3xl font-semibold tracking-tight text-[var(--cream)]">{store.name}</h1>
+        </div>
         <p className="mt-2 text-base font-medium text-[var(--muted-foreground)]">{store.tagline}</p>
         <p className="mt-3 text-base leading-relaxed text-[var(--muted-foreground)]">{store.blurb}</p>
       </header>
@@ -126,6 +131,10 @@ export default async function StorePage({ params, searchParams }: PageProps) {
             </>
           )}
         </section>
+      </div>
+
+      <div className="mt-10 max-w-2xl">
+        <SubscribeForm source="store" />
       </div>
     </div>
   )
