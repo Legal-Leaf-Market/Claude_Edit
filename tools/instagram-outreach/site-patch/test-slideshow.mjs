@@ -60,7 +60,11 @@ const shown = () => page.evaluate(() => ({
 console.log('=== it starts on the dearest ounce inside the cap ===');
 let v = await shown();
 console.log('  ' + JSON.stringify({ name: v.name, count: v.count, price: v.price }));
-ok(v.name === 'Ounce C' && v.count === '1 of 3', 'slide 1 is the dearest ounce');
+/* Four slides from three listings. Only three distinct THCa listings qualify, and
+   the mix wants six, so the multi-strain one repeats with its other row selected:
+   c, b's $46 strain, a, then b's $44 strain. That repeat is the point of the
+   fallback, so the counter says four. */
+ok(v.name === 'Ounce C' && v.count === '1 of 4', 'slide 1 is the dearest ounce');
 
 console.log('\n=== next advances without a reload ===');
 const url0 = page.url();
@@ -68,7 +72,7 @@ await page.click('#next');
 await page.waitForTimeout(250);
 v = await shown();
 console.log('  ' + JSON.stringify({ name: v.name, count: v.count, price: v.price, img: v.img }));
-ok(v.name === 'Ounce B' && v.count === '2 of 3', 'moved to slide 2');
+ok(v.name === 'Ounce B' && v.count === '2 of 4', 'moved to slide 2');
 ok(/\$46/.test(v.price), 'price followed the slide');
 /* The picked row's own photo, not the listing's lead photo: this slide advertises
    Strain Two at $46, the dearer of the listing's two strains and so the one the
@@ -126,10 +130,10 @@ console.log('\n=== wrapping, keyboard and back-to-photo ===');
 await page.goto('file:///tmp/slides.html');
 await page.click('#prev');
 await page.waitForTimeout(250);
-ok((await shown()).count === '3 of 3', 'prev from the first slide wraps to the last');
+ok((await shown()).count === '4 of 4', 'prev from the first slide wraps to the last');
 await page.keyboard.press('ArrowRight');
 await page.waitForTimeout(250);
-ok((await shown()).count === '1 of 3', 'arrow keys work and wrap forward');
+ok((await shown()).count === '1 of 4', 'arrow keys work and wrap forward');
 await page.click('#toBack');
 await page.waitForTimeout(600);
 ok(await page.isVisible('#toFront') && await page.isVisible('#toFront2'),

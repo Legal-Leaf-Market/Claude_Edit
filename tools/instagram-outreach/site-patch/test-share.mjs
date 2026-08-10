@@ -710,12 +710,16 @@ console.log('\n=== trim and shake are declared ===');
 
   /* The card's own text, so it travels with the link. A banner nobody has opened
      the page to see is not a disclosure. */
-  ok(/^Trim and shake, not whole buds\./.test(tag('og:description')),
+  ok(/^This 1oz is trim\/shake, not whole buds\./.test(tag('og:description')),
      'the shared card leads with it, ahead of the price');
+  /* The weight is named, so the sentence is one a shopper can check against what
+     they think they are buying rather than a word next to a photo of buds. */
+  ok(/This 1oz is/.test(tag('og:description')), 'and names the size it is talking about');
   const banners = [...t.html.matchAll(/<div class="tsb" id="(tsb[FB])"([^>]*)>([^<]*)<\/div>/g)];
   ok(banners.length === 2, 'one banner per face, got ' + banners.length);
   ok(banners.every((b) => !/hidden/.test(b[2])), 'both visible on a trim listing');
-  ok(banners.every((b) => /Trim and shake, not whole buds/.test(b[3])), 'both say what it is');
+  ok(banners.every((b) => /This 1oz is trim\/shake, not whole buds/.test(b[3])),
+     'both say what it is, and which size');
   /* Front and back carry their own copy rather than sharing one element over the
      card, which is what keeps the back one upright: anything in the flip's 3D
      space turns with it and renders mirrored. */
@@ -724,7 +728,7 @@ console.log('\n=== trim and shake are declared ===');
   ok(front > -1 && back > -1 && front < t.html.indexOf('class="face back"'),
      'the front copy is inside the front face');
   ok(back > t.html.indexOf('class="face back"'), 'and the back copy inside the back face');
-  ok(/\.flip\.flipped \.front \.tsb\{opacity:0/.test(t.html),
+  ok(/\.flip\.flipped \.front \.tsbwrap\{opacity:0/.test(t.html),
      'the front copy fades on flip, so the two are never both on screen mid-turn');
   ok(!/\.tsb\{[^}]*backdrop-filter/.test(t.html),
      'and uses no backdrop-filter, which is what made the .ov pills bleed through mirrored');
@@ -761,6 +765,100 @@ console.log('\n=== trim and shake are declared ===');
   ok(!/Trim and shake, not whole buds\./.test(
      (m.html.match(/<meta property="og:description" content="([^"]*)"/) || [])[1] || ''),
      'and the card text makes no claim the advertised row does not carry');
+}
+
+// ---------------------------------------------------------------------------
+// The mix. Ranking dearest-first inside a $50 cap handed the whole slideshow to
+// trim, because trim is the cheapest thing per gram and so the most weight a fixed
+// budget can buy. The pool is composed to 6 THCa, 3 trim, 1 CBD instead.
+// ---------------------------------------------------------------------------
+console.log('\n=== the pool is composed, not just ranked ===');
+{
+  const row = (label, price) => [label, price, 28, 'V-' + label.replace(/\W/g, ''), 1, null, ''];
+  const mk = (id, name, price, extra) => ({
+    id, name, store: 'Store ' + id, storeKey: id, domain: id + '.test',
+    cartDomain: id + '.test', platform: 'shopify', ref: '', coupon: '',
+    category: 'THCA Flower', cur: 'USD', inStock: true, perG: price / 28,
+    image: 'https://cdn.test/' + id + '.png', url: 'https://' + id + '.test/p',
+    sizes: [row('1 oz', price)], ...extra,
+  });
+
+  // Eight trim ounces, all dearer than the buds, which is the real shape: they
+  // would have taken every slide under a plain ranking.
+  const FEED = [];
+  for (let i = 0; i < 8; i++) FEED.push(mk('trim' + i, 'THCA Flower Trim ' + i, 49 - i));
+  for (let i = 0; i < 4; i++) FEED.push(mk('bud' + i, 'Whole Bud Ounce ' + i, 40 - i));
+  for (let i = 0; i < 3; i++) FEED.push(mk('cbd' + i, 'CBD Hemp Ounce ' + i, 45 - i, { cannabinoid: 'CBD' }));
+  // A multi-strain THCa listing, which is what fills the gap when distinct
+  // whole-bud listings run out.
+  FEED.push(mk('multi', 'Four Strain Ounce', 38, {
+    sizes: [row('Zkittlez 1 oz', 38), row('Gelato 1 oz', 37), row('Runtz 1 oz', 36)],
+  }));
+
+  const opts = { maxPrice: 50, minGrams: 25, maxGrams: 40, category: 'THCA Flower' };
+  const pool = __test.composePool(__test.pickAll(FEED, opts));
+  const buckets = pool.map((c) => c.bucket);
+  console.log('  mix: ' + JSON.stringify(buckets));
+  console.log('  pool: ' + JSON.stringify(pool.map((c) => c.product.id + '#' + c.index)));
+
+  ok(pool.length === 10, 'ten slides, got ' + pool.length);
+  ok(buckets.filter((b) => b === 'thca').length === 6, 'six THCa');
+  ok(buckets.filter((b) => b === 'trim').length === 3, 'three trim, not eight');
+  ok(buckets.filter((b) => b === 'cbd').length === 1, 'one CBD');
+  /* THCa leads, so slide one and the shared card are always whole buds. */
+  ok(buckets.slice(0, 6).every((b) => b === 'thca'), 'THCa fills the front of the run');
+  ok(buckets[9] === 'cbd', 'and the CBD one brings up the rear');
+
+  // Dearest first inside each bucket, and the caps take the dearest trim rather
+  // than a random three.
+  const trims = pool.filter((c) => c.bucket === 'trim').map((c) => c.price);
+  ok(trims.join(',') === '49,48,47', 'the three trim slots are the dearest three: ' + trims.join(','));
+  ok(pool[0].price === 40, 'the lead slide is the dearest whole-bud ounce: ' + pool[0].price);
+
+  /* Only four distinct whole-bud listings exist, so the multi-strain one repeats to
+     make six, each time with a different row advertised. That is the fallback the
+     user asked for: the same listing again with another size selected. */
+  const thca = pool.filter((c) => c.bucket === 'thca');
+  const ids = thca.map((c) => c.product.id);
+  ok(new Set(ids).size === 5, 'five distinct listings across six THCa slides: ' + new Set(ids).size);
+  const repeats = thca.filter((c) => c.product.id === 'multi');
+  ok(repeats.length === 2, 'the multi-strain listing fills the gap twice, got ' + repeats.length);
+  ok(repeats[0].index !== repeats[1].index,
+     'with a different row each time: ' + repeats.map((r) => r.index).join(' and '));
+  /* Distinct listings are exhausted BEFORE any repeat, so a repeat never displaces
+     a shop that had not been shown yet. */
+  ok(ids.indexOf('multi') < ids.lastIndexOf('multi'), 'and the repeat comes after the first use');
+  ok(new Set(ids.slice(0, 5)).size === 5, 'the first five THCa slides are five different listings');
+
+  // Caps do not backfill: no trim beyond three even when the buckets underfill.
+  const THIN = [mk('t0', 'THCA Flower Trim A', 49), mk('t1', 'THCA Flower Trim B', 48),
+    mk('t2', 'THCA Flower Trim C', 47), mk('t3', 'THCA Flower Trim D', 46)];
+  const thin = __test.composePool(__test.pickAll(THIN, opts));
+  ok(thin.length === 3, 'with only trim in the feed the pool is three, not ten: ' + thin.length);
+  ok(thin.every((c) => c.bucket === 'trim'), 'and trim never expands into the THCa slots');
+
+  // Bucketing itself.
+  ok(__test.bucketOf({ name: 'Whole Bud Ounce' }, '1 oz') === 'thca', 'no cannabinoid field means THCa');
+  ok(__test.bucketOf({ name: 'CBD Hemp Ounce', cannabinoid: 'CBD' }, '1 oz') === 'cbd', 'CBD is its own bucket');
+  ok(__test.bucketOf({ name: 'Ounce', cannabinoid: 'CBD' }, 'Trim 1 oz') === 'trim',
+     'trim wins over the cannabinoid, since being sold offcuts is the more material surprise');
+  ok(__test.bucketOf({ name: 'Delta 8 Ounce', cannabinoid: 'Δ8' }, '1 oz') === null,
+     'and D8 belongs to none of the three, so it is left out rather than counted as THCa');
+
+  // The CBD banner, on a listing that is CBD but not trim.
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [FEED[FEED.length - 2]] }) });
+  const c = await run('pick');
+  const cDesc = (c.html.match(/<meta property="og:description" content="([^"]*)"/) || [])[1];
+  console.log('  og:description ' + cDesc);
+  ok(/^This 1oz is CBD, non-psychoactive\./.test(cDesc), 'the card says so first');
+  ok(!/trim\/shake/.test(cDesc), 'and claims nothing about trim');
+  const cbdBars = [...c.html.matchAll(/<div class="tsb cbd" id="(cbd[FB])"([^>]*)>([^<]*)</g)];
+  ok(cbdBars.length === 2, 'one CBD banner per face, got ' + cbdBars.length);
+  ok(cbdBars.every((b) => !/hidden/.test(b[2])), 'both showing');
+  ok(cbdBars.every((b) => /non-psychoactive/.test(b[3])), 'both stating it is not psychoactive');
+  ok([...c.html.matchAll(/<div class="tsb" id="tsb[FB]"[^>]*hidden/g)].length === 2,
+     'while the trim pair stays hidden on a CBD listing that is not trim');
+  ok(/\.tsb\.cbd\{background:/.test(c.html), 'and the CBD bar is styled apart from the trim one');
 }
 
 console.log(fails ? '\n' + fails + ' CHECK(S) FAILED' : '\nALL CHECKS PASSED');

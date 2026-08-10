@@ -375,7 +375,12 @@ console.log('\n=== the trim banner, both faces, right way round ===');
   };
   const saved = globalThis.fetch;
   globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [MIXED] }) });
-  fs.writeFileSync('/tmp/trim.html', await render({ id: 'pick' }));
+  /* i=1 on purpose. This listing sells buds and trim, so it lands in both buckets
+     and THCa leads the pool: slide 1 is the $44 whole-bud row and slide 2 is the
+     $48 trim row. The banner belongs to the second, and that ordering is itself the
+     point of the mix, so the test asks for the slide rather than assuming trim
+     leads. */
+  fs.writeFileSync('/tmp/trim.html', await render({ id: 'pick', i: '1' }));
   globalThis.fetch = saved;
 
   const p3 = await browser.newPage();
@@ -397,6 +402,18 @@ console.log('\n=== the trim banner, both faces, right way round ===');
   }, id);
 
   ok(await p3.isVisible('#tsbF'), 'the front banner shows on a trim row');
+  /* Computed, not just present in the source. A comment above a rule that closes
+     itself early leaves prose loose in the stylesheet, the parser drops the rule
+     that follows, and the banner then renders as unstyled body text: still there,
+     still the right words, and looks like nothing. Asserting on the paint is what
+     catches that; asserting on the HTML would not have. */
+  const paint = await p3.evaluate(() => {
+    const cs = getComputedStyle(document.getElementById('tsbF'));
+    return { bg: cs.backgroundColor, pad: cs.paddingTop, size: cs.fontSize, weight: cs.fontWeight };
+  });
+  console.log('  paint: ' + JSON.stringify(paint));
+  ok(paint.bg === 'rgb(163, 38, 26)', 'the red fill actually applied: ' + paint.bg);
+  ok(paint.pad === '10px' && paint.weight === '800', 'and so did the padding and weight');
   const f = await direction('tsbF');
   console.log('  front: ' + JSON.stringify(f));
   ok(f.first < f.last, 'front text runs left to right, not mirrored');
@@ -422,7 +439,10 @@ console.log('\n=== the trim banner, both faces, right way round ===');
     return t.bottom <= s.top;
   });
   ok(order, 'and sits above the size dropdown');
-  ok(await p3.evaluate(() => getComputedStyle(document.getElementById('tsbF')).opacity === '0'),
+  /* The wrapper carries the fade, not the bar, since there can be two bars and they
+     go together. */
+  ok(await p3.evaluate(() =>
+     getComputedStyle(document.querySelector('.front .tsbwrap')).opacity === '0'),
      'while the front copy has faded out, so the two never overlap mid-turn');
 
   /* The dropdown drives it from here: this listing sells trim and whole buds, and
@@ -437,6 +457,68 @@ console.log('\n=== the trim banner, both faces, right way round ===');
   await p3.waitForTimeout(200);
   ok(await p3.isVisible('#tsbB'), 'and comes back on the trim row');
   await p3.close();
+}
+
+/* The card resizes; it never scrolls inside itself. A scroll area nested in a
+   scrolling page is the worst of both: the wheel lands on whichever one the pointer
+   is over, the inner bar hides how much is left, and on a phone a drag meant for the
+   page moves the panel instead. Everything past the fold is reached by scrolling the
+   page, which is the one scroll everybody already knows. */
+console.log('\n=== the card resizes, it does not scroll inside itself ===');
+{
+  const p4 = await browser.newPage({ viewport: { width: 400, height: 780 } });
+  p4.on('pageerror', (e) => errs.push(String(e)));
+  await p4.goto('file:///tmp/pick.html');
+  await p4.waitForTimeout(300);
+
+  const geom = () => p4.evaluate(() => {
+    const f = document.getElementById('flip');
+    const b = f.querySelector('.back');
+    const cs = getComputedStyle(b);
+    return {
+      card: Math.round(f.getBoundingClientRect().height),
+      backContent: b.scrollHeight, backBox: b.clientHeight,
+      overflowY: cs.overflowY, bottom: cs.bottom,
+      pageScrolls: document.documentElement.scrollHeight > innerHeight,
+    };
+  });
+
+  const front = await geom();
+  console.log('  photo side: ' + JSON.stringify(front));
+  ok(front.card > 0, 'the card has a real height on the photo side: ' + front.card);
+
+  await p4.click('#toBack');
+  await p4.waitForTimeout(900);
+  const back = await geom();
+  console.log('  back side:  ' + JSON.stringify(back));
+
+  /* The measurement that matters: content height equals box height, so there is
+     nothing to scroll to. */
+  ok(back.backContent <= back.backBox + 1,
+     'the back has nothing left to scroll: content ' + back.backContent + ' in a box of ' + back.backBox);
+  ok(back.overflowY !== 'auto' && back.overflowY !== 'scroll',
+     'and no scroller is declared on it: overflow-y ' + back.overflowY);
+  /* Height comes from the content, not the container, and the photo side is where
+     that shows: the card is 364 there while the back already measures 694. Pinned to
+     the container the way inset:0 pinned it, the back would read 364 and its content
+     would have to scroll. This is also what lets the height be read before the flip
+     rather than after, so the card can size itself as it turns. */
+  ok(front.backBox > front.card + 50,
+     'the back measures its content even while the photo is showing: ' +
+     front.backBox + ' inside a ' + front.card + ' card');
+  ok(back.card >= back.backContent - 1,
+     'the card grew to fit the panel: card ' + back.card + ' vs content ' + back.backContent);
+  ok(back.card > front.card, 'which is taller than the photo side: ' + front.card + ' to ' + back.card);
+  /* The page is what scrolls. On a 780px viewport this back panel does not fit, and
+     that is fine as long as it is the document that moves. */
+  ok(back.pageScrolls, 'and the page itself is what scrolls to reach the rest');
+
+  // Shrinking too, not just growing: coming back to the photo returns to a square.
+  await p4.click('#toFront');
+  await p4.waitForTimeout(900);
+  const again = await geom();
+  ok(again.card === front.card, 'flipping back returns to the photo height: ' + again.card);
+  await p4.close();
 }
 
 ok(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.join('; ') : ''));

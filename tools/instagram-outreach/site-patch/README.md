@@ -32,14 +32,47 @@ pound at $45 clears a 28g floor and clears the cap, so the card would read
 matter more, not less, since an over-weight row no longer has to be cheap per
 gram to reach the top of the list.
 
-### Trim and shake are declared
+### The mix: 6 THCa, 3 trim, 1 CBD
 
-Trim is the cheapest thing per gram in the feed, so a budget that spends up to $50
-lands on it regularly, Black Tie most of all. Carrying it is fine, letting somebody
-work it out after paying is not, so a **red banner** states it: on the front of the
-card over the photo, on the back above the size dropdown, and as the first sentence
-of the og:description so it travels with the link rather than waiting for the page
-to be opened.
+Ranking alone gave the slideshow to trim, structurally rather than by chance: trim
+is the cheapest thing per gram, so within a fixed budget it is always the most
+weight available, and "dearest inside the cap" put trim ounces at the top of the
+list. Ten slides of offcuts is not a shop window.
+
+So the pool is **composed** rather than taken off the top of one ranking
+(`POOL_MIX`): six THCa, three trim, one CBD, each bucket filled dearest-first from
+its own rows, in that order, so slide one and the shared card are always a
+whole-bud THCa ounce.
+
+THCa alone may **repeat a listing**, and only after every distinct listing has been
+used. A multi-strain ounce sold at four prices then fills two or three slides with a
+different row selected on each, which is a real second option (different strain,
+different price) rather than padding. Trim and CBD are caps, not targets: they never
+repeat, and a feed with fewer than the cap just yields a shorter pool. Nothing
+backfills across buckets, since the whole point is that trim cannot expand into the
+space THCa leaves.
+
+Buckets come from `bucketOf`: trim wins over the cannabinoid, then CBD off the
+classifier's own `cannabinoid` field (`products.js` maps cbd/cbg/cbn/hemp to `CBD`),
+then THCa, with an absent field meaning THCa exactly as it does there. The D8/HHC/
+THCP family belongs to none of the three and is left out rather than quietly counted
+as THCa.
+
+### Trim and CBD are declared on the card
+
+Carrying trim is fine, letting somebody work it out after paying is not, so a **red
+banner** states it: on the front of the card over the photo, on the back above the
+size dropdown, and as the first sentence of the og:description so it travels with
+the link rather than waiting for the page to be opened. A **blue banner** does the
+same for CBD, saying it is non-psychoactive; that one is information rather than a
+warning about getting less than was advertised, which is why it is not red. A CBD
+trim ounce is both things at once and shows both, stacked, since neither sentence
+covers the other.
+
+Each banner names the weight ("this 1oz is trim/shake, not whole buds") because that
+is a sentence a shopper checks against what they think they are buying, where a bare
+"trim" is a word they skim past next to a photo of buds. The weight follows the
+dropdown along with the flag.
 
 Detection is word-boundary, never a substring, and the reason is in the live ids:
 Black Tie sells both `thca-flower-trim-shake` and
@@ -152,8 +185,17 @@ fields are omitted, per that file's own warning never to assume one exists.
 
 Two defects `test-flow.mjs` caught that review would not have:
 
-- The back was square, so the size dropdown fell below the card's edge. It now
-  grows to 3/4 on flip, with the control first.
+- The back was square, so the size dropdown fell below the card's edge. The card now
+  **resizes to whichever face is showing**, with the control first.
+
+  It never scrolls inside itself. A scroll area nested in a scrolling page is the
+  worst of both: the wheel lands on whichever one the pointer is over, the inner bar
+  hides how much is left, and on a phone a drag meant for the page moves the panel.
+  So the back is released at the bottom (`bottom:auto`) and measures its own content,
+  `sizeCard()` sets the container to match on every flip, slide change, size choice
+  and window resize, and anything past the fold is reached by scrolling the **page**.
+  `aspect-ratio` survives only as the state for the frame before JS measures; with no
+  JS there is no flip either, so the back is never shown needing a height.
 - On a short viewport the shopper has scrolled past Add to cart by the time they
   click it, so the forced flip left the dropdown **above the fold, glowing where it
   could not be seen**. Measured at 1280x720: `scrollY 329`, dropdown at `y -229`.
@@ -208,10 +250,12 @@ given slide server side with its own og: tags, and clamps rather than 404s, so a
 forwarded link with a stale index shows something real. Moving updates the URL via
 `replaceState`, keeping slides shareable without a history entry per tap.
 
-Ten slides means ten distinct **products**. `pickAll` ranks size rows, so a listing
-selling two qualifying ounces at different prices used to take two slides; dedupe
-keeps the dearest qualifying row per product, matching the ordering, and that
-slide's dropdown still offers the rest.
+Ten slides means ten distinct **products** wherever the feed allows it. `composePool`
+takes one slide per listing first, within each bucket, and only repeats a THCa
+listing with another row once the distinct ones are used up (see the mix above). A
+listing selling both buds and trim can appear in both buckets, once with each row
+advertised, since those are two different offers; either way that slide's dropdown
+still offers the rest of its sizes.
 
 **A selection never survives a slide change.** Carrying a size choice from one
 product to the next is how somebody adds a thing they never looked at, so the

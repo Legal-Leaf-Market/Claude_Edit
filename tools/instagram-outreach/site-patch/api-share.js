@@ -192,10 +192,9 @@ function cartItem(p, idx) {
  * than having to be cheap per gram to get there. The band keeps the pick to the
  * thing that was actually advertised.
  */
-/* Every qualifying size row, the one closest to the cap first. The slideshow
-   walks this list, so the pool is capped: the 40th ounce down is not a thing
-   worth showing anybody. */
-var PICK_POOL = 10;
+/* pickAll ranks every qualifying size row, dearest first. What reaches the
+   slideshow is a composed mix of that ranking rather than its top ten: see POOL_MIX
+   below for why taking the top ten produced a wall of trim. */
 
 /* Does a size row's own label say "ounce"? Sub-ounce fractions are excluded first,
    because "1/4 oz" contains "oz" while being a quarter. */
@@ -248,6 +247,75 @@ function ounceRowOverCap(sizes, maxPrice) {
   return false;
 }
 
+/* ---- the mix ----
+ *
+ * Ranking alone produced a slideshow of almost nothing but trim, and for a
+ * structural reason rather than a fluke: trim is the cheapest thing per gram, so
+ * within a fixed budget it is always the most weight available, and once the order
+ * became "dearest inside the cap" the trim ounces swept the top of the list. Ten
+ * slides of offcuts is not a shop window.
+ *
+ * So the pool is composed to a fixed mix rather than taken off the top of one
+ * ranking. Each bucket is filled dearest-first from its own rows, and the buckets
+ * are laid out in this order, so slide one and the shared card are always a
+ * whole-bud THCa ounce.
+ *
+ * THCa alone is allowed to REPEAT a listing, and only after every distinct listing
+ * has been used. A multi-strain ounce sold at four prices then fills two or three
+ * slides with a different row selected on each, which is a real second option to a
+ * shopper (different strain, different price) rather than padding. Trim and CBD are
+ * caps, not targets: they never repeat, and if the feed has fewer than the cap the
+ * pool is simply shorter. Nothing backfills across buckets, because the whole point
+ * is that trim cannot expand into the space THCa leaves.
+ */
+var POOL_MIX = [
+  { key: 'thca', want: 6, repeat: true },
+  { key: 'trim', want: 3, repeat: false },
+  { key: 'cbd', want: 1, repeat: false },
+];
+var PICK_POOL = POOL_MIX.reduce(function (n, s) { return n + s.want; }, 0);
+
+/* Trim wins over cannabinoid: a shopper who thinks they are buying buds and gets
+   offcuts has been misled about the more material thing. CBD comes off the
+   classifier's own cannabinoid field (products.js: cbd/cbg/cbn/hemp all land on
+   'CBD'), and an absent field means THCa there too, so it means THCa here.
+   Anything else the classifier recognises, the D8/HHC/THCP family, belongs to none
+   of the three and is left out of the pool rather than quietly counted as THCa. */
+function bucketOf(p, rowLabel) {
+  if (isTrimShake(p && p.name) || isTrimShake(rowLabel)) return 'trim';
+  var c = String((p && p.cannabinoid) || 'THCa');
+  if (c === 'CBD') return 'cbd';
+  if (c === 'THCa') return 'thca';
+  return null;
+}
+
+function composePool(ranked) {
+  var out = [];
+  for (var m = 0; m < POOL_MIX.length; m++) {
+    var slot = POOL_MIX[m];
+    var rows = ranked.filter(function (r) { return r.bucket === slot.key; });
+    var seen = {};
+    var taken = [];
+    // One slide per listing first, so ten slides are ten different shops wherever
+    // the feed allows it.
+    for (var j = 0; j < rows.length && taken.length < slot.want; j++) {
+      if (seen[rows[j].product.id]) continue;
+      seen[rows[j].product.id] = 1;
+      taken.push(rows[j]);
+    }
+    /* Only then, and only for THCa, a second row from a listing already used. Each
+       carries its own index, so the slide opens with that row selected and its own
+       price and photo. */
+    if (slot.repeat) {
+      for (var k = 0; k < rows.length && taken.length < slot.want; k++) {
+        if (taken.indexOf(rows[k]) === -1) taken.push(rows[k]);
+      }
+    }
+    out = out.concat(taken);
+  }
+  return out;
+}
+
 function pickAll(list, opts, limit) {
   var out = [];
   for (var i = 0; i < list.length; i++) {
@@ -267,7 +335,8 @@ function pickAll(list, opts, limit) {
          the title's inferred weight does not, when this product's real ounce is
          over the cap. */
       if (pricierOunce && !namesAnOunce(sizes[j][0])) continue;
-      out.push({ product: p, index: j, price: price, perG: price / grams, key: p.id + '#' + j });
+      out.push({ product: p, index: j, price: price, perG: price / grams, key: p.id + '#' + j,
+        bucket: bucketOf(p, sizes[j][0]) });
     }
   }
   /* Dearest first, so the card leads with the most the budget buys rather than
@@ -305,17 +374,31 @@ Rather than show you something that is not the deal it claims to be, here is eve
   });
 }
 
-function description(p, h, trim) {
+/* The weight is named rather than implied, because "this 1oz is trim/shake" is a
+   sentence a shopper checks against what they think they are buying, where a bare
+   "trim" is a word they can skim past next to a photo of buds. It names the row on
+   screen, so it follows the dropdown. */
+function flagText(kind, weight) {
+  const w = weight || 'size';
+  return kind === 'cbd'
+    ? 'This ' + w + ' is CBD, non-psychoactive'
+    : 'This ' + w + ' is trim/shake, not whole buds';
+}
+
+function description(p, h, flags) {
   const bits = [];
   if (h.weight) bits.push(h.weight);
   if (h.perG) bits.push(money(h.perG, p.cur) + ' per gram');
   if (p.store) bits.push('at ' + p.store);
   if (p.inStock === false) bits.push('out of stock');
   const lead = bits.join(', ');
-  /* First, ahead of the price. This is the shared card's own text, so on a trim
-     listing it is the line that has to arrive with the link rather than waiting
+  /* First, ahead of the price. This is the shared card's own text, so on a trim or
+     CBD listing it is the line that has to arrive with the link rather than waiting
      for somebody to open the page and read a banner. */
-  const head = trim ? 'Trim and shake, not whole buds. ' : '';
+  const notes = [];
+  if (flags && flags.trim) notes.push(flagText('trim', h.weight) + '.');
+  if (flags && flags.cbd) notes.push(flagText('cbd', h.weight) + '.');
+  const head = notes.length ? notes.join(' ') + ' ' : '';
   return head + (lead
     ? lead + '. Compared against every other store on Legal-Leaf Market.'
     : 'Compared against every other store on Legal-Leaf Market.');
@@ -514,18 +597,41 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,B
 a{color:inherit}
 .shot{width:100%;height:100%;object-fit:cover;display:block}
 
-/* Flip card. Both faces share one box, so the container owns the geometry and the
-   back scrolls internally rather than resizing the card mid-flip. */
-.flip{position:relative;width:100%;aspect-ratio:1/1;perspective:1200px;transition:aspect-ratio .4s ease}
-/* The back carries more than a square can hold, and the size control must never
-   be the thing that falls below the fold, so the card grows when it turns over. */
+/* Flip card. Both faces share one box, so the container owns the geometry.
+   The card RESIZES to whichever face is showing; it never scrolls inside itself.
+   A scrollable panel nested in a scrollable page is the worst of both: the wheel
+   lands on whichever the pointer happens to be over, the inner scrollbar hides how
+   much is left, and on a phone a drag that meant to move the page moves the panel
+   instead. So the back's height follows its content (bottom:auto below), JS sets
+   the container to match, and anything past the fold is reached by scrolling the
+   PAGE, which is the one scroll everybody already understands.
+
+   aspect-ratio is the pre-measurement state only. JS sets an explicit height on
+   first paint and an inline height wins, so these are what the card looks like for
+   the frame before that. No JS at all means no flip either, since the buttons are
+   script, so the back is never on screen to need a height. */
+.flip{position:relative;width:100%;aspect-ratio:1/1;perspective:1200px;
+  transition:height .4s ease,aspect-ratio .4s ease}
 .flip.flipped{aspect-ratio:3/4}
 @media (prefers-reduced-motion:reduce){.flip{transition:none}}
 .inner{position:absolute;inset:0;transition:transform .55s cubic-bezier(.2,.7,.3,1);transform-style:preserve-3d}
 .flip.flipped .inner{transform:rotateY(180deg)}
 .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;
   border-radius:14px;border:1px solid var(--line);overflow:hidden;background:#f2f3f5}
-.back{transform:rotateY(180deg);background:var(--bg);overflow-y:auto;padding:14px 16px}
+/* bottom:auto is what makes this measurable: with inset:0 the back's height came
+   from the container, so its content height was only readable as scrollHeight and it
+   had to scroll. Released at the bottom, the element is as tall as its content and
+   offsetHeight is the number the container should be, readable whether or not the
+   card is currently turned over.
+
+   No min-height:100% here, deliberately. Pinning the back to the container's height
+   while the container takes its height FROM the back is a loop the card cannot
+   shrink out of: hiding the variant thumbnail would leave the old height behind.
+
+   overflow stays hidden, inherited from .face. With the container sized to the
+   content there is nothing to clip, and a non-visible overflow is also what keeps
+   the back hit-testable as one flat box inside the preserve-3d parent. */
+.back{transform:rotateY(180deg);background:var(--bg);padding:14px 16px;bottom:auto}
 @media (prefers-reduced-motion:reduce){.inner{transition:none}}
 
 /* Overlay controls sit on the photo so they cost no vertical space. */
@@ -559,17 +665,28 @@ a{color:inherit}
 
    Solid background and no backdrop-filter, for the reason recorded on .ov above:
    that filter makes its own compositing context, escapes backface-visibility, and
-   bleeds through the turned-away card. */
+   bleeds through the turned-away card.
+
+   The wrapper, not the bar, owns the positioning, because there can be two: a CBD
+   trim ounce is both things at once and neither statement covers the other. They
+   stack, and each hides independently. */
 .tsb{background:#a3261a;color:#fff;font-weight:800;font-size:13px;line-height:1.3;
-  letter-spacing:.04em;text-transform:uppercase;text-align:center;
+  letter-spacing:.04em;text-transform:uppercase;text-align:center;padding:10px 12px;
   backface-visibility:hidden;-webkit-backface-visibility:hidden}
-.front .tsb{position:absolute;z-index:3;top:0;left:0;right:0;padding:10px 12px;
-  transition:opacity .2s ease}
-.flip.flipped .front .tsb{opacity:0;pointer-events:none}
-/* On the back it is a block at the top of the panel rather than an overlay, so it
-   sits above the size dropdown: the banner and the choice it qualifies are read in
+/* CBD is information, not a warning about getting less than was advertised, so it
+   is blue rather than red. Both keep white text on a solid fill. */
+.tsb.cbd{background:#12558f}
+.front .tsbwrap{position:absolute;z-index:3;top:0;left:0;right:0;
+  display:flex;flex-direction:column;gap:2px;transition:opacity .2s ease}
+.flip.flipped .front .tsbwrap{opacity:0;pointer-events:none}
+/* On the back they are blocks at the top of the panel rather than overlays, so they
+   sit above the size dropdown: the banner and the choice it qualifies are read in
    that order. */
-.back .tsb{border-radius:10px;padding:11px 12px;margin:0 0 12px}
+/* The spacing hangs off each BAR rather than the wrapper, so a listing with no
+   banners carries no gap where they would have been: a hidden child contributes
+   nothing, while a wrapper margin would survive both of them being hidden. */
+.back .tsbwrap{display:flex;flex-direction:column}
+.back .tsb{border-radius:10px;padding:11px 12px;margin:0 0 10px}
 
 /* Slideshow arrows and position, on the photo so they cost no vertical space. */
 .ov.nav{top:50%;transform:translateY(-50%);font-size:24px;padding:6px 14px;line-height:1}
@@ -705,19 +822,12 @@ export default async function handler(req, res) {
       const data = await r.json();
       const list = Array.isArray(data && data.products) ? data.products : [];
       if (isPick) {
-        /* One slide per PRODUCT. pickAll ranks size rows, so a listing selling two
-           qualifying ounces at different prices would occupy two slides, which is
-           the same thing to look at twice. The dearest qualifying row wins the
-           slide, matching the ordering above, and that slide's dropdown still
-           offers the product's other rows, so nothing is lost. Deduping before the cap also means ten slides really are ten
-           different products. */
-        const ranked = pickAll(list, pickOpts);
-        const seenProduct = new Set();
-        candidates = ranked.filter((c) => {
-          if (seenProduct.has(c.product.id)) return false;
-          seenProduct.add(c.product.id);
-          return true;
-        }).slice(0, PICK_POOL);
+        /* composePool does the deduping, per bucket rather than globally: one slide
+           per listing first, and a THCa listing repeated with a different row only
+           once the distinct ones run out. A listing selling both buds and trim can
+           appear in both buckets, once with each row advertised, since those are two
+           different offers and each slide's dropdown still holds the rest. */
+        candidates = composePool(pickAll(list, pickOpts));
         pool = candidates.length;
         const wanted = parseInt(req.query && req.query.i, 10);
         rank = Number.isInteger(wanted) && wanted > 0 ? Math.min(wanted, pool - 1) : 0;
@@ -854,6 +964,10 @@ export default async function handler(req, res) {
        is chosen; trim is the state to show right now, which before a choice is
        made means the row this page is advertising. */
     const trimProd = isTrimShake(prod.name);
+    /* Product-level only, since a cannabinoid is a property of the plant and not of
+       the size somebody buys. It does not follow the dropdown the way trim does. */
+    const cbd = String(prod.cannabinoid || 'THCa') === 'CBD';
+    const trimNow = trimProd || !!(headRow && headRow.trim);
     return {
       pid: prod.id,
       name: String(prod.name || ''),
@@ -864,8 +978,9 @@ export default async function handler(req, res) {
       weight: head.weight || '',
       perG: head.perG || null,
       trimProd,
-      trim: trimProd || !!(headRow && headRow.trim),
-      desc: description(prod, head, trimProd || !!(headRow && headRow.trim)),
+      trim: trimNow,
+      cbd,
+      desc: description(prod, head, { trim: trimNow, cbd }),
       ogTitle: priceText
         ? `${prod.name} ${head.weight ? '(' + head.weight + ') ' : ''}${priceText}`
         : String(prod.name || 'Legal-Leaf Market'),
@@ -903,7 +1018,7 @@ export default async function handler(req, res) {
       /* Both, because the client needs to tell "this whole listing is trim" from
          "the row being advertised is", and only the first survives a change of
          size. */
-      trim: sl.trim, trimProd: sl.trimProd,
+      trim: sl.trim, trimProd: sl.trimProd, cbd: sl.cbd,
       sizes: sl.sizes.map((r) => ({
         i: r.i, label: r.label, display: r.display, price: r.price, perG: r.perG,
         isPick: r.isPick, img: r.img, item: r.item, trim: r.trim,
@@ -921,14 +1036,20 @@ export default async function handler(req, res) {
   <div class="inner">
     <div class="face front">
       <img class="shot" id="shot" src="${esc(img)}" alt="${esc(slide.name)}"/>
-      <div class="tsb" id="tsbF"${slide.trim ? '' : ' hidden'}>Trim and shake, not whole buds</div>
+      <div class="tsbwrap">
+        <div class="tsb" id="tsbF"${slide.trim ? '' : ' hidden'}>${esc(flagText('trim', slide.weight))}</div>
+        <div class="tsb cbd" id="cbdF"${slide.cbd ? '' : ' hidden'}>${esc(flagText('cbd', slide.weight))}</div>
+      </div>
       ${total > 1 ? `<button class="ov nav prev" id="prev" type="button" aria-label="Previous">&#8249;</button>
       <button class="ov nav next" id="next" type="button" aria-label="Next">&#8250;</button>
       <span class="ov count" id="count">${(isPick ? rank : 0) + 1} of ${total}</span>` : ''}
       <button class="ov flipbtn" id="toBack" type="button">Details and size</button>
     </div>
     <div class="face back">
-      <div class="tsb" id="tsbB"${slide.trim ? '' : ' hidden'}>Trim and shake, not whole buds</div>
+      <div class="tsbwrap">
+        <div class="tsb" id="tsbB"${slide.trim ? '' : ' hidden'}>${esc(flagText('trim', slide.weight))}</div>
+        <div class="tsb cbd" id="cbdB"${slide.cbd ? '' : ' hidden'}>${esc(flagText('cbd', slide.weight))}</div>
+      </div>
       <div class="bh">
         <h2>What you are actually getting</h2>
         <button class="flipback" id="toFront" type="button">&#8592; Photo</button>
@@ -991,8 +1112,31 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
     return null;
   }
 
+  /* The card is sized to the face on show, so neither face ever scrolls inside
+     itself and everything past the fold is reached by scrolling the page.
+
+     Called after anything that changes the back's height: flipping, moving slide,
+     choosing a size (the variant thumbnail appears), the lab panel swapping in, and
+     a window resize, since the back reflows at a new width. Cheap enough to call
+     freely: one offsetHeight read, no writes when the number has not moved. */
+  function sizeCard(){
+    var back = flip.querySelector('.back');
+    if (!back) return;
+    var h = flip.classList.contains('flipped') ? back.offsetHeight : flip.clientWidth;
+    if (!h) return;
+    var px = Math.ceil(h) + 'px';
+    if (flip.style.height !== px) flip.style.height = px;
+  }
+  /* The photo decides the height of the front, so a late-arriving image would
+     otherwise leave the card at whatever the placeholder measured. */
+  var shotEl = document.getElementById('shot');
+  if (shotEl) shotEl.addEventListener('load', sizeCard);
+  addEventListener('resize', sizeCard);
+  sizeCard();
+
   function setFlipped(on){
     flip.classList.toggle('flipped', !!on);
+    sizeCard();
     var s = document.getElementById('size');
     if (!on || !s) return;
     /* Bring the card on screen before focusing. Add to cart sits below the card,
@@ -1036,10 +1180,20 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
   function showTrim(c){
     var sl = cur();
     var on = !!sl.trimProd || (c ? !!c.trim : !!sl.trim);
-    var f = document.getElementById('tsbF');
-    var b = document.getElementById('tsbB');
-    if (f) f.hidden = !on;
-    if (b) b.hidden = !on;
+    /* The weight named in the banner is the row's, so it tracks the choice too: a
+       banner reading "this 1oz" while a 2oz is selected states the wrong thing
+       about the right product. */
+    var w = (c ? c.label : sl.weight) || 'size';
+    set('tsbF', on, 'This ' + w + ' is trim/shake, not whole buds');
+    set('tsbB', on, 'This ' + w + ' is trim/shake, not whole buds');
+    set('cbdF', !!sl.cbd, 'This ' + w + ' is CBD, non-psychoactive');
+    set('cbdB', !!sl.cbd, 'This ' + w + ' is CBD, non-psychoactive');
+    function set(id, vis, text){
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.hidden = !vis;
+      if (vis) el.textContent = text;
+    }
   }
 
   function wireSelect(){
@@ -1051,6 +1205,8 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
       var h2 = document.getElementById('hint2');
       showPhoto(c);
       showTrim(c);
+      // The variant thumbnail and the banners both change the back's height.
+      sizeCard();
       if (!c) { hint.textContent = 'Choose a size to see the exact price.'; hint.className = 'hint'; return; }
       priceEl.innerHTML = '';
       priceEl.appendChild(document.createTextNode(money(c.price, sl.cur)));
@@ -1139,6 +1295,10 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
 
     var c = document.getElementById('count');
     if (c) c.textContent = (at + 1) + ' of ' + D.slides.length;
+
+    // A new slide brings a new lab panel and a new dropdown, so the back's height
+    // has almost certainly moved.
+    sizeCard();
 
     /* Keep the URL in step so a slide can still be shared, without adding a
        history entry per tap. */
@@ -1244,4 +1404,4 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
 }
 
 // Exported for tests. Not part of the route contract.
-export const __test = { esc, httpsOnly, money, weightLabel, headline, description, cartItem, pickBest, pickAll, PICK_POOL, saysWeightAlready, namesAnOunce, ounceRowOverCap, isTrimShake };
+export const __test = { esc, httpsOnly, money, weightLabel, headline, description, cartItem, pickBest, pickAll, PICK_POOL, saysWeightAlready, namesAnOunce, ounceRowOverCap, isTrimShake, bucketOf, composePool, POOL_MIX };
