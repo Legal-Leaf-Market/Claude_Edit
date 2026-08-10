@@ -1,8 +1,16 @@
 /**
  * The operating-model math. Ported from the same engine used on
- * legal-leafmarket.com's admin page, kept single-site here (Gear Avail has
- * one storefront, not four), but the shape stays generic in case a second
- * site profile is ever worth comparing against.
+ * legal-leafmarket.com's admin page (that site's own version runs four site
+ * profiles through the identical `runModel`; Gear Avail's own page has
+ * always called it with a single-element array). `lib/admin/all-sites.ts`
+ * is what actually combines Gear Avail with the sister sites' own reference
+ * data into one five-site view, using this same engine, unmodified.
+ *
+ * `runModel`'s optional `displayMonths` argument (default 24, the anchor
+ * horizon) lets a caller ask for more months of the same fitted curve — a
+ * decade view, for instance — without changing what the model is fit to.
+ * See the doc comment on `makeRamp` for why that requires clamping the
+ * conversion/attribution ramps rather than just running the loop longer.
  *
  * ── How the projection is built ─────────────────────────────────────────
  * 1. Traffic follows an S-curve in log space, fitted so it passes through
@@ -39,11 +47,22 @@ const ATTRIBUTION_RAMP = { scale: 9.5411, shape: 1.2217 }
 
 const sigmoid = (x: number) => 1 / (1 + Math.exp(-x))
 
-/** Normalised Weibull CDF: p(1..24) rising to exactly 1 at the horizon. */
+/**
+ * Normalised Weibull CDF: p(1..24) rising to exactly 1 at the horizon.
+ *
+ * Clamped at 1 for t > 24 rather than left to keep climbing. f(t)/f(24) is
+ * a ratio against the value AT month 24, not a value that saturates at 1 on
+ * its own; f itself keeps rising past t=24 (a Weibull CDF's true ceiling is
+ * f(∞)=1, reached only in the limit), so beyond the 24-month anchor horizon
+ * the raw ratio exceeds 1 and "125% of stated conversion" would silently
+ * become 130%, then 140%, the further out a projection runs. Every month
+ * beyond 24 is fully matured by construction (that's what the 24-month
+ * horizon means), so clamping is the correct model of that, not a patch.
+ */
 function makeRamp(ramp: { scale: number; shape: number }) {
   const f = (t: number) => 1 - Math.exp(-Math.pow(t / ramp.scale, ramp.shape))
   const full = f(HORIZON_MONTHS)
-  return (t: number) => f(t) / full
+  return (t: number) => Math.min(1, f(t) / full)
 }
 const conversionProgress = makeRamp(CONVERSION_RAMP)
 const attributionProgress = makeRamp(ATTRIBUTION_RAMP)
@@ -68,11 +87,21 @@ function fitTrafficCurve(
   const a24 = Math.log(s24)
   const span = a24 - a1
 
+  // Past month 24, hold flat at the month-24 anchor rather than continuing
+  // the month-12-to-24 slope in log-space indefinitely. The primary sigmoid
+  // fit below naturally plateaus past its anchor horizon (that is what a
+  // sigmoid does); this piecewise-linear stand-in for it has no such
+  // built-in ceiling, and unlike the sigmoid path (only ever evaluated for
+  // t in [1, 24] before displayMonths existed), a decade-length run now
+  // asks this function for t up to 120. Left extrapolating, a mundane
+  // non-monotonic anchor set (a modelled dip at month 12, say) compounds
+  // that slope for 96 more months into session counts in the tens of
+  // quintillions — silent, non-crashing, and meaningless.
   const geometricFallback = () => (t: number) => {
     if (t <= 1) return s1
     if (t <= 12) return Math.exp(a1 + ((a12 - a1) * (t - 1)) / 11)
     if (t <= 24) return Math.exp(a12 + ((a24 - a12) * (t - 12)) / 12)
-    return Math.exp(a24 + ((a24 - a12) * (t - 24)) / 12)
+    return s24
   }
 
   if (!Number.isFinite(span) || Math.abs(span) < 1e-9) return geometricFallback()
@@ -148,6 +177,11 @@ function monthLabel(t: number): string {
 
 export const MONTH_LABELS = Array.from({ length: HORIZON_MONTHS }, (_, i) => monthLabel(i + 1))
 
+/** Same label generator, for a horizon other than the default 24 months. */
+export function buildMonthLabels(months: number): string[] {
+  return Array.from({ length: months }, (_, i) => monthLabel(i + 1))
+}
+
 export type Assumptions = {
   sessionsMonth1: number
   sessionsMonth12: number
@@ -217,7 +251,7 @@ function conversionAt(a: Assumptions, t: number): number {
 
 type RawRow = { sessions: number; revenue: number; revPerSession: number; attribution: number }
 
-function projectSite(profile: SiteProfile, effective: Assumptions): RawRow[] {
+function projectSite(profile: SiteProfile, effective: Assumptions, months: number): RawRow[] {
   const curve = fitTrafficCurve(
     effective.sessionsMonth1,
     effective.sessionsMonth12,
@@ -227,7 +261,7 @@ function projectSite(profile: SiteProfile, effective: Assumptions): RawRow[] {
   const commission = effective.commissionPct / 100
 
   const rows: RawRow[] = []
-  for (let i = 0; i < HORIZON_MONTHS; i += 1) {
+  for (let i = 0; i < months; i += 1) {
     const t = i + 1
     const seasonal = profile.seasonality[calendarMonth(t)] ?? 1
     const sessions = Math.max(0, Math.round(curve(t) * seasonal))
@@ -260,7 +294,7 @@ function applyActuals(
 ): { rows: RawRow[]; closedMonths: number[] } {
   const closed: number[] = []
   if (actuals) {
-    for (let t = 1; t <= HORIZON_MONTHS; t += 1) {
+    for (let t = 1; t <= raw.length; t += 1) {
       const entry = actuals[t]
       const s = entry?.sessions
       const r = entry?.revenue
@@ -337,7 +371,7 @@ export type QuarterRow = {
 
 function buildQuarters(months: MonthRow[]): QuarterRow[] {
   const quarters: QuarterRow[] = []
-  for (let q = 0; q < HORIZON_MONTHS / 3; q += 1) {
+  for (let q = 0; q < Math.floor(months.length / 3); q += 1) {
     const slice = months.slice(q * 3, q * 3 + 3)
     const sessions = slice.reduce((s, m) => s + m.sessions, 0)
     const orders = slice.reduce((s, m) => s + m.orders, 0)
@@ -364,12 +398,15 @@ export type SiteResult = {
   profile: SiteProfile
   months: MonthRow[]
   quarters: QuarterRow[]
+  /** Scoped to the first 24 months specifically, even on a longer run. */
   year1Revenue: number
   year2Revenue: number
+  /** Full requested horizon, not just year1 + year2. */
   totalRevenue: number
   totalSessions: number
   totalOrders: number
   totalGmv: number
+  /** The LAST month of whatever horizon was requested, not literally month 24 on an extended run. */
   month24Revenue: number
   month24Sessions: number
   exitRunRate: number
@@ -400,16 +437,27 @@ export function runModel(
   overrides: Partial<Record<string, Partial<Assumptions>>> | undefined,
   scenario: Scenario,
   actuals: Partial<Record<string, ActualsForSite>> | undefined,
+  /**
+   * Months of output to generate. Defaults to the 24-month anchor horizon.
+   * A longer value (120 for a decade) is a display/summation choice only:
+   * the anchors and the ramp curves are still fit and normalised against 24,
+   * exactly as the model was designed. The traffic S-curve naturally
+   * approaches its own asymptote past month 24 (that is what a sigmoid
+   * does); the conversion/attribution ramps are explicitly clamped at their
+   * fully-matured value there (see makeRamp) rather than left to overshoot.
+   */
+  displayMonths: number = HORIZON_MONTHS,
 ): ModelResult {
   const sites: Record<string, SiteResult> = {}
   const order: string[] = []
+  const labels = displayMonths === HORIZON_MONTHS ? MONTH_LABELS : buildMonthLabels(displayMonths)
 
   for (const profile of profiles) {
     order.push(profile.key)
     const base: Assumptions = { ...profile.assumptions, ...(overrides?.[profile.key] || {}) }
     const effective = applyScenario(base, scenario)
 
-    const raw = projectSite(profile, effective)
+    const raw = projectSite(profile, effective, displayMonths)
     const { rows, closedMonths } = applyActuals(raw, actuals?.[profile.key])
 
     const commission = effective.commissionPct / 100
@@ -429,7 +477,7 @@ export function runModel(
       const planned = raw[i]
       return {
         index: t,
-        label: MONTH_LABELS[i],
+        label: labels[i],
         sessions: row.sessions,
         revPerSession: row.revPerSession,
         orders,
@@ -448,8 +496,14 @@ export function runModel(
       }
     })
 
+    // Year 1 / year 2 stay scoped to the first 24 months specifically (the
+    // original anchor horizon) even when displayMonths runs longer, since
+    // that is what those two figures have always meant on this page.
+    // totalRevenue sums the FULL requested horizon, not just year1 + year2 —
+    // those would silently drop months 25+ on an extended run otherwise.
     const year1Revenue = months.slice(0, 12).reduce((s, m) => s + m.revenue, 0)
-    const year2Revenue = months.slice(12).reduce((s, m) => s + m.revenue, 0)
+    const year2Revenue = months.slice(12, 24).reduce((s, m) => s + m.revenue, 0)
+    const totalRevenue = months.reduce((s, m) => s + m.revenue, 0)
     const last = months[months.length - 1]
 
     sites[profile.key] = {
@@ -459,7 +513,7 @@ export function runModel(
       quarters: buildQuarters(months),
       year1Revenue,
       year2Revenue,
-      totalRevenue: year1Revenue + year2Revenue,
+      totalRevenue,
       totalSessions: months.reduce((s, m) => s + m.sessions, 0),
       totalOrders: months.reduce((s, m) => s + m.orders, 0),
       totalGmv: months.reduce((s, m) => s + m.gmv, 0),
@@ -490,7 +544,7 @@ export function runModel(
       totalSessions: list.reduce((s, p) => s + p.totalSessions, 0),
       indexablePages: list.reduce((s, p) => s + p.profile.indexablePages, 0),
     },
-    monthLabels: MONTH_LABELS,
+    monthLabels: labels,
   }
 }
 

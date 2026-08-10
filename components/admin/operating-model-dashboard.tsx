@@ -217,14 +217,22 @@ export function OperatingModelDashboard() {
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--amber)]">
             Operating model · prepared {PREPARED_ON}
           </p>
-          <button
-            type="button"
-            onClick={signOut}
-            disabled={signingOut}
-            className="rounded-lg border border-[var(--border)] px-3 py-1 text-xs font-medium text-[var(--muted-foreground)] hover:bg-[var(--secondary)] hover:text-[var(--cream)] disabled:opacity-50"
-          >
-            {signingOut ? "Leaving…" : "Exit admin"}
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href="/admin/all-sites"
+              className="rounded-lg border border-[var(--border)] px-3 py-1 text-xs font-medium text-[var(--cream)] hover:bg-[var(--secondary)]"
+            >
+              All 5 sites combined →
+            </a>
+            <button
+              type="button"
+              onClick={signOut}
+              disabled={signingOut}
+              className="rounded-lg border border-[var(--border)] px-3 py-1 text-xs font-medium text-[var(--muted-foreground)] hover:bg-[var(--secondary)] hover:text-[var(--cream)] disabled:opacity-50"
+            >
+              {signingOut ? "Leaving…" : "Exit admin"}
+            </button>
+          </div>
         </div>
         <h1 className="mt-1 text-2xl font-semibold text-[var(--cream)] sm:text-3xl">
           Can this actually make money?
