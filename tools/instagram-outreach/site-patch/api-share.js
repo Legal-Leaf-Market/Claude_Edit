@@ -290,9 +290,39 @@ function ounceRowOverCap(sizes, maxPrice) {
  * caps, not targets: they never repeat, and if the feed has fewer than the cap the
  * pool is simply shorter. Nothing backfills across buckets, because the whole point
  * is that trim cannot expand into the space THCa leaves.
+ *
+ * THREE OF THE SIX THCa SLOTS ARE RESERVED FOR THCA SMALL BUDS, and this is the one
+ * genuinely editorial thing on the card, so it is written down rather than buried.
+ *
+ * The reason on the record is the owner's: six-plus months of personal orders from
+ * that store, price to quality they say cannot be matched, and enough confidence to
+ * put their own name behind it in a DM. THE REASON IS NOT THE COMMISSION. Small Buds
+ * pays (ref coffeeandajoint, coupon JACOBKENNEDY) and so do most of the others, and
+ * per CLAUDE.md payout is never an input to how a merchant is treated. A vouch and a
+ * kickback look identical from outside, which is exactly why the file has to say
+ * which one it was: this is a vouch.
+ *
+ * Two limits keep it honest:
+ *
+ *   - It is a FLOOR, not a filter, and it moves nothing else. The comparison grid
+ *     still sorts on price, discount, recency or shuffle, exactly as the footer
+ *     promises. This reserves slides in one marketing slideshow.
+ *   - It cannot invent inventory. If fewer than three Small Buds rows qualify under
+ *     the cap, the pool takes what exists and the rest fills normally. Nothing is
+ *     padded past what the store is actually selling that day.
+ *
+ * The remaining three THCa slots are SPREAD across as many other shops as the feed
+ * allows, one listing per store per round, so the half of the slideshow that is not
+ * reserved is genuinely a survey rather than a second store's block.
+ *
+ * The pick is therefore no longer purely computed. The query still decides what is
+ * eligible and the ranking still decides the order inside every bucket, but the
+ * composition is now part editorial. No copy on the card claims otherwise: it states
+ * the size, the price and the per gram figure, and it never called itself the best
+ * anything.
  */
 var POOL_MIX = [
-  { key: 'thca', want: 6, repeat: true },
+  { key: 'thca', want: 6, repeat: true, reserve: { storeKey: 'thcasmallbuds', min: 3 }, spread: true },
   { key: 'trim', want: 3, repeat: false },
   { key: 'cbd', want: 1, repeat: false },
 ];
@@ -318,6 +348,64 @@ function bucketOf(p, row) {
   return null;
 }
 
+/* Dearest first, so the card leads with the most the budget buys rather than the least.
+   Two rows at the same price are separated by per gram, which at a fixed price means the
+   bigger ounce, and then by key so the ordering, and therefore every ?i= link, is stable
+   between requests instead of following feed order. Shared by the ranking and by the
+   composer, so a re-sort after composition cannot drift from it. */
+function byDearest(a, b) {
+  if (a.price !== b.price) return b.price - a.price;
+  if (a.perG !== b.perG) return a.perG - b.perG;
+  return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+}
+
+/* One slide per listing first, so ten slides are ten different shops wherever the feed
+   allows it. `rows` arrives dearest-first, so this takes the dearest qualifying row of
+   each distinct listing in turn. */
+function takeDistinct(rows, taken, seen, upTo) {
+  for (var j = 0; j < rows.length && taken.length < upTo; j++) {
+    if (seen[rows[j].product.id]) continue;
+    seen[rows[j].product.id] = 1;
+    taken.push(rows[j]);
+  }
+}
+
+/* Only then, and only where the slot allows it, a second row from a listing already
+   used. Each carries its own index, so the slide opens with that row selected and its
+   own price and photo. */
+function takeRepeats(rows, taken, upTo, repeated) {
+  for (var k = 0; k < rows.length && taken.length < upTo; k++) {
+    if (taken.indexOf(rows[k]) === -1) { taken.push(rows[k]); repeated.push(rows[k]); }
+  }
+}
+
+/* Reorders rows so stores alternate: every shop's dearest qualifying row, then every
+   shop's second, and so on. Feeding takeDistinct() this order is what stops one large
+   catalogue taking every unreserved slot just because it lists the most ounces.
+
+   `defer` (the reserved store) goes to the very end rather than into the rotation: it
+   already holds its floor, and it should only take an unreserved slot when literally
+   nothing else can fill one. */
+function spreadByStore(rows, defer) {
+  var order = [], byStore = {}, deferred = [];
+  for (var i = 0; i < rows.length; i++) {
+    var sk = String((rows[i].product && rows[i].product.storeKey) || '');
+    if (defer && sk === defer) { deferred.push(rows[i]); continue; }
+    if (!byStore[sk]) { byStore[sk] = []; order.push(sk); }
+    byStore[sk].push(rows[i]);
+  }
+  var out = [], round = 0, moved = true;
+  while (moved) {
+    moved = false;
+    for (var s = 0; s < order.length; s++) {
+      var q = byStore[order[s]];
+      if (round < q.length) { out.push(q[round]); moved = true; }
+    }
+    round++;
+  }
+  return out.concat(deferred);
+}
+
 function composePool(ranked) {
   var out = [];
   for (var m = 0; m < POOL_MIX.length; m++) {
@@ -325,22 +413,44 @@ function composePool(ranked) {
     var rows = ranked.filter(function (r) { return r.bucket === slot.key; });
     var seen = {};
     var taken = [];
-    // One slide per listing first, so ten slides are ten different shops wherever
-    // the feed allows it.
-    for (var j = 0; j < rows.length && taken.length < slot.want; j++) {
-      if (seen[rows[j].product.id]) continue;
-      seen[rows[j].product.id] = 1;
-      taken.push(rows[j]);
+    var repeated = [];
+
+    /* The reserved floor is filled FIRST, out of that store's rows alone, so it cannot
+       be crowded out by a dearer row from anywhere else. It is a floor and not a quota:
+       if the store has fewer qualifying rows than the floor asks for, this simply takes
+       what it has and the rest of the slot fills normally below. */
+    if (slot.reserve) {
+      var mine = rows.filter(function (r) {
+        return r.product && r.product.storeKey === slot.reserve.storeKey;
+      });
+      var floor = Math.min(slot.reserve.min, slot.want);
+      takeDistinct(mine, taken, seen, floor);
+      if (slot.repeat) takeRepeats(mine, taken, floor, repeated);
     }
-    /* Only then, and only for THCa, a second row from a listing already used. Each
-       carries its own index, so the slide opens with that row selected and its own
-       price and photo. */
-    if (slot.repeat) {
-      for (var k = 0; k < rows.length && taken.length < slot.want; k++) {
-        if (taken.indexOf(rows[k]) === -1) taken.push(rows[k]);
-      }
-    }
-    out = out.concat(taken);
+
+    var rest = rows.filter(function (r) { return taken.indexOf(r) === -1; });
+    if (slot.spread) rest = spreadByStore(rest, slot.reserve && slot.reserve.storeKey);
+    takeDistinct(rest, taken, seen, slot.want);
+    if (slot.repeat) takeRepeats(rest, taken, slot.want, repeated);
+
+    /* WHICH rows are in the bucket is now part editorial. What ORDER they run in is
+       not, and must not become so: slide one is the card that goes in a DM, and the
+       rule for it has been "the dearest ounce the cap allows" since the $20 lead read
+       as bargain bin and made the whole offer look worse than it is. Filling the
+       reserved floor first and then leaving it there would have handed slide one to
+       whichever store holds the reservation, at whatever price they happen to charge.
+
+       So the bucket is re-sorted on the same comparator the ranking uses, and the
+       reservation buys presence in the ten rather than the front of them. Distinct
+       listings are sorted and run BEFORE any repeat, which keeps the other rule the
+       composer has always had: a second row from a shop already shown never displaces
+       a shop that has not been shown at all. The lead is still the dearest row in the
+       bucket either way, since the dearest row of any listing is taken in the distinct
+       pass, so a repeat can never be the dearest thing here. */
+    var first = taken.filter(function (r) { return repeated.indexOf(r) === -1; });
+    first.sort(byDearest);
+    repeated.sort(byDearest);
+    out = out.concat(first, repeated);
   }
   return out;
 }
@@ -368,16 +478,7 @@ function pickAll(list, opts, limit) {
         bucket: bucketOf(p, sizes[j]) });
     }
   }
-  /* Dearest first, so the card leads with the most the budget buys rather than
-     the least. Two rows at the same price are separated by per gram, which at a
-     fixed price means the bigger ounce, and then by key so the ordering, and
-     therefore every ?i= link, is stable between requests instead of following
-     feed order. */
-  out.sort(function (a, b) {
-    if (a.price !== b.price) return b.price - a.price;
-    if (a.perG !== b.perG) return a.perG - b.perG;
-    return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
-  });
+  out.sort(byDearest);
   return limit ? out.slice(0, limit) : out;
 }
 

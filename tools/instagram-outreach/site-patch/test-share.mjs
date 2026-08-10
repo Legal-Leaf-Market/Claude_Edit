@@ -132,14 +132,28 @@ console.log('\n=== WooCommerce checkout arrives with the item in the cart ===');
     storeKey: 'cbdhempdirect', domain: 'cbdhemp.direct', platform: 'woocommerce',
     ref: '161', refParam: 'sld', refLink: '', coupon: '', productId: '153500', cartPath: '/cart',
     url: 'https://cbdhemp.direct/products/thca-flower-candy-paint?sld=161',
+    /* The attribute query is what makes Woo accept the variation. Built at scrape time from the
+       parent's own declared taxonomy and terms, never slugified from the label. */
+    attrQuery: 'attribute_pa_net-weight=28-grams',
     variantId: '153530', price: 114.99, size: 'Net Weight: 28 Grams', cur: 'USD' };
   const url = storeCheckoutUrl(woo.domain, [woo]);
   console.log('  woo checkout: ' + url);
   ok(url.startsWith('https://cbdhemp.direct/cart?'), 'lands on the cart page, not the product page');
-  ok(url.includes('add-to-cart=153530'), 'the VARIATION id is what is added, so the chosen size is the one in the cart');
+  ok(url.includes('add-to-cart=153500'), 'the PARENT id goes in add-to-cart, which is what Woo\'s own form posts');
+  ok(url.includes('variation_id=153530'), 'the variation id names the size chosen here');
+  ok(url.includes('attribute_pa_net-weight=28-grams'),
+     'and its attribute rides along, because the bare variation id alone was rejected live');
   ok(url.includes('quantity=1'), 'with a quantity');
   ok(url.includes('sld=161'), 'and the store\'s own affiliate param survives: ' + url);
-  ok(!/attribute_/.test(url), 'no attribute_* is hand-built, since a wrong one fails validation and adds nothing');
+
+  /* A variation whose attributes could not be derived adds NOTHING rather than posting a guess:
+     Woo answers a wrong attribute with the same "please choose product options" notice as a
+     missing one, and a link that argues with the shopper is worse than a plain one. */
+  const noAttrs = { ...woo, attrQuery: '' };
+  const bare = storeCheckoutUrl(noAttrs.domain, [noAttrs]);
+  console.log('  woo with underivable attributes: ' + bare);
+  ok(!/add-to-cart/.test(bare), 'no add-to-cart at all when the attributes are unknown');
+  ok(bare.startsWith('https://cbdhemp.direct/products/'), 'just the product page, which always works');
 
   // Two of the same variation is a quantity, not two links.
   const two = storeCheckoutUrl(woo.domain, [woo, { ...woo }]);
@@ -151,7 +165,8 @@ console.log('\n=== WooCommerce checkout arrives with the item in the cart ===');
   const u2 = storeCheckoutUrl(noPath.domain, [noPath]);
   console.log('  woo without a known cart path: ' + u2);
   ok(u2.startsWith('https://cbdhemp.direct/products/'), 'falls back to the product page rather than guessing /cart');
-  ok(u2.includes('add-to-cart=153530'), 'and still adds the item on arrival');
+  ok(u2.includes('add-to-cart=153500') && u2.includes('variation_id=153530'),
+     'and still adds the chosen variation on arrival');
   ok(u2.includes('sld=161'), 'the product url is already ref-stamped, so it is not double-stamped: ' + u2);
   ok((u2.match(/sld=161/g) || []).length === 1, 'exactly once');
 
@@ -987,6 +1002,74 @@ console.log('\n=== the pool is composed, not just ranked ===');
      'trim wins over the cannabinoid, since being sold offcuts is the more material surprise');
   ok(__test.bucketOf({ name: 'Delta 8 Ounce', cannabinoid: 'Δ8' }, '1 oz') === null,
      'and D8 belongs to none of the three, so it is left out rather than counted as THCa');
+
+  /* THREE OF THE SIX THCa SLOTS ARE RESERVED FOR THCA SMALL BUDS, on the owner's vouch
+     (six-plus months of their own orders) and not on the commission, which most of these
+     stores pay anyway. The test that matters is that the floor holds when the RANKING
+     would not have chosen them: Small Buds ounces here are the CHEAPEST in the feed, so
+     dearest-first would have put every one of them last. */
+  console.log('\n=== three of the six THCa slides are reserved for Small Buds ===');
+  const sb = (n, price) => ({ ...mk('sb' + n, 'Small Buds Ounce ' + n, price),
+    store: 'THCA Small Buds', storeKey: 'thcasmallbuds', id: 'thcasmallbuds__sb' + n });
+  const RES = [];
+  for (let i = 0; i < 4; i++) RES.push(mk('bud' + i, 'Whole Bud Ounce ' + i, 48 - i));
+  for (let i = 0; i < 4; i++) RES.push(sb(i, 25 - i));
+  const rpool = __test.composePool(__test.pickAll(RES, opts));
+  const rthca = rpool.filter((c) => c.bucket === 'thca');
+  console.log('  THCa slides: ' + JSON.stringify(rthca.map((c) => c.product.storeKey + ' $' + c.price)));
+  ok(rthca.length === 6, 'still six THCa slides: ' + rthca.length);
+  const mineCount = rthca.filter((c) => c.product.storeKey === 'thcasmallbuds').length;
+  ok(mineCount === 3, 'exactly three of them are Small Buds: ' + mineCount);
+  /* Selection and order are separate questions. The floor decides WHICH rows are in the
+     six, and it is filled before anything else so the ranking cannot crowd it out. The
+     ranking still decides what ORDER they run in, because slide one is the card that goes
+     in a DM and the rule for that has been "the dearest ounce the cap allows" ever since
+     a $20 lead read as bargain bin. Reserving slides must not quietly repeal it. */
+  ok(rpool[0].price === 48 && rpool[0].product.storeKey !== 'thcasmallbuds',
+     'the lead slide is still the dearest ounce under the cap, not the reserved store: $' + rpool[0].price);
+  ok(rthca.map((c) => c.price).join(',') === '48,47,46,25,24,23',
+     'and the whole bucket runs dearest-first: ' + rthca.map((c) => c.price).join(','));
+  ok(rthca.filter((c) => c.product.storeKey === 'thcasmallbuds').map((c) => c.price).join(',') === '25,24,23',
+     'and dearest-first still decides the order INSIDE the reservation');
+
+  /* The other three are split across shops rather than handed to whichever catalogue
+     lists the most ounces. */
+  const others = rthca.filter((c) => c.product.storeKey !== 'thcasmallbuds');
+  ok(others.length === 3, 'three slides are left for everyone else: ' + others.length);
+  ok(new Set(others.map((c) => c.product.storeKey)).size === 3,
+     'and they land on three DIFFERENT stores: ' + others.map((c) => c.product.storeKey).join(', '));
+
+  /* A store that lists ten ounces must not take all three of the unreserved slots just
+     for listing the most. One per store per round is what stops it. */
+  const HOG = [];
+  for (let i = 0; i < 10; i++) HOG.push(mk('hog' + i, 'Big Shop Ounce ' + i, 48 - i, { storeKey: 'bigshop', store: 'Big Shop' }));
+  HOG.push(mk('small1', 'Little Shop Ounce', 30, { storeKey: 'little1' }));
+  HOG.push(mk('small2', 'Other Shop Ounce', 29, { storeKey: 'little2' }));
+  for (let i = 0; i < 3; i++) HOG.push(sb(i, 25 - i));
+  const hpool = __test.composePool(__test.pickAll(HOG, opts)).filter((c) => c.bucket === 'thca');
+  const hogKeys = hpool.map((c) => c.product.storeKey);
+  console.log('  spread: ' + JSON.stringify(hogKeys));
+  ok(hogKeys.filter((k) => k === 'bigshop').length === 1,
+     'the ten-listing store takes ONE unreserved slot, not three: ' + hogKeys.filter((k) => k === 'bigshop').length);
+  ok(hogKeys.includes('little1') && hogKeys.includes('little2'), 'and the two small shops both get a slide');
+
+  /* It is a floor, not a quota: nothing is padded past what the store actually sells. */
+  const THIN_SB = [sb(0, 25)];
+  for (let i = 0; i < 6; i++) THIN_SB.push(mk('bud' + i, 'Whole Bud Ounce ' + i, 48 - i));
+  const tpool = __test.composePool(__test.pickAll(THIN_SB, opts)).filter((c) => c.bucket === 'thca');
+  const tMine = tpool.filter((c) => c.product.storeKey === 'thcasmallbuds').length;
+  ok(tMine === 1, 'one qualifying listing yields one reserved slide, not three: ' + tMine);
+  ok(tpool.length === 6, 'and the rest of the bucket still fills: ' + tpool.length);
+
+  /* A single Small Buds listing sold at several prices DOES fill the floor, the same
+     way the THCa bucket already repeats a multi-strain listing: different row, different
+     strain, different price, which is a real second option rather than padding. */
+  const MULTI_SB = [{ ...sb(9, 25), sizes: [row('Gushers 1 oz', 25), row('Zkittlez 1 oz', 24), row('Runtz 1 oz', 23)] }];
+  for (let i = 0; i < 6; i++) MULTI_SB.push(mk('bud' + i, 'Whole Bud Ounce ' + i, 48 - i));
+  const mpool = __test.composePool(__test.pickAll(MULTI_SB, opts)).filter((c) => c.bucket === 'thca');
+  const mMine = mpool.filter((c) => c.product.storeKey === 'thcasmallbuds');
+  ok(mMine.length === 3, 'three rows of one listing fill the floor: ' + mMine.length);
+  ok(new Set(mMine.map((c) => c.index)).size === 3, 'each advertising a different row');
 
   // The CBD banner, on a listing that is CBD but not trim.
   globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [FEED[FEED.length - 2]] }) });

@@ -39,9 +39,11 @@ const WOO = {
   badges: [], gallery: [], coa: '', image: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=',
   url: 'https://cbdhemp.direct/products/thca-flower-house-blend?sld=161',
   offcut: false, subTags: { trim: false },
+  /* Slot 8 is the add-to-cart attribute query, derived at scrape time from the parent's own
+     declared taxonomy. Without it the link degrades to the product page on purpose. */
   sizes: [
-    ['Net Weight: 28 Grams', 99, 28, '153601', true, null, '', 0],
-    ['Shake 28 Grams', 44, 28, '153602', true, null, '', 1],
+    ['Net Weight: 28 Grams', 99, 28, '153601', true, null, '', 0, 'attribute_pa_net-weight=28-grams'],
+    ['Shake 28 Grams', 44, 28, '153602', true, null, '', 1, 'attribute_pa_shake=28-grams'],
   ],
 };
 const PAYLOAD = JSON.stringify({ products: [WOO], meta: { updated: '2026-08-10 00:00 UTC', total: 1, stores: [{ name: 'CBD Hemp Direct', count: 1 }] } });
@@ -129,7 +131,9 @@ const href = await page.evaluate(async () => {
 });
 console.log('  href: ' + href);
 ok(!!href && href.startsWith('https://cbdhemp.direct/cart?'), 'it is their cart page: ' + href);
-ok(/add-to-cart=153602/.test(href || ''), 'carrying the variation the shopper chose');
+ok(/add-to-cart=153600/.test(href || ''), 'posting the parent id, the way their own form does');
+ok(/variation_id=153602/.test(href || ''), 'naming the variation the shopper chose');
+ok(/attribute_pa_shake=28-grams/.test(href || ''), 'with the attribute that makes Woo accept it');
 ok(/quantity=1/.test(href || ''), 'with a quantity');
 ok(/sld=161/.test(href || ''), 'under the store\'s own param');
 ok(!/[?&]ref=161/.test(href || ''), 'and not the hardcoded ref= that would have paid nobody');
