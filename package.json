@@ -35,7 +35,7 @@
     "search:reindex": "tsx scripts/reindex.ts"
   },
   "dependencies": {
-    "@vercel/analytics": "1.6.1",
+    "@vercel/analytics": "^2.0.1",
     "better-auth": "^1.6.26",
     "bullmq": "^6.0.9",
     "class-variance-authority": "^0.7.1",
