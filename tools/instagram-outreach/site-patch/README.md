@@ -32,6 +32,35 @@ An empty result answers 200 with a plain "nothing qualifies right now" and no ca
 button, rather than 404 or a fabricated pick. A link already sitting in someone's
 DM should not break because the feed has nothing cheap this week.
 
+### Freshness, and how to force it
+
+`/p/pick` is not on a weekly schedule, it is live. Two caches bound how fast it
+moves:
+
+- `/api/products` holds a 30 minute in-memory cache per serverless instance, plus
+  its own edge cache. A Vercel cron already hits `/api/products?refresh=1` daily
+  at 06:00 UTC.
+- `/p/pick` itself is `s-maxage=600`, so the rendered page is edge-cached for 10
+  minutes.
+
+To force an early update: hit `/api/products?refresh=1` (no auth, forces a
+re-scrape and is never answered from cache), then load `/p/pick?t=<anything>` so
+the distinct URL bypasses the page's own edge copy. If a short link points at it,
+re-scrape that link in Meta's Sharing Debugger afterwards or the old card sticks.
+
+Because it is live rather than pinned, the pick can change mid-week if a cheaper
+ounce appears. That is either the feature or the problem depending on whether the
+message promised a specific product.
+
+### Shuffle
+
+The pick page walks a ranked pool of every qualifying ounce, capped at 12.
+`?i=<rank>` selects a position and clamps rather than 404s, so a forwarded link
+with a stale index still renders something real. Shuffle preserves the query
+string and changes only `i`, so a custom cap or band survives it. The button is
+absent rather than inert when only one product qualifies, and `shuffle` events
+carry `rank` and `of`.
+
 ## The problem it solves
 
 Pasting a product link into an Instagram DM produced the same generic card every

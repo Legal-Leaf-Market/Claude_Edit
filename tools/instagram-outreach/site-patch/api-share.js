@@ -130,8 +130,12 @@ function cartItem(p, idx) {
  * under a message promising an ounce. Better value per gram, wrong promise. The
  * band keeps the pick to the thing that was actually advertised.
  */
-function pickBest(list, opts) {
-  var best = null;
+/* Every qualifying size row, best value first. Shuffle walks this list, so the
+   pool is capped: the 40th best ounce is not a deal worth showing anybody. */
+var PICK_POOL = 12;
+
+function pickAll(list, opts, limit) {
+  var out = [];
   for (var i = 0; i < list.length; i++) {
     var p = list[i];
     if (!p || p.inStock === false) continue;
@@ -144,14 +148,20 @@ function pickBest(list, opts) {
       if (!isFinite(grams) || grams < opts.minGrams) continue;
       if (opts.maxGrams && grams > opts.maxGrams) continue;
       if (price > opts.maxPrice) continue;
-      var perG = price / grams;
-      var key = p.id + '#' + j;
-      if (!best || perG < best.perG || (perG === best.perG && key < best.key)) {
-        best = { product: p, index: j, perG: perG, key: key };
-      }
+      out.push({ product: p, index: j, perG: price / grams, key: p.id + '#' + j });
     }
   }
-  return best;
+  /* Ties break on key so the ordering, and therefore every ?i= link, is stable
+     between requests instead of following feed order. */
+  out.sort(function (a, b) {
+    if (a.perG !== b.perG) return a.perG - b.perG;
+    return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+  });
+  return limit ? out.slice(0, limit) : out;
+}
+
+function pickBest(list, opts) {
+  return pickAll(list, opts, 1)[0] || null;
 }
 
 function noPick(canonical, opts) {
@@ -336,6 +346,8 @@ export default async function handler(req, res) {
 
   let product = null;
   let chosenIndex = sizeIndex;
+  let rank = 0;
+  let pool = 0;
   try {
     // Same origin, so this rides the CDN cache /api/products already populates
     // instead of triggering another twenty-store scrape.
@@ -346,8 +358,12 @@ export default async function handler(req, res) {
       const data = await r.json();
       const list = Array.isArray(data && data.products) ? data.products : [];
       if (isPick) {
-        const best = pickBest(list, pickOpts);
-        if (best) { product = best.product; chosenIndex = best.index; }
+        const candidates = pickAll(list, pickOpts, PICK_POOL);
+        pool = candidates.length;
+        const wanted = parseInt(req.query && req.query.i, 10);
+        rank = Number.isInteger(wanted) && wanted > 0 ? Math.min(wanted, pool - 1) : 0;
+        const chosen = candidates[rank];
+        if (chosen) { product = chosen.product; chosenIndex = chosen.index; }
       } else {
         product = list.find((p) => p && p.id === rawId) || null;
       }
@@ -394,6 +410,7 @@ export default async function handler(req, res) {
 <div class="price">${esc(priceText)}${h.weight ? ' <span class="meta">' + esc(h.weight) + '</span>' : ''}</div>
 <p class="meta">${esc(ogDesc)}</p>
 <button class="buy" id="add" type="button">Add to cart</button>
+${isPick && pool > 1 ? `<button class="alt" id="shuf" type="button">Shuffle a different ounce under ${esc(money(pickOpts.maxPrice))} (${rank + 1} of ${pool})</button>` : ''}
 <a class="alt" href="${SITE}/consumables">Compare every store on Legal-Leaf Market</a>
 <p class="fine">Price and stock come from ${esc(product.store)}'s own feed and can move without notice.
 Legal-Leaf Market does not take the order or hold the stock. Ranking is never affected by commission.</p>
@@ -414,6 +431,22 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
     btn.disabled = true;
     location.href = ${JSON.stringify(SITE + '/consumables#cart')};
   });
+
+  /* Shuffle moves to another rank in the same qualifying pool, so every result is
+     still an ounce inside the cap. It preserves the query string, otherwise a
+     custom cap or band would be silently dropped on the first shuffle. */
+  var shuf = document.getElementById('shuf');
+  if (shuf) {
+    var POOL = ${pool}, RANK = ${rank};
+    shuf.addEventListener('click', function () {
+      var next = RANK;
+      if (POOL > 1) { while (next === RANK) next = Math.floor(Math.random() * POOL); }
+      try { LL.track('shuffle', { from: RANK, to: next }); } catch (e) {}
+      var q = new URLSearchParams(location.search);
+      q.set('i', String(next));
+      location.href = location.pathname + '?' + q.toString();
+    });
+  }
 })();
 <\/script>`;
 
@@ -427,6 +460,8 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
       body,
       track: {
         page: isPick ? 'pick' : 'share',
+        rank: isPick ? rank : null,
+        of: isPick ? pool : null,
         pid: product.id,
         store: product.store,
         storeKey: product.storeKey,
@@ -440,4 +475,4 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
 }
 
 // Exported for tests. Not part of the route contract.
-export const __test = { esc, httpsOnly, money, weightLabel, headline, description, cartItem, pickBest };
+export const __test = { esc, httpsOnly, money, weightLabel, headline, description, cartItem, pickBest, pickAll, PICK_POOL };

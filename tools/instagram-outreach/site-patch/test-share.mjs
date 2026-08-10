@@ -24,10 +24,10 @@ const PRODUCTS = [
 
 globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: PRODUCTS }) });
 
-function run(id, s) {
+function run(id, s, extra) {
   let status = 0, sent = '';
   const res = { setHeader() {}, status(x) { status = x; return this; }, send(b) { sent = b; return this; } };
-  const query = { id }; if (s != null) query.s = s;
+  const query = Object.assign({ id }, extra || {}); if (s != null) query.s = s;
   return handler({ query, headers: { host: 'legal-leafmarket.com' } }, res).then(() => ({ status, html: sent }));
 }
 
@@ -225,6 +225,65 @@ console.log('\n=== tracking ===');
   const nastyBase = (nasty.html.match(/var BASE = (\{.*?\});/) || [])[1] || '';
   ok(!nastyBase.includes('<'), 'no raw < in the event payload either');
   ok(JSON.parse(nastyBase).store === '<b>Bad</b>', 'and it still parses back to the exact store name');
+}
+
+// ---------------------------------------------------------------------------
+// Shuffle: walk the ranked pool of qualifying ounces
+// ---------------------------------------------------------------------------
+console.log('\n=== shuffle ===');
+{
+  const oz = (id, name, store, price, ref) => ({
+    id, name, store, storeKey: store.toLowerCase().replace(/\W/g, ''),
+    domain: 'x.test', cartDomain: 'x.test', platform: 'shopify',
+    ref: ref || '', coupon: '', category: 'THCA Flower', cur: 'USD', inStock: true,
+    perG: price / 28, image: 'https://cdn.test/' + id + '.jpg',
+    url: 'https://x.test/products/' + id,
+    sizes: [['1 oz', price, 28, 'V-' + id, 1, null, '']],
+  });
+  // Deliberately out of price order, to prove ranking rather than feed order.
+  const POOL = [oz('c', 'Ounce C', 'Store C', 47), oz('a', 'Ounce A', 'Store A', 39, 'coffeeandajoint'), oz('b', 'Ounce B', 'Store B', 44)];
+  const opts = { maxPrice: 50, minGrams: 25, maxGrams: 40, category: 'THCA Flower' };
+
+  const ranked = __test.pickAll(POOL, opts, __test.PICK_POOL);
+  ok(ranked.length === 3, 'all three ounces qualify, got ' + ranked.length);
+  ok(ranked.map(r => r.product.id).join(',') === 'a,b,c',
+     'ranked by value regardless of feed order: ' + ranked.map(r => r.product.id).join(','));
+  ok(__test.pickBest(POOL, opts).product.id === 'a', 'pickBest is still just the head of that list');
+  ok(__test.pickAll(POOL, opts, 2).length === 2, 'the pool cap truncates');
+
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: POOL }) });
+
+  const first = await run('pick');
+  ok(/Shuffle a different ounce under \$50 \(1 of 3\)/.test(first.html),
+     'shuffle button appears and names the position');
+  const b0 = JSON.parse((first.html.match(/var BASE = (\{.*?\});/) || [])[1]);
+  ok(b0.rank === 0 && b0.of === 3, 'events carry rank and pool size: rank=' + b0.rank + ' of=' + b0.of);
+  ok(b0.pid === 'a', 'rank 0 is the best value');
+
+  // ?i= moves through the pool, and the card follows it.
+  const second = await run('pick', null, { i: '1' });
+  const t2 = (n) => (second.html.match(new RegExp('<meta property="' + n + '" content="([^"]*)"')) || [])[1];
+  ok(t2('og:title') === 'Ounce B (1oz) $44', 'i=1 renders the second best: ' + t2('og:title'));
+  ok(second.html.includes('"variantId":"V-b"'), 'and its cart item is the right product');
+  ok(/\(2 of 3\)/.test(second.html), 'button reflects the new position');
+
+  // Out of range must clamp rather than 404 or render nothing.
+  const far = await run('pick', null, { i: '99' });
+  ok(far.status === 200, 'i=99 still renders, status ' + far.status);
+  ok(/\(3 of 3\)/.test(far.html), 'clamped to the last rank');
+  const neg = await run('pick', null, { i: '-4' });
+  ok(/\(1 of 3\)/.test(neg.html), 'a negative index falls back to the best');
+
+  // Shuffle must not silently drop a custom cap or band.
+  ok(/new URLSearchParams\(location\.search\)/.test(first.html) && /q\.set\('i'/.test(first.html),
+     'shuffle preserves the query string and only changes i');
+  ok(/LL\.track\('shuffle'/.test(first.html), 'shuffle is tracked');
+
+  // One qualifying product means nothing to shuffle to, so no dead button.
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [POOL[1]] }) });
+  const lone = await run('pick');
+  ok(!/id="shuf"/.test(lone.html), 'no shuffle button when only one ounce qualifies');
+  ok(/Add to cart/.test(lone.html), 'but the page still works');
 }
 
 console.log(fails ? '\n' + fails + ' CHECK(S) FAILED' : '\nALL CHECKS PASSED');
