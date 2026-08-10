@@ -2,13 +2,19 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { sql } from "drizzle-orm"
-import { CategoryIcon, CATEGORY_HUE } from "@/components/category-icon"
+import { CategoryHero } from "@/components/category-hero"
 import { FilterSidebar } from "@/components/filter-sidebar"
 import { ListingCard } from "@/components/listing-card"
 import { Pagination } from "@/components/pagination"
 import { SortSelect } from "@/components/sort-select"
 import { db } from "@/lib/db"
-import { CATEGORY_INTRO, categoryFromSlug, indexableCategories } from "@/lib/categories"
+import {
+  CATEGORY_INTRO,
+  CATEGORY_KICKER,
+  CATEGORY_TITLE,
+  categoryFromSlug,
+  indexableCategories,
+} from "@/lib/categories"
 import { paramsFromQuery, queryFromParams, search } from "@/lib/search"
 import { formatPrice } from "@/lib/utils"
 
@@ -104,22 +110,15 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
         </ol>
       </nav>
 
-      <header className="mb-8 max-w-3xl">
-        <div className="flex items-center gap-3">
-          <span
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
-            style={{
-              background: `${CATEGORY_HUE[slug] ?? "#f0a830"}22`,
-              color: CATEGORY_HUE[slug] ?? "#f0a830",
-            }}
-          >
-            <CategoryIcon slug={slug} className="h-7 w-7" />
-          </span>
-          <h1 className="text-3xl font-semibold tracking-tight text-[var(--cream)]">
-            Used {category}
-          </h1>
-        </div>
-        <p className="mt-3 text-base leading-relaxed text-[var(--muted-foreground)]">
+      <CategoryHero
+        slug={slug}
+        eyebrow={`Used ${category}`}
+        title={CATEGORY_TITLE[category] ?? `Used ${category}`}
+        kicker={CATEGORY_KICKER[category]}
+      />
+
+      <div className="mb-8 max-w-3xl">
+        <p className="text-base leading-relaxed text-[var(--muted-foreground)]">
           {CATEGORY_INTRO[category] ??
             `Live used and vintage ${category.toLowerCase()} from eBay and Reverb, matched to the same instrument so you can compare every price at once.`}
         </p>
@@ -127,7 +126,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
           {results.found.toLocaleString()} live{" "}
           {results.found === 1 ? "listing" : "listings"} right now.
         </p>
-      </header>
+      </div>
 
       {models.length > 0 && (
         <section className="mb-10">
