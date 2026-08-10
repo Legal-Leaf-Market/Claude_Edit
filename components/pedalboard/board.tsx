@@ -103,7 +103,7 @@ function PedalSlot({
           <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
             {entry.marketPriceCents != null
               ? `~${formatPrice(entry.marketPriceCents)} market`
-              : "Not enough data yet"}
+              : "Too few listings to price yet"}
           </p>
         </div>
 
@@ -112,8 +112,8 @@ function PedalSlot({
             {entry.loading
               ? "Checking availability..."
               : cheapestCents != null
-                ? `In stock, from ${formatPrice(cheapestCents)}`
-                : "Not currently in stock"}
+                ? `In stock at ${formatPrice(cheapestCents)}+`
+                : "Out of stock right now"}
           </p>
           {!entry.loading &&
             entry.bySource.slice(0, 3).map((s) => (
