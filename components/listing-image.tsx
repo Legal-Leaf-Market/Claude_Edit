@@ -55,6 +55,11 @@ export function ListingImage({
   }
 
   return (
+    // White backdrop and object-contain rather than a crop: these are hotlinked
+    // product photos shot on all kinds of backgrounds (white, transparent,
+    // lifestyle), and cropping to fill a fixed box regularly cuts off the
+    // actual instrument. White reads consistently as "product photo" instead
+    // of the card looking broken against this site's dark theme.
     // eslint-disable-next-line @next/next/no-img-element
     <img
       ref={checkAlreadyFailed}
@@ -63,7 +68,7 @@ export function ListingImage({
       loading="lazy"
       decoding="async"
       onError={() => setFailed(true)}
-      className={cn("bg-[var(--muted)] object-cover", className)}
+      className={cn("bg-white object-contain p-3", className)}
     />
   )
 }

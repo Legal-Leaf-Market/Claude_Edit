@@ -64,9 +64,9 @@ describe("normalizeParams", () => {
     expect(normalizeParams({}).perPage).toBe(DEFAULT_PER_PAGE)
   })
 
-  it("defaults to relevance with a query and cheapest-first without one", () => {
+  it("defaults to relevance with a query and newest-first without one", () => {
     expect(normalizeParams({ q: "strat" }).sort).toBe("relevance")
-    expect(normalizeParams({}).sort).toBe("price_asc")
+    expect(normalizeParams({}).sort).toBe("newest")
   })
 })
 

@@ -26,6 +26,8 @@ import {
 const COLLECTION_FIELDS = [
   { name: "id", type: "string" },
   { name: "title", type: "string" },
+  // Display only, for the card's back face; not queried or faceted on.
+  { name: "description", type: "string", index: false, optional: true },
   { name: "source", type: "string", facet: true },
   { name: "external_id", type: "string", index: false, optional: true },
   { name: "brand", type: "string", facet: true, optional: true },
@@ -91,6 +93,7 @@ export async function ensureCollection(): Promise<boolean> {
 type IndexDocument = {
   id: string
   title: string
+  description: string
   source: string
   external_id: string
   brand: string
@@ -116,7 +119,7 @@ async function documentsToIndex(sinceIso: string | null, limit: number, offset: 
   const filter = sinceIso ? sql`AND l.updated_at >= ${sinceIso}::timestamptz` : sql``
   const result = await db.execute<Record<string, unknown>>(sql`
     SELECT
-      l.id, l.title, l.source, l.external_id, l.condition, l.price_cents,
+      l.id, l.title, l.description, l.source, l.external_id, l.condition, l.price_cents,
       l.currency, l.is_deal, l.deal_margin, l.is_local_pickup, l.is_shippable,
       l.listing_status, l.primary_image_url, l.canonical_gear_id, l.listed_at,
       l.brand AS listing_brand,
@@ -134,6 +137,10 @@ async function documentsToIndex(sinceIso: string | null, limit: number, offset: 
     return {
       id: String(r.id),
       title: String(r.title ?? ""),
+      // Truncated: this is a display excerpt, not a search field, and a
+      // multi-thousand-character body would bloat every document for no
+      // relevance benefit.
+      description: String(r.description ?? "").slice(0, 500),
       source: String(r.source ?? ""),
       external_id: String(r.external_id ?? ""),
       // Typesense treats a missing optional field and an empty string
@@ -269,6 +276,7 @@ function toHit(doc: TypesenseHitDocument): SearchHit {
     source: doc.source,
     externalId: doc.external_id,
     title: doc.title,
+    description: doc.description || null,
     priceCents: doc.price_cents,
     currency: doc.currency || "USD",
     condition: doc.condition || null,
