@@ -7,6 +7,7 @@ import { SISTER_SITES_PREPARED_ON } from "@/lib/admin/sister-sites"
 import { runAllSites, combinedMonths, ALL_SITE_PROFILES } from "@/lib/admin/all-sites"
 import { RevenueChart } from "./revenue-chart"
 import { MasterVendorTable } from "./master-vendor-table"
+import { MeasuredReality } from "./measured-reality"
 
 type ScenarioKey = keyof typeof SCENARIOS
 const HORIZONS = [
@@ -266,6 +267,8 @@ export function AllSitesDashboard() {
       </section>
 
       <MasterVendorTable />
+
+      <MeasuredReality />
     </div>
   )
 }
