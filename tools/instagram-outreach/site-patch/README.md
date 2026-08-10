@@ -32,6 +32,30 @@ pound at $45 clears a 28g floor and clears the cap, so the card would read
 matter more, not less, since an over-weight row no longer has to be cheap per
 gram to reach the top of the list.
 
+### Trim and shake are declared
+
+Trim is the cheapest thing per gram in the feed, so a budget that spends up to $50
+lands on it regularly, Black Tie most of all. Carrying it is fine, letting somebody
+work it out after paying is not, so a **red banner** states it: on the front of the
+card over the photo, on the back above the size dropdown, and as the first sentence
+of the og:description so it travels with the link rather than waiting for the page
+to be opened.
+
+Detection is word-boundary, never a substring, and the reason is in the live ids:
+Black Tie sells both `thca-flower-trim-shake` and
+`grape-milkshake-greenhouse-thca-flower`, and a substring test brands that second
+one, a whole-bud strain, as shake. Checked against every id in `coa-blacktie.js`,
+`coa-data.js` and `coa-thcaking.js`. Do not loosen it without re-checking those.
+
+It is evaluated per **row** as well as per listing, because a listing can sell
+whole buds and trim side by side. The advertised row decides what shows on load and
+the dropdown decides after that, so the banner is always about the row on screen.
+
+Two banners, one inside each face, rather than one over the card. Anything in the
+flip's 3D space turns with it, so a shared element would render mirrored on the
+back and read right to left. `test-flow.mjs` measures this rather than trusting it:
+it compares where the first and last characters land on screen, on both faces.
+
 Overridable per request: `?max=` price cap, `?g=` / `?gmax=` the weight band,
 `?category=` a different category, `?category=any` to drop the filter. If the pick
 ever comes up empty, `?category=any` is the first thing to try, since the likeliest

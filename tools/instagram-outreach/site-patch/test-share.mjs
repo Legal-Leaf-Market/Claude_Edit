@@ -675,5 +675,93 @@ console.log('\n=== the shared card declares its image ===');
   ok(!/src=""/.test(shop.html), 'no element ships with an empty src');
 }
 
+// ---------------------------------------------------------------------------
+// Trim and shake. Leading with the dearest ounce inside the cap surfaces these
+// often, because trim is the cheapest thing per gram and so the most of it a $50
+// budget can buy. Carrying them is fine; letting somebody find out afterwards is
+// not.
+// ---------------------------------------------------------------------------
+console.log('\n=== trim and shake are declared ===');
+{
+  /* The words, taken from live ids in coa-blacktie.js, coa-data.js and
+     coa-thcaking.js rather than invented. The last two are the boundary: Black
+     Tie's own "Grape Milkshake" is a whole-bud strain, and branding it shake
+     would be a false claim on a real product. */
+  ok(__test.isTrimShake('THCA Flower Trim Shake'), 'names both words');
+  ok(__test.isTrimShake('Cheap THCA Flower Trim'), 'trim at the end');
+  ok(__test.isTrimShake('THCA Shake Indoor'), 'shake mid-name');
+  ok(__test.isTrimShake('Dank THCA Trim'), 'and the short form');
+  ok(!__test.isTrimShake('Grape Milkshake Greenhouse THCA Flower'),
+     'but milkshake is a strain, not shake');
+  ok(!__test.isTrimShake('Sour Diesel Small Buds'), 'and whole buds are not trim');
+
+  const TRIM = {
+    id: 'blacktiecbd__thca-flower-trim-shake', name: 'THCA Flower Trim Shake',
+    store: 'Black Tie', storeKey: 'blacktiecbd', domain: 'blacktiecbd.com',
+    cartDomain: 'blacktiecbd.com', platform: 'shopify', ref: 'refbt', coupon: '',
+    category: 'THCA Flower', cur: 'USD', inStock: true, perG: 1.71,
+    image: 'https://cdn.test/trim.png', url: 'https://blacktiecbd.com/p',
+    sizes: [['1 oz', 48, 28, 'V-TRIM', 1, null, '']],
+  };
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [TRIM] }) });
+  const t = await run('pick');
+  const tag = (n) => (t.html.match(new RegExp('<meta property="' + n + '" content="([^"]*)"')) || [])[1];
+  console.log('  og:description ' + tag('og:description'));
+
+  /* The card's own text, so it travels with the link. A banner nobody has opened
+     the page to see is not a disclosure. */
+  ok(/^Trim and shake, not whole buds\./.test(tag('og:description')),
+     'the shared card leads with it, ahead of the price');
+  const banners = [...t.html.matchAll(/<div class="tsb" id="(tsb[FB])"([^>]*)>([^<]*)<\/div>/g)];
+  ok(banners.length === 2, 'one banner per face, got ' + banners.length);
+  ok(banners.every((b) => !/hidden/.test(b[2])), 'both visible on a trim listing');
+  ok(banners.every((b) => /Trim and shake, not whole buds/.test(b[3])), 'both say what it is');
+  /* Front and back carry their own copy rather than sharing one element over the
+     card, which is what keeps the back one upright: anything in the flip's 3D
+     space turns with it and renders mirrored. */
+  const front = t.html.indexOf('id="tsbF"');
+  const back = t.html.indexOf('id="tsbB"');
+  ok(front > -1 && back > -1 && front < t.html.indexOf('class="face back"'),
+     'the front copy is inside the front face');
+  ok(back > t.html.indexOf('class="face back"'), 'and the back copy inside the back face');
+  ok(/\.flip\.flipped \.front \.tsb\{opacity:0/.test(t.html),
+     'the front copy fades on flip, so the two are never both on screen mid-turn');
+  ok(!/\.tsb\{[^}]*backdrop-filter/.test(t.html),
+     'and uses no backdrop-filter, which is what made the .ov pills bleed through mirrored');
+
+  // A whole-bud listing must not be branded.
+  const CLEAN = { ...TRIM, id: 'blacktiecbd__grape-milkshake-greenhouse-thca-flower',
+    name: 'Grape Milkshake Greenhouse THCA Flower' };
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [CLEAN] }) });
+  const c = await run('pick');
+  const cTags = (c.html.match(/<meta property="og:description" content="([^"]*)"/) || [])[1];
+  ok(!/Trim and shake/.test(cTags), 'a milkshake strain gets no banner in the card text');
+  ok([...c.html.matchAll(/<div class="tsb"[^>]*hidden[^>]*>/g)].length === 2,
+     'and both banners ship hidden rather than absent, so the client can reveal them');
+
+  /* Mixed listing: whole buds and trim side by side. The advertised row decides
+     what shows on load, and the dropdown decides thereafter. */
+  const MIXED = { ...TRIM, id: 'blacktiecbd__mixed', name: 'Black Tie Ounce',
+    sizes: [
+      ['Whole Buds 1 oz', 49, 28, 'V-W', 1, null, ''],
+      ['Trim 1 oz', 42, 28, 'V-T', 1, null, ''],
+    ] };
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [MIXED] }) });
+  const m = await run('pick');
+  const D = JSON.parse((m.html.match(/var D = (\{[\s\S]*?\});\n/) || [])[1].replace(/\\u003c/g, '<'));
+  const rows = D.slides[0].sizes;
+  console.log('  rows: ' + JSON.stringify(rows.map((r) => [r.display, r.trim])));
+  ok(rows.find((r) => /Whole Buds/.test(r.display)).trim === false, 'the whole-bud row is not flagged');
+  ok(rows.find((r) => /Trim/.test(r.display)).trim === true, 'the trim row is');
+  ok(D.slides[0].trimProd === false, 'the listing itself is not trim throughout');
+  /* $49 whole buds outbids $42 trim under the cap, so this page advertises the
+     clean row and opens with no banner. Choosing the trim row is what raises it,
+     which is the client path showTrim(c) covers. */
+  ok(D.slides[0].trim === false, 'so the advertised row decides, and it is the whole-bud one');
+  ok(!/Trim and shake, not whole buds\./.test(
+     (m.html.match(/<meta property="og:description" content="([^"]*)"/) || [])[1] || ''),
+     'and the card text makes no claim the advertised row does not carry');
+}
+
 console.log(fails ? '\n' + fails + ' CHECK(S) FAILED' : '\nALL CHECKS PASSED');
 process.exit(fails ? 1 : 0);

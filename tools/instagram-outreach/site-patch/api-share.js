@@ -207,6 +207,26 @@ function namesAnOunce(label) {
   return OUNCE_WORD.test(t);
 }
 
+/* Trim and shake are flower's offcuts, and per gram they are the cheapest thing in
+   the feed, so leading with the dearest ounce inside a $50 cap lands on them often
+   rather than rarely: at that price a trim ounce outbids most whole-bud ounces.
+   Carrying them is fine, letting somebody find out after buying is not, so the card
+   says which it is instead of leaving the product name to imply it.
+
+   Word boundaries, not a substring test, and the reason is in the live ids: Black
+   Tie sells both "thca-flower-trim-shake" and "grape-milkshake-greenhouse-thca-
+   flower", and a substring test brands that second one, a whole-bud strain, as
+   shake. Checked against every id in coa-blacktie.js, coa-data.js and
+   coa-thcaking.js: the real ones all name it as its own word ("cheap-thca-flower-
+   trim", "thca-shake-indoor", "dank-thca-trim"), and "milkshake" is the only
+   near-miss, which is exactly what a boundary excludes. Do not loosen this to a
+   substring without re-checking those ids, the same rule the exclusion regexes on
+   the sister sites are held to. */
+var TRIM_WORD = /(^|[^a-z])(trim|shake)s?([^a-z]|$)/i;
+function isTrimShake(text) {
+  return TRIM_WORD.test(String(text || ''));
+}
+
 /* Rows often inherit their weight from the PRODUCT TITLE rather than their own
    label: on a multi-strain listing titled "... Smalls Ounce", every strain row is
    tagged 28g even though the row itself says only the strain. That inference is
@@ -285,16 +305,20 @@ Rather than show you something that is not the deal it claims to be, here is eve
   });
 }
 
-function description(p, h) {
+function description(p, h, trim) {
   const bits = [];
   if (h.weight) bits.push(h.weight);
   if (h.perG) bits.push(money(h.perG, p.cur) + ' per gram');
   if (p.store) bits.push('at ' + p.store);
   if (p.inStock === false) bits.push('out of stock');
   const lead = bits.join(', ');
-  return lead
+  /* First, ahead of the price. This is the shared card's own text, so on a trim
+     listing it is the line that has to arrive with the link rather than waiting
+     for somebody to open the page and read a banner. */
+  const head = trim ? 'Trim and shake, not whole buds. ' : '';
+  return head + (lead
     ? lead + '. Compared against every other store on Legal-Leaf Market.'
-    : 'Compared against every other store on Legal-Leaf Market.';
+    : 'Compared against every other store on Legal-Leaf Market.');
 }
 
 /* ---- analytics ----
@@ -521,6 +545,31 @@ a{color:inherit}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 1px rgba(255,255,255,.35),0 0 14px 1px var(--accent)}
   50%{box-shadow:0 0 0 1px rgba(255,255,255,.5),0 0 26px 5px var(--accent)}}
 @media (prefers-reduced-motion:reduce){.ov.flipbtn{animation:none}}
+
+/* Trim and shake banner. Loud on purpose: at $50 an ounce this is the whole
+   difference between a bargain and a disappointment, and it must not be the thing
+   somebody works out after paying.
+
+   ONE BANNER PER FACE, not one floating over the card. A single element would have
+   to live outside both faces to appear on both, which puts it in the card's 3D
+   space, and anything in there is turned with .inner: on the back it would render
+   mirrored and read backwards. Each face carrying its own means each is upright
+   with the side it belongs to, and the front copy fades on flip exactly like the
+   .ov pills so the two can never be on screen together mid-turn.
+
+   Solid background and no backdrop-filter, for the reason recorded on .ov above:
+   that filter makes its own compositing context, escapes backface-visibility, and
+   bleeds through the turned-away card. */
+.tsb{background:#a3261a;color:#fff;font-weight:800;font-size:13px;line-height:1.3;
+  letter-spacing:.04em;text-transform:uppercase;text-align:center;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.front .tsb{position:absolute;z-index:3;top:0;left:0;right:0;padding:10px 12px;
+  transition:opacity .2s ease}
+.flip.flipped .front .tsb{opacity:0;pointer-events:none}
+/* On the back it is a block at the top of the panel rather than an overlay, so it
+   sits above the size dropdown: the banner and the choice it qualifies are read in
+   that order. */
+.back .tsb{border-radius:10px;padding:11px 12px;margin:0 0 12px}
 
 /* Slideshow arrows and position, on the photo so they cost no vertical space. */
 .ov.nav{top:50%;transform:translateY(-50%);font-size:24px;padding:6px 14px;line-height:1}
@@ -749,6 +798,9 @@ export default async function handler(req, res) {
           price,
           perG: grams > 0 ? Math.round((price / grams) * 100) / 100 : null,
           isPick: marked && i === rowIndex,
+          /* Per row, because a listing can sell whole buds and trim side by side.
+             The banner follows the dropdown for exactly that case. */
+          trim: isTrimShake(variant),
           /* The variant's own photo, row[6] in the feed (Shopify's
              variant.featured_image, plus any admin override). 35% of live size rows
              carry one and 460 listings give each variant a DIFFERENT one, which is
@@ -773,6 +825,9 @@ export default async function handler(req, res) {
         price: Number(head.price),
         perG: head.perG || null,
         isPick: false,
+        /* This row is synthesised from a weight, not a strain label, so it can
+           carry no trim wording of its own. The product name still speaks for it. */
+        trim: false,
         item: cartItem(prod, null),
       });
     }
@@ -795,6 +850,10 @@ export default async function handler(req, res) {
        variant's picture on screen. */
     const baseImg = httpsOnly(prod.image, FALLBACK_IMG);
     const headRow = rows.find((r) => r.i === rowIndex);
+    /* Two flags, not one. trimProd is the whole listing, so it holds whatever row
+       is chosen; trim is the state to show right now, which before a choice is
+       made means the row this page is advertising. */
+    const trimProd = isTrimShake(prod.name);
     return {
       pid: prod.id,
       name: String(prod.name || ''),
@@ -804,7 +863,9 @@ export default async function handler(req, res) {
       priceText,
       weight: head.weight || '',
       perG: head.perG || null,
-      desc: description(prod, head),
+      trimProd,
+      trim: trimProd || !!(headRow && headRow.trim),
+      desc: description(prod, head, trimProd || !!(headRow && headRow.trim)),
       ogTitle: priceText
         ? `${prod.name} ${head.weight ? '(' + head.weight + ') ' : ''}${priceText}`
         : String(prod.name || 'Legal-Leaf Market'),
@@ -839,9 +900,13 @@ export default async function handler(req, res) {
       priceText: sl.priceText,
       weight: sl.weight, perG: sl.perG, desc: sl.desc, lab: sl.lab, cur: sl.cur,
       canAdd: sl.canAdd, value: sl.value, limitNote: sl.limitNote,
+      /* Both, because the client needs to tell "this whole listing is trim" from
+         "the row being advertised is", and only the first survives a change of
+         size. */
+      trim: sl.trim, trimProd: sl.trimProd,
       sizes: sl.sizes.map((r) => ({
         i: r.i, label: r.label, display: r.display, price: r.price, perG: r.perG,
-        isPick: r.isPick, img: r.img, item: r.item,
+        isPick: r.isPick, img: r.img, item: r.item, trim: r.trim,
       })),
     })),
     start: isPick ? rank : 0,
@@ -856,12 +921,14 @@ export default async function handler(req, res) {
   <div class="inner">
     <div class="face front">
       <img class="shot" id="shot" src="${esc(img)}" alt="${esc(slide.name)}"/>
+      <div class="tsb" id="tsbF"${slide.trim ? '' : ' hidden'}>Trim and shake, not whole buds</div>
       ${total > 1 ? `<button class="ov nav prev" id="prev" type="button" aria-label="Previous">&#8249;</button>
       <button class="ov nav next" id="next" type="button" aria-label="Next">&#8250;</button>
       <span class="ov count" id="count">${(isPick ? rank : 0) + 1} of ${total}</span>` : ''}
       <button class="ov flipbtn" id="toBack" type="button">Details and size</button>
     </div>
     <div class="face back">
+      <div class="tsb" id="tsbB"${slide.trim ? '' : ' hidden'}>Trim and shake, not whole buds</div>
       <div class="bh">
         <h2>What you are actually getting</h2>
         <button class="flipback" id="toFront" type="button">&#8592; Photo</button>
@@ -961,6 +1028,20 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
     wrap.hidden = false;
   }
 
+  /* The banner tracks the row on screen, not just the listing. A shopper moving to
+     a trim row on a mixed listing has to see it appear, and one moving off it has
+     to see it go, or the card states something about a row nobody is looking at.
+     A listing that is trim throughout holds it whatever is chosen. Both faces are
+     set together, since the card can be flipped either way when the choice moves. */
+  function showTrim(c){
+    var sl = cur();
+    var on = !!sl.trimProd || (c ? !!c.trim : !!sl.trim);
+    var f = document.getElementById('tsbF');
+    var b = document.getElementById('tsbB');
+    if (f) f.hidden = !on;
+    if (b) b.hidden = !on;
+  }
+
   function wireSelect(){
     var s = document.getElementById('size');
     if (!s) return;
@@ -969,6 +1050,7 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
       var c = chosen(), sl = cur();
       var h2 = document.getElementById('hint2');
       showPhoto(c);
+      showTrim(c);
       if (!c) { hint.textContent = 'Choose a size to see the exact price.'; hint.className = 'hint'; return; }
       priceEl.innerHTML = '';
       priceEl.appendChild(document.createTextNode(money(c.price, sl.cur)));
@@ -1018,6 +1100,9 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
       priceEl.appendChild(w);
     }
     document.getElementById('pdesc').textContent = sl.desc;
+    /* Reset to the new slide's own state, since the choice does not survive a slide
+       change and a banner left up from the last product would be about nothing. */
+    showTrim(null);
     document.getElementById('labwrap').innerHTML = sl.lab;
     document.getElementById('fine').textContent = 'Price and stock come from ' + sl.store +
       "'s own feed and can move without notice. Legal-Leaf Market does not take the order or " +
@@ -1159,4 +1244,4 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
 }
 
 // Exported for tests. Not part of the route contract.
-export const __test = { esc, httpsOnly, money, weightLabel, headline, description, cartItem, pickBest, pickAll, PICK_POOL, saysWeightAlready, namesAnOunce, ounceRowOverCap };
+export const __test = { esc, httpsOnly, money, weightLabel, headline, description, cartItem, pickBest, pickAll, PICK_POOL, saysWeightAlready, namesAnOunce, ounceRowOverCap, isTrimShake };

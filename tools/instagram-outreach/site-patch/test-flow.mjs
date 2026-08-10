@@ -354,6 +354,91 @@ console.log('\n=== the gate on a short viewport ===');
   await short.close();
 }
 
+/* The banner has to be readable on BOTH faces, and the back face is inside a
+   rotateY(180deg) box, so "is it there" is not the question. Text rendered through
+   an odd number of Y rotations runs right to left, and a mirrored warning is worse
+   than none: it reads as a graphic. So this measures direction rather than
+   presence, by comparing where the first and last characters actually land on
+   screen. */
+console.log('\n=== the trim banner, both faces, right way round ===');
+{
+  const MIXED = {
+    id: 'blacktiecbd__mixed', name: 'Black Tie Ounce', store: 'Black Tie',
+    storeKey: 'blacktiecbd', domain: 'blacktiecbd.com', cartDomain: 'blacktiecbd.com',
+    platform: 'shopify', ref: 'refbt', coupon: '', category: 'THCA Flower',
+    cur: 'USD', inStock: true, perG: 1.5, cannabinoid: 'THCa', type: 'Hybrid',
+    image: 'https://cdn.test/bt.png', url: 'https://blacktiecbd.com/p',
+    sizes: [
+      ['Trim 1 oz', 48, 28, 'V-T', 1, null, ''],
+      ['Whole Buds 1 oz', 44, 28, 'V-W', 1, null, ''],
+    ],
+  };
+  const saved = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [MIXED] }) });
+  fs.writeFileSync('/tmp/trim.html', await render({ id: 'pick' }));
+  globalThis.fetch = saved;
+
+  const p3 = await browser.newPage();
+  p3.on('pageerror', (e) => errs.push(String(e)));
+  await p3.goto('file:///tmp/trim.html');
+
+  /* First character's left edge against the last character's. Left to right means
+     upright; the other way round means the face turned the text with it. */
+  const direction = (id) => p3.evaluate((elId) => {
+    const el = document.getElementById(elId);
+    const node = el.firstChild;
+    const at = (i) => {
+      const r = document.createRange();
+      r.setStart(node, i); r.setEnd(node, i + 1);
+      return r.getBoundingClientRect().left;
+    };
+    const box = el.getBoundingClientRect();
+    return { first: at(0), last: at(node.textContent.length - 1), w: box.width, h: box.height };
+  }, id);
+
+  ok(await p3.isVisible('#tsbF'), 'the front banner shows on a trim row');
+  const f = await direction('tsbF');
+  console.log('  front: ' + JSON.stringify(f));
+  ok(f.first < f.last, 'front text runs left to right, not mirrored');
+  ok(f.w > 100 && f.h > 20, 'and it is a full-width bar rather than a sliver: ' + f.w + 'x' + f.h);
+  const topGap = await p3.evaluate(() => {
+    const b = document.getElementById('tsbF').getBoundingClientRect();
+    const c = document.getElementById('flip').getBoundingClientRect();
+    return Math.round(b.top - c.top);
+  });
+  ok(topGap >= 0 && topGap <= 2, 'sat at the top of the card, gap ' + topGap);
+
+  await p3.click('#toBack');
+  await p3.waitForTimeout(800);
+  ok(await p3.isVisible('#tsbB'), 'the back banner shows once flipped');
+  const b = await direction('tsbB');
+  console.log('  back:  ' + JSON.stringify(b));
+  ok(b.first < b.last, 'back text runs left to right too, through the 180 degree face');
+  ok(b.w > 100 && b.h > 20, 'and is a real bar on the back as well: ' + b.w + 'x' + b.h);
+  /* Above the size control, so it is read before the choice it qualifies. */
+  const order = await p3.evaluate(() => {
+    const t = document.getElementById('tsbB').getBoundingClientRect();
+    const s = document.getElementById('size').getBoundingClientRect();
+    return t.bottom <= s.top;
+  });
+  ok(order, 'and sits above the size dropdown');
+  ok(await p3.evaluate(() => getComputedStyle(document.getElementById('tsbF')).opacity === '0'),
+     'while the front copy has faded out, so the two never overlap mid-turn');
+
+  /* The dropdown drives it from here: this listing sells trim and whole buds, and
+     the banner must follow the row rather than the listing. */
+  await p3.selectOption('#size', { index: 2 });
+  await p3.waitForTimeout(200);
+  const optTxt = await p3.evaluate(() => document.getElementById('size').selectedOptions[0].textContent);
+  console.log('  chose: ' + JSON.stringify(optTxt));
+  ok(/Whole Buds/.test(optTxt), 'picked the whole-bud row');
+  ok(await p3.isHidden('#tsbB'), 'the banner drops when the choice is not trim');
+  await p3.selectOption('#size', { index: 1 });
+  await p3.waitForTimeout(200);
+  ok(await p3.isVisible('#tsbB'), 'and comes back on the trim row');
+  await p3.close();
+}
+
 ok(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.join('; ') : ''));
 await browser.close();
 console.log(fails ? '\n' + fails + ' CHECK(S) FAILED' : '\nALL CHECKS PASSED');
