@@ -70,23 +70,26 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={inter.variable}>
-      {/*
-        Impact Radius (impact.com) publisher verification/tracking tag,
-        requested for the Anderton's affiliate application. `beforeInteractive`
-        is required (Next.js only allows that strategy in the root layout) so
-        the tag lands in the server-rendered <head>, which is what a plain
-        HTML-fetch verifier checks for rather than executing client JS.
-        Note for later: this tag's own `transformLinks()` call can rewrite
-        outbound links on the page. Nothing here is wired to any real
-        Anderton's campaign yet, so it has nothing to rewrite today, but once
-        (if) that program goes live, verify it does not fight with this
-        site's own /go and /api/cart/checkout attribution path (section 5,
-        CLAUDE.md) rather than assuming the two coexist for free.
-      */}
-      <Script id="impact-radius-tag" strategy="beforeInteractive">
-        {`(function(i,m,p,a,c,t){c.ire_o=p;c[p]=c[p]||function(){(c[p].a=c[p].a||[]).push(arguments)};t=a.createElement(m);var z=a.getElementsByTagName(m)[0];t.async=1;t.src=i;z.parentNode.insertBefore(t,z)})('https://utt.impactcdn.com/P-A7529144-7865-4e40-bff1-87bccca16ec61.js','script','impactStat',document,window);impactStat('transformLinks');impactStat('trackImpression');`}
-      </Script>
       <body className="font-sans antialiased">
+        {/*
+          Impact Radius (impact.com) publisher verification/tracking tag,
+          requested for the Anderton's affiliate application. `beforeInteractive`
+          is required (Next.js only allows that strategy in the root layout),
+          and Next's own docs place it as the first child of <body>, not as a
+          sibling of <body> under <html>: a <script> is not a valid child of
+          <html> outside <head>/<body>, and putting it there throws a
+          hydration error. The tag still lands in the server-rendered HTML
+          either way, which is what a plain HTML-fetch verifier checks for.
+          Note for later: this tag's own `transformLinks()` call can rewrite
+          outbound links on the page. Nothing here is wired to any real
+          Anderton's campaign yet, so it has nothing to rewrite today, but once
+          (if) that program goes live, verify it does not fight with this
+          site's own /go and /api/cart/checkout attribution path (section 5,
+          CLAUDE.md) rather than assuming the two coexist for free.
+        */}
+        <Script id="impact-radius-tag" strategy="beforeInteractive">
+          {`(function(i,m,p,a,c,t){c.ire_o=p;c[p]=c[p]||function(){(c[p].a=c[p].a||[]).push(arguments)};t=a.createElement(m);var z=a.getElementsByTagName(m)[0];t.async=1;t.src=i;z.parentNode.insertBefore(t,z)})('https://utt.impactcdn.com/P-A7529144-7865-4e40-bff1-87bccca16ec61.js','script','impactStat',document,window);impactStat('transformLinks');impactStat('trackImpression');`}
+        </Script>
         {/* Keyboard users get past the header and filter rail in one tab. */}
         <a
           href="#main"
