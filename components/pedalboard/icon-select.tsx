@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Plus } from "lucide-react"
 import { ICONS, initialsFor, type IconEntry } from "@/lib/pedalboard/icons"
 import { formatPrice } from "@/lib/utils"
@@ -26,8 +26,14 @@ export function IconSelect({
   const [selected, setSelected] = useState<IconEntry | null>(null)
   const [matchState, setMatchState] = useState<MatchState>("idle")
   const [match, setMatch] = useState<PedalSummary | null>(null)
+  // Guards against a slower, earlier request resolving after a faster later
+  // one: only the response for whichever icon is CURRENTLY selected is
+  // allowed to update state, so clicking through icons quickly can never
+  // leave a stale match (and its "Add" button) attached to the wrong player.
+  const requestIdRef = useRef<string | null>(null)
 
   function selectIcon(icon: IconEntry) {
+    requestIdRef.current = icon.id
     setSelected(icon)
     setMatch(null)
     setMatchState("checking")
@@ -36,11 +42,14 @@ export function IconSelect({
     fetch(`/api/pedalboard/search?q=${encodeURIComponent(`${icon.brand} ${icon.model}`)}`)
       .then((res) => res.json())
       .then((data: { pedals: PedalSummary[] }) => {
+        if (requestIdRef.current !== icon.id) return
         const hit = data.pedals.find((p) => p.brand.toLowerCase().includes(brandToken)) ?? null
         setMatch(hit)
         setMatchState(hit ? "found" : "none")
       })
-      .catch(() => setMatchState("none"))
+      .catch(() => {
+        if (requestIdRef.current === icon.id) setMatchState("none")
+      })
   }
 
   return (
