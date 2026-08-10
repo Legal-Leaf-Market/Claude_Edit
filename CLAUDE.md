@@ -106,6 +106,19 @@ built for that site's own frontend rather than published for this use.
   "Used Gear API" name floating around online is Guitar Center's own URL
   taxonomy, not a data API, and the community tools that exist scrape an
   undocumented frontend Algolia index. Do not build against it.
+- **Anderton's, applied for via Impact.com (formerly Impact Radius), application
+  pending as of when this was written.** The site's Universal Tracking Tag
+  (`app/layout.tsx`) is already live sitewide for Impact's own site-verification
+  step; that is independent of catalogue ingestion and does not mean the
+  affiliate program itself is approved. Unlike CJ or Awin, Impact has no fixed
+  product-feed schema: brands configure their own field names per catalogue
+  (confirmed against Impact's own "File Formats for Product Catalogs" docs),
+  so there is nothing to write a row-normaliser against yet.
+  `IMPACT_ANDERTONS_FEED_URL` (`lib/env.ts`) is a reserved placeholder, unset
+  as the expected state, same as every other unconfirmed source above. Once
+  the application is approved and Anderton's actual feed URL and column names
+  are in hand, build `lib/ingestion/andertons-impact.ts` against the real
+  schema rather than a guess, following the same shape as the CJ modules.
 
 **Facebook Marketplace is out of scope.** Not "later", not "behind a flag". It
 has no public API, scraping it violates Meta's terms, and it is the exact
@@ -402,6 +415,7 @@ Never fork the logic between them. Add work to the job function.
 | `LINKCONNECTOR_SWEETWATER_FEED_URL` | Sweetwater catalogue. Unset is expected; the job no-ops. Never falls back to scraping. |
 | `AWIN_GEAR4MUSIC_MERCHANT_ID` / `AWIN_GEAR4MUSIC_FEED_URL` | Gear4music catalogue and deep links. Same shape as the Reverb pair, independent ids. |
 | `CJ_ZZOUNDS_FEED_URL` / `CJ_FULLCOMPASS_FEED_URL` / `CJ_PINEVILLEMUSIC_FEED_URL` | Three independent CJ Affiliate programmes. Each no-ops when unset. |
+| `IMPACT_ANDERTONS_FEED_URL` | Reserved for Anderton's via Impact.com; application pending, no ingestion module exists yet since Impact's product-feed schema is brand-configured, not fixed. Unset is expected. |
 | `GOAFFPRO_*_REF_PARAM` / `GOAFFPRO_*_REF_CODE` | One pair per small independent Shopify/WooCommerce seller (Folkcraft, Acoustic Guitar, Jamstik, Jackson Audio, Eminence Digital, Haze Guitar, EART Guitar, Play With Authority, Pures Music, Squaver, Eason Music Store, Go Kalimba). Catalogue ingestion needs no credential at all; an unset code just means a null `affiliate_url` until the referral is confirmed. |
 | `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
 | `REDIS_URL` | BullMQ queues and the shared rate-limit counter. Optional. |
