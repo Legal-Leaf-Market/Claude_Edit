@@ -13,7 +13,7 @@ export function SortSelect() {
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
-  const current = params.get("sort") ?? (params.get("q") ? "relevance" : "price_asc")
+  const current = params.get("sort") ?? (params.get("q") ? "relevance" : "newest")
   const isShuffled = current === "shuffle"
 
   function go(mutate: (next: URLSearchParams) => void) {

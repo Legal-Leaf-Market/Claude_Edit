@@ -43,6 +43,8 @@ export type SearchHit = {
   source: string
   externalId: string
   title: string
+  /** Short excerpt for the card's back face. Not indexed for filtering, display only. */
+  description: string | null
   priceCents: number
   currency: string
   condition: string | null
@@ -94,7 +96,13 @@ export function normalizeParams(params: SearchParams): Required<Pick<SearchParam
   return {
     page: Math.max(1, Math.floor(params.page ?? 1)),
     perPage: Math.min(MAX_PER_PAGE, Math.max(1, Math.floor(params.perPage ?? DEFAULT_PER_PAGE))),
-    sort: params.sort ?? (params.q ? "relevance" : "price_asc"),
+    // Most listings here are single-source (one manufacturer, one store), so
+    // a cheapest-first default surfaces whatever happens to be the least
+    // expensive item on the site rather than anything relevant. Newest first
+    // is a better browse default; price sorting earns its keep once a
+    // shopper has actually narrowed down what they are looking for (a text
+    // query, or a specific instrument's own deals page).
+    sort: params.sort ?? (params.q ? "relevance" : "newest"),
     shipping: params.shipping ?? "any",
   }
 }

@@ -146,6 +146,7 @@ type RawRow = {
   source: string
   external_id: string
   title: string
+  description: string | null
   price_cents: number
   currency: string
   condition: string | null
@@ -171,6 +172,7 @@ function toHit(row: RawRow): SearchHit {
     source: row.source,
     externalId: row.external_id,
     title: row.title,
+    description: row.description,
     priceCents: Number(row.price_cents),
     currency: row.currency,
     condition: row.condition,
@@ -238,7 +240,7 @@ export async function searchPostgres(params: SearchParams): Promise<SearchResult
   const [rows, countResult, facets] = await Promise.all([
     db.execute<RawRow>(sql`
       SELECT
-        l.id, l.source, l.external_id, l.title, l.price_cents, l.currency,
+        l.id, l.source, l.external_id, l.title, l.description, l.price_cents, l.currency,
         l.condition, l.brand, l.primary_image_url, l.is_local_pickup,
         l.is_shippable, l.is_deal, l.deal_margin, l.listing_status, l.listed_at,
         l.canonical_gear_id,

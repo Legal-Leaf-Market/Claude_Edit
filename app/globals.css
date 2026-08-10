@@ -214,6 +214,63 @@
     font-size: 0.75rem;
     color: var(--muted-foreground);
   }
+
+  /*
+   * Listing card flip. A real 3D transform (perspective on the container,
+   * rotateY on the inner wrapper, backface-visibility:hidden on each face,
+   * the back pre-rotated 180deg so it reads right-way-round once the parent
+   * flips), with an accessible fallback: prefers-reduced-motion swaps the
+   * rotation for a plain opacity cross-fade instead of disabling the
+   * interaction outright.
+   */
+  .flip-card {
+    perspective: 1600px;
+  }
+  .flip-card-inner {
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.55s cubic-bezier(0.22, 0.72, 0.24, 1);
+  }
+  .flip-card[data-flipped="true"] .flip-card-inner {
+    transform: rotateY(180deg);
+  }
+  .flip-face {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .flip-face-front {
+    position: relative;
+  }
+  .flip-face-back {
+    position: absolute;
+    inset: 0;
+    transform: rotateY(180deg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .flip-card-inner {
+      transition: none;
+    }
+    .flip-card[data-flipped="true"] .flip-card-inner {
+      transform: none;
+    }
+    .flip-face {
+      transition: opacity 0.15s;
+    }
+    .flip-face-back {
+      transform: none;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .flip-card[data-flipped="true"] .flip-face-front {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .flip-card[data-flipped="true"] .flip-face-back {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
 }
 
 /* Respect a user's reduced-motion preference across every transition. */

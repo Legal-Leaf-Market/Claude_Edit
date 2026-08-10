@@ -7,6 +7,7 @@ import { SlidersHorizontal, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CategoryIcon, CATEGORY_HUE } from "@/components/category-icon"
 import { StoreMark } from "@/components/store-mark"
+import { sortByCategoryPriority } from "@/lib/categories"
 import { sourceLabel, slugifyCategory } from "@/lib/utils"
 import type { Facets, FacetValue } from "@/lib/search/types"
 
@@ -253,7 +254,7 @@ function FilterControls({
       {!hidden.has("category") && (
       <FacetGroup
         title="Category"
-        values={facets.category}
+        values={sortByCategoryPriority(facets.category)}
         selected={selected("category")}
         onToggle={(v) => toggleValue("category", v)}
         renderMark={(v) => (

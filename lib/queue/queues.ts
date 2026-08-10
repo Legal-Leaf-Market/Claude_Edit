@@ -240,10 +240,13 @@ export async function registerRepeatableJobs(): Promise<string[]> {
   )
   registered.push("playwithauthority-feed @ every 6h")
 
-  // Pures Music: GoAffPro enrollment is not confirmed yet (unlike the other
-  // Shopify sources above), so this is paused rather than scheduled. The
+  // Pures Music: paused indefinitely. GoAffPro enrollment was never
+  // confirmed, and on top of that the product mix (sound-healing accessories
+  // mixed with real instruments) isn't a fit the user wants on the site, a
+  // separate decision that stands even if enrollment is later confirmed. The
   // ingestion module, cron route, and env vars stay in place; re-add the
-  // scheduler call here once the store is actually approved.
+  // scheduler call here only after an explicit decision to carry the
+  // product-mix concern anyway.
 
   await ingestion.upsertJobScheduler(
     "squaver-feed",

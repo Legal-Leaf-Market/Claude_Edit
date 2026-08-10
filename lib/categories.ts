@@ -46,6 +46,22 @@ export function indexableCategories(): { slug: string; label: Category }[] {
   }))
 }
 
+const CATEGORY_RANK = new Map<string, number>(CATEGORIES.map((c, i) => [c, i]))
+
+/**
+ * Sort anything keyed by category name into the same priority CATEGORIES is
+ * declared in (guitars, amps and pedals first), rather than whatever order a
+ * caller happened to produce it in (e.g. raw listing count). Unknown values
+ * sort after every known category, stable amongst themselves.
+ */
+export function sortByCategoryPriority<T extends { value: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const ra = CATEGORY_RANK.get(a.value) ?? CATEGORIES.length
+    const rb = CATEGORY_RANK.get(b.value) ?? CATEGORIES.length
+    return ra - rb
+  })
+}
+
 /** Short blurb per category. Real copy beats a templated sentence for indexing. */
 export const CATEGORY_INTRO: Partial<Record<Category, string>> = {
   "Electric Guitars":
