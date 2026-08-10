@@ -52,6 +52,37 @@ Because it is live rather than pinned, the pick can change mid-week if a cheaper
 ounce appears. That is either the feature or the problem depending on whether the
 message promised a specific product.
 
+### The card: front, back, and the size gate
+
+Front is the photo with two overlay pills so they cost no vertical space: a glowing
+**Shuffle n/N** and **Details and size**. The card flips to a back that is ordered
+as a walkthrough, `1. Choose your size` then `2. What the lab found`, because the
+size control is what they must act on.
+
+**Add to cart refuses to guess.** With nothing chosen it forces the flip, glows the
+dropdown, says why, and adds nothing. Once chosen, the price, the hint and the
+button label all restate the exact size and price ("Add 1oz for $39 to cart"), so
+nobody adds a mystery item. Every option is pre-built into the exact item
+`addToCart()` would push, affiliate ref and coupon included, so the choice cannot
+drift from what lands in the cart.
+
+The lab panel follows this repo's existing honesty rules rather than inventing new
+ones. `totalThc` leads, since `coa-data.js` calls it the number a buyer actually
+gets. The lab-tested badge needs `labTested` or `coaScope === 'product'`. A
+certificate link is worded from what the document is: this product's certificate, a
+shared sheet that is not batch-specific, or a results directory. With nothing
+matched it says so and labels any store-stated potency as a store claim. Absent
+fields are omitted, per that file's own warning never to assume one exists.
+
+Two defects `test-flow.mjs` caught that review would not have:
+
+- The back was square, so the size dropdown fell below the card's edge. It now
+  grows to 3/4 on flip, with the control first.
+- On a short viewport the shopper has scrolled past Add to cart by the time they
+  click it, so the forced flip left the dropdown **above the fold, glowing where it
+  could not be seen**. Measured at 1280x720: `scrollY 329`, dropdown at `y -229`.
+  `setFlipped` now scrolls the card into view before focusing.
+
 ### Shuffle
 
 The pick page walks a ranked pool of every qualifying ounce, capped at 12.
@@ -161,7 +192,8 @@ The test suite includes a deliberately hostile feed row covering each of these.
 ## Tests
 
 ```
-node test-share.mjs
+node test-share.mjs   # server rendering: og tags, pick selection, escaping
+node test-flow.mjs    # real Chromium: the flip, the size gate, the lab panel
 ```
 
 Stubs `fetch` with product rows in the real shape, then checks the og: tags a

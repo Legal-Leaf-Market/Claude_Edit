@@ -250,6 +250,95 @@ window.addEventListener('load', function () { try { LL.track('page_view', {}); }
 <\/script>`;
 }
 
+/* ---- the back of the card ----
+ *
+ * This repo is deliberately strict about not claiming a lab test it cannot prove:
+ * attachLab() refuses to attach numbers from a sheet shared across strains, and
+ * tagCoaScope() exists because printing "lab-tested" on a link to a store's
+ * results directory was a measured false-specificity bug. So this panel follows
+ * the same rules: the badge needs p.labTested or coaScope 'product', the COA link
+ * is worded from what the document actually is, and every field is omitted when
+ * absent rather than rendered as a zero or a dash. coa-data.js says outright:
+ * never assume a field exists.
+ */
+function pct(v) {
+  return typeof v === 'number' && isFinite(v) ? (Math.round(v * 100) / 100) + '%' : '';
+}
+
+const FLAG_WORDS = {
+  coa_stale: 'the certificate is not recent',
+  safety_not_pass: 'the safety panel is not marked pass on the certificate',
+  coa_page_1_only: 'only the first page of the certificate was read',
+};
+
+function coaLine(p) {
+  const url = httpsOnly(p.coa);
+  if (!url) return '';
+  const scope = p.coaScope;
+  const label = scope === 'product'
+    ? "View this product's certificate"
+    : scope === 'store'
+      ? "View the store's shared compliance sheet"
+      : "Browse the store's lab results page";
+  const note = scope === 'product'
+    ? ''
+    : scope === 'store'
+      ? ' This one sheet covers several of their products, so it is not specific to this batch.'
+      : ' That is a directory of results, not this batch\'s certificate.';
+  return `<tr><td>Certificate</td><td><a href="${esc(url)}" rel="nofollow noopener" target="_blank">${esc(label)}</a>${esc(note)}</td></tr>`;
+}
+
+function labPanel(p) {
+  const d = p.lab && typeof p.lab === 'object' ? p.lab : null;
+  const tested = p.labTested === true || p.coaScope === 'product';
+  const rows = [];
+
+  if (d) {
+    /* totalThc is the decarboxylated figure, which coa-data.js calls the number a
+       buyer actually gets, so it leads. */
+    if (pct(d.totalThc)) rows.push(`<tr><td>Total THC</td><td><span class="big">${esc(pct(d.totalThc))}</span></td></tr>`);
+    if (pct(d.thca)) rows.push(`<tr><td>THCa</td><td>${esc(pct(d.thca))}</td></tr>`);
+    if (pct(d.d9)) rows.push(`<tr><td>Delta-9</td><td>${esc(pct(d.d9))}</td></tr>`);
+    if (pct(d.cbd)) rows.push(`<tr><td>CBD</td><td>${esc(pct(d.cbd))}</td></tr>`);
+    if (pct(d.total)) rows.push(`<tr><td>Total cannabinoids</td><td>${esc(pct(d.total))}</td></tr>`);
+    if (Array.isArray(d.minors) && d.minors.length) {
+      const bits = d.minors.slice(0, 5)
+        .filter((m) => Array.isArray(m) && m[0])
+        .map((m) => m[0] + ' ' + (pct(m[1]) || '')).join(', ');
+      if (bits) rows.push(`<tr><td>Minors</td><td>${esc(bits.trim())}</td></tr>`);
+    }
+    if (d.lab) rows.push(`<tr><td>Lab</td><td>${esc(d.lab)}</td></tr>`);
+    if (d.tested) rows.push(`<tr><td>Tested</td><td>${esc(d.tested)}</td></tr>`);
+    if (d.sample) rows.push(`<tr><td>Sample</td><td>${esc(d.sample)}</td></tr>`);
+  } else if (typeof p.potency === 'number' && p.potency > 0) {
+    /* No certificate matched, so this is the store's own claim and is labelled as
+       one rather than dressed up as a measurement. */
+    rows.push(`<tr><td>Listed potency</td><td>${esc(pct(p.potency))} <span style="color:var(--muted)">as stated by the store, not from a certificate we have read</span></td></tr>`);
+  }
+
+  const kind = [p.cannabinoid, p.type, p.grow].filter(Boolean).join(' · ');
+  if (kind) rows.push(`<tr><td>Type</td><td>${esc(kind)}</td></tr>`);
+  const coa = coaLine(p);
+  if (coa) rows.push(coa);
+
+  const tags = [];
+  if (tested) tags.push('<span class="tag ok">lab tested</span>');
+  if (d && typeof d.trust === 'number') tags.push(`<span class="tag">certificate confidence ${esc(String(d.trust))}/100</span>`);
+
+  let caution = '';
+  if (d && Array.isArray(d.flags) && d.flags.length) {
+    const worded = d.flags.map((f) => FLAG_WORDS[f] || String(f).replace(/_/g, ' '));
+    caution = `<p class="caution">Worth knowing: ${esc(worded.join('; '))}.</p>`;
+  }
+  if (!d && !tested) {
+    caution = '<p class="caution">No certificate has been matched to this product, so there are no measured numbers to show. That is a gap in what the store published, not a claim either way about the batch.</p>';
+  }
+
+  return (tags.length ? '<div>' + tags.join('') + '</div>' : '') +
+    caution +
+    (rows.length ? `<table class="lab">${rows.join('')}</table>` : '');
+}
+
 function page({ title, ogTitle, ogDesc, ogImage, canonical, body, noindex, track }) {
   return `<!doctype html>
 <html lang="en">
@@ -279,7 +368,59 @@ ${noindex ? '<meta name="robots" content="noindex"/>' : ''}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
 .wrap{max-width:640px;margin:0 auto;padding:24px 18px 56px}
 a{color:inherit}
-.shot{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:14px;border:1px solid var(--line);background:#f2f3f5}
+.shot{width:100%;height:100%;object-fit:cover;display:block}
+
+/* Flip card. Both faces share one box, so the container owns the geometry and the
+   back scrolls internally rather than resizing the card mid-flip. */
+.flip{position:relative;width:100%;aspect-ratio:1/1;perspective:1200px;transition:aspect-ratio .4s ease}
+/* The back carries more than a square can hold, and the size control must never
+   be the thing that falls below the fold, so the card grows when it turns over. */
+.flip.flipped{aspect-ratio:3/4}
+@media (prefers-reduced-motion:reduce){.flip{transition:none}}
+.inner{position:absolute;inset:0;transition:transform .55s cubic-bezier(.2,.7,.3,1);transform-style:preserve-3d}
+.flip.flipped .inner{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  border-radius:14px;border:1px solid var(--line);overflow:hidden;background:#f2f3f5}
+.back{transform:rotateY(180deg);background:var(--bg);overflow-y:auto;padding:14px 16px}
+@media (prefers-reduced-motion:reduce){.inner{transition:none}}
+
+/* Overlay controls sit on the photo so they cost no vertical space. */
+.ov{position:absolute;z-index:2;border:none;cursor:pointer;font:inherit;font-weight:700;
+  border-radius:999px;padding:9px 14px;color:#fff;background:rgba(10,14,11,.62);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);line-height:1}
+.ov:hover{background:rgba(10,14,11,.78)}
+.ov.shuf{bottom:12px;left:12px;box-shadow:0 0 0 1px rgba(255,255,255,.35),0 0 18px 2px var(--accent);
+  animation:pulse 2.6s ease-in-out infinite}
+.ov.shuf:disabled{opacity:.6;animation:none;cursor:default}
+.ov.flipbtn{bottom:12px;right:12px;box-shadow:0 0 0 1px rgba(255,255,255,.25)}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 1px rgba(255,255,255,.35),0 0 14px 1px var(--accent)}
+  50%{box-shadow:0 0 0 1px rgba(255,255,255,.5),0 0 26px 5px var(--accent)}}
+@media (prefers-reduced-motion:reduce){.ov.shuf{animation:none}}
+
+/* Back panel */
+.bh{display:flex;align-items:baseline;gap:8px;margin:0 0 10px}
+.bh h2{font-size:15px;margin:0;flex:1}
+.bh button{background:none;border:none;color:var(--accent);font:inherit;font-weight:700;cursor:pointer;padding:0}
+.lab{width:100%;border-collapse:collapse;font-size:14px;margin:0 0 10px}
+.lab td{padding:4px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.lab td:first-child{color:var(--muted);padding-right:10px;white-space:nowrap}
+.lab tr:last-child td{border-bottom:none}
+.big{font-size:26px;font-weight:800;line-height:1.1}
+.tag{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  padding:3px 7px;border-radius:5px;background:var(--line);color:var(--muted);margin:0 4px 4px 0}
+.tag.ok{background:var(--accent);color:#fff}
+.caution{font-size:13px;color:var(--muted);margin:0 0 10px}
+.pickfield{margin:12px 0 4px}
+.pickfield label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}
+select{width:100%;font:inherit;padding:11px;border-radius:9px;border:1px solid var(--line);
+  background:var(--bg);color:var(--fg)}
+select.needs{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 35%,transparent);
+  animation:glow 1.1s ease-in-out 3}
+@keyframes glow{0%,100%{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+  50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--accent) 55%,transparent)}}
+@media (prefers-reduced-motion:reduce){select.needs{animation:none}}
+.hint{font-size:13px;color:var(--muted);margin:8px 0 0;min-height:18px}
+.hint.warn{color:var(--accent);font-weight:600}
 h1{font-size:22px;line-height:1.25;margin:18px 0 6px}
 .price{font-size:28px;font-weight:800;margin:10px 0 2px}
 .meta{color:var(--muted);font-size:15px;margin:0 0 18px}
@@ -403,32 +544,148 @@ export default async function handler(req, res) {
   // shopper on our domain: the vendor link is reached through our cart, the same
   // way it is everywhere else on the site, not as a shortcut out of here.
   const item = cartItem(product, chosenIndex);
-  const itemJson = JSON.stringify(item).replace(/</g, '\\u003c');
 
-  const body = `<img class="shot" src="${esc(img)}" alt="${esc(product.name)}"/>
+  /* Every size row the shopper may choose, each pre-built into the exact cart item
+     the site's own addToCart would push, so choosing one cannot drift from what
+     gets added. Rows without a real price are dropped rather than offered. */
+  const sizeRows = (Array.isArray(product.sizes) ? product.sizes : [])
+    .map((row, i) => ({ i, row }))
+    .filter(({ row }) => isFinite(Number(row && row[1])) && Number(row[1]) > 0)
+    .map(({ i, row }) => {
+      const price = Number(row[1]);
+      const grams = Number(row[2]);
+      return {
+        i,
+        label: weightLabel(grams) || String(row[0] || 'One size'),
+        price,
+        perG: grams > 0 ? Math.round((price / grams) * 100) / 100 : null,
+        isPick: i === chosenIndex,
+        item: cartItem(product, i),
+      };
+    });
+
+  const options = sizeRows.map((r) => {
+    const bits = [r.label, money(r.price, item.cur)];
+    if (r.perG) bits.push(money(r.perG, item.cur) + '/g');
+    if (r.isPick && isPick) bits.push('this week\'s pick');
+    return `<option value="${r.i}">${esc(bits.join(' · '))}</option>`;
+  }).join('');
+
+  const payload = JSON.stringify({
+    sizes: sizeRows.map((r) => ({ i: r.i, label: r.label, price: r.price, perG: r.perG, item: r.item })),
+    cur: item.cur,
+    store: product.store,
+    pool,
+    rank,
+  }).replace(/</g, '\\u003c');
+
+  const body = `<div class="flip" id="flip">
+  <div class="inner">
+    <div class="face front">
+      <img class="shot" src="${esc(img)}" alt="${esc(product.name)}"/>
+      ${isPick && pool > 1 ? `<button class="ov shuf" id="shuf" type="button" title="Show another ounce under ${esc(money(pickOpts.maxPrice))}">Shuffle ${rank + 1}/${pool}</button>` : ''}
+      <button class="ov flipbtn" id="toBack" type="button">Details and size</button>
+    </div>
+    <div class="face back">
+      <div class="bh"><h2>What you are actually getting</h2><button id="toFront" type="button">Photo</button></div>
+      <div class="pickfield">
+        <label for="size">1. Choose your size</label>
+        <select id="size">
+          <option value="">Select a size...</option>
+          ${options}
+        </select>
+        <p class="hint" id="hint2">The price updates once you choose.</p>
+      </div>
+      <h2 style="font-size:13px;color:var(--muted);margin:14px 0 6px">2. What the lab found</h2>
+      ${labPanel(product)}
+    </div>
+  </div>
+</div>
 <h1>${esc(product.name)}</h1>
-<div class="price">${esc(priceText)}${h.weight ? ' <span class="meta">' + esc(h.weight) + '</span>' : ''}</div>
+<div class="price" id="price">${esc(priceText)}${h.weight ? ' <span class="meta">' + esc(h.weight) + '</span>' : ''}</div>
 <p class="meta">${esc(ogDesc)}</p>
+<p class="hint" id="hint">Tap "Details and size" to see the lab numbers and pick your size.</p>
 <button class="buy" id="add" type="button">Add to cart</button>
-${isPick && pool > 1 ? `<button class="alt" id="shuf" type="button">Shuffle a different ounce under ${esc(money(pickOpts.maxPrice))} (${rank + 1} of ${pool})</button>` : ''}
 <a class="alt" href="${SITE}/consumables">Compare every store on Legal-Leaf Market</a>
 <p class="fine">Price and stock come from ${esc(product.store)}'s own feed and can move without notice.
 Legal-Leaf Market does not take the order or hold the stock. Ranking is never affected by commission.</p>
 <script>
 (function(){
-  // Same key and same item shape as addToCart() in consumables.html. If that
-  // shape changes, this has to change with it or the drawer will render a
-  // half-populated line.
-  var ITEM = ${itemJson};
-  var btn = document.getElementById('add');
-  btn.addEventListener('click', function(){
+  var D = ${payload};
+  var flip = document.getElementById('flip');
+  var sel = document.getElementById('size');
+  var add = document.getElementById('add');
+  var hint = document.getElementById('hint');
+  var hint2 = document.getElementById('hint2');
+  var priceEl = document.getElementById('price');
+
+  function money(n){
+    if (typeof n !== 'number' || !isFinite(n)) return '';
+    var sym = D.cur === 'EUR' ? '\u20ac' : '$';
+    return sym + (Math.round(n * 100) / 100).toFixed(2).replace(/\.00$/, '');
+  }
+  function chosen(){
+    if (sel.value === '') return null;
+    var i = parseInt(sel.value, 10);
+    for (var k = 0; k < D.sizes.length; k++) if (D.sizes[k].i === i) return D.sizes[k];
+    return null;
+  }
+  function setFlipped(on){
+    flip.classList.toggle('flipped', !!on);
+    if (!on) return;
+    /* Bring the card on screen before focusing. Add to cart sits below the card,
+       so on a short viewport the shopper has already scrolled past it, and a bare
+       focus with preventScroll left the dropdown above the fold: glowing exactly
+       where nobody could see it. Measured at 1280x720: scrollY 329, dropdown at
+       y -229. */
+    try { flip.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+    catch (e) { flip.scrollIntoView(); }
+    setTimeout(function(){
+      try { sel.focus({ preventScroll: true }); } catch (e) { sel.focus(); }
+    }, 260);
+  }
+
+  document.getElementById('toBack').addEventListener('click', function(){ setFlipped(true); });
+  document.getElementById('toFront').addEventListener('click', function(){ setFlipped(false); });
+
+  sel.addEventListener('change', function(){
+    sel.classList.remove('needs');
+    var c = chosen();
+    if (!c) { hint.textContent = 'Choose a size to see the exact price.'; hint.className = 'hint'; return; }
+    priceEl.innerHTML = '';
+    priceEl.appendChild(document.createTextNode(money(c.price)));
+    var w = document.createElement('span');
+    w.className = 'meta';
+    w.textContent = ' ' + c.label + (c.perG ? ' \u00b7 ' + money(c.perG) + ' per gram' : '');
+    priceEl.appendChild(w);
+    add.textContent = 'Add ' + c.label + ' for ' + money(c.price) + ' to cart';
+    hint.textContent = 'Adding ' + c.label + ', ' + money(c.price) + ', from ' + D.store + '.';
+    hint.className = 'hint';
+    hint2.textContent = 'Ready. Flip back or add it now.';
+    try { LL.track('size_selected', { size: c.label, value: c.price }); } catch (e) {}
+  });
+
+  add.addEventListener('click', function(){
+    var c = chosen();
+    /* Nobody adds a mystery item to a cart. No selection means walk them to the
+       choice rather than guessing on their behalf. */
+    if (!c) {
+      setFlipped(true);
+      sel.classList.add('needs');
+      hint.textContent = 'Choose a size first, so you know exactly what you are adding.';
+      hint.className = 'hint warn';
+      hint2.textContent = 'Pick one of these, then add to cart.';
+      try { LL.track('add_blocked_no_size', {}); } catch (e) {}
+      return;
+    }
     var cart = [];
-    try { cart = JSON.parse(localStorage.getItem('ll_cart')) || []; } catch(e) { cart = []; }
-    cart.push(ITEM);
-    try { localStorage.setItem('ll_cart', JSON.stringify(cart)); } catch(e) {}
-    try { LL.track('add_to_cart', {store:ITEM.store, storeKey:ITEM.storeKey, product:ITEM.name, value:ITEM.price, cur:ITEM.cur}); } catch(e) {}
-    btn.textContent = 'Added, opening your cart...';
-    btn.disabled = true;
+    try { cart = JSON.parse(localStorage.getItem('ll_cart')) || []; } catch (e) { cart = []; }
+    cart.push(c.item);
+    try { localStorage.setItem('ll_cart', JSON.stringify(cart)); } catch (e) {}
+    try { LL.track('add_to_cart', { store: c.item.store, storeKey: c.item.storeKey,
+      product: c.item.name, size: c.label, value: c.item.price, cur: c.item.cur }); } catch (e) {}
+    add.textContent = 'Added, opening your cart...';
+    add.disabled = true;
     location.href = ${JSON.stringify(SITE + '/consumables#cart')};
   });
 
@@ -437,11 +694,11 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
      custom cap or band would be silently dropped on the first shuffle. */
   var shuf = document.getElementById('shuf');
   if (shuf) {
-    var POOL = ${pool}, RANK = ${rank};
-    shuf.addEventListener('click', function () {
-      var next = RANK;
-      if (POOL > 1) { while (next === RANK) next = Math.floor(Math.random() * POOL); }
-      try { LL.track('shuffle', { from: RANK, to: next }); } catch (e) {}
+    shuf.addEventListener('click', function(){
+      var next = D.rank;
+      if (D.pool > 1) { while (next === D.rank) next = Math.floor(Math.random() * D.pool); }
+      try { LL.track('shuffle', { from: D.rank, to: next }); } catch (e) {}
+      shuf.disabled = true;
       var q = new URLSearchParams(location.search);
       q.set('i', String(next));
       location.href = location.pathname + '?' + q.toString();

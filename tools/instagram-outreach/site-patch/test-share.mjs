@@ -50,6 +50,7 @@ ok(/id="add"[^>]*>?|>Add to cart</.test(good.html), 'and it is Add to cart');
 ok(!/Buy at |Go straight to |sponsored/.test(good.html), 'no vendor button was introduced');
 ok(!/api\/subscribe/.test(good.html), 'no email capture flow was introduced');
 ok(good.html.includes("localStorage.setItem('ll_cart'"), 'writes the site cart key ll_cart');
+  ok(/id="size"/.test(good.html), 'the size dropdown is present');
 ok(good.html.includes("LL.track('add_to_cart'"), 'fires the same analytics event as the site');
 
 console.log('\n=== affiliate references survive, checked against the real builder ===');
@@ -84,11 +85,12 @@ const evil = await run('evil__x');
 ok(!/<script>alert\(1\)<\/script>/.test(evil.html), 'script tag escaped');
 ok(evil.html.includes('&lt;script&gt;'), 'appears escaped instead');
 ok(!/href="javascript:/.test(evil.html), 'no javascript: href');
-const itemLine = (evil.html.match(/var ITEM = (.*);/) || [])[1] || '';
-ok(itemLine.length > 0, 'found the embedded cart item');
+const itemLine = (evil.html.match(/var D = (\{.*\});/) || [])[1] || '';
+ok(itemLine.length > 0, 'found the embedded payload');
 ok(!itemLine.includes('<'), 'embedded JSON has no raw < at all, so it cannot close the script tag');
 ok(itemLine.includes('\\u003c'), 'the angle brackets are unicode-escaped instead');
-ok(JSON.parse(itemLine).name === PRODUCTS[1].name, 'and it still parses back to the exact name');
+ok(JSON.parse(itemLine).sizes[0].item.name === PRODUCTS[1].name,
+   'and it still parses back to the exact product name');
 const evilImg = (evil.html.match(/<meta property="og:image" content="([^"]*)"/) || [])[1];
 ok(evilImg === 'https://legal-leafmarket.com/og-image.png', 'javascript: image fell back');
 
@@ -163,9 +165,11 @@ console.log('\n=== /p/pick selection ===');
   ok(pick.status === 200, '/p/pick returns 200');
   ok(pTag('og:title') === 'Sour Diesel Small Buds (1oz) $39', 'card shows the chosen ounce and its price');
   ok(/per gram, at THCA Small Buds/.test(pTag('og:description')), 'per gram is the chosen row');
-  ok(pick.html.includes('"variantId":"V-OZ"'), 'cart item carries the ounce variant, not the 4oz');
+  ok(pick.html.includes('"variantId":"V-OZ"'), 'cart item carries the ounce variant');
   ok(pick.html.includes('"ref":"coffeeandajoint"'), 'affiliate ref carried on the pick');
   ok(pick.html.includes('"coupon":"JACOBKENNEDY"'), 'coupon carried on the pick');
+  ok(!/"variantId":"V-QP"/.test(pick.html) || /this week/.test(pick.html),
+     'the 4oz is only ever an alternative size, never the advertised one');
   ok(pTag('og:url') === 'https://legal-leafmarket.com/p/pick', 'canonical is the stable /p/pick URL');
 
   globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [] }) });
@@ -254,8 +258,11 @@ console.log('\n=== shuffle ===');
   globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: POOL }) });
 
   const first = await run('pick');
-  ok(/Shuffle a different ounce under \$50 \(1 of 3\)/.test(first.html),
-     'shuffle button appears and names the position');
+  /* The label is short because it now sits on the photo as an overlay pill; the
+     cap it shuffles within moved into the tooltip. */
+  ok(/id="shuf"[^>]*>Shuffle 1\/3</.test(first.html), 'overlay shuffle button names the position');
+  ok(/class="ov shuf"/.test(first.html), 'and is styled as a glowing photo overlay');
+  ok(/title="Show another ounce under \$50"/.test(first.html), 'tooltip still states the cap');
   const b0 = JSON.parse((first.html.match(/var BASE = (\{.*?\});/) || [])[1]);
   ok(b0.rank === 0 && b0.of === 3, 'events carry rank and pool size: rank=' + b0.rank + ' of=' + b0.of);
   ok(b0.pid === 'a', 'rank 0 is the best value');
@@ -265,14 +272,14 @@ console.log('\n=== shuffle ===');
   const t2 = (n) => (second.html.match(new RegExp('<meta property="' + n + '" content="([^"]*)"')) || [])[1];
   ok(t2('og:title') === 'Ounce B (1oz) $44', 'i=1 renders the second best: ' + t2('og:title'));
   ok(second.html.includes('"variantId":"V-b"'), 'and its cart item is the right product');
-  ok(/\(2 of 3\)/.test(second.html), 'button reflects the new position');
+  ok(/>Shuffle 2\/3</.test(second.html), 'button reflects the new position');
 
   // Out of range must clamp rather than 404 or render nothing.
   const far = await run('pick', null, { i: '99' });
   ok(far.status === 200, 'i=99 still renders, status ' + far.status);
-  ok(/\(3 of 3\)/.test(far.html), 'clamped to the last rank');
+  ok(/>Shuffle 3\/3</.test(far.html), 'clamped to the last rank');
   const neg = await run('pick', null, { i: '-4' });
-  ok(/\(1 of 3\)/.test(neg.html), 'a negative index falls back to the best');
+  ok(/>Shuffle 1\/3</.test(neg.html), 'a negative index falls back to the best');
 
   // Shuffle must not silently drop a custom cap or band.
   ok(/new URLSearchParams\(location\.search\)/.test(first.html) && /q\.set\('i'/.test(first.html),
