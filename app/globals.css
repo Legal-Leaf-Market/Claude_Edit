@@ -144,6 +144,38 @@
     border-radius: var(--radius-lg);
   }
 
+  /* "Iconic Rigs" character-select badge. Deliberately a stylised monogram
+     rather than a photo: no likeness rights to navigate, and it matches the
+     abstract-icon language already used for categories and stores. The
+     hover/selected states borrow a video-game character-select feel (pop,
+     glow, ring) without pulling in any actual game engine for it. */
+  .icon-badge {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--icon-hue) 18%, var(--card));
+    color: var(--icon-hue);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease,
+      border-color 0.15s ease;
+  }
+  .icon-badge:hover {
+    transform: translateY(-2px) scale(1.05);
+    border-color: var(--icon-hue);
+  }
+  .icon-badge[data-selected="true"] {
+    border-color: var(--icon-hue);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--icon-hue) 45%, transparent);
+    transform: translateY(-2px) scale(1.05);
+  }
+
   /* Admin operating-model page. */
   .eyebrow {
     font-size: 0.7rem;

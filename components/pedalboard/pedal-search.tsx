@@ -114,7 +114,7 @@ export function PedalSearch({
                     <span className="block text-xs text-[var(--muted-foreground)]">
                       {pedal.marketPriceCents != null
                         ? `~${formatPrice(pedal.marketPriceCents)} market`
-                        : "Not enough data yet"}
+                        : "Too few listings to price yet"}
                     </span>
                   </span>
                   {already && (

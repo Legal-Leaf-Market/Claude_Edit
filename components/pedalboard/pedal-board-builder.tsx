@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Check, Copy, Trash2 } from "lucide-react"
 import { Board, type BoardEntry } from "./board"
+import { IconSelect } from "./icon-select"
 import { PedalSearch } from "./pedal-search"
 import { formatPrice } from "@/lib/utils"
 import type { PedalBoardEntry, PedalSummary } from "@/lib/pedalboard/queries"
@@ -120,53 +121,59 @@ export function PedalBoardBuilder({
       .catch(() => {})
   }
 
+  const disabledSlugs = new Set(slugs)
+
   return (
-    <div className="space-y-4">
-      <PedalSearch suggestions={suggestions} onAdd={addPedal} disabledSlugs={new Set(slugs)} />
+    <div className="space-y-6">
+      <IconSelect onAdd={addPedal} disabledSlugs={disabledSlugs} />
 
-      <Board entries={entries} onRemove={removePedal} onMove={movePedal} />
+      <div className="space-y-4">
+        <PedalSearch suggestions={suggestions} onAdd={addPedal} disabledSlugs={disabledSlugs} />
 
-      {entries.length > 0 && (
-        <div className="panel flex flex-wrap items-center justify-between gap-3 p-4">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">
-              Estimated board value
-            </p>
-            <p className="text-xl font-semibold text-[var(--cream)]">
-              {totalCents > 0 ? formatPrice(totalCents) : "Not enough data yet"}
-              {missingPriceCount > 0 && totalCents > 0 && (
-                <span className="ml-2 text-xs font-normal text-[var(--muted-foreground)]">
-                  ({missingPriceCount} of {entries.length} not counted, too few listings)
-                </span>
-              )}
-            </p>
+        <Board entries={entries} onRemove={removePedal} onMove={movePedal} />
+
+        {entries.length > 0 && (
+          <div className="panel flex flex-wrap items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">
+                Board cost
+              </p>
+              <p className="text-xl font-semibold text-[var(--cream)]">
+                {totalCents > 0 ? `~${formatPrice(totalCents)}` : "Too few listings to price yet"}
+                {missingPriceCount > 0 && totalCents > 0 && (
+                  <span className="ml-2 text-xs font-normal text-[var(--muted-foreground)]">
+                    ({missingPriceCount} of {entries.length} not counted, too few listings)
+                  </span>
+                )}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={share}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 text-sm text-[var(--cream)] transition-colors hover:bg-[var(--secondary)]"
+              >
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? "Copied" : "Copy link"}
+              </button>
+              <button
+                type="button"
+                onClick={clearBoard}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 text-sm text-[var(--muted-foreground)] transition-colors hover:bg-[var(--secondary)] hover:text-[var(--cream)]"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Clear board
+              </button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={share}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 text-sm text-[var(--cream)] transition-colors hover:bg-[var(--secondary)]"
-            >
-              {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              {copied ? "Copied" : "Share this board"}
-            </button>
-            <button
-              type="button"
-              onClick={clearBoard}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 text-sm text-[var(--muted-foreground)] transition-colors hover:bg-[var(--secondary)] hover:text-[var(--cream)]"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Clear board
-            </button>
-          </div>
-        </div>
-      )}
+        )}
 
-      {slugs.length >= MAX_PEDALS && (
-        <p className="text-xs text-[var(--muted-foreground)]">
-          {MAX_PEDALS} pedals is the limit here. Remove one to add another.
-        </p>
-      )}
+        {slugs.length >= MAX_PEDALS && (
+          <p className="text-xs text-[var(--muted-foreground)]">
+            {MAX_PEDALS} pedals is the limit here. Remove one to add another.
+          </p>
+        )}
+      </div>
     </div>
   )
 }
