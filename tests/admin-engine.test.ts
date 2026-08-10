@@ -65,6 +65,26 @@ describe("runModel / traffic curve", () => {
       expect(Number.isFinite(m.sessions)).toBe(true)
     }
   })
+
+  it("holds the geometric fallback flat past month 24 rather than extrapolating its slope forever", () => {
+    // A dip-then-rise anchor set: no monotonic sigmoid can pass through all
+    // three exactly, which routes this through the geometric fallback
+    // instead of the primary curve fit. Extended to a decade, this used to
+    // keep compounding the month-12-to-24 slope in log-space indefinitely,
+    // reaching session counts in the tens of quintillions by month 120.
+    const dip: SiteProfile = {
+      ...PROFILE,
+      assumptions: { ...ASSUMPTIONS, sessionsMonth1: 1000, sessionsMonth12: 50, sessionsMonth24: 5000 },
+    }
+    const model = runModel([dip], undefined, NEUTRAL_SCENARIO, undefined, 120)
+    const months = model.sites.gearavail.months
+    expect(months[23].sessions).toBeCloseTo(5000, -1)
+    // Flat past the anchor horizon: month 30, 60, 90 and 120 all sit at the
+    // month-24 level, not still climbing (or, before the fix, exploding).
+    for (const i of [29, 59, 89, 119]) {
+      expect(months[i].sessions).toBeCloseTo(months[23].sessions, -1)
+    }
+  })
 })
 
 describe("runModel / revenue identity", () => {
@@ -135,5 +155,78 @@ describe("runModel / overrides", () => {
   it("an override wins over the profile's shipped assumption", () => {
     const model = runModel([PROFILE], { gearavail: { basket: 250 } }, NEUTRAL_SCENARIO, undefined)
     expect(model.sites.gearavail.effective.basket).toBe(250)
+  })
+})
+
+describe("runModel / extended horizon (displayMonths)", () => {
+  it("produces exactly the requested number of months", () => {
+    const model = runModel([PROFILE], undefined, NEUTRAL_SCENARIO, undefined, 120)
+    expect(model.sites.gearavail.months).toHaveLength(120)
+    expect(model.monthLabels).toHaveLength(120)
+  })
+
+  it("matches the default 24-month run exactly for months 1-24", () => {
+    const standard = runModel([PROFILE], undefined, NEUTRAL_SCENARIO, undefined)
+    const extended = runModel([PROFILE], undefined, NEUTRAL_SCENARIO, undefined, 120)
+    for (let i = 0; i < 24; i += 1) {
+      expect(extended.sites.gearavail.months[i].sessions).toBe(standard.sites.gearavail.months[i].sessions)
+      expect(extended.sites.gearavail.months[i].revenue).toBeCloseTo(standard.sites.gearavail.months[i].revenue, 6)
+    }
+  })
+
+  it("never lets conversion or attribution exceed their fully-matured value past month 24", () => {
+    const model = runModel([PROFILE], undefined, NEUTRAL_SCENARIO, undefined, 120)
+    const months = model.sites.gearavail.months
+    // revPerSession is monotonic with the conversion/attribution ramps once
+    // sessions are large enough that rounding noise washes out; the ramps
+    // themselves must never imply more than fully-matured (ratio > 1 was
+    // exactly the overshoot bug this displayMonths support had to fix).
+    const month24RevPerSession = months[23].revPerSession
+    for (let i = 24; i < months.length; i += 1) {
+      expect(months[i].revPerSession).toBeLessThanOrEqual(month24RevPerSession * 1.001)
+    }
+  })
+
+  it("sums the full extended horizon in totalRevenue, not just the first 24 months", () => {
+    const model = runModel([PROFILE], undefined, NEUTRAL_SCENARIO, undefined, 120)
+    const site = model.sites.gearavail
+    const firstTwoYears = site.year1Revenue + site.year2Revenue
+    expect(site.totalRevenue).toBeGreaterThan(firstTwoYears)
+  })
+
+  it("keeps year1Revenue and year2Revenue scoped to the first 24 months on a longer run", () => {
+    const standard = runModel([PROFILE], undefined, NEUTRAL_SCENARIO, undefined)
+    const extended = runModel([PROFILE], undefined, NEUTRAL_SCENARIO, undefined, 120)
+    expect(extended.sites.gearavail.year1Revenue).toBeCloseTo(standard.sites.gearavail.year1Revenue, 6)
+    expect(extended.sites.gearavail.year2Revenue).toBeCloseTo(standard.sites.gearavail.year2Revenue, 6)
+  })
+})
+
+describe("runModel / multiple site profiles combined", () => {
+  const SECOND_PROFILE: SiteProfile = {
+    ...PROFILE,
+    key: "second",
+    name: "Second Site",
+    assumptions: { ...ASSUMPTIONS, sessionsMonth1: 300, sessionsMonth12: 5000, sessionsMonth24: 24000 },
+  }
+
+  it("sums totals across every profile passed in", () => {
+    const model = runModel([PROFILE, SECOND_PROFILE], undefined, NEUTRAL_SCENARIO, undefined)
+    const expectedRevenue = model.sites.gearavail.totalRevenue + model.sites.second.totalRevenue
+    const expectedSessions = model.sites.gearavail.totalSessions + model.sites.second.totalSessions
+    expect(model.totals.totalRevenue).toBeCloseTo(expectedRevenue, 6)
+    expect(model.totals.totalSessions).toBe(expectedSessions)
+    expect(model.order).toEqual(["gearavail", "second"])
+  })
+
+  it("keeps each site's own effective assumptions independent of the other's overrides", () => {
+    const model = runModel(
+      [PROFILE, SECOND_PROFILE],
+      { second: { basket: 999 } },
+      NEUTRAL_SCENARIO,
+      undefined,
+    )
+    expect(model.sites.second.effective.basket).toBe(999)
+    expect(model.sites.gearavail.effective.basket).toBe(ASSUMPTIONS.basket)
   })
 })
