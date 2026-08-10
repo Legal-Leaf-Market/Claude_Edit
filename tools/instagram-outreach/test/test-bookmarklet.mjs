@@ -9,11 +9,12 @@ const MOCK = 'file://' + path.join(HERE, 'mock-dm.html');
 
 const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const REPLIES = ['first line here', 'second line here', 'third line here'];
+const NEWS = "this week's pick https://legal-leafmarket.com/p/x";
 
 const html = fs.readFileSync(LAUNCHER, 'utf8');
 const injector = html
   .match(/<script type="text\/plain" id="qr-source">([\s\S]*?)<\/script>/)[1]
-  .replace('__REPLIES_JSON__', JSON.stringify(REPLIES))
+  .replace('__MESSAGES_JSON__', JSON.stringify({ intro: REPLIES, newsletter: NEWS }))
   .replace('__GAP_MS__', '150');
 
 const browser = await chromium.launch({ executablePath: CHROME });
@@ -49,7 +50,7 @@ async function runMode(mode) {
   console.log('  editor received: ' + JSON.stringify(sent));
   console.log('  panel log: ' + JSON.stringify(await panelLog(page)));
 
-  ok(sent.length === 3, 'exactly 3 messages committed, got ' + sent.length);
+  ok(sent.length === 3, 'Alt+Shift+I sent exactly the 3 intro replies, got ' + sent.length);
   ok(!sent.some(s => s === ''), 'no blank message was ever posted');
   ok(JSON.stringify(sent) === JSON.stringify(REPLIES), 'all three arrived intact and in order');
   ok(await page.evaluate(() => document.querySelectorAll('#thread div').length) === 3,
@@ -65,6 +66,20 @@ async function runMode(mode) {
   await page.waitForFunction(() => window.__sent.length >= 1, null, { timeout: 5000 }).catch(() => {});
   const one = await page.evaluate(() => window.__sent);
   ok(JSON.stringify(one) === JSON.stringify([REPLIES[1]]), 'Alt+Shift+2 sent only reply 2: ' + JSON.stringify(one));
+
+  // The newsletter is one message, not three, and must not drag the intro along.
+  await page.evaluate(() => { window.__sent = []; });
+  await page.keyboard.down('Alt');
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('KeyN');
+  await page.keyboard.up('Shift');
+  await page.keyboard.up('Alt');
+  await page.waitForFunction(() => window.__sent.length >= 1, null, { timeout: 6000 }).catch(() => {});
+  const news = await page.evaluate(() => window.__sent);
+  ok(JSON.stringify(news) === JSON.stringify([NEWS]),
+     'Alt+Shift+N sent exactly one newsletter message: ' + JSON.stringify(news));
+  ok(/newsletter/.test(await panelLog(page)) || /1 message sent/.test(await panelLog(page)),
+     'panel reported the newsletter send: ' + JSON.stringify(await panelLog(page)));
 
   // Esc hides
   await page.keyboard.press('Escape');
@@ -94,7 +109,7 @@ await p3.setContent(`
     b.addEventListener('keydown', e => { if (e.key === 'Enter') window.__enters++; });
   <\/script>`);
 await p3.evaluate(injector);
-await p3.evaluate(() => window.__gaQR.run([0]));
+await p3.evaluate(() => window.__gaQR.run('intro', [0]));
 await p3.waitForFunction(() => {
   const h = Array.from(document.querySelectorAll('div')).find(d => d.shadowRoot);
   return /Stopped/.test(h.shadowRoot.querySelector('#log').textContent);
@@ -110,7 +125,7 @@ const p4 = await browser.newPage();
 p4.on('pageerror', e => errors.push('nocomposer: ' + e));
 await p4.setContent('<p>inbox, no thread open</p>');
 await p4.evaluate(injector);
-await p4.evaluate(() => window.__gaQR.run([0]));
+await p4.evaluate(() => window.__gaQR.run('intro', [0]));
 await new Promise(r => setTimeout(r, 700));
 const noLog = await panelLog(p4);
 console.log('  panel log: ' + JSON.stringify(noLog));

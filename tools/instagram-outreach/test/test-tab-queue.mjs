@@ -47,11 +47,11 @@ async function withBrowser(blockerOn, fn) {
   });
   await page.goto(LAUNCHER);
   // Narrow the run to a predictable five.
-  await page.fill('#firstN', '5');
-  await page.click('[data-select="first"]');
+  await page.fill('#capN', '5');
+  await page.click('#selDue');
   ok(await page.evaluate(() =>
     Array.from(document.querySelectorAll('#list input[type=checkbox]')).filter(c => c.checked).length
-  ) === 5, 'five accounts ticked');
+  ) === 5, 'five due accounts ticked by Select who is due');
   await fn({ browser, ctx, page, errors });
   ok(errors.length === 0, 'no uncaught page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
   await browser.close();

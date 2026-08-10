@@ -17,6 +17,28 @@ Chrome. It does two things:
 There is no build step and no dependency. Open the file, edit the replies, drag
 the blue button to the bookmarks bar.
 
+## Two touches, not a blast
+
+- **Intro**: the three replies, on first contact. `Alt` `Shift` `I`.
+- **Newsletter**: one message about a week later carrying that week's pick.
+  `Alt` `Shift` `N`.
+
+The launcher keeps a contact ledger in its own localStorage (a different origin
+from instagram.com, so the in-page panel cannot see it, which is why this page is
+the system of record). Per handle it holds first contact, newsletter sent, and
+muted. "Select who is due" ticks only accounts that qualify for the current
+campaign, capped per session. Muted is absolute: excluded from every selection and
+every batch, in both campaigns, and clearing contact history never un-mutes anyone.
+
+## The weekly pick and its product card
+
+The message is mostly a URL, because the URL carries the information. Use the
+`/p/<id>` share route added in `site-patch/`: it server renders the product's own
+Open Graph tags so Instagram shows a real product card with the photo, name and
+price. Every other URL on the site yields the same generic card, because the site
+is static HTML with client-rendered products and preview crawlers do not run
+JavaScript. See `site-patch/README.md`.
+
 ## Workflow
 
 1. Open `new-followers.html` in Chrome and tick who you want.

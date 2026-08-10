@@ -1,5 +1,5 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>New followers: open DM tabs</title>
+<title>Follower outreach: intro and weekly pick</title>
 <style>
   :root {
     --bg: #ffffff; --panel: #f6f7f9; --panel-2: #eceef1; --border: #d8dce2;
@@ -7,6 +7,7 @@
     --warn-bg: #fff6e5; --warn-border: #e8c88a; --warn-text: #6b4a04;
     --badge-bg: #e3e6eb; --badge-text: #4a5160;
     --flag-bg: #ffe9e3; --flag-text: #8a3416; --flag-border: #f0bfae;
+    --due-bg: #e2f2e6; --due-text: #1f5b31; --due-border: #b3d9be;
     --code-bg: #eceef1;
   }
   @media (prefers-color-scheme: dark) {
@@ -16,6 +17,7 @@
       --warn-bg: #2a2110; --warn-border: #5c4818; --warn-text: #f0d79a;
       --badge-bg: #262b34; --badge-text: #aab3c0;
       --flag-bg: #33190f; --flag-text: #f6b79c; --flag-border: #5e2e1c;
+      --due-bg: #12291a; --due-text: #9fd8b0; --due-border: #2b5638;
       --code-bg: #1e222a;
     }
   }
@@ -25,6 +27,7 @@
     --warn-bg: #2a2110; --warn-border: #5c4818; --warn-text: #f0d79a;
     --badge-bg: #262b34; --badge-text: #aab3c0;
     --flag-bg: #33190f; --flag-text: #f6b79c; --flag-border: #5e2e1c;
+    --due-bg: #12291a; --due-text: #9fd8b0; --due-border: #2b5638;
     --code-bg: #1e222a;
   }
   * { box-sizing: border-box; }
@@ -32,7 +35,7 @@
     margin: 0; padding: 24px 16px 64px; background: var(--bg); color: var(--text);
     font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
-  .wrap { max-width: 860px; margin: 0 auto; }
+  .wrap { max-width: 880px; margin: 0 auto; }
   h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
   .sub { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
@@ -48,15 +51,20 @@
   button.primary { background: var(--accent); color: var(--accent-text); border-color: transparent; }
   button:hover { filter: brightness(1.06); }
   button:disabled { opacity: 0.45; cursor: default; filter: none; }
-  .link-btn { background: none; border: none; color: var(--accent); padding: 4px 6px; font-weight: 500; text-decoration: underline; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: none; border-radius: 0; background: var(--panel-2); }
+  .seg button + button { border-left: 1px solid var(--border); }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
   label.inline { color: var(--muted); font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
   input[type="number"] { font: inherit; width: 64px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+  input[type="text"], input[type="url"] { font: inherit; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
   textarea { width: 100%; min-height: 64px; font: inherit; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); resize: vertical; }
-  #status { margin-top: 10px; font-size: 14px; color: var(--muted); min-height: 20px; }
+  #status, #cadence { margin-top: 10px; font-size: 14px; color: var(--muted); min-height: 20px; }
   ol { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
   li { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--border); background: var(--panel); }
   li:last-child { border-bottom: none; }
   li.done { background: var(--panel-2); }
+  li.muted-row { opacity: 0.5; }
   .idx { width: 28px; color: var(--muted); font-size: 13px; text-align: right; flex: none; }
   .who { flex: 1 1 auto; min-width: 0; }
   .handle { font-weight: 600; word-break: break-all; }
@@ -64,11 +72,19 @@
   .badges { display: flex; gap: 6px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
   .badge { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 3px 7px; border-radius: 5px; background: var(--badge-bg); color: var(--badge-text); }
   .badge.flag { background: var(--flag-bg); color: var(--flag-text); border: 1px solid var(--flag-border); }
-  .acts { display: flex; gap: 2px; flex: none; }
+  .badge.due { background: var(--due-bg); color: var(--due-text); border: 1px solid var(--due-border); }
+  .badge.state { cursor: pointer; }
+  .acts { display: flex; gap: 2px; flex: none; align-items: center; }
+  .link-btn { background: none; border: none; color: var(--accent); padding: 4px 6px; font-weight: 500; text-decoration: underline; cursor: pointer; font: inherit; }
   h2 { font-size: 15px; margin: 0 0 8px; }
   .foot { color: var(--muted); font-size: 13px; margin-top: 18px; }
-  .reply-field { margin-bottom: 10px; }
-  .reply-field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .field input { width: 100%; }
+  .preview {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; font-size: 14px; white-space: pre-wrap; word-break: break-word;
+  }
   .bmk {
     display: inline-block; padding: 9px 16px; border-radius: 8px; font-weight: 700;
     background: var(--accent); color: var(--accent-text); text-decoration: none;
@@ -88,7 +104,7 @@
     border-radius: 8px; padding: 12px; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
     margin-top: 10px;
   }
-  @media (max-width: 620px) {
+  @media (max-width: 640px) {
     li { flex-wrap: wrap; }
     .who { flex-basis: 100%; order: 2; }
     .badges, .acts { order: 3; }
@@ -96,35 +112,47 @@
 </style>
 
 <div class="wrap">
-  <h1>New followers of legal_leaf_market</h1>
-  <p class="sub">Newest first, read off the 8 screenshots (the list was sorted by "Date followed: latest"). Tick who you want, open a DM tab for each, then use the bookmarklet in step 3 to fire your three replies per tab.</p>
+  <h1>Follower outreach for legal_leaf_market</h1>
+  <p class="sub">
+    Two touches, not a blast. The intro is three short replies when someone new follows.
+    The newsletter is one message about a week later carrying that week's pick. Anyone who
+    says no is muted here and never appears in a batch again.
+  </p>
 
   <div class="card warn">
-    <strong>Read this before you automate 60 DMs</strong>
-    Two separate risks, and the second one is the account-threatening one.
+    <strong>Worth keeping in mind</strong>
     <ul>
-      <li>Sending the same three messages to dozens of accounts in one sitting is the exact pattern Instagram's spam heuristics watch for. The usual result is a temporary block on messaging, sometimes on the whole account.</li>
-      <li>Scripted sending (which is what the bookmarklet does) is against Instagram's terms, which prohibit automated interaction with the service. Your account is the thing at stake, so pace it: 10 to 15 people per session, spread across days, and vary the wording rather than firing three identical lines at everyone.</li>
+      <li>Firing the same message at dozens of accounts in one sitting is the pattern Instagram's spam heuristics watch for, and the usual result is a temporary messaging block. Ten to fifteen a session is the sane ceiling.</li>
+      <li>Scripted sending is against Instagram's terms, which prohibit automated interaction. Your account carries that risk.</li>
+      <li>An ounce under $50 is a US hemp offer. Most of this list is not in the US (Dubai, Tenerife, Thailand, Argentina, Trier, Barcelona, South Africa), so the pick is noise to them and possibly worse than noise. Mute rather than send.</li>
+      <li>One "no thanks" is the whole conversation. Mute them the moment it arrives, before the next batch.</li>
     </ul>
   </div>
 
   <div class="card">
-    <h2>1. Pick who</h2>
+    <h2>1. Campaign</h2>
     <div class="row-controls">
-      <button data-select="all">Select all</button>
-      <button data-select="none">Select none</button>
-      <button data-select="clean">Select only exact handles</button>
-      <button data-select="first">Select first</button>
-      <label class="inline"><input type="number" id="firstN" value="10" min="1" max="99"> accounts</label>
+      <span class="seg">
+        <button id="campIntro" aria-pressed="true">Intro, 3 replies</button>
+        <button id="campNews" aria-pressed="false">Newsletter, 1 message</button>
+      </span>
+      <label class="inline">follow up after <input type="number" id="gapDays" value="7" min="1" max="90"> days</label>
     </div>
+    <div class="row-controls" style="margin-top: 10px">
+      <button class="primary" id="selDue">Select who is due</button>
+      <button data-select="none">Select none</button>
+      <button data-select="clean">Only exact handles</button>
+      <label class="inline">cap at <input type="number" id="capN" value="12" min="1" max="99"> per session</label>
+    </div>
+    <div id="cadence"></div>
   </div>
 
   <div class="card">
     <h2>2. Open the tabs</h2>
     <p class="sub" style="margin: 0 0 10px">
-      Chrome allows exactly one new tab per click, so out of the box this walks the
-      list one at a time: click "Open next tab" or press <kbd>O</kbd>. Allow pop-ups
-      for this page once (see below) and "Open batch" gives you ten per click instead.
+      Chrome allows exactly one new tab per click, so this walks the list one at a time:
+      click "Open next tab" or press <kbd>O</kbd>. Allow pop-ups for this page once
+      (see below) and "Open batch" gives you the whole cap in one click.
     </p>
     <div class="row-controls">
       <button class="primary" id="openDms">Queue DM tabs</button>
@@ -138,60 +166,118 @@
     </div>
     <div id="status">Nothing queued yet.</div>
     <details>
-      <summary>How to get ten tabs per click instead of one</summary>
+      <summary>How to get the whole batch per click instead of one</summary>
       <p class="sub" style="margin: 10px 0 0">
-        Click "Open batch" once. Chrome opens one tab, blocks the other nine, and puts a
+        Click "Open batch" once. Chrome opens one tab, blocks the rest, and puts a
         blocked-pop-ups icon at the right hand end of the address bar. Click that icon,
-        choose to always allow pop-ups and redirects from this page, then click "Open
-        batch" again. The blocked nine were never lost, they are still in the queue.
-        If Chrome will not keep that setting for a local file, the one-at-a-time path
-        works everywhere and needs no setting at all.
+        allow pop-ups and redirects for this page, then click "Open batch" again. The
+        blocked ones were never lost, they are still queued. If Chrome will not keep that
+        setting for a local file, the one-at-a-time path needs no setting at all.
       </p>
+    </details>
+    <p class="sub" style="margin: 10px 0 0">
+      Opening someone's tab stamps them as contacted for the current campaign, because
+      that is the only signal this page gets. If you open a tab and do not actually send,
+      click the state chip on their row to clear it.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>3. This week's pick</h2>
+    <p class="sub" style="margin: 0 0 12px">
+      One product, rotated each week, from legal-leafmarket.com. Use the <code>/p/&lt;id&gt;</code>
+      share URL: that route emits the product's own Open Graph tags, so Instagram renders a
+      real product card with the photo, name and price instead of the generic site card
+      every other URL on the site produces. The name and price fields below are only for
+      your own reference here, since the card carries them. UTM tags get added so this
+      traffic lands in its own campaign rather than vanishing into direct.
+    </p>
+    <div class="field">
+      <label for="pickName">Product name, exactly as the site has it</label>
+      <input type="text" id="pickName" placeholder="e.g. Blue Dream THCa Flower, 1oz">
+    </div>
+    <div class="row-controls" style="gap: 12px; align-items: flex-start">
+      <div class="field" style="flex: 0 0 140px">
+        <label for="pickPrice">Price</label>
+        <input type="text" id="pickPrice" placeholder="$44">
+      </div>
+      <div class="field" style="flex: 1 1 320px">
+        <label for="pickUrl">Product page URL</label>
+        <input type="url" id="pickUrl" placeholder="https://legal-leafmarket.com/product/...">
+      </div>
+    </div>
+    <div class="field">
+      <label for="pickWeek">Campaign tag for this week</label>
+      <input type="text" id="pickWeek" placeholder="2026-w33" style="max-width: 200px">
+    </div>
+    <div id="pickWarn" class="sub" style="margin: 0 0 10px"></div>
+    <label class="inline" style="display:block;margin-bottom:6px;font-weight:600;color:var(--text)">The newsletter message that produces</label>
+    <div class="preview" id="newsPreview"></div>
+  </div>
+
+  <div class="card">
+    <h2>4. The intro replies</h2>
+    <p class="sub" style="margin: 0 0 12px">Sent on first contact, three short messages. Unchanged from what you are already running.</p>
+    <div class="field">
+      <label for="r0">Reply 1</label>
+      <textarea id="r0">Hey, thanks for the follow. We run Legal Leaf Market, a price comparison site for legal hemp across a few hundred US shops.</textarea>
+    </div>
+    <div class="field">
+      <label for="r1">Reply 2</label>
+      <textarea id="r1">If you sell online, we can list your products alongside everyone else's at no cost to you. Shoppers find you through search, you keep the order and the customer.</textarea>
+    </div>
+    <div class="field">
+      <label for="r2">Reply 3</label>
+      <textarea id="r2">Either way, happy to answer anything. What are you working on at the moment?</textarea>
+    </div>
+    <div class="row-controls" style="margin: 14px 0 4px">
+      <label class="inline">Pause between messages <input type="number" id="gapMs" value="1800" min="300" max="20000" step="100"> ms</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>5. Install the sender</h2>
+    <div class="row-controls">
+      <a class="bmk" id="bmk" href="#" title="Drag me to your bookmarks bar">Outreach sender</a>
+      <button id="copyBmk">Copy bookmarklet code</button>
+      <button id="dlUser">Download as userscript</button>
+    </div>
+    <p class="sub" style="margin: 14px 0 0">
+      Both carry the current messages and this week's pick, so re-drag or re-download
+      whenever you change them. On a DM tab, click the bookmark once: a panel appears top
+      right and the hotkeys go live for that tab.
+    </p>
+    <ul class="keys">
+      <li><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd> sends the three intro replies.</li>
+      <li><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd> sends the one newsletter message.</li>
+      <li><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> sends a single intro reply.</li>
+      <li><kbd>Esc</kbd> hides the panel. Clicking the bookmark again brings it back.</li>
+      <li><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd> is wired to the intro too, but Chrome claims it for DevTools and normally takes it first.</li>
+    </ul>
+    <p class="sub" style="margin: 12px 0 0">
+      A bookmarklet cannot arm itself, so it needs one click per tab. The userscript, in
+      Violentmonkey or Tampermonkey, arms itself on every DM page instead, so each tab is
+      just the hotkey and then <kbd>Ctrl</kbd> + <kbd>W</kbd>.
+    </p>
+    <details>
+      <summary>What it does, in readable source</summary>
+      <pre id="srcView"></pre>
     </details>
   </div>
 
   <div class="card">
-    <h2>3. Your three quick replies, and the bookmarklet that sends them</h2>
-    <p class="sub" style="margin:0 0 12px">Edit these, then drag the blue button to your bookmarks bar. The replies are baked into the bookmarklet, so re-drag it whenever you change them. Instagram cannot prefill a message from a link, which is why this has to type into the box for you.</p>
-
-    <div class="reply-field">
-      <label for="r0">Reply 1</label>
-      <textarea id="r0">Hey, thanks for the follow. We run Legal Leaf Market, a price comparison site for legal hemp across a few hundred US shops.</textarea>
+    <h2>6. Muted, and never messaged again</h2>
+    <p class="sub" style="margin: 0 0 10px">
+      Anyone who asks to be left alone goes here. Muted accounts are excluded from every
+      selection and every batch, in both campaigns, permanently. Paste handles one per
+      line or comma separated, with or without the @.
+    </p>
+    <textarea id="muteBox" placeholder="somehandle&#10;another.handle"></textarea>
+    <div class="row-controls" style="margin-top: 8px">
+      <button id="muteAdd">Mute these</button>
+      <button id="ledgerReset">Clear all contact history</button>
     </div>
-    <div class="reply-field">
-      <label for="r1">Reply 2</label>
-      <textarea id="r1">If you sell online, we can list your products alongside everyone else's at no cost to you. Shoppers find you through search, you keep the order and the customer.</textarea>
-    </div>
-    <div class="reply-field">
-      <label for="r2">Reply 3</label>
-      <textarea id="r2">Either way, happy to answer anything. What are you working on at the moment?</textarea>
-    </div>
-
-    <div class="row-controls" style="margin: 14px 0 4px">
-      <label class="inline">Pause between messages <input type="number" id="gapMs" value="1800" min="300" max="20000" step="100"> ms</label>
-    </div>
-
-    <div class="row-controls" style="margin-top: 14px">
-      <a class="bmk" id="bmk" href="#" title="Drag me to your bookmarks bar">Send 3 replies</a>
-      <button id="copyBmk">Copy bookmarklet code</button>
-      <button id="dlUser">Download as userscript</button>
-    </div>
-
-    <p class="sub" style="margin: 14px 0 0"><strong>How to use it:</strong> on an Instagram DM tab, click the bookmark once. A small panel appears in the top right and the hotkeys go live for that tab. Click "Send all 3" or press the hotkey. Repeat on the next tab.</p>
-
-    <p class="sub" style="margin: 8px 0 0"><strong>To skip that per-tab click:</strong> a bookmarklet cannot arm itself, so one click per tab is unavoidable. If you already run Violentmonkey or Tampermonkey, take the userscript instead. It arms itself on every Instagram DM page, so each tab is just the hotkey and then <kbd>Ctrl</kbd> + <kbd>W</kbd>.</p>
-
-    <ul class="keys">
-      <li><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd> sends all three. This is the main binding.</li>
-      <li><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> sends just that one reply.</li>
-      <li><kbd>Esc</kbd> hides the panel. Clicking the bookmark again brings it back.</li>
-      <li><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd> is also wired to send all three, but Chrome claims it for DevTools and normally takes it first, so treat it as a spare rather than the one to reach for.</li>
-    </ul>
-
-    <details>
-      <summary>What the bookmarklet does, in readable source</summary>
-      <pre id="srcView"></pre>
-    </details>
+    <div class="sub" id="muteCount" style="margin-top: 10px"></div>
   </div>
 
   <ol id="list"></ol>
@@ -203,36 +289,45 @@
 (function () {
   'use strict';
 
-  var REPLIES_KEY = 'gaQuickReplies.v1';
+  var INTRO_KEY = 'gaQuickReplies.v1';
+  var NEWS_KEY = 'gaNewsletter.v1';
   var SENT_KEY = 'gaQuickReplies.sent.v1';
-  var BAKED = __REPLIES_JSON__;
+  var BAKED = __MESSAGES_JSON__;
   var GAP_MS = __GAP_MS__;
 
   if (window.__gaQR) { window.__gaQR.show(); return; }
 
   /* ---------- stored state, shared across every instagram.com tab ---------- */
 
-  function loadReplies() {
+  function loadIntro() {
     try {
-      var raw = localStorage.getItem(REPLIES_KEY);
+      var raw = localStorage.getItem(INTRO_KEY);
       if (raw) {
         var a = JSON.parse(raw);
         if (Array.isArray(a) && a.length === 3) return a;
       }
     } catch (e) {}
-    return BAKED.slice();
+    return BAKED.intro.slice();
   }
-  function saveReplies(a) {
-    try { localStorage.setItem(REPLIES_KEY, JSON.stringify(a)); } catch (e) {}
+  function saveIntro(a) {
+    try { localStorage.setItem(INTRO_KEY, JSON.stringify(a)); } catch (e) {}
   }
-  function alreadySentHere() {
-    try { return !!(JSON.parse(localStorage.getItem(SENT_KEY)) || {})[location.pathname]; }
-    catch (e) { return false; }
+  function loadNews() {
+    try { return localStorage.getItem(NEWS_KEY) || BAKED.newsletter; } catch (e) { return BAKED.newsletter; }
   }
-  function markSentHere() {
+  function saveNews(s) {
+    try { localStorage.setItem(NEWS_KEY, s); } catch (e) {}
+  }
+  function sentHere() {
+    try { return (JSON.parse(localStorage.getItem(SENT_KEY)) || {})[location.pathname] || null; }
+    catch (e) { return null; }
+  }
+  function markSentHere(kind) {
     try {
       var s = JSON.parse(localStorage.getItem(SENT_KEY)) || {};
-      s[location.pathname] = 1;
+      var at = s[location.pathname];
+      s[location.pathname] = (at && typeof at === 'object') ? at : {};
+      s[location.pathname][kind] = 1;
       localStorage.setItem(SENT_KEY, JSON.stringify(s));
     } catch (e) {}
   }
@@ -241,8 +336,8 @@
 
   function visible(el) { return !!(el && el.offsetParent !== null); }
 
-  /* The composer is the last visible editable on the page. Selectors are tried
-     from most specific to least so a markup change degrades instead of breaking. */
+  /* The composer is the last visible editable on the page. Selectors run from
+     most specific to least so a markup change degrades instead of breaking. */
   function findComposer() {
     var sels = [
       'div[role="textbox"][contenteditable="true"]',
@@ -380,7 +475,7 @@
     var btn = sendControl();
 
     /* Refuse rather than fire Enter at a box whose model we could not reach.
-       Pressing on regardless is how you post three blank messages. */
+       Pressing on regardless is how you post blank messages. */
     if (!inModel && !btn) {
       throw new Error('the message box would not take the text, so nothing was sent');
     }
@@ -405,25 +500,26 @@
   root.innerHTML = [
     '<style>',
     ':host,*{box-sizing:border-box}',
-    '.box{width:290px;background:#15181d;color:#e8ebf0;border:1px solid #2c333d;border-radius:11px;',
+    '.box{width:300px;background:#15181d;color:#e8ebf0;border:1px solid #2c333d;border-radius:11px;',
     'box-shadow:0 10px 30px rgba(0,0,0,.45);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overflow:hidden}',
     '.hd{display:flex;align-items:center;gap:8px;padding:9px 11px;background:#1b1f26;border-bottom:1px solid #2c333d}',
     '.ttl{font-weight:700;font-size:12px;letter-spacing:.02em;flex:1}',
-    '.hd button{background:none;border:none;color:#98a1af;cursor:pointer;font-size:15px;line-height:1;padding:2px 4px}',
+    '.hd button{background:none;border:none;color:#98a1af;cursor:pointer;font-size:12px;line-height:1;padding:2px 4px}',
     '.hd button:hover{color:#e8ebf0}',
     '.bd{padding:11px}',
-    '.warn{background:#33240f;color:#f0cf98;border:1px solid #5c4818;border-radius:7px;padding:7px 9px;margin-bottom:9px;font-size:12px}',
+    '.note{background:#33240f;color:#f0cf98;border:1px solid #5c4818;border-radius:7px;padding:7px 9px;margin-bottom:9px;font-size:12px}',
     'button.act{width:100%;font:inherit;font-weight:700;padding:9px;border-radius:7px;border:none;',
-    'background:#4d82ff;color:#0b0d11;cursor:pointer}',
+    'background:#4d82ff;color:#0b0d11;cursor:pointer;margin-bottom:6px}',
+    'button.act.alt{background:#1e232b;color:#c9d1dc;border:1px solid #2c333d}',
     'button.act:disabled{opacity:.45;cursor:default}',
-    '.trio{display:flex;gap:6px;margin-top:7px}',
+    '.trio{display:flex;gap:6px}',
     '.trio button{flex:1;font:inherit;font-weight:600;padding:6px 0;border-radius:6px;border:1px solid #2c333d;',
     'background:#1e232b;color:#c9d1dc;cursor:pointer}',
     '.trio button:disabled{opacity:.45;cursor:default}',
     '.log{margin-top:9px;font-size:12px;color:#98a1af;min-height:32px;word-break:break-word}',
     '.log.err{color:#f6a58c}',
     '.keys{margin:9px 0 0;font-size:11px;color:#7d8695;line-height:1.6}',
-    'textarea{width:100%;min-height:44px;font:inherit;font-size:12px;padding:6px;margin-bottom:6px;border-radius:6px;',
+    'textarea{width:100%;min-height:40px;font:inherit;font-size:12px;padding:6px;margin-bottom:6px;border-radius:6px;',
     'border:1px solid #2c333d;background:#0f1216;color:#e8ebf0;resize:vertical}',
     '.edit{display:none;border-top:1px solid #2c333d;margin-top:9px;padding-top:9px}',
     '.edit.open{display:block}',
@@ -431,22 +527,24 @@
     '</style>',
     '<div class="box">',
     '  <div class="hd">',
-    '    <span class="ttl">Quick replies</span>',
-    '    <button id="pencil" title="Edit replies">edit</button>',
+    '    <span class="ttl">Outreach</span>',
+    '    <button id="pencil" title="Edit messages">edit</button>',
     '    <button id="close" title="Hide (Esc)">&times;</button>',
     '  </div>',
     '  <div class="bd">',
-    '    <div class="warn" id="dupe" style="display:none">Already sent on this thread.</div>',
-    '    <button class="act" id="all">Send all 3</button>',
+    '    <div class="note" id="dupe" style="display:none"></div>',
+    '    <button class="act" id="intro">Send intro (3)</button>',
+    '    <button class="act alt" id="news">Send newsletter (1)</button>',
     '    <div class="trio">',
     '      <button data-one="0">1</button><button data-one="1">2</button><button data-one="2">3</button>',
     '    </div>',
     '    <div class="log" id="log">Ready.</div>',
-    '    <div class="keys">Alt+Shift+I all three · Alt+Shift+1/2/3 one · Esc hide<br>Ctrl+Shift+I also bound, Chrome may take it for DevTools.</div>',
+    '    <div class="keys">Alt+Shift+I intro · Alt+Shift+N newsletter · Alt+Shift+1/2/3 one · Esc hide</div>',
     '    <div class="edit" id="edit">',
-    '      <label>Reply 1</label><textarea data-r="0"></textarea>',
-    '      <label>Reply 2</label><textarea data-r="1"></textarea>',
-    '      <label>Reply 3</label><textarea data-r="2"></textarea>',
+    '      <label>Intro 1</label><textarea data-r="0"></textarea>',
+    '      <label>Intro 2</label><textarea data-r="1"></textarea>',
+    '      <label>Intro 3</label><textarea data-r="2"></textarea>',
+    '      <label>Newsletter</label><textarea data-news></textarea>',
     '    </div>',
     '  </div>',
     '</div>'
@@ -455,28 +553,43 @@
 
   var $ = function (s) { return root.querySelector(s); };
   var logEl = $('#log');
-  var allBtn = $('#all');
+  var introBtn = $('#intro');
+  var newsBtn = $('#news');
   var oneBtns = Array.prototype.slice.call(root.querySelectorAll('[data-one]'));
   var areas = Array.prototype.slice.call(root.querySelectorAll('[data-r]'));
+  var newsArea = root.querySelector('[data-news]');
 
   function log(msg, isErr) {
     logEl.textContent = msg;
     logEl.className = isErr ? 'log err' : 'log';
   }
   function setBusy(b) {
-    allBtn.disabled = b;
+    introBtn.disabled = b;
+    newsBtn.disabled = b;
     oneBtns.forEach(function (x) { x.disabled = b; });
+  }
+  function refreshDupe() {
+    var s = sentHere() || {};
+    var bits = [];
+    if (s.intro) bits.push('intro');
+    if (s.newsletter) bits.push('newsletter');
+    var el = $('#dupe');
+    if (!bits.length) { el.style.display = 'none'; return; }
+    el.textContent = 'Already sent on this thread: ' + bits.join(' and ') + '.';
+    el.style.display = 'block';
   }
 
   areas.forEach(function (t, i) {
-    t.value = loadReplies()[i] || '';
+    t.value = loadIntro()[i] || '';
     t.addEventListener('input', function () {
-      var current = loadReplies();
-      current[i] = t.value;
-      saveReplies(current);
+      var cur = loadIntro();
+      cur[i] = t.value;
+      saveIntro(cur);
     });
   });
-  if (alreadySentHere()) $('#dupe').style.display = 'block';
+  newsArea.value = loadNews();
+  newsArea.addEventListener('input', function () { saveNews(newsArea.value); });
+  refreshDupe();
 
   $('#close').addEventListener('click', function () { host.style.display = 'none'; });
   $('#pencil').addEventListener('click', function () { $('#edit').classList.toggle('open'); });
@@ -485,22 +598,21 @@
 
   var busy = false;
 
-  async function run(indexes) {
+  async function run(kind, indexes) {
     if (busy) { log('Still sending, hold on.'); return; }
     busy = true; setBusy(true);
-    var replies = loadReplies();
+    var texts = kind === 'newsletter' ? [loadNews()] : indexes.map(function (n) { return loadIntro()[n]; });
     var sent = 0;
     try {
-      for (var i = 0; i < indexes.length; i++) {
-        var n = indexes[i];
-        var text = (replies[n] || '').trim();
-        if (!text) { log('Reply ' + (n + 1) + ' is empty, skipped.'); continue; }
-        log('Sending reply ' + (n + 1) + ' of ' + indexes.length + '...');
+      for (var i = 0; i < texts.length; i++) {
+        var text = (texts[i] || '').trim();
+        if (!text) { log('Message ' + (i + 1) + ' is empty, skipped.'); continue; }
+        log('Sending ' + (i + 1) + ' of ' + texts.length + '...');
         await sendOne(text);
         sent++;
-        if (i < indexes.length - 1) await sleep(GAP_MS);
+        if (i < texts.length - 1) await sleep(GAP_MS);
       }
-      if (sent) { markSentHere(); $('#dupe').style.display = 'block'; }
+      if (sent) { markSentHere(kind); refreshDupe(); }
       log(sent + (sent === 1 ? ' message' : ' messages') + ' sent. Move to the next tab.');
     } catch (e) {
       log('Stopped after ' + sent + ' sent: ' + e.message, true);
@@ -508,9 +620,10 @@
     busy = false; setBusy(false);
   }
 
-  allBtn.addEventListener('click', function () { run([0, 1, 2]); });
+  introBtn.addEventListener('click', function () { run('intro', [0, 1, 2]); });
+  newsBtn.addEventListener('click', function () { run('newsletter', []); });
   oneBtns.forEach(function (b) {
-    b.addEventListener('click', function () { run([parseInt(b.dataset.one, 10)]); });
+    b.addEventListener('click', function () { run('intro', [parseInt(b.dataset.one, 10)]); });
   });
 
   /* ---------- hotkeys ---------- */
@@ -518,25 +631,27 @@
   function onKey(e) {
     if (e.repeat || e.metaKey) return;
     var isI = e.code === 'KeyI' || e.key === 'I' || e.key === 'i';
-    var fire = null;
+    var isN = e.code === 'KeyN' || e.key === 'N' || e.key === 'n';
+    var job = null;
 
-    /* Requested binding. Chrome normally intercepts this for DevTools and the
-       page never sees it, so Alt+Shift+I exists as the one that always lands. */
-    if (e.ctrlKey && e.shiftKey && !e.altKey && isI) fire = [0, 1, 2];
-    else if (e.altKey && e.shiftKey && !e.ctrlKey && isI) fire = [0, 1, 2];
+    /* Ctrl+Shift+I is wired as asked, but Chrome normally intercepts it for
+       DevTools and the page never sees it. Alt+Shift+I always lands. */
+    if (e.ctrlKey && e.shiftKey && !e.altKey && isI) job = ['intro', [0, 1, 2]];
+    else if (e.altKey && e.shiftKey && !e.ctrlKey && isI) job = ['intro', [0, 1, 2]];
+    else if (e.altKey && e.shiftKey && !e.ctrlKey && isN) job = ['newsletter', []];
     else if (e.altKey && e.shiftKey && !e.ctrlKey) {
       var d = ['Digit1', 'Digit2', 'Digit3'].indexOf(e.code);
-      if (d >= 0) fire = [d];
+      if (d >= 0) job = ['intro', [d]];
     } else if (e.key === 'Escape' && host.style.display !== 'none') {
       host.style.display = 'none';
       return;
     }
 
-    if (!fire) return;
+    if (!job) return;
     e.preventDefault();
     e.stopPropagation();
     host.style.display = '';
-    run(fire);
+    run(job[0], job[1]);
   }
   window.addEventListener('keydown', onKey, true);
 
@@ -551,100 +666,164 @@
 <script>
 /* ------------------------------------------------------------------ *
  * Follower list read off the 8 screenshots, newest first.
- * handle: the Instagram username. exact:false means the screenshot cut
- * the handle off, so its link goes to Instagram search rather than a
- * profile URL that would 404.
+ *
+ * handle : the Instagram username.
+ * exact  : false when the screenshot cut the handle off, so its link goes to
+ *          Instagram search rather than a profile URL that would 404.
+ * kind   : 'shop' for a business or brand, 'person' for an individual,
+ *          'noise' for engagement-farm and default-avatar number-string
+ *          accounts. A starting guess for segmentation, not gospel: the
+ *          under-$50 ounce is for people who might buy one.
+ * geo    : 'us' or 'intl' where the profile made it obvious, otherwise absent.
+ *          A US hemp offer is noise to an account in Dubai or Bangkok.
  * ------------------------------------------------------------------ */
 const FOLLOWERS = [
-  { handle: "j.a.k.50a", name: "jak", exact: true },
-  { handle: "alexa_n6738", name: "", exact: true },
-  { handle: "hebborns_family_f", name: "Hebborns Family Fu...", exact: false },
-  { handle: "blazeone", name: "Blazeone45__", exact: false, note: "trailing underscores unclear" },
-  { handle: "the_10.10_2026", name: "10/10", exact: true },
-  { handle: "charliemalandro", name: "Neko Hashi", exact: true },
-  { handle: "evo.bubba.420", name: "", exact: true },
-  { handle: "spareman87", name: "Alieu saidykhan", exact: true },
-  { handle: "afterlifedropss", name: "AfterlifeDrops", exact: true, requested: true },
-  { handle: "paul1531993", name: "Paul", exact: true },
-  { handle: "tuftonez.creations", name: "Beanie", exact: true },
-  { handle: "waynewell10", name: "Wayne well", exact: true },
-  { handle: "subscribe_1m_peo", name: "100 day challenge", exact: false },
-  { handle: "sacpl.ug420", name: "Sacplug", exact: true },
-  { handle: "geeklights.company", name: "Geeklights company", exact: true },
-  { handle: "jerry967997", name: "", exact: true },
-  { handle: "kids05tj", name: "baby kids", exact: true },
-  { handle: "hellboy999m", name: "BABY KILO", exact: true },
-  { handle: "premocremo420", name: "Cremo Premo", exact: true },
-  { handle: "la.reserve.bcn", name: "La Reserve backup", exact: true },
-  { handle: "muggle_born92", name: "Chico_O'malley", exact: true },
-  { handle: "thesnacklabrva", name: "The Snack Lab RVA", exact: true },
-  { handle: "flaco_weed4.20", name: "Flacoweed", exact: true },
-  { handle: "vape_pod_supplier", name: "HuaWen Vape-Kevin", exact: true },
-  { handle: "tribu.pampa.comu", name: "TRIBU PAMPA - Co...", exact: false },
-  { handle: "lidupofficial", name: "LidUp", exact: true },
-  { handle: "rwandan_que", name: "Rwanda Queens in E...", exact: false, requested: true, note: "real handle starts with four underscores" },
-  { handle: "calidispensary018", name: "cali dispensary", exact: true },
-  { handle: "extractmanthailand", name: "extract man Thailand", exact: true },
-  { handle: "capo_corleone8", name: "Teflon Don Cloudz", exact: true },
-  { handle: "chris.9897174", name: "", exact: true },
-  { handle: "labelbackup", name: "Logistic king", exact: true },
-  { handle: "josecreams__041", name: "rikinho__creams", exact: true },
-  { handle: "ddgreens349", name: "DdGreens349", exact: true },
-  { handle: "xwizard_kgx", name: "", exact: true },
-  { handle: "giraffe.39609308", name: "", exact: true },
-  { handle: "puertoricospaceag", name: "puertoricospaceage...", exact: false },
-  { handle: "bigamoni", name: "", exact: true },
-  { handle: "cloudyvibes881", name: "", exact: true, requested: true },
-  { handle: "functionjordan", name: "Jordan function", exact: true },
-  { handle: "grimsplix", name: "Splix", exact: true },
-  { handle: "mbembacalvados", name: "Mbemba Calvados", exact: true },
-  { handle: "lilkidmsa", name: "African Kid Voice", exact: true },
-  { handle: "saputra.4111757", name: "FARDA SAPUTRA", exact: true },
-  { handle: "chelmodank710", name: "", exact: true },
-  { handle: "blackstamptriercof", name: "Black Stamp Trier", exact: false },
-  { handle: "kaiquenascimento", name: "Kaique Nascimento", exact: false },
-  { handle: "khaneshaqzaai", name: "Khan_Eshaqzaai", exact: true },
-  { handle: "Kourtney Eaken", name: "handle was scrolled off screen", exact: false, note: "search by display name" },
-  { handle: "squashbros710", name: "", exact: true },
-  { handle: "anna.p.bergholm", name: "Anna Bergholm", exact: true },
-  { handle: "tenerifesocialclub", name: "Happy Island", exact: true },
-  { handle: "exotic_kingdom_g", name: "Exotic Kingdom CS...", exact: false },
-  { handle: "whv.headgrower", name: "Chief Cultivator", exact: true },
-  { handle: "puredry_eu", name: "Pure Dry", exact: true },
-  { handle: "cannatrak", name: "Cannatrak", exact: true },
-  { handle: "qihe.biotech", name: "nickqi", exact: true },
-  { handle: "drakensbergtattoos", name: "Wolf Moon Tattoos", exact: true },
-  { handle: "velvetsmoking", name: "Velvet smoking", exact: true },
-  { handle: "jellojayy191", name: "", exact: true },
-  { handle: "smith_feff", name: "Jeff Smith", exact: true },
-  { handle: "verdelion__cannabi", name: "Verdelion | Cannabis...", exact: false },
-  { handle: "uniqueconnoisseurs", name: "Unique Connoisseur's", exact: true },
-  { handle: "mediiicaliiius", name: "MediiiCaliii", exact: true },
-  { handle: "arianamariah209", name: "Ariana M", exact: true },
-  { handle: "mark.8447642", name: "", exact: true },
-  { handle: "scouseshell_420", name: "", exact: true },
-  { handle: "certifiedgreen1", name: "", exact: true }
+  { handle: "j.a.k.50a", name: "jak", exact: true, kind: "shop" },
+  { handle: "alexa_n6738", name: "", exact: true, kind: "person" },
+  { handle: "hebborns_family_f", name: "Hebborns Family Fu...", exact: false, kind: "shop", geo: "intl" },
+  { handle: "blazeone", name: "Blazeone45__", exact: false, kind: "shop", note: "trailing underscores unclear" },
+  { handle: "the_10.10_2026", name: "10/10", exact: true, kind: "shop" },
+  { handle: "charliemalandro", name: "Neko Hashi", exact: true, kind: "person" },
+  { handle: "evo.bubba.420", name: "", exact: true, kind: "person" },
+  { handle: "spareman87", name: "Alieu saidykhan", exact: true, kind: "person", geo: "intl" },
+  { handle: "afterlifedropss", name: "AfterlifeDrops", exact: true, kind: "shop", requested: true },
+  { handle: "paul1531993", name: "Paul", exact: true, kind: "person" },
+  { handle: "tuftonez.creations", name: "Beanie", exact: true, kind: "shop" },
+  { handle: "waynewell10", name: "Wayne well", exact: true, kind: "noise" },
+  { handle: "subscribe_1m_peo", name: "100 day challenge", exact: false, kind: "noise" },
+  { handle: "sacpl.ug420", name: "Sacplug", exact: true, kind: "shop", geo: "us" },
+  { handle: "geeklights.company", name: "Geeklights company", exact: true, kind: "shop" },
+  { handle: "jerry967997", name: "", exact: true, kind: "person" },
+  { handle: "kids05tj", name: "baby kids", exact: true, kind: "noise" },
+  { handle: "hellboy999m", name: "BABY KILO", exact: true, kind: "person" },
+  { handle: "premocremo420", name: "Cremo Premo", exact: true, kind: "shop" },
+  { handle: "la.reserve.bcn", name: "La Reserve backup", exact: true, kind: "shop", geo: "intl" },
+  { handle: "muggle_born92", name: "Chico_O'malley", exact: true, kind: "person" },
+  { handle: "thesnacklabrva", name: "The Snack Lab RVA", exact: true, kind: "shop", geo: "us" },
+  { handle: "flaco_weed4.20", name: "Flacoweed", exact: true, kind: "person" },
+  { handle: "vape_pod_supplier", name: "HuaWen Vape-Kevin", exact: true, kind: "shop", geo: "intl" },
+  { handle: "tribu.pampa.comu", name: "TRIBU PAMPA - Co...", exact: false, kind: "shop", geo: "intl" },
+  { handle: "lidupofficial", name: "LidUp", exact: true, kind: "shop" },
+  { handle: "rwandan_que", name: "Rwanda Queens in E...", exact: false, kind: "noise", geo: "intl", requested: true, note: "real handle starts with four underscores" },
+  { handle: "calidispensary018", name: "cali dispensary", exact: true, kind: "shop", geo: "us" },
+  { handle: "extractmanthailand", name: "extract man Thailand", exact: true, kind: "shop", geo: "intl" },
+  { handle: "capo_corleone8", name: "Teflon Don Cloudz", exact: true, kind: "shop", geo: "us" },
+  { handle: "chris.9897174", name: "", exact: true, kind: "noise" },
+  { handle: "labelbackup", name: "Logistic king", exact: true, kind: "shop" },
+  { handle: "josecreams__041", name: "rikinho__creams", exact: true, kind: "shop" },
+  { handle: "ddgreens349", name: "DdGreens349", exact: true, kind: "shop" },
+  { handle: "xwizard_kgx", name: "", exact: true, kind: "person" },
+  { handle: "giraffe.39609308", name: "", exact: true, kind: "noise" },
+  { handle: "puertoricospaceag", name: "puertoricospaceage...", exact: false, kind: "shop", geo: "us" },
+  { handle: "bigamoni", name: "", exact: true, kind: "person" },
+  { handle: "cloudyvibes881", name: "", exact: true, kind: "person", requested: true },
+  { handle: "functionjordan", name: "Jordan function", exact: true, kind: "shop", geo: "us" },
+  { handle: "grimsplix", name: "Splix", exact: true, kind: "shop" },
+  { handle: "mbembacalvados", name: "Mbemba Calvados", exact: true, kind: "person", geo: "intl" },
+  { handle: "lilkidmsa", name: "African Kid Voice", exact: true, kind: "person", geo: "intl" },
+  { handle: "saputra.4111757", name: "FARDA SAPUTRA", exact: true, kind: "noise", geo: "intl" },
+  { handle: "chelmodank710", name: "", exact: true, kind: "shop" },
+  { handle: "blackstamptriercof", name: "Black Stamp Trier", exact: false, kind: "shop", geo: "intl" },
+  { handle: "kaiquenascimento", name: "Kaique Nascimento", exact: false, kind: "person", geo: "intl" },
+  { handle: "khaneshaqzaai", name: "Khan_Eshaqzaai", exact: true, kind: "person", geo: "intl" },
+  { handle: "Kourtney Eaken", name: "handle was scrolled off screen", exact: false, kind: "person", note: "search by display name" },
+  { handle: "squashbros710", name: "", exact: true, kind: "shop", geo: "us" },
+  { handle: "anna.p.bergholm", name: "Anna Bergholm", exact: true, kind: "noise" },
+  { handle: "tenerifesocialclub", name: "Happy Island", exact: true, kind: "shop", geo: "intl" },
+  { handle: "exotic_kingdom_g", name: "Exotic Kingdom CS...", exact: false, kind: "shop", geo: "intl" },
+  { handle: "whv.headgrower", name: "Chief Cultivator", exact: true, kind: "shop" },
+  { handle: "puredry_eu", name: "Pure Dry", exact: true, kind: "shop", geo: "intl" },
+  { handle: "cannatrak", name: "Cannatrak", exact: true, kind: "shop" },
+  { handle: "qihe.biotech", name: "nickqi", exact: true, kind: "shop", geo: "intl" },
+  { handle: "drakensbergtattoos", name: "Wolf Moon Tattoos", exact: true, kind: "shop", geo: "intl" },
+  { handle: "velvetsmoking", name: "Velvet smoking", exact: true, kind: "shop", geo: "intl" },
+  { handle: "jellojayy191", name: "", exact: true, kind: "person" },
+  { handle: "smith_feff", name: "Jeff Smith", exact: true, kind: "noise" },
+  { handle: "verdelion__cannabi", name: "Verdelion | Cannabis...", exact: false, kind: "shop", geo: "intl" },
+  { handle: "uniqueconnoisseurs", name: "Unique Connoisseur's", exact: true, kind: "shop" },
+  { handle: "mediiicaliiius", name: "MediiiCaliii", exact: true, kind: "person" },
+  { handle: "arianamariah209", name: "Ariana M", exact: true, kind: "person" },
+  { handle: "mark.8447642", name: "", exact: true, kind: "noise" },
+  { handle: "scouseshell_420", name: "", exact: true, kind: "person", geo: "intl" },
+  { handle: "certifiedgreen1", name: "", exact: true, kind: "shop" }
 ];
 
 const searchUrl = f => "https://www.instagram.com/explore/search/keyword/?q=" + encodeURIComponent(f.handle);
 const dmUrl = f => f.exact ? "https://ig.me/m/" + encodeURIComponent(f.handle) : searchUrl(f);
 const profileUrl = f => f.exact ? "https://www.instagram.com/" + encodeURIComponent(f.handle) + "/" : searchUrl(f);
 
+/* ---------- contact ledger ----------
+ * Lives in this page's localStorage, which is a different origin from
+ * instagram.com, so the in-page panel cannot see it and vice versa. This page
+ * is therefore the system of record for cadence: it stamps someone when it
+ * opens their tab, which is the only signal it gets.
+ *
+ * Shape: { "<handle>": { c: <ms first contact>, n: <ms newsletter>, o: 1 } }
+ */
+const LEDGER_KEY = "llmOutreach.ledger.v1";
+const DAY = 86400000;
+
+function loadLedger() {
+  try { return JSON.parse(localStorage.getItem(LEDGER_KEY)) || {}; } catch (e) { return {}; }
+}
+function saveLedger(l) {
+  try { localStorage.setItem(LEDGER_KEY, JSON.stringify(l)); } catch (e) {}
+}
+let ledger = loadLedger();
+const entry = (h) => ledger[h] || {};
+
+/* Which handles this session has opened a tab for. Held separately from the
+   ledger because renderList() rebuilds every row, so a class set on an <li> is
+   gone at the next render. */
+const openedHandles = new Set();
+
+function stamp(handle, field) {
+  ledger[handle] = Object.assign({}, ledger[handle], { [field]: Date.now() });
+  saveLedger(ledger);
+}
+function setMuted(handle, on) {
+  const e = Object.assign({}, ledger[handle]);
+  if (on) e.o = 1; else delete e.o;
+  ledger[handle] = e;
+  saveLedger(ledger);
+}
+
+const gapDaysEl = document.getElementById("gapDays");
+const gapDays = () => Math.max(1, parseInt(gapDaysEl.value, 10) || 7);
+
+let campaign = "intro";
+
+/* Muted is absolute: excluded from every selection, in both campaigns. */
+const isMuted = (f) => !!entry(f.handle).o;
+const introDone = (f) => !!entry(f.handle).c;
+const newsDone = (f) => !!entry(f.handle).n;
+const daysSinceIntro = (f) => {
+  const c = entry(f.handle).c;
+  return c ? Math.floor((Date.now() - c) / DAY) : null;
+};
+
+function isDue(f) {
+  if (isMuted(f)) return false;
+  if (campaign === "intro") return !introDone(f);
+  return introDone(f) && !newsDone(f) && (Date.now() - entry(f.handle).c) >= gapDays() * DAY;
+}
+
 /* ---------- list rendering ---------- */
 
 const listEl = document.getElementById("list");
 const statusEl = document.getElementById("status");
+const cadenceEl = document.getElementById("cadence");
 const openNextBtn = document.getElementById("openNext");
 const openBatchBtn = document.getElementById("openBatch");
 const clearBtn = document.getElementById("clearQueue");
 
-function badge(text, flag) {
+function badge(text, cls) {
   const b = document.createElement("span");
-  b.className = "badge" + (flag ? " flag" : "");
+  b.className = "badge" + (cls ? " " + cls : "");
   b.textContent = text;
   return b;
 }
-function linkBtn(text, url) {
+function anchor(text, url) {
   const a = document.createElement("a");
   a.className = "link-btn";
   a.textContent = text;
@@ -654,67 +833,168 @@ function linkBtn(text, url) {
   return a;
 }
 
-FOLLOWERS.forEach((f, i) => {
-  const li = document.createElement("li");
-  li.dataset.index = i;
-
-  const cb = document.createElement("input");
-  cb.type = "checkbox";
-  cb.checked = f.exact;
-
-  const idx = document.createElement("span");
-  idx.className = "idx";
-  idx.textContent = (i + 1) + ".";
-
-  const who = document.createElement("div");
-  who.className = "who";
-  const h = document.createElement("div");
-  h.className = "handle";
-  h.textContent = f.exact ? "@" + f.handle : f.handle + " (partial)";
-  who.appendChild(h);
-  const bits = [f.name, f.note].filter(Boolean);
-  if (bits.length) {
-    const n = document.createElement("div");
-    n.className = "name";
-    n.textContent = bits.join(" · ");
-    who.appendChild(n);
+function stateChip(f) {
+  if (isMuted(f)) return badge("muted", "flag");
+  if (newsDone(f)) return badge("newsletter sent");
+  if (introDone(f)) {
+    const d = daysSinceIntro(f);
+    const label = "intro " + (d === 0 ? "today" : d + "d ago");
+    return badge(label, isDue(f) ? "due" : "");
   }
+  return badge("not contacted");
+}
 
-  const badges = document.createElement("div");
-  badges.className = "badges";
-  if (f.requested) badges.appendChild(badge("requested", false));
-  if (!f.exact) badges.appendChild(badge("needs lookup", true));
+function renderList() {
+  const checked = new Set(
+    Array.from(listEl.querySelectorAll('input[type="checkbox"]'))
+      .filter(cb => cb.checked)
+      .map(cb => cb.dataset.handle)
+  );
+  listEl.textContent = "";
 
-  const acts = document.createElement("div");
-  acts.className = "acts";
-  acts.appendChild(linkBtn(f.exact ? "DM" : "Search", dmUrl(f)));
-  if (f.exact) acts.appendChild(linkBtn("Profile", profileUrl(f)));
+  FOLLOWERS.forEach((f, i) => {
+    const li = document.createElement("li");
+    li.dataset.index = i;
+    if (isMuted(f)) li.classList.add("muted-row");
+    if (openedHandles.has(f.handle)) li.classList.add("done");
 
-  li.append(cb, idx, who, badges, acts);
-  listEl.appendChild(li);
-});
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.dataset.handle = f.handle;
+    cb.checked = checked.has(f.handle) && !isMuted(f);
+    cb.disabled = isMuted(f);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = (i + 1) + ".";
+
+    const who = document.createElement("div");
+    who.className = "who";
+    const h = document.createElement("div");
+    h.className = "handle";
+    h.textContent = f.exact ? "@" + f.handle : f.handle + " (partial)";
+    who.appendChild(h);
+    const bits = [f.name, f.note].filter(Boolean);
+    if (bits.length) {
+      const n = document.createElement("div");
+      n.className = "name";
+      n.textContent = bits.join(" · ");
+      who.appendChild(n);
+    }
+
+    const badges = document.createElement("div");
+    badges.className = "badges";
+    const chip = stateChip(f);
+    chip.classList.add("state");
+    chip.title = "Click to clear this account's contact history";
+    chip.addEventListener("click", () => {
+      delete ledger[f.handle];
+      saveLedger(ledger);
+      renderList();
+      refreshCadence();
+    });
+    badges.appendChild(chip);
+    if (f.kind === "shop") badges.appendChild(badge("shop"));
+    if (f.kind === "noise") badges.appendChild(badge("likely bot", "flag"));
+    if (f.geo === "intl") badges.appendChild(badge("not US", "flag"));
+    if (f.requested) badges.appendChild(badge("requested"));
+    if (!f.exact) badges.appendChild(badge("needs lookup", "flag"));
+
+    const acts = document.createElement("div");
+    acts.className = "acts";
+    acts.appendChild(anchor(f.exact ? "DM" : "Search", dmUrl(f)));
+    if (f.exact) acts.appendChild(anchor("Profile", profileUrl(f)));
+    const mute = document.createElement("button");
+    mute.className = "link-btn";
+    mute.textContent = isMuted(f) ? "unmute" : "mute";
+    mute.addEventListener("click", () => {
+      setMuted(f.handle, !isMuted(f));
+      renderList();
+      refreshCadence();
+    });
+    acts.appendChild(mute);
+
+    li.append(cb, idx, who, badges, acts);
+    listEl.appendChild(li);
+  });
+}
 
 const checkboxes = () => Array.from(listEl.querySelectorAll('input[type="checkbox"]'));
+
+function refreshCadence() {
+  const muted = FOLLOWERS.filter(isMuted).length;
+  const notContacted = FOLLOWERS.filter(f => !isMuted(f) && !introDone(f)).length;
+  const due = FOLLOWERS.filter(isDue).length;
+  const waiting = FOLLOWERS.filter(f =>
+    !isMuted(f) && introDone(f) && !newsDone(f) && !isDue(f)).length;
+  const newsSent = FOLLOWERS.filter(f => !isMuted(f) && newsDone(f)).length;
+
+  const parts = [];
+  parts.push(campaign === "intro"
+    ? due + " never contacted and due an intro"
+    : due + " due the newsletter now");
+  if (campaign === "newsletter" && waiting) {
+    parts.push(waiting + " contacted but not yet " + gapDays() + " days old");
+  }
+  if (campaign === "intro" && notContacted !== due) {
+    parts.push(notContacted + " not contacted");
+  }
+  parts.push(newsSent + " already had a newsletter");
+  parts.push(muted + " muted");
+  cadenceEl.textContent = parts.join(". ") + ".";
+  document.getElementById("muteCount").textContent =
+    muted + " muted, and they are excluded from every selection and batch.";
+}
+
+/* ---------- selection ---------- */
+
+document.getElementById("selDue").addEventListener("click", () => {
+  const cap = Math.max(1, parseInt(document.getElementById("capN").value, 10) || 12);
+  let taken = 0;
+  checkboxes().forEach((cb, i) => {
+    const f = FOLLOWERS[i];
+    const want = isDue(f) && taken < cap;
+    cb.checked = want;
+    if (want) taken++;
+  });
+  statusEl.textContent = taken
+    ? "Ticked " + taken + " due account" + (taken === 1 ? "" : "s") + " for the " + campaign + "."
+    : "Nobody is due for the " + campaign + " right now.";
+});
 
 document.querySelectorAll("[data-select]").forEach(btn => {
   btn.addEventListener("click", () => {
     const mode = btn.dataset.select;
-    const n = parseInt(document.getElementById("firstN").value, 10) || 0;
     checkboxes().forEach((cb, i) => {
-      if (mode === "all") cb.checked = true;
-      else if (mode === "none") cb.checked = false;
-      else if (mode === "clean") cb.checked = FOLLOWERS[i].exact;
-      else if (mode === "first") cb.checked = i < n;
+      if (cb.disabled) { cb.checked = false; return; }
+      if (mode === "none") cb.checked = false;
+      else if (mode === "clean") cb.checked = FOLLOWERS[i].exact && !isMuted(FOLLOWERS[i]);
     });
   });
 });
+
+function setCampaign(next) {
+  campaign = next;
+  document.getElementById("campIntro").setAttribute("aria-pressed", String(next === "intro"));
+  document.getElementById("campNews").setAttribute("aria-pressed", String(next === "newsletter"));
+  gapDaysEl.disabled = next === "intro";
+  checkboxes().forEach(cb => { cb.checked = false; });
+  queue = []; opened = 0; total = 0;
+  openedHandles.clear();
+  renderList();
+  refreshCadence();
+  refreshQueueUI();
+}
+document.getElementById("campIntro").addEventListener("click", () => setCampaign("intro"));
+document.getElementById("campNews").addEventListener("click", () => setCampaign("newsletter"));
+gapDaysEl.addEventListener("input", () => { refreshCadence(); renderList(); });
 
 /* ---------- tab queue ----------
  * Measured in Chrome, and both facts shape this code:
  *
  * 1. One window.open per user gesture. Five calls in a single click handler
- *    open one tab and the other four are blocked, so a "batch of ten on one
- *    click" only works once the page is allowed to show pop-ups.
+ *    open one tab and the other four are blocked, so a whole batch on one click
+ *    only works once the page is allowed to show pop-ups.
  * 2. Passing 'noopener' makes window.open return null even when the tab opened
  *    fine, which is per spec. So it is omitted here: without it the return
  *    value actually distinguishes opened from blocked.
@@ -755,24 +1035,32 @@ function openOne() {
   if (!win) return false;
   queue.shift();
   opened++;
+  const f = FOLLOWERS[item.index];
+  if (item.stamp) stamp(f.handle, campaign === "newsletter" ? "n" : "c");
+  openedHandles.add(f.handle);
   const li = listEl.querySelector('li[data-index="' + item.index + '"]');
   if (li) li.classList.add("done");
   return true;
 }
 
-function startQueue(urlFor, labelPlural) {
-  const picked = checkboxes().map((cb, i) => (cb.checked ? i : -1)).filter(i => i >= 0);
+function startQueue(urlFor, labelPlural, doStamp) {
+  const picked = checkboxes()
+    .map((cb, i) => (cb.checked && !isMuted(FOLLOWERS[i]) ? i : -1))
+    .filter(i => i >= 0);
   if (!picked.length) {
     statusEl.textContent = "Nothing ticked, so nothing to open.";
     return;
   }
-  queue = picked.map(i => ({ index: i, url: urlFor(FOLLOWERS[i]) }));
+  queue = picked.map(i => ({ index: i, url: urlFor(FOLLOWERS[i]), stamp: doStamp }));
   total = queue.length;
   opened = 0;
+  openedHandles.clear();
   listEl.querySelectorAll("li.done").forEach(li => li.classList.remove("done"));
   /* The click that queued is itself a gesture, so spend it on the first tab. */
   const ok = openOne();
   refreshQueueUI(ok ? "Queued " + total + " " + labelPlural + "." : BLOCKED_HELP);
+  renderList();
+  refreshCadence();
 }
 
 function openBatch() {
@@ -782,6 +1070,8 @@ function openBatch() {
     if (!openOne()) break;
     got++;
   }
+  renderList();
+  refreshCadence();
   if (!got) return refreshQueueUI(BLOCKED_HELP);
   if (got < size && queue.length) {
     return refreshQueueUI("Chrome allowed " + got + " tab" + (got === 1 ? "" : "s") +
@@ -791,13 +1081,19 @@ function openBatch() {
   refreshQueueUI("Opened " + got + " in that batch.");
 }
 
-document.getElementById("openDms").addEventListener("click", () => startQueue(dmUrl, "DM tabs"));
-document.getElementById("openProfiles").addEventListener("click", () => startQueue(profileUrl, "profile tabs"));
-openNextBtn.addEventListener("click", () => refreshQueueUI(openOne() ? "" : BLOCKED_HELP));
+document.getElementById("openDms").addEventListener("click", () => startQueue(dmUrl, "DM tabs", true));
+document.getElementById("openProfiles").addEventListener("click", () => startQueue(profileUrl, "profile tabs", false));
+openNextBtn.addEventListener("click", () => {
+  const ok = openOne();
+  renderList();
+  refreshCadence();
+  refreshQueueUI(ok ? "" : BLOCKED_HELP);
+});
 openBatchBtn.addEventListener("click", openBatch);
 clearBtn.addEventListener("click", () => {
   queue = []; opened = 0; total = 0;
-  listEl.querySelectorAll("li.done").forEach(li => li.classList.remove("done"));
+  openedHandles.clear();
+  renderList();
   refreshQueueUI();
 });
 
@@ -808,24 +1104,112 @@ window.addEventListener("keydown", (e) => {
   if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
   if (!queue.length) return;
   e.preventDefault();
-  refreshQueueUI(openOne() ? "" : BLOCKED_HELP);
+  const ok = openOne();
+  renderList();
+  refreshCadence();
+  refreshQueueUI(ok ? "" : BLOCKED_HELP);
 });
 
-/* ---------- bookmarklet build ----------
+/* ---------- muting in bulk ---------- */
+
+document.getElementById("muteAdd").addEventListener("click", () => {
+  const raw = document.getElementById("muteBox").value;
+  const wanted = raw.split(/[\s,]+/).map(s => s.trim().replace(/^@/, "").toLowerCase()).filter(Boolean);
+  if (!wanted.length) return;
+  let hit = 0;
+  const missed = [];
+  wanted.forEach(w => {
+    const f = FOLLOWERS.find(x => x.handle.toLowerCase() === w);
+    if (f) { setMuted(f.handle, true); hit++; } else { missed.push(w); }
+  });
+  document.getElementById("muteBox").value = "";
+  renderList();
+  refreshCadence();
+  statusEl.textContent = "Muted " + hit + "." +
+    (missed.length ? " Not on this list, so nothing to mute: " + missed.join(", ") + "." : "");
+});
+
+document.getElementById("ledgerReset").addEventListener("click", () => {
+  const muted = Object.entries(ledger).filter(([, v]) => v.o);
+  ledger = {};
+  /* Clearing history must never un-mute somebody. */
+  muted.forEach(([h]) => { ledger[h] = { o: 1 }; });
+  saveLedger(ledger);
+  renderList();
+  refreshCadence();
+  statusEl.textContent = "Contact history cleared. Mutes were kept.";
+});
+
+/* ---------- this week's pick, and the newsletter text ---------- */
+
+const pickName = document.getElementById("pickName");
+const pickPrice = document.getElementById("pickPrice");
+const pickUrl = document.getElementById("pickUrl");
+const pickWeek = document.getElementById("pickWeek");
+
+/* UTM tags so DM traffic lands in its own campaign instead of direct. */
+function taggedUrl() {
+  const raw = pickUrl.value.trim();
+  if (!raw) return "";
+  try {
+    const u = new URL(raw);
+    u.searchParams.set("utm_source", "instagram");
+    u.searchParams.set("utm_medium", "dm");
+    u.searchParams.set("utm_campaign", "pick-of-the-week");
+    const wk = pickWeek.value.trim();
+    if (wk) u.searchParams.set("utm_content", wk);
+    return u.toString();
+  } catch (e) {
+    return raw;
+  }
+}
+
+function newsletterText() {
+  const name = pickName.value.trim() || "{product}";
+  const price = pickPrice.value.trim() || "{price}";
+  const link = taggedUrl() || "{link}";
+  /* The card under the link already shows the photo, the name and the price, so
+     repeating them here just makes the message longer. Text carries the context
+     and the opt-out, and the URL goes last so the preview attaches to it. */
+  void name; void price;
+  return "This week's pick, the best value ounce we could find. Say the word if you " +
+    "would rather not get these and I'll stop. " + link;
+}
+
+function refreshPick() {
+  const missing = [];
+  if (!pickName.value.trim()) missing.push("product name");
+  if (!pickPrice.value.trim()) missing.push("price");
+  if (!pickUrl.value.trim()) missing.push("URL");
+  const warn = document.getElementById("pickWarn");
+  warn.textContent = missing.length
+    ? "Placeholders still in the message: " + missing.join(", ") +
+      ". Fill these in before sending, they must be a real product at a real price."
+    : "";
+  warn.style.color = missing.length ? "var(--flag-text)" : "var(--muted)";
+  document.getElementById("newsPreview").textContent = newsletterText();
+  refreshBookmarklet();
+}
+[pickName, pickPrice, pickUrl, pickWeek].forEach(el => el.addEventListener("input", refreshPick));
+
+/* ---------- bookmarklet and userscript build ----------
  * The injector source lives in the text/plain block above so there is one copy
- * of it to read and edit. The three replies and the pause are substituted in,
- * then the whole thing is percent-encoded into a javascript: URL.
+ * of it to read and edit. Messages and the pause are substituted in, then the
+ * whole thing is percent-encoded into a javascript: URL.
  */
 const RAW_SOURCE = document.getElementById("qr-source").textContent;
 const replyBoxes = [0, 1, 2].map(i => document.getElementById("r" + i));
-const gapBox = document.getElementById("gapMs");
+const gapMsEl = document.getElementById("gapMs");
 const bmkLink = document.getElementById("bmk");
 
 function buildSource() {
-  const replies = replyBoxes.map(t => t.value);
-  const gap = Math.max(300, parseInt(gapBox.value, 10) || 1800);
+  const messages = {
+    intro: replyBoxes.map(t => t.value),
+    newsletter: newsletterText(),
+  };
+  const gap = Math.max(300, parseInt(gapMsEl.value, 10) || 1800);
   return RAW_SOURCE
-    .replace("__REPLIES_JSON__", JSON.stringify(replies))
+    .replace("__MESSAGES_JSON__", JSON.stringify(messages))
     .replace("__GAP_MS__", String(gap));
 }
 function refreshBookmarklet() {
@@ -833,18 +1217,17 @@ function refreshBookmarklet() {
   bmkLink.href = "javascript:" + encodeURIComponent(src);
   document.getElementById("srcView").textContent = src.trim();
 }
-replyBoxes.concat([gapBox]).forEach(el => el.addEventListener("input", refreshBookmarklet));
-refreshBookmarklet();
+replyBoxes.concat([gapMsEl]).forEach(el => el.addEventListener("input", refreshBookmarklet));
 
 /* Same single source, wrapped in a userscript header. Matched to /direct/ only
  * so the panel does not turn up over the feed. */
 document.getElementById("dlUser").addEventListener("click", () => {
   const header = [
     "// ==UserScript==",
-    "// @name         Instagram quick replies",
+    "// @name         Instagram outreach: intro and weekly pick",
     "// @namespace    legal-leaf-market.outreach",
-    "// @version      1.0",
-    "// @description  Type three saved replies into the open Instagram DM thread and send them",
+    "// @version      2.0",
+    "// @description  Send the intro replies or the weekly pick into the open Instagram DM thread",
     "// @match        https://www.instagram.com/direct/*",
     "// @match        https://instagram.com/direct/*",
     "// @run-at       document-idle",
@@ -856,7 +1239,7 @@ document.getElementById("dlUser").addEventListener("click", () => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "instagram-quick-replies.user.js";
+  a.download = "instagram-outreach.user.js";
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 });
@@ -872,12 +1255,23 @@ document.getElementById("copyBmk").addEventListener("click", async () => {
   setTimeout(() => { btn.textContent = "Copy bookmarklet code"; }, 2600);
 });
 
+/* ---------- boot ---------- */
+
+renderList();
+refreshCadence();
 refreshQueueUI();
+refreshPick();
+gapDaysEl.disabled = true;
 
 const exactCount = FOLLOWERS.filter(f => f.exact).length;
+const shops = FOLLOWERS.filter(f => f.kind === "shop").length;
+const noise = FOLLOWERS.filter(f => f.kind === "noise").length;
+const intl = FOLLOWERS.filter(f => f.geo === "intl").length;
 document.getElementById("foot").textContent =
   FOLLOWERS.length + " accounts read off the screenshots: " + exactCount +
   " with an exact handle, " + (FOLLOWERS.length - exactCount) +
-  " truncated by the screenshot and pointed at Instagram search instead. " +
-  "One row between bigamoni and cloudyvibes881 may have fallen in a gap between two screenshots.";
+  " truncated and pointed at Instagram search instead. Rough split: " + shops +
+  " shops or brands, " + noise + " that look like bots, " + intl +
+  " visibly outside the US. One row between bigamoni and cloudyvibes881 may have " +
+  "fallen in a gap between two screenshots.";
 </script>

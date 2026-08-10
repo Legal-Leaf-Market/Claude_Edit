@@ -1,0 +1,12 @@
+diff --git a/vercel.json b/vercel.json
+index 408a09d..14b4750 100644
+--- a/vercel.json
++++ b/vercel.json
+@@ -21,6 +21,7 @@
+     { "source": "/the-seam", "destination": "/the-seam.html" },
+     { "source": "/club-des-hashischins", "destination": "/club-des-hashischins.html" },
+     { "source": "/what-the-certificates-say", "destination": "/what-the-certificates-say.html" },
++    { "source": "/p/(.*)", "destination": "/api/share?id=$1" },
+     { "source": "/admin", "destination": "/api/admin/home" },
+     { "source": "/admin/sign-in", "destination": "/api/admin/sign-in" },
+     { "source": "/admin/operating-model", "destination": "/api/admin/model" }
