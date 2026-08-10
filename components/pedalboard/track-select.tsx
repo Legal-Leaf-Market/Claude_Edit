@@ -103,7 +103,7 @@ export function TrackSelect({
               <p className="text-sm font-semibold text-[var(--cream)]">
                 {selected.song}{" "}
                 <span className="font-normal text-[var(--muted-foreground)]">
-                  &mdash; {selected.artist}
+                  ({selected.artist})
                 </span>
               </p>
               <p className="text-xs text-[var(--muted-foreground)]">
