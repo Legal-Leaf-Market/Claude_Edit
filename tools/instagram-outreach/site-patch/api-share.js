@@ -261,6 +261,14 @@ window.addEventListener('load', function () { try { LL.track('page_view', {}); }
  * absent rather than rendered as a zero or a dash. coa-data.js says outright:
  * never assume a field exists.
  */
+/* "1 oz" and "1oz" are the same fact twice. Compare on alphanumerics only, so a
+   row already labelled with its weight does not render "1 oz - 1oz - $39". */
+function saysWeightAlready(variant, label) {
+  const n = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const v = n(variant), l = n(label);
+  return !!l && !!v && v.indexOf(l) !== -1;
+}
+
 function pct(v) {
   return typeof v === 'number' && isFinite(v) ? (Math.round(v * 100) / 100) + '%' : '';
 }
@@ -556,6 +564,13 @@ export default async function handler(req, res) {
       const grams = Number(row[2]);
       return {
         i,
+        /* The row's own label, which on multi-strain listings is the strain and
+           grade. It is the only thing distinguishing one row from another and must
+           not be replaced by the normalised weight. Measured on the live feed:
+           Cheap THCA Smalls Ounce has seven rows, all 28g, three of them at the
+           same $35.99, so weight-and-price alone rendered three identical options
+           for Royal Zkittlez, Barney's Biscotti and Punch Breath. */
+        variant: String(row[0] || '').trim(),
         label: weightLabel(grams) || String(row[0] || 'One size'),
         price,
         perG: grams > 0 ? Math.round((price / grams) * 100) / 100 : null,
@@ -564,15 +579,26 @@ export default async function handler(req, res) {
       };
     });
 
+  /* Variant first, because that is what the shopper is choosing between, and the
+     weight appended only when the variant does not already state it. Computed
+     server side so the dropdown and the confirmation hint cannot drift apart. */
+  sizeRows.forEach((r) => {
+    r.display = r.variant
+      ? (saysWeightAlready(r.variant, r.label) ? r.variant : r.variant + ' · ' + r.label)
+      : r.label;
+  });
+
   const options = sizeRows.map((r) => {
-    const bits = [r.label, money(r.price, item.cur)];
+    const bits = [r.display, money(r.price, item.cur)];
     if (r.perG) bits.push(money(r.perG, item.cur) + '/g');
     if (r.isPick && isPick) bits.push('this week\'s pick');
     return `<option value="${r.i}">${esc(bits.join(' · '))}</option>`;
   }).join('');
 
   const payload = JSON.stringify({
-    sizes: sizeRows.map((r) => ({ i: r.i, label: r.label, price: r.price, perG: r.perG, item: r.item })),
+    sizes: sizeRows.map((r) => ({
+      i: r.i, label: r.label, display: r.display, price: r.price, perG: r.perG, item: r.item,
+    })),
     cur: item.cur,
     store: product.store,
     pool,
@@ -659,7 +685,7 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
     w.textContent = ' ' + c.label + (c.perG ? ' \u00b7 ' + money(c.perG) + ' per gram' : '');
     priceEl.appendChild(w);
     add.textContent = 'Add ' + c.label + ' for ' + money(c.price) + ' to cart';
-    hint.textContent = 'Adding ' + c.label + ', ' + money(c.price) + ', from ' + D.store + '.';
+    hint.textContent = 'Adding ' + c.display + ', ' + money(c.price) + ', from ' + D.store + '.';
     hint.className = 'hint';
     hint2.textContent = 'Ready. Flip back or add it now.';
     try { LL.track('size_selected', { size: c.label, value: c.price }); } catch (e) {}
@@ -732,4 +758,4 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
 }
 
 // Exported for tests. Not part of the route contract.
-export const __test = { esc, httpsOnly, money, weightLabel, headline, description, cartItem, pickBest, pickAll, PICK_POOL };
+export const __test = { esc, httpsOnly, money, weightLabel, headline, description, cartItem, pickBest, pickAll, PICK_POOL, saysWeightAlready };

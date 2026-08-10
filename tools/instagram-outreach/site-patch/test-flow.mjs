@@ -148,7 +148,11 @@ ok(/\$39/.test(priceTxt) && /1oz/.test(priceTxt), 'price and weight update to th
 const addLabel = (await page.textContent('#add')).trim();
 console.log('  button now: ' + JSON.stringify(addLabel));
 ok(/Add 1oz for \$39 to cart/.test(addLabel), 'the button states exactly what it will add');
-ok(/Adding 1oz, \$39, from THCA Small Buds/.test(await page.textContent('#hint')), 'and so does the hint');
+/* The mock's row label is "1 oz", which is the weight restated, so the display
+   string must not read "1 oz, 1oz". */
+const hintTxt = (await page.textContent('#hint')).trim();
+console.log('  hint now: ' + JSON.stringify(hintTxt));
+ok(/^Adding 1 oz, \$39, from THCA Small Buds\.$/.test(hintTxt), 'the hint names it once, not twice');
 
 console.log('\n=== adding writes the site cart ===');
 await page.click('#add');

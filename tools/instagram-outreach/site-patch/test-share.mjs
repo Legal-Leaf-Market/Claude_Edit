@@ -293,5 +293,57 @@ console.log('\n=== shuffle ===');
   ok(/Add to cart/.test(lone.html), 'but the page still works');
 }
 
+// ---------------------------------------------------------------------------
+// Multi-strain listings. Taken from the live feed: Cheap THCA Smalls Ounce has
+// seven rows, every one 28g, three of them at the same $35.99. Labelling options
+// by weight and price alone rendered three identical entries, so the shopper could
+// not tell Royal Zkittlez from Barney's Biscotti from Punch Breath.
+// ---------------------------------------------------------------------------
+console.log('\n=== multi-strain option labels ===');
+{
+  const MULTI = {
+    id: 'thcasmallbuds__cheap-thca-smalls-ounce', name: 'Cheap THCA Smalls Ounce',
+    store: 'THCA Small Buds', storeKey: 'thcasmallbuds', domain: 'thcasmallbuds.com',
+    cartDomain: 'thcasmallbuds.com', platform: 'shopify',
+    ref: 'coffeeandajoint', coupon: 'JACOBKENNEDY',
+    category: 'THCA Flower', cur: 'USD', inStock: true, perG: 0.71,
+    image: 'https://cdn.shopify.com/x.png', url: 'https://thcasmallbuds.com/products/x?ref=coffeeandajoint',
+    sizes: [
+      ['Royal Zkittlez (Indica Hybrid)', 35.99, 28, 'V1', 1, null, ''],
+      ['Mudslide (Indica Hybrid) - New Mediums', 20, 28, 'V2', 1, null, ''],
+      ["Barney's Biscotti (Indica Hybrid) - New Arrival", 35.99, 28, 'V3', 1, null, ''],
+      ['Punch Breath (Indica Hybrid) - New Arrival', 35.99, 28, 'V4', 1, null, ''],
+    ],
+  };
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [MULTI] }) });
+  const page = await run('pick');
+
+  const opts = [...page.html.matchAll(/<option value="(\d+)">([^<]*)<\/option>/g)]
+    .map((m) => ({ v: m[1], text: m[2] }));
+  console.log('  options:');
+  opts.forEach((o) => console.log('    ' + o.text));
+
+  ok(opts.length === 4, 'all four rows offered, got ' + opts.length);
+  ok(new Set(opts.map((o) => o.text)).size === 4,
+     'every option is distinguishable from every other');
+  ok(opts.every((o) => /Zkittlez|Mudslide|Biscotti|Punch Breath/.test(o.text)),
+     'each option names its strain');
+  ok(/Mudslide[^<]*this week&#39;s pick/.test(page.html), 'the pick is marked, and it is the $20 row');
+  ok(opts.filter((o) => /35\.99/.test(o.text)).length === 3,
+     'the three same-priced rows are all present rather than collapsed');
+
+  // The selection hint must name the strain, since that is what they are choosing.
+  ok(/'Adding ' \+ c\.display/.test(page.html), 'the hint restates the chosen strain');
+  ok(__test.saysWeightAlready('1 oz', '1oz'), '"1 oz" counts as already stating 1oz');
+  ok(!__test.saysWeightAlready('Mudslide (Indica Hybrid)', '1oz'), 'a strain name does not');
+  const D = JSON.parse((page.html.match(/var D = (\{.*?\});\n/) || [])[1]);
+  ok(D.sizes.every((z) => typeof z.display === 'string' && z.display.length > 0),
+     'every size in the payload carries a display string');
+  ok(D.sizes[0].display === 'Royal Zkittlez (Indica Hybrid) · 1oz',
+     'display is strain plus weight: ' + D.sizes[0].display);
+  ok(D.sizes[1].item.variantId === 'V2' && D.sizes[1].item.size === 'Mudslide (Indica Hybrid) - New Mediums',
+     'the cart item still carries the raw label the site cart expects');
+}
+
 console.log(fails ? '\n' + fails + ' CHECK(S) FAILED' : '\nALL CHECKS PASSED');
 process.exit(fails ? 1 : 0);
