@@ -460,8 +460,16 @@ legal-leafmarket.com, adapted to one site instead of four.
 - Prices shown must be prices the shopper can actually get. The footer says
   feeds can go stale; that is a disclosure, not a licence to ship known-wrong
   numbers.
-- Affiliate commission never affects ranking. Sorting is price and discount
-  only, and the footer says so.
+- Affiliate commission never affects ranking. Sorting is price, discount,
+  recency or shuffle, and the footer says so.
+- **Whether a merchant pays us is not a reason to delist them.** A merchant is
+  listed if shoppers get a fair deal and a real delivery; payout is not an
+  input to that decision. Delisting a good merchant for not paying is the same
+  act as ranking by commission, just performed at the merchant level, and the
+  footer's promise covers both. This cuts the other way too: a merchant who
+  pays well but fails shoppers goes, and the reason recorded is the failure,
+  never the money. The two cases look identical from outside, so write down
+  which one it was.
 
 ## 14. Hard "do not" list
 
