@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { Check, Copy, Trash2 } from "lucide-react"
 import { Board, type BoardEntry } from "./board"
 import { IconSelect } from "./icon-select"
+import { TrackSelect } from "./track-select"
 import { PedalSearch } from "./pedal-search"
 import { formatPrice } from "@/lib/utils"
 import type { PedalBoardEntry, PedalSummary } from "@/lib/pedalboard/queries"
@@ -126,6 +127,7 @@ export function PedalBoardBuilder({
   return (
     <div className="space-y-6">
       <IconSelect onAdd={addPedal} disabledSlugs={disabledSlugs} />
+      <TrackSelect onAdd={addPedal} disabledSlugs={disabledSlugs} />
 
       <div className="space-y-4">
         <PedalSearch suggestions={suggestions} onAdd={addPedal} disabledSlugs={disabledSlugs} />
