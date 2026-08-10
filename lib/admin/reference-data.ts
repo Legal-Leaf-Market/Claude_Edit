@@ -116,10 +116,14 @@ export type MerchantRow = {
 
 /**
  * Real store names, real catalogue counts (from the ingestion runs that
- * populated production), and real commission rates: every ratePct below was
- * read off the GoAffPro export on 9 Aug 2026, store by store, rather than
- * estimated. Catalogue-weighted that comes to 6.77% across the live stores,
- * which is what SITE_PROFILE.assumptions.commissionPct now carries.
+ * populated production), and real commission rates. Every ratePct below was
+ * read off a network's own directory rather than estimated: the GoAffPro
+ * export on 9 Aug 2026 for the Shopify/WooCommerce stores, the Awin
+ * advertiser directory for Reverb and Gear4music, and the CJ advertiser
+ * directory for zZounds, Pineville Music and Full Compass Systems.
+ * Catalogue-weighted the live stores come to 6.77%, which is what
+ * SITE_PROFILE.assumptions.commissionPct now carries. The gated feeds carry
+ * a rate but no catalogue, so they do not move that weighted figure.
  *
  * Two rows worth acting on rather than just recording:
  *   - Jackson Audio pays 0%. The referral link works, so clicks are tracked
@@ -149,7 +153,9 @@ export const MERCHANTS: MerchantRow[] = [
   { merchant: "Reverb", platform: "Awin 67144", ratePct: null, status: "pending", catalogueCount: 0, note: "DATAFEED CONFIRMED TO EXIST. Awin advertiser 67144, Reverb (US), feedEnabled=yes, productReporting=yes, 30-day cookie, 100% approval rate, live since Nov 2023, payment status green. Commission is not published in the directory (min/max both 0), so ratePct stays null rather than guessed. This is the legitimate path CLAUDE.md section 2 requires; the API is still off limits" },
   { merchant: "Sweetwater", platform: "LinkConnector", ratePct: null, status: "none", catalogueCount: 0, note: "No confirmed feed URL" },
   { merchant: "Gear4music", platform: "Awin 1117", ratePct: 3.5, status: "pending", catalogueCount: 0, note: "Feed CONFIRMED to exist in Awin's advertiser directory: feedEnabled=yes, 3.5-5% commission, 30-day cookie, 92.6% approval rate. Five regional programmes (1117, IE 27588, FR 27586, DK 27600, PL 27598), matching the five domains isGear4MusicProductUrl already recognises. Rate recorded at the 3.5% floor. Needs the feed URL from the Awin dashboard" },
-  { merchant: "zZounds / Full Compass / Pineville Music", platform: "CJ Affiliate", ratePct: null, status: "none", catalogueCount: 0, note: "CJ applications not yet through" },
+  { merchant: "zZounds", platform: "CJ 1779394", ratePct: 6, status: "pending", catalogueCount: 0, note: "Rate CONFIRMED at 6% in CJ's advertiser directory. The directory shows performance metrics rather than an apply link for this row, which reads as already joined, so verify in the CJ dashboard. EPC $1.94 (3mo) / $1.75 (7d). Needs CJ_ZZOUNDS_FEED_URL" },
+  { merchant: "Pineville Music", platform: "CJ 6425392", ratePct: 7, status: "unconfirmed", catalogueCount: 0, note: "Rate CONFIRMED at 7%, the highest of the three CJ music retailers. Directory shows APPLY TO PROGRAM with manual review, so not yet joined. EPC $3.29 (3mo)" },
+  { merchant: "Full Compass Systems", platform: "CJ 6382932", ratePct: 4, status: "unconfirmed", catalogueCount: 0, note: "Rate CONFIRMED at 4%, the lowest of the three, but by far the strongest EPC at $28.69 (3mo) / $21.62 (7d). Not yet joined, manual review" },
 ]
 
 export function attributableCatalogueCount(): number {
@@ -208,7 +214,7 @@ export const NEXT_90_DAYS = [
   },
   {
     title: "Confirm or drop the gated Awin/LinkConnector/CJ feeds",
-    body: "Reverb, Sweetwater and Gear4music each need a confirmed publisher datafeed; zZounds, Full Compass and Pineville Music each need a CJ Affiliate application to clear. Each is a real, compliant source the moment it's confirmed, and a dead end worth dropping if it stalls indefinitely.",
+    body: "Reverb, Sweetwater and Gear4music each need a confirmed publisher datafeed. On CJ the picture is now specific rather than a lump: zZounds (6%) appears to be joined already and only needs its feed URL pulled, while Pineville Music (7%) and Full Compass Systems (4%) both still show APPLY TO PROGRAM with manual review. Full Compass is the one to file first at $28.69 EPC, an order of magnitude above the other two. Avid sits in the same directory at 10% with an $89.14 EPC and is not wired up at all yet. Each is a real, compliant source the moment it's confirmed, and a dead end worth dropping if it stalls indefinitely.",
     why: "A smaller aggregator that's fully compliant beats a bigger one that isn't, but a confirmed feed beats either.",
   },
   {
@@ -224,7 +230,7 @@ export const METHOD_NOTES = [
   "Conversion rate is the most fragile assumption on this page. The model matures it from 80% to 125% of the stated rate over two years as trust, reviews and returning visitors accumulate. If real conversion comes in at half the stated rate, halve every revenue figure.",
   "Attribution capture starts at roughly two thirds, reflecting the real state of the 11 live stores today: about that share of live catalogue by product count has a confirmed working referral link (see the by-store table). It ramps toward 90%, which assumes the unconfirmed links actually get confirmed and at least one gated feed comes online: the ninety-day list below is exactly that work.",
   "What is not modelled: a merchant terminating its programme, a Google core update, GoAffPro changing its terms, or eBay's production application being denied outright. The last is a real, non-trivial risk for this specific business.",
-  "Costs are excluded because they're immaterial next to the revenue: Vercel, Neon and Resend land well under $100/month at this scale. Affiliate commission has no cost of goods. What this business actually costs is engineering and merchant-relationship hours.",
+  "Costs are excluded from the revenue engine, not because they're zero but because they're flat and small next to it: $250/month all-in across all five sites, covering Vercel, Neon, Resend, domains and Claude, so $3,000/year. Affiliate commission has no cost of goods. The measured-reality panel carries that figure against the year-3 draw cases; what this business actually costs is engineering and merchant-relationship hours.",
 ]
 
 export const METHOD_FOOTNOTE =

@@ -108,7 +108,7 @@ const SISTER_VENDORS: Record<string, MasterVendorRow[]> = {
     { merchant: "Fruitia", platform: "Awin feed", ratePct: 10, status: "tracking", sharePct: 9, note: "" },
     { merchant: "Kind Juice", platform: "Awin feed", ratePct: 10, status: "tracking", sharePct: 8, note: "" },
     { merchant: "Others (4 stores)", platform: "mixed", ratePct: 9, status: "partial", sharePct: 5, note: "" },
-    { merchant: "Nicokick", platform: "Magento", ratePct: null, status: "none", sharePct: 0, note: "CJ publisher and advertiser IDs empty" },
+    { merchant: "Nicokick", platform: "CJ 5497560", ratePct: 3, status: "pending", sharePct: 0, note: "Rate CONFIRMED at 3% in CJ's advertiser directory, and the directory shows metrics rather than an apply link, which reads as already joined. EPC $30.28 (3mo) / $36.68 (7d), the strongest in Nicotia's set. The CJ publisher and advertiser IDs are still empty in code" },
     { merchant: "Black Buffalo", platform: "Refersion", ratePct: 10, status: "none", sharePct: 0, note: "Not yet approved, page states it earns nothing" },
   ],
 }
