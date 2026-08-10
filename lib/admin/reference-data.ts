@@ -156,6 +156,7 @@ export const MERCHANTS: MerchantRow[] = [
   { merchant: "zZounds", platform: "CJ 1779394", ratePct: 6, status: "pending", catalogueCount: 0, note: "Rate CONFIRMED at 6% in CJ's advertiser directory. The directory shows performance metrics rather than an apply link for this row, which reads as already joined, so verify in the CJ dashboard. EPC $1.94 (3mo) / $1.75 (7d). Needs CJ_ZZOUNDS_FEED_URL" },
   { merchant: "Pineville Music", platform: "CJ 6425392", ratePct: 7, status: "unconfirmed", catalogueCount: 0, note: "Rate CONFIRMED at 7%, the highest of the three CJ music retailers. Directory shows APPLY TO PROGRAM with manual review, so not yet joined. EPC $3.29 (3mo)" },
   { merchant: "Full Compass Systems", platform: "CJ 6382932", ratePct: 4, status: "unconfirmed", catalogueCount: 0, note: "Rate CONFIRMED at 4%, the lowest of the three, but by far the strongest EPC at $28.69 (3mo) / $21.62 (7d). Not yet joined, manual review" },
+  { merchant: "Anderton's", platform: "Impact.com", ratePct: null, status: "pending", catalogueCount: 0, note: "Application SUBMITTED 10 Aug 2026 with a written pitch, awaiting a decision. Impact publishes no advertiser directory of rates, so ratePct stays null rather than guessed. Two things are true at once here: the Impact tracking tag is already live sitewide (app/layout.tsx) so the publisher-verification step is satisfied, and approval still does not unblock ingestion, because Impact lets each brand name its own product-feed columns. The row-normaliser gets written against Anderton's real schema once the feed URL and column names arrive, not before. On approval, check the tag's transformLinks() against /go and /api/cart/checkout first, see the layout.tsx comment" },
 ]
 
 export function attributableCatalogueCount(): number {
@@ -213,8 +214,8 @@ export const NEXT_90_DAYS = [
     why: "Historically the slowest item in this project by a wide margin, so start it now, not later.",
   },
   {
-    title: "Confirm or drop the gated Awin/LinkConnector/CJ feeds",
-    body: "Reverb, Sweetwater and Gear4music each need a confirmed publisher datafeed. On CJ the picture is now specific rather than a lump: zZounds (6%) appears to be joined already and only needs its feed URL pulled, while Pineville Music (7%) and Full Compass Systems (4%) both still show APPLY TO PROGRAM with manual review. Full Compass is the one to file first at $28.69 EPC, an order of magnitude above the other two. Avid sits in the same directory at 10% with an $89.14 EPC and is not wired up at all yet. Each is a real, compliant source the moment it's confirmed, and a dead end worth dropping if it stalls indefinitely.",
+    title: "Confirm or drop the gated Awin/LinkConnector/CJ/Impact feeds",
+    body: "Reverb, Sweetwater and Gear4music each need a confirmed publisher datafeed. On CJ the picture is now specific rather than a lump: zZounds (6%) appears to be joined already and only needs its feed URL pulled, while Pineville Music (7%) and Full Compass Systems (4%) both still show APPLY TO PROGRAM with manual review. Full Compass is the one to file first at $28.69 EPC, an order of magnitude above the other two. Avid sits in the same directory at 10% with an $89.14 EPC and is not wired up at all yet. Anderton's application went in on 10 Aug 2026; that one has an engineering step approval does not remove, since Impact lets each brand define its own feed columns, so the normaliser waits on the real schema. Each is a real, compliant source the moment it's confirmed, and a dead end worth dropping if it stalls indefinitely.",
     why: "A smaller aggregator that's fully compliant beats a bigger one that isn't, but a confirmed feed beats either.",
   },
   {

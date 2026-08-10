@@ -116,8 +116,8 @@ built for that site's own frontend rather than published for this use.
   "Used Gear API" name floating around online is Guitar Center's own URL
   taxonomy, not a data API, and the community tools that exist scrape an
   undocumented frontend Algolia index. Do not build against it.
-- **Anderton's, applied for via Impact.com (formerly Impact Radius), application
-  pending as of when this was written.** The site's Universal Tracking Tag
+- **Anderton's, applied for via Impact.com (formerly Impact Radius). Application
+  submitted 10 Aug 2026 with a written pitch, decision pending.** The site's Universal Tracking Tag
   (`app/layout.tsx`) is already live sitewide for Impact's own site-verification
   step; that is independent of catalogue ingestion and does not mean the
   affiliate program itself is approved. Unlike CJ or Awin, Impact has no fixed
