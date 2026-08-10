@@ -352,6 +352,88 @@
     -webkit-text-fill-color: var(--copper);
   }
 
+  /* The family hero: centred, with a soft wash of the section's own hue
+     bleeding down from above the fold. `--hero-hue` defaults to the site
+     accent and each category page overrides it, which is how the sister sites
+     give a section its own identity without a second layout. */
+  .hero {
+    --hero-hue: var(--copper);
+    position: relative;
+    overflow: hidden;
+    padding: 42px 0 30px;
+    text-align: center;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: -40% -10% auto;
+    height: 340px;
+    pointer-events: none;
+    opacity: 0.16;
+    background: radial-gradient(60% 100% at 50% 0, var(--hero-hue), transparent 70%);
+  }
+  .hero-inner {
+    position: relative;
+    z-index: 2;
+  }
+  .hero .h-display {
+    background-image: linear-gradient(96deg, var(--text) 0%, var(--gold) 46%, var(--hero-hue) 88%);
+  }
+  .hero .h-lead {
+    color: var(--hero-hue);
+    -webkit-text-fill-color: var(--hero-hue);
+  }
+  .hsub {
+    margin: 18px auto 0;
+    max-width: 56ch;
+    font-size: 1.02rem;
+    line-height: 1.6;
+    color: var(--muted-foreground);
+  }
+  .hstats {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 24px;
+  }
+  .hstats b,
+  .hstats dd {
+    display: block;
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .hstats span,
+  .hstats dt {
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  /* On a phone the hero was costing most of the first screen before a single
+     listing. Keep the promise, drop the throat-clearing: the same trim the
+     sister sites make at 480px. */
+  @media (max-width: 480px) {
+    .hero {
+      padding: 16px 0 12px;
+    }
+    .hero::before {
+      display: none;
+    }
+    .hero .eyebrow,
+    .hstats {
+      display: none;
+    }
+    .hsub {
+      margin-top: 10px;
+      font-size: 0.92rem;
+    }
+  }
+
   /* Listing card plate, ported from Nicotia's .front. Its own comment records
      why: the card has to read as a surface sitting ON the page, and when the
      plate is only ~6% lighter than the background the border does all the

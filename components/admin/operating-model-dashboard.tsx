@@ -131,7 +131,7 @@ export function OperatingModelDashboard() {
       )
       setSavedAt(stamp)
     } catch {
-      setNotice("Could not save to this browser — storage is full or blocked.")
+      setNotice("Could not save to this browser: storage is full or blocked.")
     }
   }, [scenario, overrides, actuals, hydrated])
 
@@ -313,7 +313,7 @@ export function OperatingModelDashboard() {
               <strong className="text-[var(--cream)]">{money(models.bear.totals.totalRevenue)}</strong> across two
               years. The upside case is a genuine{" "}
               <strong className="text-[var(--cream)]">{money(models.bull.totals.exitRunRate)}</strong> exit
-              run-rate if one channel — most likely eBay production access — actually breaks
+              run-rate if one channel (most likely eBay production access) actually breaks
               through.
             </p>
           </div>
@@ -422,7 +422,7 @@ export function OperatingModelDashboard() {
             Ecommerce affiliate conversion benchmarks sit at 1–3% of sessions; average affiliate AOV
             runs around $125. GoAffPro (and similar small-merchant programmes) typically run 5–15%
             commission, but none of these 11 stores' actual rates have been confirmed from their
-            dashboards yet — the 8% shown is a placeholder, not a measurement.
+            dashboards yet: the 8% shown is a placeholder, not a measurement.
           </p>
         </div>
       </section>
@@ -454,7 +454,7 @@ export function OperatingModelDashboard() {
             <strong className="text-[var(--cream)]">{active.headline}.</strong> {active.detail}
           </p>
           <p className="mt-1.5 text-xs text-[var(--muted-foreground)]">
-            The scenario multiplies the assumptions below — it does not replace them. Edit a number
+            The scenario multiplies the assumptions below, it does not replace them. Edit a number
             and all three scenarios move with it.
           </p>
 
@@ -538,7 +538,7 @@ export function OperatingModelDashboard() {
         <p className="eyebrow">Trajectory</p>
         <h2>Monthly revenue</h2>
         <p className="intro">
-          {active.label} case — {money(t.month24Revenue)} in {model.monthLabels[23]}.
+          {active.label} case, {money(t.month24Revenue)} in {model.monthLabels[23]}.
         </p>
         <div className="section-body">
           <RevenueChart months={site.months} color={SITE_PROFILE.color} />

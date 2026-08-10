@@ -53,50 +53,68 @@ export default async function HomePage() {
 
   return (
     <div className="shell">
-      <section className="py-12 sm:py-16">
-        <h1 className="max-w-3xl text-3xl font-semibold leading-tight tracking-tight text-[var(--cream)] sm:text-5xl">
-          Real gear, straight from the makers,{" "}
-          <span className="text-[var(--amber)]">on one page</span>
-        </h1>
-        <p className="mt-4 max-w-2xl text-base leading-relaxed text-[var(--muted-foreground)] sm:text-lg">
-          Gear Avail pulls real-time inventory from independent instrument makers and retailers, so
-          you can browse everything in one place instead of hunting down each store. Sorted by
-          price, with the genuinely underpriced gear marked.
-        </p>
-        <p className="mt-3 max-w-2xl text-sm font-medium text-[var(--amber)]">
-          No fees. No sellout. Built by a musician who's flipped over a thousand pedals, not a
-          pitch deck.
-        </p>
+      {/*
+        The family hero: eyebrow, a Cormorant italic lead line, the Fraunces
+        gradient headline, one sentence of subtitle, then the stat row. The
+        live pill sits above it because freshness is the whole claim an
+        aggregator makes, and section 10 of CLAUDE.md makes the point that a
+        stale feed looks exactly like a quiet market.
+      */}
+      <section className="hero">
+        <div className="hero-inner">
+          {stats.listings > 0 && (
+            <p className="mb-4">
+              <span className="live-pill">
+                <span className="dot" aria-hidden="true" />
+                {stats.listings.toLocaleString()} listings live now
+              </span>
+            </p>
+          )}
+          <p className="eyebrow">Used, vintage and new</p>
+          <h1 className="h-display mt-3">
+            <span className="h-lead">Real gear, straight from the makers,</span>
+            on one page
+          </h1>
+          <p className="hsub">
+            Gear Avail pulls real-time inventory from independent instrument makers and retailers,
+            so you can browse everything in one place instead of hunting down each store. Sorted by
+            price, with the genuinely underpriced gear marked.
+          </p>
+          <p className="mx-auto mt-3 max-w-[56ch] font-script text-lg italic text-[var(--amber-soft)]">
+            No fees. No sellout. Built by a musician who&apos;s flipped over a thousand pedals, not
+            a pitch deck.
+          </p>
 
-        <div className="mt-7 flex flex-wrap gap-3">
-          <Link
-            href="/search"
-            className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--primary)] px-5 text-sm font-medium text-[var(--primary-foreground)] transition-colors hover:bg-[var(--amber-soft)]"
-          >
-            Browse all gear
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-          <Link
-            href="/search?deals=1&sort=deal"
-            className="inline-flex h-11 items-center gap-2 rounded-lg border border-[var(--border)] px-5 text-sm font-medium text-[var(--cream)] transition-colors hover:bg-[var(--secondary)]"
-          >
-            See what is below market
-          </Link>
+          <div className="mt-7 flex flex-wrap justify-center gap-3">
+            <Link
+              href="/search"
+              className="inline-flex h-11 items-center gap-2 rounded-[10px] bg-gradient-to-r from-[var(--sage-dk)] to-[var(--sage)] px-6 text-[13px] font-bold tracking-[0.03em] text-[#04140a] shadow-[0_4px_14px_rgba(34,197,94,.2)] transition-all hover:brightness-110 hover:shadow-[0_6px_20px_rgba(34,197,94,.35)]"
+            >
+              Browse all gear
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+            <Link
+              href="/search?deals=1&sort=deal"
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--chip)] px-6 text-[13px] font-bold tracking-[0.03em] text-[var(--cream)] transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]"
+            >
+              See what is below market
+            </Link>
+          </div>
+
+          {stats.listings > 0 && (
+            <dl className="hstats">
+              <Stat label="Live listings" value={stats.listings.toLocaleString()} />
+              <Stat label="Instruments tracked" value={stats.gear.toLocaleString()} />
+              <Stat label="Below market now" value={stats.deals.toLocaleString()} />
+            </dl>
+          )}
         </div>
-
-        {stats.listings > 0 && (
-          <dl className="mt-9 flex flex-wrap gap-x-10 gap-y-4">
-            <Stat label="Live listings" value={stats.listings.toLocaleString()} />
-            <Stat label="Instruments tracked" value={stats.gear.toLocaleString()} />
-            <Stat label="Below market now" value={stats.deals.toLocaleString()} />
-          </dl>
-        )}
       </section>
 
       {deals && deals.hits.length > 0 && (
         <section className="pb-12">
           <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-xl font-semibold text-[var(--cream)]">Biggest discounts right now</h2>
+            <h2 className="text-xl font-black tracking-[-0.01em] text-[var(--cream)]">Biggest discounts right now</h2>
             <Link
               href="/search?deals=1&sort=deal"
               className="text-sm text-[var(--amber)] underline-offset-2 hover:underline"
@@ -119,7 +137,7 @@ export default async function HomePage() {
               <Cable className="h-6 w-6" aria-hidden="true" />
             </span>
             <div>
-              <h2 className="text-lg font-semibold text-[var(--cream)]">Build your pedalboard</h2>
+              <h2 className="text-lg font-black tracking-[-0.01em] text-[var(--cream)]">Build your pedalboard</h2>
               <p className="mt-1 max-w-xl text-sm leading-relaxed text-[var(--muted-foreground)]">
                 Chain pedals together the way you would actually run them, and see who has each one
                 in stock, new or used, and what it should cost, all in one page.
@@ -137,7 +155,7 @@ export default async function HomePage() {
       </section>
 
       <section className="pb-12">
-        <h2 className="mb-4 text-xl font-semibold text-[var(--cream)]">Browse by category</h2>
+        <h2 className="mb-4 text-xl font-black tracking-[-0.01em] text-[var(--cream)]">Browse by category</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {CATEGORIES.map((category) => (
             <Link
@@ -162,7 +180,7 @@ export default async function HomePage() {
 
       <section className="pb-12">
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-xl font-semibold text-[var(--cream)]">Shop by store</h2>
+          <h2 className="text-xl font-black tracking-[-0.01em] text-[var(--cream)]">Shop by store</h2>
           <Link href="/shop" className="text-sm text-[var(--amber)] underline-offset-2 hover:underline">
             All {STORES.length} stores
           </Link>
@@ -187,7 +205,7 @@ export default async function HomePage() {
 
       <section className="pb-12">
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-xl font-semibold text-[var(--cream)]">The community</h2>
+          <h2 className="text-xl font-black tracking-[-0.01em] text-[var(--cream)]">The community</h2>
           <Link href="/feed" className="text-sm text-[var(--amber)] underline-offset-2 hover:underline">
             See the feed
           </Link>
@@ -210,7 +228,7 @@ export default async function HomePage() {
       </section>
 
       <section className="pb-16">
-        <h2 className="mb-4 text-xl font-semibold text-[var(--cream)]">How Gear Avail works</h2>
+        <h2 className="mb-4 text-xl font-black tracking-[-0.01em] text-[var(--cream)]">How Gear Avail works</h2>
         <div className="grid gap-4 sm:grid-cols-3">
           <HowItWorks
             icon={<SearchIcon className="h-5 w-5" aria-hidden="true" />}
@@ -231,7 +249,7 @@ export default async function HomePage() {
       </section>
 
       <section className="pb-16">
-        <h2 className="mb-4 text-xl font-semibold text-[var(--cream)]">Get the weekly hunt</h2>
+        <h2 className="mb-4 text-xl font-black tracking-[-0.01em] text-[var(--cream)]">Get the weekly hunt</h2>
         <div className="max-w-2xl">
           <SubscribeForm source="home" />
         </div>
@@ -245,8 +263,8 @@ export default async function HomePage() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">{label}</dt>
-      <dd className="mt-0.5 text-2xl font-semibold text-[var(--cream)]">{value}</dd>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
     </div>
   )
 }

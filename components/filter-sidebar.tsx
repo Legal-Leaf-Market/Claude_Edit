@@ -216,7 +216,7 @@ function FilterControls({
         <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
           Delivery
         </legend>
-        <div className="flex rounded-lg border border-[var(--border)] p-0.5">
+        <div className="flex rounded-full border border-[var(--line)] p-0.5">
           {(
             [
               ["any", "All"],
@@ -229,7 +229,7 @@ function FilterControls({
               type="button"
               onClick={() => setParam("shipping", value === "any" ? null : value)}
               aria-pressed={shipping === value}
-              className={`flex-1 rounded-md px-2 py-1.5 text-xs transition-colors ${
+              className={`flex-1 rounded-full px-2 py-1.5 text-xs font-semibold transition-colors ${
                 shipping === value
                   ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
                   : "text-[var(--muted-foreground)] hover:text-[var(--cream)]"
@@ -333,7 +333,7 @@ function PriceInput({
             commit()
           }
         }}
-        className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-2 text-sm text-[var(--cream)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+        className="h-9 w-full rounded-full border border-[var(--line)] bg-[var(--chip)] px-3 text-sm text-[var(--cream)] placeholder:text-[var(--dim)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
       />
     </label>
   )

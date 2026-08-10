@@ -38,7 +38,7 @@ export function SortSelect() {
               else next.delete("seed")
             })
           }
-          className="h-9 rounded-lg border border-[var(--border)] bg-[var(--input)] px-2 text-sm text-[var(--cream)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+          className="h-9 rounded-full border border-[var(--line)] bg-[var(--chip)] px-3 text-sm font-medium text-[var(--cream)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
         >
           {SORT_OPTIONS.map((option) => (
             <option key={option.value} value={option.value} className="bg-[var(--popover)]">
@@ -52,7 +52,7 @@ export function SortSelect() {
         <button
           type="button"
           onClick={() => go((next) => next.set("seed", String(newSeed())))}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 text-sm font-medium text-[var(--cream)] transition-colors hover:bg-[var(--secondary)]"
+          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--chip)] px-4 text-sm font-semibold text-[var(--cream)] transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]"
         >
           <Shuffle className="h-4 w-4" aria-hidden="true" />
           Shuffle again

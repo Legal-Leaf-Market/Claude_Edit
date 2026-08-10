@@ -31,7 +31,7 @@ export function Pagination({
         <Link
           href={buildHref(page - 1)}
           rel="prev"
-          className="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--border)] px-3 text-sm text-[var(--cream)] hover:bg-[var(--secondary)]"
+          className="inline-flex h-9 items-center gap-1 rounded-full border border-[var(--line)] bg-[var(--chip)] px-4 text-sm font-semibold text-[var(--cream)] transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           Previous
@@ -47,7 +47,7 @@ export function Pagination({
             <Link
               href={buildHref(p)}
               aria-current={p === page ? "page" : undefined}
-              className={`inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-3 text-sm transition-colors ${
+              className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full px-3 text-sm font-semibold transition-colors ${
                 p === page
                   ? "bg-[var(--primary)] font-medium text-[var(--primary-foreground)]"
                   : "border border-[var(--border)] text-[var(--cream)] hover:bg-[var(--secondary)]"
@@ -63,7 +63,7 @@ export function Pagination({
         <Link
           href={buildHref(page + 1)}
           rel="next"
-          className="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--border)] px-3 text-sm text-[var(--cream)] hover:bg-[var(--secondary)]"
+          className="inline-flex h-9 items-center gap-1 rounded-full border border-[var(--line)] bg-[var(--chip)] px-4 text-sm font-semibold text-[var(--cream)] transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]"
         >
           Next
           <ChevronRight className="h-4 w-4" aria-hidden="true" />

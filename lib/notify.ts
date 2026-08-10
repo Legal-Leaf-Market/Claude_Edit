@@ -186,9 +186,9 @@ export async function notifyMerchantLead(lead: MerchantLead): Promise<void> {
             <table style="width:100%;border-collapse:collapse;font-size:14px;color:#374151">
               <tr><td style="padding:4px 0;color:#6b7280">Contact</td><td>${escapeHtml(lead.contactName)} &lt;${escapeHtml(lead.email)}&gt;${lead.phone ? ` &middot; ${escapeHtml(lead.phone)}` : ""}</td></tr>
               <tr><td style="padding:4px 0;color:#6b7280">Referred by</td><td>${lead.referredBy === "customer" ? "A customer, on the shop's behalf" : "The shop owner"}</td></tr>
-              <tr><td style="padding:4px 0;color:#6b7280">Location</td><td>${lead.location ? escapeHtml(lead.location) : "—"}</td></tr>
+              <tr><td style="padding:4px 0;color:#6b7280">Location</td><td>${lead.location ? escapeHtml(lead.location) : "–"}</td></tr>
               <tr><td style="padding:4px 0;color:#6b7280">Online today</td><td>${escapeHtml(lead.hasOnlineCatalog)}</td></tr>
-              <tr><td style="padding:4px 0;color:#6b7280">Existing link</td><td>${lead.existingLink ? escapeHtml(lead.existingLink) : "—"}</td></tr>
+              <tr><td style="padding:4px 0;color:#6b7280">Existing link</td><td>${lead.existingLink ? escapeHtml(lead.existingLink) : "–"}</td></tr>
             </table>
             ${lead.message ? `<p style="margin:16px 0 0;padding:12px;background:#f9fafb;border-radius:8px;color:#374151;font-size:14px;white-space:pre-wrap">${escapeHtml(lead.message)}</p>` : ""}
           </div>`,

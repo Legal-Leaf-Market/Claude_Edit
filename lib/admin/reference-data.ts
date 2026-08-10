@@ -15,7 +15,7 @@ import type { Scenario, SiteProfile } from "./engine"
  *     inventory rather than being a hand-written handful.
  *   - Of the 11 live small-seller sources, 7 (by product count, roughly two
  *     thirds of live catalogue) have a confirmed real GoAffPro referral link;
- *     the rest are unconfirmed, pending approval, or paused — see MERCHANTS.
+ *     the rest are unconfirmed, pending approval, or paused (see MERCHANTS).
  *
  * All figures below are starting assumptions, not measurements: this is a
  * brand-new catalogue with no real traffic history yet. Every number is
@@ -95,7 +95,7 @@ export const SCENARIOS: Record<"bear" | "base" | "bull", Scenario> = {
     label: "Bull",
     headline: "One channel breaks out",
     detail:
-      "Not every gated feed lands — one does, and it's a big one (eBay production access, unlocking the largest addressable used-gear catalogue there is), or the pedal-board builder gets shared organically and becomes the site's front door. Traffic runs a little over 2× plan by month 24 and conversion 15% above the stated rate on the back of a stronger brand and returning visitors.",
+      "Not every gated feed lands: one does, and it's a big one (eBay production access, unlocking the largest addressable used-gear catalogue there is), or the pedal-board builder gets shared organically and becomes the site's front door. Traffic runs a little over 2× plan by month 24 and conversion 15% above the stated rate on the back of a stronger brand and returning visitors.",
     sessions12: 1.6,
     sessions24: 2.2,
     conversion: 1.15,
@@ -166,12 +166,12 @@ export const FACTS = [
   {
     tag: "Structural · a real advantage",
     title: "This one can actually buy traffic",
-    body: "Google, Meta and TikTok all restrict or outright ban ads for THC, hemp, vapes and nicotine — the category the sister sites live in. Musical instruments carry none of that restriction. Paid acquisition, creator partnerships and ordinary retargeting are all real, legal levers here in a way they structurally are not for Legal Leaf, Herbal Leaf or Nicotia Market.",
+    body: "Google, Meta and TikTok all restrict or outright ban ads for THC, hemp, vapes and nicotine, the category the sister sites live in. Musical instruments carry none of that restriction. Paid acquisition, creator partnerships and ordinary retargeting are all real, legal levers here in a way they structurally are not for Legal Leaf, Herbal Leaf or Nicotia Market.",
   },
   {
     tag: "Fixable · already in motion",
     title: "The catalogue already writes its own pages",
-    body: "Legal Leaf's sitemap problem was 15 hand-authored URLs against a 3,576-product catalogue. Gear Avail doesn't have that problem: every ingested listing resolves to a canonical instrument page and, where a market price exists, a deals page — thousands of pages already, growing with every ingestion run, no hand-authoring required. The category redesign and pedal-board builder add depth on top of that, they don't create the base layer from nothing.",
+    body: "Legal Leaf's sitemap problem was 15 hand-authored URLs against a 3,576-product catalogue. Gear Avail doesn't have that problem: every ingested listing resolves to a canonical instrument page and, where a market price exists, a deals page: thousands of pages already, growing with every ingestion run, no hand-authoring required. The category redesign and pedal-board builder add depth on top of that, they don't create the base layer from nothing.",
   },
   {
     tag: "Fixable · fastest money",
@@ -204,31 +204,31 @@ export const NEXT_90_DAYS = [
   {
     title: "File for eBay production access",
     body: "EBAY_FEED_BASE_URL is still sandboxed. Production access is a real application process, not a config flip, and it's the single largest addressable used-gear catalogue available to this site.",
-    why: "Historically the slowest item in this project by a wide margin — start it now, not later.",
+    why: "Historically the slowest item in this project by a wide margin, so start it now, not later.",
   },
   {
     title: "Confirm or drop the gated Awin/LinkConnector/CJ feeds",
-    body: "Reverb, Sweetwater and Gear4music each need a confirmed publisher datafeed; zZounds, Full Compass and Pineville Music each need a CJ Affiliate application to clear. Each is a real, compliant source the moment it's confirmed — and a dead end worth dropping if it stalls indefinitely.",
+    body: "Reverb, Sweetwater and Gear4music each need a confirmed publisher datafeed; zZounds, Full Compass and Pineville Music each need a CJ Affiliate application to clear. Each is a real, compliant source the moment it's confirmed, and a dead end worth dropping if it stalls indefinitely.",
     why: "A smaller aggregator that's fully compliant beats a bigger one that isn't, but a confirmed feed beats either.",
   },
   {
     title: "Ship the category redesign and the pedal-board builder",
-    body: "Distinct per-category pages, real product photography treatment, and an interactive pedal-chain builder that shows going rates across every store carrying that pedal — all already in motion.",
+    body: "Distinct per-category pages, real product photography treatment, and an interactive pedal-chain builder that shows going rates across every store carrying that pedal, all already in motion.",
     why: "This is the site's actual differentiator: no other aggregator in this space lets a shopper build a rig and see the market price for every piece of it.",
   },
 ]
 
 export const METHOD_NOTES = [
-  "Traffic follows an S-curve, not a straight line: slow for the first few months while the domain earns trust, steepest in the middle of the horizon, decelerating after. It's fitted to pass through the month-1, month-12 and month-24 anchors below exactly. Monthly seasonality is applied on top — instruments spike hardest around the holidays and Black Friday, which is why a given month's sessions can sit slightly above or below its anchor.",
+  "Traffic follows an S-curve, not a straight line: slow for the first few months while the domain earns trust, steepest in the middle of the horizon, decelerating after. It's fitted to pass through the month-1, month-12 and month-24 anchors below exactly. Monthly seasonality is applied on top, since instruments spike hardest around the holidays and Black Friday, which is why a given month's sessions can sit slightly above or below its anchor.",
   "Month 1's anchor includes two real, current inputs rather than pure projection: a $100/mo paid ad budget (musical instruments carry no advertising restriction, unlike the sister sites) and a proven ~25 visits/day from the IG account already being run for this site in its first three weeks. Months 12 and 24 scale the same shape up proportionally and remain assumptions, not measurements, until real months close.",
   "Conversion rate is the most fragile assumption on this page. The model matures it from 80% to 125% of the stated rate over two years as trust, reviews and returning visitors accumulate. If real conversion comes in at half the stated rate, halve every revenue figure.",
-  "Attribution capture starts at roughly two thirds, reflecting the real state of the 11 live stores today: about that share of live catalogue by product count has a confirmed working referral link (see the by-store table). It ramps toward 90%, which assumes the unconfirmed links actually get confirmed and at least one gated feed comes online — the ninety-day list below is exactly that work.",
+  "Attribution capture starts at roughly two thirds, reflecting the real state of the 11 live stores today: about that share of live catalogue by product count has a confirmed working referral link (see the by-store table). It ramps toward 90%, which assumes the unconfirmed links actually get confirmed and at least one gated feed comes online: the ninety-day list below is exactly that work.",
   "What is not modelled: a merchant terminating its programme, a Google core update, GoAffPro changing its terms, or eBay's production application being denied outright. The last is a real, non-trivial risk for this specific business.",
   "Costs are excluded because they're immaterial next to the revenue: Vercel, Neon and Resend land well under $100/month at this scale. Affiliate commission has no cost of goods. What this business actually costs is engineering and merchant-relationship hours.",
 ]
 
 export const METHOD_FOOTNOTE =
-  "Every figure here is a starting assumption for a catalogue that went from 80 seed listings to real inventory across 11 stores in a single day. There is no real traffic history yet to calibrate against. Enter real Vercel Analytics sessions and real earned commission in the monthly tables as soon as a month closes, and the model stops guessing about that month and re-anchors everything after it. Projections are estimates under stated assumptions, not forecasts or guarantees — this is a planning tool for this business, not investment advice."
+  "Every figure here is a starting assumption for a catalogue that went from 80 seed listings to real inventory across 11 stores in a single day. There is no real traffic history yet to calibrate against. Enter real Vercel Analytics sessions and real earned commission in the monthly tables as soon as a month closes, and the model stops guessing about that month and re-anchors everything after it. Projections are estimates under stated assumptions, not forecasts or guarantees. This is a planning tool for this business, not investment advice."
 
 export const INCOME_TARGETS = [500, 1000, 2500, 5000, 8333, 20000]
 
