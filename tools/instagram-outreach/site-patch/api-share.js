@@ -216,9 +216,10 @@ function namesAnOunce(label) {
    Tie sells both "thca-flower-trim-shake" and "grape-milkshake-greenhouse-thca-
    flower", and a substring test brands that second one, a whole-bud strain, as
    shake. Checked against every id in coa-blacktie.js, coa-data.js and
-   coa-thcaking.js: the real ones all name it as its own word ("cheap-thca-flower-
-   trim", "thca-shake-indoor", "dank-thca-trim"), and "milkshake" is the only
-   near-miss, which is exactly what a boundary excludes. Do not loosen this to a
+   coa-thcaking.js (that last one now an archive, its store delisted 10 Aug 2026;
+   none of the examples here came from it): the real ones all name it as its own
+   word ("cheap-thca-flower-trim", "thca-shake-indoor", "dank-thca-trim"), and
+   "milkshake" is the only near-miss, which is exactly what a boundary excludes. Do not loosen this to a
    substring without re-checking those ids, the same rule the exclusion regexes on
    the sister sites are held to. */
 var TRIM_WORD = /(^|[^a-z])(trim|shake)s?([^a-z]|$)/i;

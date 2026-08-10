@@ -7,12 +7,12 @@ const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fai
 // Real shapes: Shopify keeps sizes[5] null, so the ref-stamped product url is what
 // carries attribution, exactly as the site's own addToCart relies on.
 const PRODUCTS = [
-  { id: 'thcaking__blue-dream-oz', name: 'Blue Dream THCa Flower', store: 'THCA King',
-    storeKey: 'thcaking', domain: 'thcaking.com', cartDomain: 'thcaking.com',
+  { id: 'ounceco__blue-dream-oz', name: 'Blue Dream THCa Flower', store: 'Ounce Co',
+    storeKey: 'ounceco', domain: 'ounceco.test', cartDomain: 'ounceco.test',
     platform: 'shopify', ref: 'coffeeandajoint', refLink: '', coupon: 'JACOBKENNEDY',
     category: 'THCA Flower', cur: 'USD', inStock: true, perG: 1.57,
     image: 'https://cdn.shopify.com/blue-dream.jpg',
-    url: 'https://thcaking.com/products/blue-dream?ref=coffeeandajoint',
+    url: 'https://ounceco.test/products/blue-dream?ref=coffeeandajoint',
     sizes: [['1 oz', 44, 28, '4411', 1, null, ''], ['Quarter Pound', 149, 112, '4412', 1, null, '']],
     sale: 44, startsAt: 44 },
   { id: 'evil__x', name: 'Pwn "me" <script>alert(1)</script> & co', store: '<b>Bad</b>',
@@ -32,20 +32,20 @@ function run(id, s, extra) {
 }
 
 console.log('=== the product card a crawler reads ===');
-const good = await run('thcaking__blue-dream-oz');
+const good = await run('ounceco__blue-dream-oz');
 const tag = (p) => (good.html.match(new RegExp('<meta property="' + p + '" content="([^"]*)"')) || [])[1];
 console.log('  og:title       ' + tag('og:title'));
 console.log('  og:description ' + tag('og:description'));
 console.log('  og:image       ' + tag('og:image'));
 ok(good.status === 200, 'status 200');
 ok(tag('og:title') === 'Blue Dream THCa Flower (1oz) $44', 'title has product, size, price');
-ok(/1oz, \$1\.57 per gram, at THCA King/.test(tag('og:description')), 'description carries the value case');
+ok(/1oz, \$1\.57 per gram, at Ounce Co/.test(tag('og:description')), 'description carries the value case');
 // The photo is the product's, asked for at the size the tags go on to declare. The
 // dedicated block at the bottom covers that mechanism.
 ok(tag('og:image').startsWith('https://cdn.shopify.com/blue-dream.jpg?'), 'image is the product photo');
 ok(tag('og:image:width') === '1200', 'and the card states its size, so it renders on first scrape');
 ok(tag('og:type') === 'product', 'og:type product');
-ok(tag('og:url') === 'https://legal-leafmarket.com/p/thcaking__blue-dream-oz', 'canonical on our domain');
+ok(tag('og:url') === 'https://legal-leafmarket.com/p/ounceco__blue-dream-oz', 'canonical on our domain');
 
 console.log('\n=== same flow as the site, no new buttons ===');
 ok((good.html.match(/class="buy"/g) || []).length === 1, 'exactly one primary action');
@@ -73,14 +73,14 @@ const fnSrc = html.match(/function storeCheckoutUrl\(domain, items\)\{[\s\S]*?\n
 const storeCheckoutUrl = new Function('return ' + fnSrc)();
 const checkout = storeCheckoutUrl(item.domain, [item]);
 console.log('  checkout URL the site builds: ' + checkout);
-ok(/^https:\/\/thcaking\.com\/cart\/4411:1\?/.test(checkout), 'real cart permalink built');
+ok(/^https:\/\/ounceco\.test\/cart\/4411:1\?/.test(checkout), 'real cart permalink built');
 ok(checkout.includes('ref=coffeeandajoint'), 'affiliate ref present in checkout');
 ok(checkout.includes('discount=JACOBKENNEDY'), 'coupon present in checkout');
 
 // A chosen size must win over cheapest, same as picking a size on a card.
 const big = __test.cartItem(PRODUCTS[0], 1);
 ok(big.price === 149 && big.variantId === '4412', '?s=1 selects the second size');
-const bigPage = await run('thcaking__blue-dream-oz', '1');
+const bigPage = await run('ounceco__blue-dream-oz', '1');
 ok(bigPage.html.includes('"variantId":"4412"'), 'the page embeds the selected size');
 
 console.log('\n=== hostile feed row ===');
@@ -117,31 +117,31 @@ console.log('\n=== /p/pick selection ===');
       image: 'https://cdn.shopify.com/sour.jpg', url: 'https://thcasmallbuds.com/products/sour?ref=coffeeandajoint',
       sizes: [['1 oz', 39, 28, 'V-OZ', 1, null, ''], ['4 oz', 129, 112, 'V-QP', 1, null, '']] },
     // Cheaper per gram, but only at quarter-pound size, which is over the cap.
-    { id: 'king__cheap-qp', name: 'Cheap QP', store: 'THCA King', storeKey: 'thcaking',
-      domain: 'thcaking.com', platform: 'shopify', ref: 'coffeeandajoint', coupon: '',
+    { id: 'ounceco__cheap-qp', name: 'Cheap QP', store: 'Ounce Co', storeKey: 'ounceco',
+      domain: 'ounceco.test', platform: 'shopify', ref: 'coffeeandajoint', coupon: '',
       category: 'THCA Flower', cur: 'USD', inStock: true, perG: 0.4,
-      image: 'https://cdn.shopify.com/qp.jpg', url: 'https://thcaking.com/products/qp',
+      image: 'https://cdn.shopify.com/qp.jpg', url: 'https://ounceco.test/products/qp',
       sizes: [['Quarter Pound', 45, 112, 'V-CHEAP', 1, null, '']] },
     // Better per gram than the winner, but nowhere near an ounce.
-    { id: 'king__eighth', name: 'Boutique Eighth', store: 'THCA King', storeKey: 'thcaking',
-      domain: 'thcaking.com', platform: 'shopify', ref: '', coupon: '',
+    { id: 'ounceco__eighth', name: 'Boutique Eighth', store: 'Ounce Co', storeKey: 'ounceco',
+      domain: 'ounceco.test', platform: 'shopify', ref: '', coupon: '',
       category: 'THCA Flower', cur: 'USD', inStock: true, perG: 0.2,
-      image: 'https://cdn.shopify.com/e.jpg', url: 'https://thcaking.com/products/e',
+      image: 'https://cdn.shopify.com/e.jpg', url: 'https://ounceco.test/products/e',
       sizes: [['Eighth', 0.7, 3.5, 'V-E', 1, null, '']] },
     // Would beat the winner, but out of stock.
-    { id: 'king__oos', name: 'Sold Out Ounce', store: 'THCA King', storeKey: 'thcaking',
-      domain: 'thcaking.com', platform: 'shopify', ref: '', coupon: '',
+    { id: 'ounceco__oos', name: 'Sold Out Ounce', store: 'Ounce Co', storeKey: 'ounceco',
+      domain: 'ounceco.test', platform: 'shopify', ref: '', coupon: '',
       category: 'THCA Flower', cur: 'USD', inStock: false, perG: 0.1,
-      image: 'https://cdn.shopify.com/o.jpg', url: 'https://thcaking.com/products/o',
+      image: 'https://cdn.shopify.com/o.jpg', url: 'https://ounceco.test/products/o',
       sizes: [['1 oz', 10, 28, 'V-OOS', 1, null, '']] },
     /* Cheaper, and better per gram, at a real ounce. This is what the old
        value-first ranking led with, and it is the case that prompted the change:
        a $20 ounce is the first thing a stranger saw in a DM. It still qualifies
        and still gets a slide, it just no longer leads. */
-    { id: 'king__budget-oz', name: 'Budget Ounce', store: 'THCA King', storeKey: 'thcaking',
-      domain: 'thcaking.com', platform: 'shopify', ref: '', coupon: '',
+    { id: 'ounceco__budget-oz', name: 'Budget Ounce', store: 'Ounce Co', storeKey: 'ounceco',
+      domain: 'ounceco.test', platform: 'shopify', ref: '', coupon: '',
       category: 'THCA Flower', cur: 'USD', inStock: true, perG: 0.71,
-      image: 'https://cdn.shopify.com/b.jpg', url: 'https://thcaking.com/products/b',
+      image: 'https://cdn.shopify.com/b.jpg', url: 'https://ounceco.test/products/b',
       sizes: [['1 oz', 20, 28, 'V-B20', 1, null, '']] },
     // Accessory: grams 0, must never be considered.
     { id: 'chill__pipe', name: 'Steel Pipe', store: 'Chill', storeKey: 'chill',
@@ -167,20 +167,20 @@ console.log('\n=== /p/pick selection ===');
      'dearest first, cheapest last: ' + ranked.map((r) => r.price).join(','));
   ok(ranked[1].perG < ranked[0].perG,
      'and the one that lost is genuinely the better value per gram, so this is the tradeoff and not a tie');
-  ok(ranked.some((r) => r.product.id === 'king__budget-oz'),
+  ok(ranked.some((r) => r.product.id === 'ounceco__budget-oz'),
      'the cheap ounce still makes the pool, it just does not lead');
 
   ok(__test.pickBest(CATALOG, { maxPrice: 19, minGrams: 25, maxGrams: 40, category: 'THCA Flower' }) === null,
      'nothing qualifies at a $19 cap, below every in-stock ounce');
   const qp = __test.pickBest(CATALOG, { maxPrice: 50, minGrams: 112, maxGrams: 200, category: 'THCA Flower' });
-  ok(qp && qp.product.id === 'king__cheap-qp',
+  ok(qp && qp.product.id === 'ounceco__cheap-qp',
      'widening the band to a QP changes the winner: ' + (qp && qp.product.id));
 
   const rev = __test.pickBest(CATALOG.slice().reverse(), { maxPrice: 50, minGrams: 25, maxGrams: 40, category: 'THCA Flower' });
   ok(rev && rev.product.id === best.product.id, 'same winner with the feed reversed');
   /* The whole point of the band: a cheaper-per-gram quarter pound must not win an
      ounce query just because it also sits under the cap. */
-  ok(best && best.product.id !== 'king__cheap-qp', 'the $45 quarter pound did not win the ounce query');
+  ok(best && best.product.id !== 'ounceco__cheap-qp', 'the $45 quarter pound did not win the ounce query');
 
   globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: CATALOG }) });
   const pick = await run('pick');
@@ -213,7 +213,7 @@ console.log('\n=== /p/pick selection ===');
 console.log('\n=== tracking ===');
 {
   globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: PRODUCTS }) });
-  const pg = await run('thcaking__blue-dream-oz');
+  const pg = await run('ounceco__blue-dream-oz');
 
   ok(/_vercel\/insights\/script\.js/.test(pg.html), 'loads the Vercel insights script, so va() actually reports');
   ok(/window\.va = window\.va \|\|/.test(pg.html), 'defines the same va queue shim as index.html');
@@ -229,8 +229,8 @@ console.log('\n=== tracking ===');
   console.log('  event payload: ' + base);
   ok(!!base, 'found the event payload');
   const parsed = JSON.parse(base);
-  ok(parsed.pid === 'thcaking__blue-dream-oz', 'carries the product id');
-  ok(parsed.store === 'THCA King', 'carries the store');
+  ok(parsed.pid === 'ounceco__blue-dream-oz', 'carries the product id');
+  ok(parsed.store === 'Ounce Co', 'carries the store');
   ok(parsed.value === 44, 'carries the price actually shown');
   ok(parsed.size === '1 oz', 'carries the size shown');
   ok(parsed.page === 'share', 'labels the page kind');

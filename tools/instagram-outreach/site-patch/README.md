@@ -78,7 +78,9 @@ Detection is word-boundary, never a substring, and the reason is in the live ids
 Black Tie sells both `thca-flower-trim-shake` and
 `grape-milkshake-greenhouse-thca-flower`, and a substring test brands that second
 one, a whole-bud strain, as shake. Checked against every id in `coa-blacktie.js`,
-`coa-data.js` and `coa-thcaking.js`. Do not loosen it without re-checking those.
+`coa-data.js` and `coa-thcaking.js` (that last one an archive since its store was
+delisted on 10 Aug 2026; none of the examples above came from it). Do not loosen it
+without re-checking those.
 
 It is evaluated per **row** as well as per listing, because a listing can sell
 whole buds and trim side by side. The advertised row decides what shows on load and
@@ -315,7 +317,7 @@ extracting the real `storeCheckoutUrl` out of `consumables.html` and running it
 against the cart item this page produces:
 
 ```
-https://thcaking.com/cart/4411:1?discount=JACOBKENNEDY&ref=coffeeandajoint
+https://ounceco.test/cart/4411:1?discount=JACOBKENNEDY&ref=coffeeandajoint
 ```
 
 No vendor button, no email capture, no second checkout path. The vendor is reached
