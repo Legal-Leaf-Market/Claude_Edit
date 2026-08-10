@@ -34,7 +34,10 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
     <article className="flip-card h-full" data-flipped={flipped}>
       <div className="flip-card-inner h-full">
         {/* Front */}
-        <div className="flip-face flip-face-front panel flex h-full flex-col overflow-hidden">
+        <div
+          className="flip-face flip-face-front card-face card-face-front flex h-full flex-col overflow-hidden"
+          data-best={hit.isDeal ? "true" : undefined}
+        >
           <div className="relative">
             <ListingImage src={hit.primaryImageUrl} alt={hit.title} className="h-64 w-full sm:h-72" />
             {hit.isDeal && margin && (
@@ -48,16 +51,12 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
           </div>
 
           <div className="flex flex-1 flex-col gap-2 p-3">
-            <h3 className="line-clamp-2 text-sm font-medium leading-snug text-[var(--cream)]">
-              {hit.title}
-            </h3>
+            <h3 className="card-title line-clamp-2 text-[var(--cream)]">{hit.title}</h3>
 
             <div className="mt-auto space-y-2 pt-1">
               <div className="flex items-baseline justify-between gap-2">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-lg font-semibold text-[var(--cream)]">
-                    {formatPrice(hit.priceCents, hit.currency)}
-                  </span>
+                  <span className="card-price">{formatPrice(hit.priceCents, hit.currency)}</span>
                   {hit.isDeal && hit.marketPriceCents != null && (
                     <span className="text-xs text-[var(--muted-foreground)] line-through">
                       {formatPrice(hit.marketPriceCents, hit.currency)}
@@ -94,7 +93,7 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
                 href={`/go/${hit.id}`}
                 rel="nofollow sponsored noopener"
                 target="_blank"
-                className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-[var(--primary)] text-sm font-medium text-[var(--primary-foreground)] transition-colors hover:bg-[var(--amber-soft)]"
+                className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[10px] bg-gradient-to-r from-[var(--sage-dk)] to-[var(--sage)] text-[13px] font-bold tracking-[0.02em] text-[#04140a] shadow-[0_4px_14px_rgba(34,197,94,.2)] transition-all hover:brightness-110 hover:shadow-[0_6px_20px_rgba(34,197,94,.35)]"
               >
                 View on {sourceLabel(hit.source)}
                 <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
@@ -115,10 +114,10 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
         </div>
 
         {/* Back */}
-        <div className="flip-face flip-face-back panel flex h-full flex-col overflow-hidden">
+        <div className="flip-face flip-face-back card-face card-face-back flex h-full flex-col overflow-hidden">
           <div className="flex flex-1 flex-col gap-2.5 p-3">
             <div className="flex items-start justify-between gap-2">
-              <h3 className="line-clamp-3 text-sm font-medium leading-snug text-[var(--cream)]">
+              <h3 className="card-title line-clamp-3 text-[var(--cream)]">
                 {hit.title}
               </h3>
               <Badge variant="source">{sourceLabel(hit.source)}</Badge>
@@ -168,14 +167,14 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
               </Link>
             )}
 
-            <div className="mt-auto flex items-center justify-between gap-2 border-t border-[var(--border)] pt-2.5">
-              <span className="text-sm font-semibold text-[var(--cream)]">
+            <div className="mt-auto flex items-center justify-between gap-2 border-t border-[rgba(210,112,58,.18)] pt-2.5">
+              <span className="card-price text-[17px]">
                 {formatPrice(hit.priceCents, hit.currency)}
               </span>
               <button
                 type="button"
                 onClick={() => setFlipped(false)}
-                className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--cream)] hover:bg-[var(--secondary)]"
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold text-[var(--cream)] transition-colors hover:border-[var(--copper)] hover:text-[var(--copper)]"
                 aria-label="Back to photo"
               >
                 <RotateCcw className="h-3 w-3" aria-hidden="true" />
@@ -192,12 +191,12 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
 /** Skeleton used while a search streams in, sized to match the real card. */
 export function ListingCardSkeleton() {
   return (
-    <div className="panel overflow-hidden" aria-hidden="true">
+    <div className="card-face overflow-hidden" aria-hidden="true">
       <div className="h-64 w-full animate-pulse bg-[var(--muted)] sm:h-72" />
       <div className="space-y-3 p-3">
         <div className="h-4 w-3/4 animate-pulse rounded bg-[var(--muted)]" />
         <div className="h-4 w-1/2 animate-pulse rounded bg-[var(--muted)]" />
-        <div className="h-9 w-full animate-pulse rounded-lg bg-[var(--muted)]" />
+        <div className="h-10 w-full animate-pulse rounded-[10px] bg-[var(--muted)]" />
       </div>
     </div>
   )

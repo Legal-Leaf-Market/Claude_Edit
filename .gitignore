@@ -13,3 +13,7 @@ next-env.d.ts
 
 coverage/
 .vercel
+
+# Backup archives. A 14MB zip of an unrelated project was committed here
+# once already; keep the next one out of the tree.
+*.zip

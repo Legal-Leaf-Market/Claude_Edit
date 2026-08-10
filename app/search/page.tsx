@@ -31,7 +31,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const params = paramsFromQuery(query)
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+    <div className="shell py-6">
       <Suspense fallback={<ResultsSkeleton />}>
         <Results params={params} />
       </Suspense>

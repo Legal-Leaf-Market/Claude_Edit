@@ -12,11 +12,13 @@ import { indexableCategories } from "@/lib/categories"
  */
 export function SiteFooter() {
   return (
-    <footer className="mt-16 border-t border-[var(--border)] bg-[#0b0908]/60">
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+    <footer className="mt-16 border-t border-[var(--line)] bg-[#0a0806]/60">
+      <div className="shell py-10">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <p className="text-sm font-semibold text-[var(--cream)]">Gear Avail</p>
+            <p className="font-display text-lg font-black uppercase tracking-[0.04em] text-[var(--cream)]">
+              Gear Avail
+            </p>
             <p className="mt-2 max-w-xs text-sm leading-relaxed text-[var(--muted-foreground)]">
               Real-time inventory from independent music gear makers and retailers, all in one
               place.
@@ -32,7 +34,7 @@ export function SiteFooter() {
           </div>
 
           <nav aria-label="Shop">
-            <p className="text-sm font-semibold text-[var(--cream)]">Shop</p>
+            <p className="eyebrow">Shop</p>
             <ul className="mt-2 space-y-1.5 text-sm text-[var(--muted-foreground)]">
               <li><Link href="/search" className="hover:text-[var(--cream)]">Browse everything</Link></li>
               <li><Link href="/shop" className="hover:text-[var(--cream)]">All {STORES.length} stores</Link></li>
@@ -44,7 +46,7 @@ export function SiteFooter() {
           </nav>
 
           <nav aria-label="Community">
-            <p className="text-sm font-semibold text-[var(--cream)]">Community</p>
+            <p className="eyebrow">Community</p>
             <ul className="mt-2 space-y-1.5 text-sm text-[var(--muted-foreground)]">
               <li><Link href="/feed" className="hover:text-[var(--cream)]">The feed</Link></li>
               {BOARDS.map((b) => (
@@ -56,7 +58,7 @@ export function SiteFooter() {
           </nav>
 
           <div>
-            <p className="text-sm font-semibold text-[var(--cream)]">How this works</p>
+            <p className="eyebrow">How this works</p>
             <p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">
               Gear Avail earns affiliate commission when you buy through an outbound link. That never
               changes your price, and it never changes how listings are ranked: you sort by price,
@@ -67,8 +69,8 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <nav aria-label="Categories" className="mt-8 border-t border-[var(--border)] pt-6">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
+        <nav aria-label="Categories" className="mt-8 border-t border-[var(--line)] pt-6">
+          <p className="eyebrow mb-3">
             By category
           </p>
           <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-[var(--muted-foreground)]">

@@ -52,7 +52,7 @@ export default async function HomePage() {
   ])
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6">
+    <div className="shell">
       <section className="py-12 sm:py-16">
         <h1 className="max-w-3xl text-3xl font-semibold leading-tight tracking-tight text-[var(--cream)] sm:text-5xl">
           Real gear, straight from the makers,{" "}

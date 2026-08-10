@@ -4,7 +4,25 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: var(--font-inter), 'Inter', ui-sans-serif, system-ui, sans-serif;
+  /* Three house faces, same roles as the sister sites: Fraunces carries
+     display, Cormorant Garamond carries italic accents, Jost carries UI.
+     Loaded by the shared Google Fonts request in app/layout.tsx. */
+  --font-sans: var(--sans);
+  --font-display: var(--display);
+  --font-script: var(--script);
+
+  /* Shared family tokens, exposed as utilities so new work can reach for
+     text-gold / border-line without another arbitrary var() bracket. */
+  --color-gold: var(--gold);
+  --color-gold-dk: var(--gold-dk);
+  --color-sage: var(--sage);
+  --color-sage-dk: var(--sage-dk);
+  --color-red: var(--red);
+  --color-copper: var(--copper);
+  --color-copper-dk: var(--copper-dk);
+  --color-line: var(--line);
+  --color-chip: var(--chip);
+  --color-dim: var(--dim);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -25,7 +43,9 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* Brand tokens: warm valve-amp palette. Tweed, jewel lamp, brushed steel. */
+  /* Legacy brand names, kept as aliases rather than renamed at ~300 call
+     sites. Each now resolves to a family token above, so the palette moved
+     without touching a single component. */
   --color-tweed: var(--tweed);
   --color-tweed-deep: var(--tweed-deep);
   --color-amber: var(--amber);
@@ -34,42 +54,99 @@
   --color-steel: var(--steel);
   --color-deal: var(--deal);
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  /* House geometry: --r 16, --r-sm 10, --r-lg 22 on the sister sites. */
+  --radius-sm: 10px;
+  --radius-md: 12px;
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: 22px;
 }
+
+/* ============================================================
+   The Leaf Market family design system, Gear Avail's dialect.
+   ------------------------------------------------------------
+   Ported from nicotiamarket.com's public/css/tokens.css, whose own
+   header states the rule: --gold, --red, --sage, --sage-dk and the
+   three font families are SHARED across the family, and changing one
+   here means changing it on the sister sites too or the family stops
+   looking like a family.
+
+   Each sister then owns exactly one accent of its own:
+     legal-leafmarket.com   leaf green
+     herballeafmarket.com   terracotta
+     nicotiamarket.com      --ember, tobacco amber
+     gearavail (here)       --copper, valve amber
+
+   Ours is copper rather than the amber this site used before, because
+   the old #f0a830 sat within a hair of the shared --gold #f0b93c. That
+   left Gear Avail the one sister with no accent to call its own, and
+   gold-on-gold gave the header nothing to separate itself from a
+   heading. Copper keeps the valve-amp warmth and clears the gold.
+   ============================================================ */
 
 :root {
   color-scheme: dark;
-  --radius: 0.75rem;
 
-  --tweed: #241d16;
-  --tweed-deep: #16110d;
-  --amber: #f0a830;
-  --amber-soft: #f7c877;
-  --cream: #f6efe4;
-  --steel: #9aa3ad;
-  --deal: #4ade80;
+  /* --- SHARED WITH THE SISTER SITES: do not drift these --- */
+  --gold: #f0b93c;
+  --gold-dk: #c8922a;
+  --red: #ef5350;
+  --sage: #4ade80;
+  --sage-dk: #22c55e;
 
-  --background: #0f0c0a;
-  --foreground: #f6efe4;
-  --card: rgba(255, 255, 255, 0.04);
-  --card-foreground: #f6efe4;
-  --popover: #1a1410;
-  --popover-foreground: #f6efe4;
-  --primary: #f0a830;
-  --primary-foreground: #1a1208;
+  /* --- OURS ALONE --- */
+  --copper: #d2703a;
+  --copper-dk: #b4551f;
+
+  /* --- warm neutral scale, same structure as Nicotia's green-tinted one --- */
+  --bg: #0d0b09;
+  --bg2: #14100c;
+  --panel: rgba(24, 18, 14, 0.72);
+  --panel2: rgba(13, 11, 9, 0.9);
+  --glass: rgba(22, 17, 13, 0.42);
+  --glass-line: rgba(210, 112, 58, 0.2);
+  --line: #2a231c;
+  --chip: #1a1410;
+  --text: #f4ece0;
+  --dim: #8e8377;
+
+  /* --- type: the three house faces --- */
+  --display: 'Fraunces', Georgia, serif;
+  --script: 'Cormorant Garamond', Georgia, serif;
+  --sans: 'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* --- metrics --- */
+  --shell: min(1500px, 94vw);
+  --radius: 16px;
+  --shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+
+  /* --- legacy aliases, so ~300 existing var() call sites keep working --- */
+  --tweed: var(--bg2);
+  --tweed-deep: var(--bg);
+  --amber: var(--copper);
+  --amber-soft: #e8a06e;
+  --cream: var(--text);
+  --steel: var(--dim);
+  --deal: var(--sage);
+
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--glass);
+  --card-foreground: var(--text);
+  --popover: #17120e;
+  --popover-foreground: var(--text);
+  --primary: var(--copper);
+  --primary-foreground: #17100a;
   --secondary: rgba(255, 255, 255, 0.07);
-  --secondary-foreground: #f6efe4;
+  --secondary-foreground: var(--text);
   --muted: rgba(255, 255, 255, 0.05);
-  --muted-foreground: #a89e90;
-  --accent: rgba(240, 168, 48, 0.16);
-  --accent-foreground: #f7c877;
-  --destructive: #f87171;
-  --border: rgba(240, 168, 48, 0.16);
+  --muted-foreground: #9c9082;
+  --accent: rgba(210, 112, 58, 0.16);
+  --accent-foreground: var(--amber-soft);
+  /* Aligned to the shared --red; this was #f87171, a quiet drift off house. */
+  --destructive: var(--red);
+  --border: var(--glass-line);
   --input: rgba(255, 255, 255, 0.09);
-  --ring: rgba(240, 168, 48, 0.45);
+  --ring: rgba(240, 185, 60, 0.45);
 }
 
 @layer base {
@@ -77,14 +154,30 @@
     border-color: var(--border);
   }
 
+  /* Two soft corner washes on a flat ground, the same construction as the
+     sister sites' body: one in the site's own accent, one in the shared
+     sage so the family's green reads somewhere on every page. */
   body {
     color: var(--foreground);
-    background:
-      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(240, 168, 48, 0.1), transparent 60%),
-      linear-gradient(180deg, #17110c 0%, #0f0c0a 55%, #0b0908 100%);
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(circle at 12% 4%, rgba(210, 112, 58, 0.09), transparent 42%),
+      radial-gradient(circle at 88% 12%, rgba(74, 222, 128, 0.055), transparent 44%);
     background-attachment: fixed;
     min-height: 100vh;
+    font-size: 16px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* Display face on every heading, which is most of what separates the
+     house look from a default sans stack. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--display);
+    letter-spacing: -0.02em;
   }
 
   /* Woven tweed texture. Two crossed hairline gradients read as fabric at
@@ -106,30 +199,207 @@
     z-index: 1;
   }
 
+  /* Gold, not the site accent: the focus ring is a family-wide affordance
+     and reads the same on all four sites. */
   :focus-visible {
-    outline: 2px solid var(--amber);
+    outline: 2px solid var(--gold);
     outline-offset: 2px;
+    border-radius: 4px;
   }
 
   ::selection {
-    background: rgba(240, 168, 48, 0.3);
-    color: var(--cream);
+    background: rgba(210, 112, 58, 0.3);
+    color: var(--text);
   }
 }
 
 @layer components {
-  /* Panel surface used by cards, the filter rail and the detail sections. */
-  .panel {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    backdrop-filter: blur(6px);
+  /* The page shell. The sisters run min(1500px,94vw), noticeably wider than
+     the max-w-7xl (1280px) this site used, which is why the grids here felt
+     cramped next to Nicotia's at the same window size. */
+  .shell {
+    width: var(--shell);
+    margin-inline: auto;
   }
 
-  /* Thin amber rule used under section headings. */
+  /* The family's glass panel, lifted from Nicotia's app.css, which lifted it
+     from Legal-Leaf. Real shadow and a 22px radius: the old version was a
+     hairline border over a 4% white wash, so panels never read as surfaces
+     sitting on the page. */
+  .panel {
+    background: var(--glass);
+    border: 1px solid var(--glass-line);
+    border-radius: var(--radius-xl);
+    padding: 20px 22px;
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow);
+  }
+
+  /* Thin accent rule used under section headings. */
   .rule-amber {
-    background: linear-gradient(90deg, var(--amber), transparent);
+    background: linear-gradient(90deg, var(--copper), transparent);
     height: 1px;
+  }
+
+  /* Pill. The single most recognisable piece of house geometry: nav buttons,
+     the search field, filter chips and footer buttons are all 999px on the
+     sister sites, against the 12px rounded rectangles used here before. */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.06);
+    padding: 9px 15px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    transition: all 0.16s;
+  }
+  .pill:hover {
+    background: rgba(255, 255, 255, 0.13);
+    border-color: var(--glass-line);
+  }
+  .pill[data-active='true'] {
+    border-color: var(--copper);
+    background: rgba(210, 112, 58, 0.14);
+    color: var(--amber-soft);
+  }
+  .pill .count {
+    min-width: 20px;
+    border-radius: 999px;
+    background: var(--sage-dk);
+    padding: 1px 8px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.5;
+    color: #04140a;
+  }
+  .pill .count.zero {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--dim);
+  }
+
+  /* The family's "we are actually checking" signal. Freshness is the whole
+     claim of an aggregator, and section 10 of CLAUDE.md makes the point that
+     a stale feed looks exactly like a quiet market. */
+  .live-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    background: rgba(74, 222, 128, 0.12);
+    padding: 5px 11px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--sage);
+    white-space: nowrap;
+    animation: livePulse 2s infinite;
+  }
+  .live-pill .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--sage);
+    box-shadow: 0 0 8px var(--sage);
+  }
+  @keyframes livePulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .live-pill {
+      animation: none;
+    }
+  }
+
+  /* Hero headline. Fraunces 900 with a gradient wash from text through the
+     shared gold into the site accent, and a Cormorant italic lead line above
+     it. This pairing is the house voice more than any single colour is. */
+  .h-display {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: clamp(2.4rem, 6.5vw, 4.6rem);
+    line-height: 0.92;
+    letter-spacing: -0.03em;
+    background: linear-gradient(96deg, var(--text) 0%, var(--gold) 46%, var(--copper) 88%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: var(--gold);
+  }
+  .h-lead {
+    display: block;
+    margin-bottom: -0.1em;
+    font-family: var(--script);
+    font-style: italic;
+    font-weight: 600;
+    font-size: clamp(1.2rem, 3.2vw, 1.95rem);
+    line-height: 1;
+    color: var(--copper);
+    -webkit-text-fill-color: var(--copper);
+  }
+
+  /* Listing card plate, ported from Nicotia's .front. Its own comment records
+     why: the card has to read as a surface sitting ON the page, and when the
+     plate is only ~6% lighter than the background the border does all the
+     work. A real tonal step plus a drop shadow lifts it. Cards here were
+     using .panel, so they inherited a translucent wash and no shadow. */
+  .card-face {
+    border-radius: var(--radius);
+    border: 1px solid #2f261e;
+    background: linear-gradient(180deg, #1b1510, #120e0a);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+    transition:
+      border-color 0.18s,
+      box-shadow 0.18s;
+  }
+  .flip-card:hover .card-face-front {
+    border-color: var(--sage-dk);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  }
+  /* The gold ring means "cheapest of this instrument", the same promise the
+     gold unit badge makes on the sister sites. */
+  .card-face[data-best='true'] {
+    border-color: var(--gold);
+    box-shadow:
+      0 0 0 1px rgba(240, 185, 60, 0.3),
+      0 12px 30px rgba(240, 185, 60, 0.1);
+  }
+  /* Espresso back, so a turned card reads instantly against the grid. */
+  .card-face-back {
+    border-color: rgba(210, 112, 58, 0.3);
+    background: linear-gradient(158deg, #1c1410 0%, #120d09 60%, #0a0706 100%);
+  }
+
+  .card-title {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+
+  /* Price in Fraunces 900 and in sage. Green on the number is the family's
+     money signal and it is what makes a grid of cards scannable by price. */
+  .card-price {
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: 20px;
+    letter-spacing: -0.02em;
+    color: var(--sage);
   }
 
   /* The pedalboard builder's base plate: a dotted velcro-strip texture on a
@@ -176,13 +446,17 @@
     transform: translateY(-2px) scale(1.05);
   }
 
-  /* Admin operating-model page. */
+  /* Herbal-Leaf's eyebrow, which the whole family uses. The wide 0.38em
+     track on a muted weight is what makes it read as considered; the loud
+     bold amber at 0.12em used here before read as a status label. */
   .eyebrow {
-    font-size: 0.7rem;
-    font-weight: 700;
+    display: inline-block;
+    font-family: var(--sans);
+    font-size: 0.72rem;
+    font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--amber);
+    letter-spacing: 0.38em;
+    color: var(--dim);
   }
 
   .admin-section {

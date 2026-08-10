@@ -49,7 +49,7 @@ export default async function ShopIndexPage() {
   const total = [...stats.values()].reduce((sum, r) => sum + Number(r.listings), 0)
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+    <div className="shell py-10">
       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--amber)]">
         Independent makers and shops
       </p>

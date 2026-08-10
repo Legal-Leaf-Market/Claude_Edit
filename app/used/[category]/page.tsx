@@ -97,7 +97,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+    <div className="shell py-8">
       <nav aria-label="Breadcrumb" className="mb-4 text-sm text-[var(--muted-foreground)]">
         <ol className="flex items-center gap-1.5">
           <li>
