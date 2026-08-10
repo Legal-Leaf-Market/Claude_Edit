@@ -47,6 +47,24 @@ ok(tag('og:image:width') === '1200', 'and the card states its size, so it render
 ok(tag('og:type') === 'product', 'og:type product');
 ok(tag('og:url') === 'https://legal-leafmarket.com/p/ounceco__blue-dream-oz', 'canonical on our domain');
 
+console.log('\n=== the tab icon is real and self-contained ===');
+/* The page shipped with no favicon at all, so a link opened from a DM sat under the browser's
+   blank default sheet. It is inlined, so the thing to guard is that it stays VALID and stays
+   self-contained: a data URI that fails to parse is indistinguishable from having none. */
+{
+  const m = good.html.match(/<link rel="icon" href="(data:image\/svg\+xml,[^"]+)"\/>/);
+  ok(!!m, 'a data-URI icon is declared in the head');
+  const svg = decodeURIComponent(m[1].replace('data:image/svg+xml,', ''));
+  ok(/^<svg[^>]*viewBox="0 0 64 64"/.test(svg) && svg.trim().endsWith('</svg>'),
+     'it decodes to a complete svg element');
+  ok(!/[<>"]/.test(m[1]), 'and is fully encoded, so it cannot break out of the href attribute');
+  ok(svg.includes('prefers-color-scheme'), 'it carries its own dark/light rule rather than one fixed look');
+  /* Not a bare https:// scan: xmlns="http://www.w3.org/2000/svg" is a namespace NAME, never a
+     request, and required for the SVG to parse standalone. Test the things that do fetch. */
+  ok(!/(?:href|src)\s*=|url\(|<image\b|@import/i.test(svg),
+     'and fetches nothing external, so it cannot 404 or leak a request');
+}
+
 console.log('\n=== same flow as the site, no new buttons ===');
 ok((good.html.match(/class="buy"/g) || []).length === 1, 'exactly one primary action');
 ok(/id="add"[^>]*>?|>Add to cart</.test(good.html), 'and it is Add to cart');

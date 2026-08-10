@@ -26,6 +26,33 @@
 const SITE = 'https://legal-leafmarket.com';
 const FALLBACK_IMG = SITE + '/og-image.png';
 
+/* Tab icon for /p/<id> and /p/pick, which had none and so showed the browser's blank default
+   sheet next to a page whose whole job is to look deliberate when someone opens it from a DM.
+ *
+ * Inlined as a data URI rather than a file: one fewer request on a page that is usually opened
+ * on mobile data, and nothing to 404 if /public ever moves. Kept as READABLE SVG source with
+ * encodeURIComponent at the end, not a base64 blob, so the next person can actually edit it.
+ *
+ * The @media query inside the SVG is the reason it is SVG at all: browsers apply the VIEWER's
+ * colour scheme to it, so the mark is white-on-forest in a light tab strip and mint-on-near-black
+ * in a dark one, instead of one of the two looking like a sticker. Verified by rendering at 16,
+ * 24, 32, 64 and 128 in both schemes; 16 is the size that actually matters and drove the lobe
+ * width, since thin lobes turn to mush there.
+ *
+ * Safari before 16 ignores SVG favicons and falls back to the default sheet. That is the same
+ * blank sheet it shows today, so this is strictly an improvement with no PNG fallback needed. */
+const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<style>.bg{fill:#0f1216}.lf{fill:#4ec97a}@media(prefers-color-scheme:light){.bg{fill:#1c7a3e}.lf{fill:#fff}}</style>
+<rect class="bg" width="64" height="64" rx="15"/>
+<g class="lf" transform="translate(32,53)">
+<path d="M0 0C-7.2-12-5-23 0-30 5-23 7.2-12 0 0Z"/>
+<path d="M0 0C-7.2-12-5-23 0-30 5-23 7.2-12 0 0Z" transform="rotate(38) scale(.86)"/>
+<path d="M0 0C-7.2-12-5-23 0-30 5-23 7.2-12 0 0Z" transform="rotate(-38) scale(.86)"/>
+<path d="M0 0C-7.2-12-5-23 0-30 5-23 7.2-12 0 0Z" transform="rotate(72) scale(.66)"/>
+<path d="M0 0C-7.2-12-5-23 0-30 5-23 7.2-12 0 0Z" transform="rotate(-72) scale(.66)"/>
+<rect x="-2" y="-2" width="4" height="9" rx="2"/></g></svg>`;
+const FAVICON_URI = 'data:image/svg+xml,' + encodeURIComponent(FAVICON_SVG.replace(/\n/g, ''));
+
 // Text into HTML, for both element bodies and quoted attribute values.
 function esc(s) {
   return String(s == null ? '' : s)
@@ -704,6 +731,7 @@ function page({ title, ogTitle, ogDesc, ogImage, canonical, body, noindex, track
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>${esc(title)}</title>
+<link rel="icon" href="${FAVICON_URI}"/>
 <link rel="canonical" href="${esc(canonical)}"/>
 ${noindex ? '<meta name="robots" content="noindex"/>' : ''}
 <meta name="description" content="${esc(ogDesc)}"/>
