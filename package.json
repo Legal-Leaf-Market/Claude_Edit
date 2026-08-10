@@ -20,6 +20,7 @@
     "ingest:zzounds": "tsx scripts/run-ingest.ts zzounds",
     "ingest:fullcompass": "tsx scripts/run-ingest.ts fullcompass",
     "ingest:pinevillemusic": "tsx scripts/run-ingest.ts pinevillemusic",
+    "ingest:zoro": "tsx scripts/run-ingest.ts zoro",
     "ingest:folkcraft": "tsx scripts/run-ingest.ts folkcraft",
     "ingest:acousticguitar": "tsx scripts/run-ingest.ts acousticguitar",
     "ingest:jamstik": "tsx scripts/run-ingest.ts jamstik",

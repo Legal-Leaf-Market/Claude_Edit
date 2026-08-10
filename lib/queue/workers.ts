@@ -12,6 +12,7 @@ import { ingestGear4MusicFeed } from "@/lib/ingestion/gear4music-awin"
 import { ingestZzoundsFeed } from "@/lib/ingestion/zzounds-cj"
 import { ingestFullCompassFeed } from "@/lib/ingestion/fullcompass-cj"
 import { ingestPinevilleMusicFeed } from "@/lib/ingestion/pinevillemusic-cj"
+import { ingestZoroFeed } from "@/lib/ingestion/zoro-linkconnector"
 import { ingestFolkcraftFeed } from "@/lib/ingestion/folkcraft-shopify"
 import { ingestAcousticGuitarFeed } from "@/lib/ingestion/acousticguitar-shopify"
 import { ingestJamstikFeed } from "@/lib/ingestion/jamstik-shopify"
@@ -71,6 +72,11 @@ export function startIngestionWorker(): Worker<IngestionJob> {
         }
         case "sweetwater-feed": {
           const result = await ingestSweetwaterFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "zoro-feed": {
+          const result = await ingestZoroFeed()
           await syncSearchIndex()
           return result
         }

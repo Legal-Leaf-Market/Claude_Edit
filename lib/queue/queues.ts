@@ -27,6 +27,7 @@ export type IngestionJob =
   | { kind: "ebay-bootstrap" }
   | { kind: "reverb-feed" }
   | { kind: "sweetwater-feed" }
+  | { kind: "zoro-feed" }
   | { kind: "gear4music-feed" }
   | { kind: "zzounds-feed" }
   | { kind: "fullcompass-feed" }
@@ -179,6 +180,20 @@ export async function registerRepeatableJobs(): Promise<string[]> {
       { name: "pinevillemusic-feed", data: { kind: "pinevillemusic-feed" } },
     )
     registered.push("pinevillemusic-feed @ daily 03:00 UTC")
+  }
+
+  // Zoro is daily, not six-hourly like the music retailers: it is a ~3.5M row
+  // industrial catalogue of which we keep only the instrument branch, so the
+  // download dwarfs every other feed while the rows that change are few. This
+  // is also the one source that belongs on the worker rather than a Vercel
+  // cron, for the same reason the eBay bootstrap feed does (section 7).
+  if (env.linkconnector.hasZoroFeed) {
+    await ingestion.upsertJobScheduler(
+      "zoro-feed",
+      { pattern: "40 5 * * *" },
+      { name: "zoro-feed", data: { kind: "zoro-feed" } },
+    )
+    registered.push("zoro-feed @ daily 05:40 UTC")
   }
 
   // Small independent Shopify sellers. Unlike the gated feeds above, these

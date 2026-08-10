@@ -517,6 +517,7 @@ export const SOURCES = [
   "squaver",
   "easonmusicstore",
   "gokalimba",
+  "zoro",
 ] as const
 export type Source = (typeof SOURCES)[number]
 

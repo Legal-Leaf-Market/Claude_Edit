@@ -107,6 +107,22 @@ export const env = {
     get hasSweetwaterFeed(): boolean {
       return Boolean(env.linkconnector.sweetwaterFeedUrl)
     },
+
+    /**
+     * Zoro's LinkConnector product datafeed. A separate campaign on the same
+     * network as Sweetwater above, with its own feed URL; approved campaigns
+     * are per publisher property, so this is not interchangeable with any
+     * other site's Zoro approval.
+     *
+     * Zoro is an industrial supplier whose catalogue happens to include a
+     * musical-instrument branch, so the ingestion module filters the feed by
+     * category rather than taking it whole. Unset is the expected state until
+     * the campaign is approved and the URL retrieved; the job no-ops.
+     */
+    zoroFeedUrl: str("LINKCONNECTOR_ZORO_FEED_URL"),
+    get hasZoroFeed(): boolean {
+      return Boolean(env.linkconnector.zoroFeedUrl)
+    },
   },
 
   cj: {
@@ -311,6 +327,7 @@ export function describeConfig(): string {
     `awin=${env.awin.isConfigured ? "set" : "unconfigured"}`,
     `reverb-feed=${env.awin.hasFeed ? "set" : "absent"}`,
     `sweetwater-feed=${env.linkconnector.hasSweetwaterFeed ? "set" : "absent"}`,
+    `zoro-feed=${env.linkconnector.hasZoroFeed ? "set" : "absent"}`,
     `gear4music-feed=${env.awin.hasGear4musicFeed ? "set" : "absent"}`,
     `zzounds-feed=${env.cj.hasZzoundsFeed ? "set" : "absent"}`,
     `fullcompass-feed=${env.cj.hasFullCompassFeed ? "set" : "absent"}`,

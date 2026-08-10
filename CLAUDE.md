@@ -67,6 +67,35 @@ built for that site's own frontend rather than published for this use.
   link, verify the host, never hand-build one" rule as Sweetwater and
   Gear4music. All three default an empty condition to "New" like Gear4music:
   new-inventory retailers, not peer marketplaces.
+- **Zoro**, via a **LinkConnector product datafeed** (`lib/ingestion/
+  zoro-linkconnector.ts`, gated on `LINKCONNECTOR_ZORO_FEED_URL`). Campaign
+  applied for 10 Aug 2026; active to 2032-01-31 per the campaign page. Zoro is
+  Grainger's SMB arm, an INDUSTRIAL supplier, and it is in scope only because
+  its catalogue genuinely carries a musical-instrument branch (a confirmed
+  "Musical Instruments" taxonomy with Instrument Accessories and Stringed
+  Instruments beneath it, a "Percussion Instruments" branch, and real SKUs such
+  as the Accent Acoustic Folk Guitar CS-6). Three things make it unlike every
+  other source here, and none of them should be smoothed away:
+  - **The feed is filtered, not ingested whole.** Zoro publishes on the order
+    of 3.5M SKUs and the music branch is a rounding error inside it. The filter
+    is category-first and FAILS CLOSED: no category match, or no category at
+    all, means the row is dropped. A title-keyword fallback is deliberately
+    absent because on this catalogue it is worse than nothing, searching Zoro
+    for instrument words returns piano HINGES, jobsite piano BOXES, keyboard
+    DRAWERS and key BLANKS. There is a homograph denylist behind the category
+    gate for the same reason. Widening either list means checking the live feed
+    first, same as any exclusion regex (section 13).
+  - **It streams.** At that row count the file does not fit in memory, so the
+    module uses one inflater across chunk boundaries and a quote-aware record
+    splitter, the same lesson as the eBay bootstrap feed in section 3. It is
+    also why this is a worker job rather than a `vercel.json` cron.
+  - **It is paid per CLICK, not per sale**, up to $0.36, and ONLY on product
+    links carrying `lc_pid`. See section 5.
+  Watch the deal-detection interaction: an industrial supplier's list prices
+  mixed into the rolling median for an instrument drag that median UP and
+  manufacture fake deal badges on everyone else's listings (section 8). The
+  category filter is what keeps that contained, which is why it is part of the
+  ingestion contract rather than a nicety.
 - **Small independent sellers, via public Shopify storefront JSON
   (`/products.json`)**, on a per-merchant basis, the same pattern the sister
   sites use. Only for merchants confirmed to be enrolled in an affiliate
@@ -312,6 +341,20 @@ history of two instruments and every deal badge computed from it.
 - **eBay:** the feed's own `itemAffiliateWebUrl` is always preferred; the built
   EPN link is only a fallback. Passing `EBAY_AFFILIATE_CAMPAIGN_ID` is what
   makes eBay populate that field, via `X-EBAY-C-ENDUSERCTX`.
+- **LinkConnector click campaigns pay only on `lc_pid` links, so a host check
+  is not enough there.** LinkConnector uses "Naked Link Technology": the
+  tracked link is on the merchant's OWN domain with tracking in query params,
+  so a tracked and an untracked link are host-indistinguishable. Zoro's
+  campaign terms say it outright, "Affiliates will only be paid if they use
+  product-oriented links (i.e., those that utilize lc_pid)", which means a bare
+  `zoro.com` URL is not merely unattributed but explicitly UNPAID while looking
+  monetised in our own database. `lib/affiliate/zoro.ts` therefore requires the
+  host AND the parameter, and stores null otherwise, per the rule above. Note
+  the open question this leaves: `lib/affiliate/sweetwater.ts` checks only the
+  host, because Sweetwater's own campaign terms have not been read and the
+  requirement must not be inferred from a sibling campaign. Confirm it on the
+  Sweetwater campaign page before tightening that one, and do not tighten it
+  by analogy.
 - **NEVER GET an `awin1.com/cread.php` link while testing.** Same rule as
   Herbal Leaf. Every request registers a real click and pollutes conversion
   reporting with our own traffic. Assert on the string; do not follow it. The
@@ -426,6 +469,7 @@ Never fork the logic between them. Add work to the job function.
 | `AWIN_PUBLISHER_ID` / `AWIN_REVERB_MERCHANT_ID` | Reverb deep links. Either missing produces null links, not broken ones. |
 | `AWIN_REVERB_FEED_URL` | Reverb catalogue. Feed CONFIRMED to exist (Awin 67144, 100% approval); pending retrieval, not pending existence. The job no-ops until set. |
 | `LINKCONNECTOR_SWEETWATER_FEED_URL` | Sweetwater catalogue. Unset is expected; the job no-ops. Never falls back to scraping. |
+| `LINKCONNECTOR_ZORO_FEED_URL` | Zoro catalogue, filtered to its musical-instrument branch. Separate campaign from Sweetwater on the same network, own feed URL. Application submitted 10 Aug 2026 under nicotiamarket.com, so approval does not by itself license Zoro links on gearavail.com. Unset means the job no-ops. |
 | `AWIN_GEAR4MUSIC_MERCHANT_ID` / `AWIN_GEAR4MUSIC_FEED_URL` | Gear4music catalogue and deep links. Same shape as the Reverb pair, independent ids. |
 | `CJ_ZZOUNDS_FEED_URL` / `CJ_FULLCOMPASS_FEED_URL` / `CJ_PINEVILLEMUSIC_FEED_URL` | Three independent CJ Affiliate programmes. Each no-ops when unset. |
 | `IMPACT_ANDERTONS_FEED_URL` | Reserved for Anderton's via Impact.com; application pending, no ingestion module exists yet since Impact's product-feed schema is brand-configured, not fixed. Unset is expected. |
@@ -507,6 +551,10 @@ legal-leafmarket.com, adapted to one site instead of four.
 - Do NOT write Facebook Marketplace ingestion.
 - Do NOT scrape Guitar Center or Sweetwater (or hit their frontend search
   indexes) as a substitute for a confirmed affiliate datafeed.
+- Do NOT ingest the Zoro feed unfiltered, and do NOT relax its category gate to
+  a title-keyword match. It is an industrial catalogue; see section 1.
+- Do NOT store a LinkConnector click-campaign link that has no `lc_pid`. It
+  earns nothing, and a null is the honest record of that.
 - Do NOT add a new data source without first confirming a legitimate feed or
   partner API exists for it. A retailer having a website is not a source.
 - Do NOT treat "it's a Shopify store with `/products.json` public" as a

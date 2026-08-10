@@ -97,6 +97,126 @@ export function parseCsvRows(text: string, options: CsvOptions = {}): string[][]
   return rows
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Incremental record splitting, for feeds too large to hold in memory       */
+/* -------------------------------------------------------------------------- */
+
+export type CsvRecordSplitter = {
+  /** Feed a chunk of text; returns whatever complete records it completed. */
+  push(chunk: string): string[]
+  /** Emit any trailing record not terminated by a newline. */
+  flush(): string[]
+}
+
+/**
+ * Split a stream of feed text into complete logical records.
+ *
+ * WHY THIS EXISTS. parseCsv above takes a whole document, which is right for
+ * every feed whose file comfortably fits in memory. Zoro's LinkConnector feed
+ * does not: it is a ~3.5M SKU industrial catalogue of which we keep only the
+ * musical-instrument rows, so buffering the file to find the few thousand rows
+ * we want is the same mistake section 3 of CLAUDE.md warns about for the eBay
+ * bootstrap feed.
+ *
+ * A `split("\n")` will not do the job. A quoted description field may legally
+ * contain a newline, so record boundaries have to be found with quote state
+ * carried across chunk boundaries, exactly as the whole-document parser does.
+ *
+ * Two subtleties this handles that a naive quote toggle gets wrong:
+ *
+ *  - A quote only OPENS a quoted field at the start of a field. Music listings
+ *    are full of inch marks ('16" Crash Cymbal'), and in an unquoted field
+ *    those must stay literal. Toggling on them would swallow every newline up
+ *    to the next quote and shred the rest of the file.
+ *  - A doubled quote inside a quoted field is an escaped literal quote, so
+ *    closing on the first and immediately reopening on the second keeps the
+ *    state correct without needing lookahead across a chunk boundary.
+ *
+ * Records come back WITHOUT the terminating newline. Feed each one to
+ * parseCsvRows to get its cells, so the same state machine does the field-level
+ * parsing and there is only one CSV implementation to be wrong.
+ */
+export function createCsvRecordSplitter(options: CsvOptions = {}): CsvRecordSplitter {
+  const delimiter = options.delimiter ?? ","
+  const quote = options.quote ?? '"'
+
+  let pending = ""
+  let inQuotes = false
+  let atFieldStart = true
+  let justClosedQuote = false
+  let seenAnyChar = false
+
+  function consume(chunk: string, out: string[]): void {
+    for (const char of chunk) {
+      // Strip a UTF-8 BOM: left in place it becomes part of the first header
+      // name and every lookup for that column silently misses.
+      if (!seenAnyChar) {
+        seenAnyChar = true
+        if (char === "﻿") continue
+      }
+
+      if (inQuotes) {
+        if (char === quote) {
+          inQuotes = false
+          justClosedQuote = true
+        }
+        pending += char
+        continue
+      }
+
+      if (char === quote && (atFieldStart || justClosedQuote)) {
+        inQuotes = true
+        justClosedQuote = false
+        atFieldStart = false
+        pending += char
+        continue
+      }
+      justClosedQuote = false
+
+      if (char === delimiter) {
+        atFieldStart = true
+        pending += char
+        continue
+      }
+      if (char === "\n") {
+        out.push(pending)
+        pending = ""
+        atFieldStart = true
+        continue
+      }
+      pending += char
+      atFieldStart = false
+    }
+  }
+
+  return {
+    push(chunk: string): string[] {
+      const out: string[] = []
+      consume(chunk, out)
+      return out
+    },
+    flush(): string[] {
+      // An unterminated quoted field at end of input is a truncated download,
+      // not a record. Emitting it would hand the caller a half row whose
+      // columns are shifted; dropping it lets the run's skipped count show it.
+      if (inQuotes || pending.trim() === "") {
+        pending = ""
+        return []
+      }
+      const last = pending
+      pending = ""
+      return [last]
+    },
+  }
+}
+
+/** Pair header names with one record's cells, the way parseCsv does per row. */
+export function zipRecord(header: string[], cells: string[]): Record<string, string> {
+  const record: Record<string, string> = {}
+  for (let i = 0; i < header.length; i++) record[header[i]] = (cells[i] ?? "").trim()
+  return record
+}
+
 function rowsToRecords(rows: string[][], hasHeader: boolean): Record<string, string>[] {
   if (rows.length === 0) return []
   const header = hasHeader ? rows[0].map((h) => h.trim()) : rows[0].map((_, i) => `c${i}`)
