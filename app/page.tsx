@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm"
 import { ArrowRight, BellRing, LineChart, Search as SearchIcon } from "lucide-react"
 import { InstagramStrip } from "@/components/instagram-strip"
 import { SubscribeForm } from "@/components/subscribe-form"
+import { StoreMark } from "@/components/store-mark"
 import { STORES } from "@/lib/stores"
 import { BOARDS } from "@/lib/boards"
 import { ListingCard } from "@/components/listing-card"
@@ -143,9 +144,10 @@ export default async function HomePage() {
             <Link
               key={store.slug}
               href={`/shop/${store.slug}`}
-              className="panel px-4 py-3 text-sm text-[var(--cream)] transition-colors hover:border-[var(--amber)]/40 hover:bg-[var(--secondary)]"
+              className="panel flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--cream)] transition-colors hover:border-[var(--amber)]/40 hover:bg-[var(--secondary)]"
             >
-              {store.name}
+              <StoreMark source={store.source} name={store.name} size="sm" />
+              <span className="truncate">{store.name}</span>
             </Link>
           ))}
         </div>

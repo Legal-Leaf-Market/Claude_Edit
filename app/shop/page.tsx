@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { sql } from "drizzle-orm"
 import { db } from "@/lib/db"
+import { StoreMark } from "@/components/store-mark"
 import { STORES } from "@/lib/stores"
 import { formatPrice } from "@/lib/utils"
 
@@ -68,8 +69,11 @@ export default async function ShopIndexPage() {
               href={`/shop/${store.slug}`}
               className="panel flex h-full flex-col p-5 transition-colors hover:border-[var(--amber)]/40 hover:bg-[var(--secondary)]"
             >
-              <p className="text-base font-semibold text-[var(--cream)]">{store.name}</p>
-              <p className="mt-1 text-sm font-medium text-[var(--amber)]">{store.tagline}</p>
+              <div className="flex items-center gap-3">
+                <StoreMark source={store.source} name={store.name} />
+                <p className="text-base font-semibold text-[var(--cream)]">{store.name}</p>
+              </div>
+              <p className="mt-2 text-sm font-medium text-[var(--amber)]">{store.tagline}</p>
               <p className="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-[var(--muted-foreground)]">
                 {store.blurb}
               </p>
