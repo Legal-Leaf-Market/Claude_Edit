@@ -176,5 +176,56 @@ console.log('\n=== /p/pick selection ===');
   ok(!/Add to cart/.test(none.html), 'offers no cart button with nothing to add');
 }
 
+// ---------------------------------------------------------------------------
+// Tracking. The earlier version called LL.track without ever defining LL, so
+// every event went nowhere. These pin that it is wired the same way the rest of
+// the site wires it.
+// ---------------------------------------------------------------------------
+console.log('\n=== tracking ===');
+{
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: PRODUCTS }) });
+  const pg = await run('thcaking__blue-dream-oz');
+
+  ok(/_vercel\/insights\/script\.js/.test(pg.html), 'loads the Vercel insights script, so va() actually reports');
+  ok(/window\.va = window\.va \|\|/.test(pg.html), 'defines the same va queue shim as index.html');
+  ok(/window\.LL = window\.LL \|\|/.test(pg.html), 'defines LL, which the cart handler calls');
+  ok(/sessionStorage\.getItem\(k\)/.test(pg.html) && /ll_sid/.test(pg.html), 'reuses the ll_sid session id');
+  ok(/'ll_events'/.test(pg.html), 'writes the same ll_events ring buffer');
+  ok(/navigator\.sendBeacon\('\/api\/track'/.test(pg.html), 'beacons to the existing /api/track sink');
+  ok(/LL\.track\('page_view'/.test(pg.html), 'fires page_view on load');
+  ok(/LL\.track\('add_to_cart'/.test(pg.html), 'still fires add_to_cart, and now LL exists to receive it');
+
+  // The event payload has to identify which pick was on screen when they clicked.
+  const base = (pg.html.match(/var BASE = (\{.*?\});/) || [])[1];
+  console.log('  event payload: ' + base);
+  ok(!!base, 'found the event payload');
+  const parsed = JSON.parse(base);
+  ok(parsed.pid === 'thcaking__blue-dream-oz', 'carries the product id');
+  ok(parsed.store === 'THCA King', 'carries the store');
+  ok(parsed.value === 44, 'carries the price actually shown');
+  ok(parsed.size === '1 oz', 'carries the size shown');
+  ok(parsed.page === 'share', 'labels the page kind');
+  ok(/utm_source/.test(pg.html), 'picks up utm tags off the URL when the link carries them');
+
+  // /p/pick must label itself distinctly or the two cannot be told apart.
+  const pk = await run('pick');
+  const pkBase = JSON.parse((pk.html.match(/var BASE = (\{.*?\});/) || [])[1]);
+  ok(pkBase.page === 'pick', '/p/pick labels itself as pick, got ' + pkBase.page);
+
+  // Nothing to show is a signal worth recording, not a silent dead end.
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [] }) });
+  const empty = await run('pick');
+  const emptyBase = JSON.parse((empty.html.match(/var BASE = (\{.*?\});/) || [])[1]);
+  ok(emptyBase.outcome === 'empty', 'an empty pick records outcome=empty, got ' + emptyBase.outcome);
+  ok(emptyBase.maxPrice === 50, 'and the cap that found nothing');
+
+  // Feed text reaches the payload too, so it needs the same escaping treatment.
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: PRODUCTS }) });
+  const nasty = await run('evil__x');
+  const nastyBase = (nasty.html.match(/var BASE = (\{.*?\});/) || [])[1] || '';
+  ok(!nastyBase.includes('<'), 'no raw < in the event payload either');
+  ok(JSON.parse(nastyBase).store === '<b>Bad</b>', 'and it still parses back to the exact store name');
+}
+
 console.log(fails ? '\n' + fails + ' CHECK(S) FAILED' : '\nALL CHECKS PASSED');
 process.exit(fails ? 1 : 0);

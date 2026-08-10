@@ -86,6 +86,35 @@ https://thcaking.com/cart/4411:1?discount=JACOBKENNEDY&ref=coffeeandajoint
 No vendor button, no email capture, no second checkout path. The vendor is reached
 through the cart, the way it is everywhere else on the site.
 
+## Tracking
+
+Mirrors the `LL.track` block in `index.html` rather than adding a second scheme:
+same `va()` queue shim, same `ll_sid` session id, same `ll_events` ring buffer,
+same deferred `/_vercel/insights/script.js`. That script matters: without it `va()`
+only queues and nothing reports.
+
+Events also beacon to `/api/track`, which already exists as the sink and forwards
+to `LL_EVENTS_WEBHOOK` when set. A beacon rather than a fetch because people land
+on this page, tap, and leave in a second or two, and an ordinary request gets cut
+off at unload.
+
+Every event carries **which product was on screen when it fired**: id, store, the
+price and size actually shown, and price per gram. That is what a click count
+cannot tell you, and it matters most on `/p/pick`, where the product changes under
+a URL that never does. `page` is `pick` or `share` so the two are distinguishable,
+and `utm_*` tags are read off the URL when the link carries them.
+
+Events: `page_view` on load, `add_to_cart` on the button. An empty pick records
+`outcome=empty` plus the cap that found nothing, since an offer going out with no
+product behind it is a signal rather than a non-event.
+
+Where to look: Vercel Analytics > Events for the custom events, and your
+`LL_EVENTS_WEBHOOK` sink for the durable copy.
+
+Note: the first version of this page called `LL.track` without loading anything
+that defines `LL`, so every event silently hit the catch. If you copy this pattern
+to another standalone page, bring the analytics block with it.
+
 ## Security note
 
 Product names, image URLs and product URLs all originate in third-party store

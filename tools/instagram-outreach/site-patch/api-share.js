@@ -162,6 +162,9 @@ function noPick(canonical, opts) {
     ogImage: FALLBACK_IMG,
     canonical,
     noindex: true,
+    /* A pick with nothing to show is a real signal, not a non-event: it means the
+       offer went out with no product behind it. */
+    track: { page: 'pick', outcome: 'empty', maxPrice: opts.maxPrice },
     body: `<h1>Nothing qualifies right now</h1>
 <p class="meta">No in-stock ounce under ${esc(money(opts.maxPrice))} in the feed at the moment.
 Rather than show you something that is not the deal it claims to be, here is everything.</p>
@@ -181,7 +184,63 @@ function description(p, h) {
     : 'Compared against every other store on Legal-Leaf Market.';
 }
 
-function page({ title, ogTitle, ogDesc, ogImage, canonical, body, noindex }) {
+/* ---- analytics ----
+ * Mirrors the LL.track block in index.html rather than inventing a second scheme:
+ * same va() custom events, same ll_sid session id, same ll_events ring buffer, and
+ * the same deferred /_vercel/insights/script.js the satellite pages load. Without
+ * that script va() only queues and nothing reports, which is why the earlier
+ * version of this page called LL.track into thin air: LL was never defined here.
+ *
+ * It also beacons to /api/track. On this page the whole point is that people land,
+ * tap, and leave within a second or two, and a beacon survives that unload where a
+ * normal fetch can be cut off. api/track.js already exists as the event sink and
+ * forwards to LL_EVENTS_WEBHOOK when one is configured.
+ */
+function analytics(track) {
+  var payload = JSON.stringify(track).replace(/</g, '\\u003c');
+  return `<script defer src="/_vercel/insights/script.js"><\/script>
+<script>
+window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+window.LL = window.LL || {};
+(function () {
+  function sid() {
+    try {
+      var k = 'll_sid', s = sessionStorage.getItem(k);
+      if (!s) { s = Date.now().toString(36) + Math.random().toString(36).slice(2, 8); sessionStorage.setItem(k, s); }
+      return s;
+    } catch (e) { return ''; }
+  }
+  var BASE = ${payload};
+  // Whatever brought them here: the DM link's own tags, if it carried any.
+  try {
+    var q = new URLSearchParams(location.search);
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'].forEach(function (k) {
+      var v = q.get(k); if (v) BASE[k.replace('utm_', '')] = v;
+    });
+  } catch (e) {}
+  LL.track = function (name, props) {
+    props = Object.assign({}, BASE, props || {});
+    props.sid = sid();
+    try { if (typeof window.va === 'function') va('event', Object.assign({ name: name }, props)); } catch (e) {}
+    try { if (typeof window.gtag === 'function') gtag('event', name, props); } catch (e) {}
+    try {
+      var k = 'll_events', a = JSON.parse(localStorage.getItem(k) || '[]');
+      a.push({ t: Date.now(), name: name, props: props });
+      if (a.length > 250) a = a.slice(-250);
+      localStorage.setItem(k, JSON.stringify(a));
+    } catch (e) {}
+    try {
+      var body = JSON.stringify({ name: name, props: props, ts: Date.now() });
+      if (navigator.sendBeacon) navigator.sendBeacon('/api/track', new Blob([body], { type: 'application/json' }));
+      else fetch('/api/track', { method: 'POST', headers: { 'content-type': 'application/json' }, body: body, keepalive: true });
+    } catch (e) {}
+  };
+})();
+window.addEventListener('load', function () { try { LL.track('page_view', {}); } catch (e) {} });
+<\/script>`;
+}
+
+function page({ title, ogTitle, ogDesc, ogImage, canonical, body, noindex, track }) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -222,7 +281,9 @@ h1{font-size:22px;line-height:1.25;margin:18px 0 6px}
 </head>
 <body><div class="wrap">
 ${body}
-</div></body>
+</div>
+${analytics(track || { page: 'share' })}
+</body>
 </html>`;
 }
 
@@ -234,6 +295,7 @@ function notFound(canonical) {
     ogImage: FALLBACK_IMG,
     canonical,
     noindex: true,
+    track: { page: 'share', outcome: 'not_found' },
     body: `<h1>That product is gone</h1>
 <p class="meta">Stock moves and listings disappear. The comparison is still live.</p>
 <a class="buy" href="${SITE}/consumables">Browse every store</a>`,
@@ -363,6 +425,16 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
       ogImage: img,
       canonical,
       body,
+      track: {
+        page: isPick ? 'pick' : 'share',
+        pid: product.id,
+        store: product.store,
+        storeKey: product.storeKey,
+        size: item.size,
+        value: Number(item.price) || null,
+        perG: h.perG || null,
+        cur: item.cur,
+      },
     })
   );
 }
