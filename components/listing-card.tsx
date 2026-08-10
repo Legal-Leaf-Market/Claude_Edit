@@ -36,7 +36,7 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
         {/* Front */}
         <div className="flip-face flip-face-front panel flex h-full flex-col overflow-hidden">
           <div className="relative">
-            <ListingImage src={hit.primaryImageUrl} alt={hit.title} className="h-44 w-full sm:h-48" />
+            <ListingImage src={hit.primaryImageUrl} alt={hit.title} className="h-64 w-full sm:h-72" />
             {hit.isDeal && margin && (
               <div className="absolute left-2 top-2">
                 <Badge variant="deal">{margin} below market</Badge>
@@ -193,7 +193,7 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
 export function ListingCardSkeleton() {
   return (
     <div className="panel overflow-hidden" aria-hidden="true">
-      <div className="h-44 w-full animate-pulse bg-[var(--muted)] sm:h-48" />
+      <div className="h-64 w-full animate-pulse bg-[var(--muted)] sm:h-72" />
       <div className="space-y-3 p-3">
         <div className="h-4 w-3/4 animate-pulse rounded bg-[var(--muted)]" />
         <div className="h-4 w-1/2 animate-pulse rounded bg-[var(--muted)]" />
