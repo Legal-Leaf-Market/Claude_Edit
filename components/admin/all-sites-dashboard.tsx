@@ -9,8 +9,8 @@ import { RevenueChart } from "./revenue-chart"
 
 type ScenarioKey = keyof typeof SCENARIOS
 const HORIZONS = [
-  { key: "24", label: "24 months", months: 24 },
-  { key: "120", label: "Decade", months: 120 },
+  { key: "24", label: "2 years", months: 24 },
+  { key: "120", label: "10 years", months: 120 },
 ] as const
 type HorizonKey = (typeof HORIZONS)[number]["key"]
 
@@ -28,7 +28,7 @@ const COMBINED_COLOR = "#f0a830"
  */
 export function AllSitesDashboard() {
   const [scenario, setScenario] = useState<ScenarioKey>("base")
-  const [horizon, setHorizon] = useState<HorizonKey>("24")
+  const [horizon, setHorizon] = useState<HorizonKey>("120")
 
   const horizonMonths = HORIZONS.find((h) => h.key === horizon)!.months
 
@@ -99,7 +99,7 @@ export function AllSitesDashboard() {
 
       {horizon === "120" && (
         <p className="mb-6 rounded-lg border border-[var(--border)] bg-[var(--secondary)]/40 px-4 py-3 text-xs leading-relaxed text-[var(--muted-foreground)]">
-          The decade view is the same fitted traffic curve carried out to its own natural asymptote,
+          The ten-year view is the same fitted traffic curve carried out to its own natural asymptote,
           not a new fit: nothing past month 24 is a new anchor point. Conversion and attribution are
           both fully matured (clamped, not extrapolated further upward) for every month past 24 —
           see the Method section on each site's own page for why that clamp is the mathematically
@@ -152,7 +152,7 @@ export function AllSitesDashboard() {
 
       <section className="admin-section" id="totals">
         <p className="eyebrow">Combined</p>
-        <h2>{horizon === "120" ? "Decade" : "24-month"} totals, all five sites</h2>
+        <h2>{horizon === "120" ? "Ten-year" : "Two-year"} totals, all five sites</h2>
         <div className="section-body grid grid-cols-2 gap-4 sm:grid-cols-3">
           <Stat label="Total revenue" value={money(t.totalRevenue)} sub={`${active.label} case, ${horizonMonths} months`} />
           <Stat label="Exit run-rate" value={`${money(t.exitRunRate)}/yr`} sub={`${money(t.month24Revenue)} in the final month`} />
