@@ -130,9 +130,9 @@ function cartItem(p, idx) {
  * under a message promising an ounce. Better value per gram, wrong promise. The
  * band keeps the pick to the thing that was actually advertised.
  */
-/* Every qualifying size row, best value first. Shuffle walks this list, so the
-   pool is capped: the 40th best ounce is not a deal worth showing anybody. */
-var PICK_POOL = 12;
+/* Every qualifying size row, best value first. The slideshow walks this list, so
+   the pool is capped: the 40th best ounce is not a deal worth showing anybody. */
+var PICK_POOL = 10;
 
 /* Does a size row's own label say "ounce"? Sub-ounce fractions are excluded first,
    because "1/4 oz" contains "oz" while being a quarter. */
@@ -440,13 +440,27 @@ a{color:inherit}
   transition:opacity .2s ease}
 .flip.flipped .front .ov{opacity:0;pointer-events:none}
 .ov:hover{background:rgba(10,14,11,.78)}
-.ov.shuf{bottom:12px;left:12px;box-shadow:0 0 0 1px rgba(255,255,255,.35),0 0 18px 2px var(--accent);
+.ov.flipbtn{bottom:12px;right:12px;box-shadow:0 0 0 1px rgba(255,255,255,.35),0 0 18px 2px var(--accent);
   animation:pulse 2.6s ease-in-out infinite}
-.ov.shuf:disabled{opacity:.6;animation:none;cursor:default}
-.ov.flipbtn{bottom:12px;right:12px;box-shadow:0 0 0 1px rgba(255,255,255,.25)}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 1px rgba(255,255,255,.35),0 0 14px 1px var(--accent)}
   50%{box-shadow:0 0 0 1px rgba(255,255,255,.5),0 0 26px 5px var(--accent)}}
-@media (prefers-reduced-motion:reduce){.ov.shuf{animation:none}}
+@media (prefers-reduced-motion:reduce){.ov.flipbtn{animation:none}}
+
+/* Slideshow arrows and position, on the photo so they cost no vertical space. */
+.ov.nav{top:50%;transform:translateY(-50%);font-size:24px;padding:6px 14px;line-height:1}
+.ov.nav.prev{left:10px}
+.ov.nav.next{right:10px}
+.ov.count{bottom:14px;left:12px;font-size:12px;font-weight:700;padding:7px 11px;cursor:default}
+
+/* Getting back to the photo has to be obvious, so it is a real button and there is
+   one at each end of the back panel. */
+.flipback{font:inherit;font-weight:700;cursor:pointer;color:var(--accent);
+  /* --line is nearly invisible against the dark background, so this read as a
+     plain link. Getting back to the photo has to look like a button. */
+  background:color-mix(in srgb,var(--accent) 14%,transparent);
+  border:1.5px solid var(--accent);border-radius:999px;padding:6px 12px;white-space:nowrap}
+.flipback:hover{background:color-mix(in srgb,var(--accent) 26%,transparent)}
+.flipback.wide{display:block;width:100%;margin:16px 0 4px;padding:13px;border-radius:10px}
 
 /* Back panel */
 .bh{display:flex;align-items:baseline;gap:8px;margin:0 0 10px}
@@ -542,6 +556,7 @@ export default async function handler(req, res) {
   let chosenIndex = sizeIndex;
   let rank = 0;
   let pool = 0;
+  let candidates = [];
   try {
     // Same origin, so this rides the CDN cache /api/products already populates
     // instead of triggering another twenty-store scrape.
@@ -552,7 +567,19 @@ export default async function handler(req, res) {
       const data = await r.json();
       const list = Array.isArray(data && data.products) ? data.products : [];
       if (isPick) {
-        const candidates = pickAll(list, pickOpts, PICK_POOL);
+        /* One slide per PRODUCT. pickAll ranks size rows, so a listing selling two
+           qualifying ounces at different prices would occupy two slides, which is
+           the same thing to look at twice. The best-value row wins the slide and
+           that slide's dropdown still offers the product's other rows, so nothing
+           is lost. Deduping before the cap also means ten slides really are ten
+           different products. */
+        const ranked = pickAll(list, pickOpts);
+        const seenProduct = new Set();
+        candidates = ranked.filter((c) => {
+          if (seenProduct.has(c.product.id)) return false;
+          seenProduct.add(c.product.id);
+          return true;
+        }).slice(0, PICK_POOL);
         pool = candidates.length;
         const wanted = parseInt(req.query && req.query.i, 10);
         rank = Number.isInteger(wanted) && wanted > 0 ? Math.min(wanted, pool - 1) : 0;
@@ -574,206 +601,341 @@ export default async function handler(req, res) {
       : res.status(404).send(notFound(canonical));
   }
 
-  const h = chosenIndex != null && Array.isArray(product.sizes) && product.sizes[chosenIndex]
-    ? (function (row) {
-        return {
-          price: Number(row[1]),
-          weight: weightLabel(Number(row[2])) || row[0] || '',
-          perG: Number(row[2]) > 0 ? Math.round((Number(row[1]) / Number(row[2])) * 100) / 100 : product.perG,
-        };
-      })(product.sizes[chosenIndex])
-    : headline(product);
-  const img = httpsOnly(product.image, FALLBACK_IMG);
-  const priceText = h.price != null ? money(h.price, product.cur) : '';
-  const ogTitle = priceText
-    ? `${product.name} ${h.weight ? '(' + h.weight + ') ' : ''}${priceText}`
-    : String(product.name || 'Legal-Leaf Market');
-  const ogDesc = description(product, h);
+  /* ---- one slide ----
+   * Everything the page shows for a single product, built server side so the
+   * slideshow can swap slides without another round trip and without duplicating
+   * the lab panel's honesty rules in the client. */
+  function buildSlide(prod, rowIndex, marked) {
+    const cur = prod.cur || 'USD';
+    const head = rowIndex != null && Array.isArray(prod.sizes) && prod.sizes[rowIndex]
+      ? (function (row) {
+          const g = Number(row[2]);
+          return {
+            price: Number(row[1]),
+            weight: weightLabel(g) || String(row[0] || ''),
+            perG: g > 0 ? Math.round((Number(row[1]) / g) * 100) / 100 : prod.perG,
+          };
+        })(prod.sizes[rowIndex])
+      : headline(prod);
 
-  // This page adds no flow of its own. It has the one action the product cards on
-  // /consumables already have, Add to cart, writing the identical item shape into
-  // the identical ll_cart key, then hands over to /consumables where the existing
-  // drawer and per-store checkout take it from there. That is what keeps the
-  // shopper on our domain: the vendor link is reached through our cart, the same
-  // way it is everywhere else on the site, not as a shortcut out of here.
-  const item = cartItem(product, chosenIndex);
-
-  /* Every size row the shopper may choose, each pre-built into the exact cart item
-     the site's own addToCart would push, so choosing one cannot drift from what
-     gets added. Rows without a real price are dropped rather than offered. */
-  const sizeRows = (Array.isArray(product.sizes) ? product.sizes : [])
-    .map((row, i) => ({ i, row }))
-    .filter(({ row }) => isFinite(Number(row && row[1])) && Number(row[1]) > 0)
-    .map(({ i, row }) => {
-      const price = Number(row[1]);
-      const grams = Number(row[2]);
-      return {
-        i,
+    const rows = (Array.isArray(prod.sizes) ? prod.sizes : [])
+      .map((row, i) => ({ i, row }))
+      .filter(({ row }) => isFinite(Number(row && row[1])) && Number(row[1]) > 0)
+      .map(({ i, row }) => {
+        const price = Number(row[1]);
+        const grams = Number(row[2]);
         /* The row's own label, which on multi-strain listings is the strain and
-           grade. It is the only thing distinguishing one row from another and must
-           not be replaced by the normalised weight. Measured on the live feed:
-           Cheap THCA Smalls Ounce has seven rows, all 28g, three of them at the
-           same $35.99, so weight-and-price alone rendered three identical options
-           for Royal Zkittlez, Barney's Biscotti and Punch Breath. */
-        variant: String(row[0] || '').trim(),
-        label: weightLabel(grams) || String(row[0] || 'One size'),
-        price,
-        perG: grams > 0 ? Math.round((price / grams) * 100) / 100 : null,
-        isPick: i === chosenIndex,
-        item: cartItem(product, i),
-      };
-    });
+           grade. It is the only thing distinguishing one row from another, so it
+           leads and the normalised weight follows only when not already stated. */
+        const variant = String(row[0] || '').trim();
+        const label = weightLabel(grams) || String(row[0] || 'One size');
+        return {
+          i,
+          label,
+          display: variant
+            ? (saysWeightAlready(variant, label) ? variant : variant + ' · ' + label)
+            : label,
+          price,
+          perG: grams > 0 ? Math.round((price / grams) * 100) / 100 : null,
+          isPick: marked && i === rowIndex,
+          item: cartItem(prod, i),
+        };
+      });
 
-  /* Variant first, because that is what the shopper is choosing between, and the
-     weight appended only when the variant does not already state it. Computed
-     server side so the dropdown and the confirmation hint cannot drift apart. */
-  sizeRows.forEach((r) => {
-    r.display = r.variant
-      ? (saysWeightAlready(r.variant, r.label) ? r.variant : r.variant + ' · ' + r.label)
-      : r.label;
-  });
+    /* A product can carry a headline price with no priced size rows at all.
+       headline() falls back to sale/startsAt, so the page would show a price the
+       gate could never let anyone add. The site's own addToCart covers that case
+       with a "One Size" line, so offer exactly that. Raised on PR #23. */
+    if (!rows.length && Number(head.price) > 0) {
+      rows.push({
+        i: -1,
+        label: head.weight || 'One size',
+        display: head.weight || 'One size',
+        price: Number(head.price),
+        perG: head.perG || null,
+        isPick: false,
+        item: cartItem(prod, null),
+      });
+    }
 
-  /* A product can carry a headline price with no priced size rows at all: an empty
-     sizes array, or every row missing a price. headline() falls back to p.sale, so
-     the page showed a price while the dropdown held nothing but the placeholder,
-     and the gate then refused forever. A price on screen with no way to buy it is
-     a dead end, and it is a regression the gate introduced: the site's own
-     addToCart covers this case by pushing a "One Size" line, so offer exactly
-     that. Raised by Vercel's review bot on PR #23. */
-  if (!sizeRows.length && Number(h.price) > 0) {
-    sizeRows.push({
-      i: -1,
-      variant: '',
-      label: h.weight || 'One size',
-      display: h.weight || 'One size',
-      price: Number(h.price),
-      perG: h.perG || null,
-      isPick: false,
-      item: cartItem(product, null),
-    });
+    const priceText = head.price != null ? money(head.price, cur) : '';
+    return {
+      pid: prod.id,
+      name: String(prod.name || ''),
+      store: String(prod.store || ''),
+      img: httpsOnly(prod.image, FALLBACK_IMG),
+      priceText,
+      weight: head.weight || '',
+      perG: head.perG || null,
+      desc: description(prod, head),
+      ogTitle: priceText
+        ? `${prod.name} ${head.weight ? '(' + head.weight + ') ' : ''}${priceText}`
+        : String(prod.name || 'Legal-Leaf Market'),
+      lab: labPanel(prod),
+      sizes: rows,
+      canAdd: rows.length > 0,
+      cur,
+      size: rows.length ? (rows.find((r) => r.isPick) || rows[0]).item.size : '',
+      value: head.price != null ? Number(head.price) : null,
+    };
   }
-  /* With no price either, there is genuinely nothing to add. Say so rather than
-     showing a button that cannot work. */
-  const canAdd = sizeRows.length > 0;
 
-  const options = sizeRows.map((r) => {
-    const bits = [r.display, money(r.price, item.cur)];
-    if (r.perG) bits.push(money(r.perG, item.cur) + '/g');
-    if (r.isPick && isPick) bits.push('this week\'s pick');
+  /* The pick is a slideshow over the qualifying pool; a plain /p/<id> is a single
+     slide with no controls. */
+  const slides = isPick && candidates.length
+    ? candidates.map((c) => buildSlide(c.product, c.index, true))
+    : [buildSlide(product, chosenIndex, false)];
+  const slide = slides[isPick ? rank : 0] || slides[0];
+  const total = slides.length;
+
+  const optionsFor = (sl) => sl.sizes.map((r) => {
+    const bits = [r.display, money(r.price, sl.cur)];
+    if (r.perG) bits.push(money(r.perG, sl.cur) + '/g');
+    if (r.isPick) bits.push('this week\'s pick');
     return `<option value="${r.i}">${esc(bits.join(' · '))}</option>`;
   }).join('');
 
   const payload = JSON.stringify({
-    sizes: sizeRows.map((r) => ({
-      i: r.i, label: r.label, display: r.display, price: r.price, perG: r.perG, item: r.item,
+    slides: slides.map((sl) => ({
+      pid: sl.pid, name: sl.name, store: sl.store, img: sl.img, priceText: sl.priceText,
+      weight: sl.weight, perG: sl.perG, desc: sl.desc, lab: sl.lab, cur: sl.cur,
+      canAdd: sl.canAdd, value: sl.value,
+      sizes: sl.sizes.map((r) => ({
+        i: r.i, label: r.label, display: r.display, price: r.price, perG: r.perG, item: r.item,
+      })),
     })),
-    cur: item.cur,
-    store: product.store,
-    pool,
-    rank,
+    start: isPick ? rank : 0,
+    isPick,
   }).replace(/</g, '\\u003c');
+
+  const ogTitle = slide.ogTitle;
+  const ogDesc = slide.desc;
+  const img = slide.img;
 
   const body = `<div class="flip" id="flip">
   <div class="inner">
     <div class="face front">
-      <img class="shot" src="${esc(img)}" alt="${esc(product.name)}"/>
-      ${isPick && pool > 1 ? `<button class="ov shuf" id="shuf" type="button" title="Show another ounce under ${esc(money(pickOpts.maxPrice))}">Shuffle ${rank + 1}/${pool}</button>` : ''}
+      <img class="shot" id="shot" src="${esc(img)}" alt="${esc(slide.name)}"/>
+      ${total > 1 ? `<button class="ov nav prev" id="prev" type="button" aria-label="Previous">&#8249;</button>
+      <button class="ov nav next" id="next" type="button" aria-label="Next">&#8250;</button>
+      <span class="ov count" id="count">${(isPick ? rank : 0) + 1} of ${total}</span>` : ''}
       <button class="ov flipbtn" id="toBack" type="button">Details and size</button>
     </div>
     <div class="face back">
-      <div class="bh"><h2>What you are actually getting</h2><button id="toFront" type="button">Photo</button></div>
-      ${canAdd ? `<div class="pickfield">
-        <label for="size">1. Choose your size</label>
-        <select id="size">
-          <option value="">Select a size...</option>
-          ${options}
-        </select>
-        <p class="hint" id="hint2">The price updates once you choose.</p>
-      </div>` : `<p class="caution">This store has not published a buyable size for this
-      product, so it cannot be added to a cart here. The comparison below still has it.</p>`}
+      <div class="bh">
+        <h2>What you are actually getting</h2>
+        <button class="flipback" id="toFront" type="button">&#8592; Photo</button>
+      </div>
+      <div id="pickwrap">
+        ${slide.canAdd ? `<div class="pickfield">
+          <label for="size">1. Choose your size</label>
+          <select id="size">
+            <option value="">Select a size...</option>
+            ${optionsFor(slide)}
+          </select>
+          <p class="hint" id="hint2">The price updates once you choose.</p>
+        </div>` : `<p class="caution">This store has not published a buyable size for this
+        product, so it cannot be added to a cart here. The comparison below still has it.</p>`}
+      </div>
       <h2 style="font-size:13px;color:var(--muted);margin:14px 0 6px">2. What the lab found</h2>
-      ${labPanel(product)}
+      <div id="labwrap">${slide.lab}</div>
+      <button class="flipback wide" id="toFront2" type="button">&#8592; Back to the photo</button>
     </div>
   </div>
 </div>
-<h1>${esc(product.name)}</h1>
-<div class="price" id="price">${esc(priceText)}${h.weight ? ' <span class="meta">' + esc(h.weight) + '</span>' : ''}</div>
-<p class="meta">${esc(ogDesc)}</p>
-<p class="hint" id="hint">${canAdd
+<h1 id="pname">${esc(slide.name)}</h1>
+<div class="price" id="price">${esc(slide.priceText)}${slide.weight ? ' <span class="meta">' + esc(slide.weight) + '</span>' : ''}</div>
+<p class="meta" id="pdesc">${esc(slide.desc)}</p>
+<p class="hint" id="hint">${slide.canAdd
   ? 'Tap "Details and size" to see the lab numbers and pick your size.'
   : 'Tap "Details and size" for the lab numbers.'}</p>
-${canAdd ? '<button class="buy" id="add" type="button">Add to cart</button>' : ''}
+<button class="buy" id="add" type="button"${slide.canAdd ? '' : ' hidden'}>Add to cart</button>
 <a class="alt" href="${SITE}/consumables">Compare every store on Legal-Leaf Market</a>
-<p class="fine">Price and stock come from ${esc(product.store)}'s own feed and can move without notice.
+<p class="fine" id="fine">Price and stock come from ${esc(slide.store)}'s own feed and can move without notice.
 Legal-Leaf Market does not take the order or hold the stock. Ranking is never affected by commission.</p>
 <script>
 (function(){
   var D = ${payload};
+  var at = D.start;
   var flip = document.getElementById('flip');
   var sel = document.getElementById('size');
   var add = document.getElementById('add');
-  /* Both are absent when the product has no buyable size, so everything below is
-     guarded rather than assuming they exist. */
   var hint = document.getElementById('hint');
-  var hint2 = document.getElementById('hint2');
   var priceEl = document.getElementById('price');
 
-  function money(n){
+  function cur(){ return D.slides[at]; }
+  function money(n, c){
     if (typeof n !== 'number' || !isFinite(n)) return '';
-    var sym = D.cur === 'EUR' ? '\u20ac' : '$';
-    return sym + (Math.round(n * 100) / 100).toFixed(2).replace(/\.00$/, '');
+    return (c === 'EUR' ? '\\u20ac' : '$') + (Math.round(n * 100) / 100).toFixed(2).replace(/\\.00$/, '');
   }
   function chosen(){
-    if (!sel || sel.value === '') return null;
-    var i = parseInt(sel.value, 10);
-    for (var k = 0; k < D.sizes.length; k++) if (D.sizes[k].i === i) return D.sizes[k];
+    var s = document.getElementById('size');
+    if (!s || s.value === '') return null;
+    var i = parseInt(s.value, 10), z = cur().sizes;
+    for (var k = 0; k < z.length; k++) if (z[k].i === i) return z[k];
     return null;
   }
+
   function setFlipped(on){
     flip.classList.toggle('flipped', !!on);
-    if (!on || !sel) return;
+    var s = document.getElementById('size');
+    if (!on || !s) return;
     /* Bring the card on screen before focusing. Add to cart sits below the card,
        so on a short viewport the shopper has already scrolled past it, and a bare
        focus with preventScroll left the dropdown above the fold: glowing exactly
-       where nobody could see it. Measured at 1280x720: scrollY 329, dropdown at
-       y -229. */
+       where nobody could see it. Measured at 1280x720: scrollY 329, y -229. */
     try { flip.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
     catch (e) { flip.scrollIntoView(); }
-    setTimeout(function(){
-      try { sel.focus({ preventScroll: true }); } catch (e) { sel.focus(); }
-    }, 260);
+    setTimeout(function(){ try { s.focus({ preventScroll: true }); } catch (e) { s.focus(); } }, 260);
   }
+
+  function wireSelect(){
+    var s = document.getElementById('size');
+    if (!s) return;
+    s.addEventListener('change', function(){
+      s.classList.remove('needs');
+      var c = chosen(), sl = cur();
+      var h2 = document.getElementById('hint2');
+      if (!c) { hint.textContent = 'Choose a size to see the exact price.'; hint.className = 'hint'; return; }
+      priceEl.innerHTML = '';
+      priceEl.appendChild(document.createTextNode(money(c.price, sl.cur)));
+      var w = document.createElement('span');
+      w.className = 'meta';
+      w.textContent = ' ' + c.label + (c.perG ? ' \\u00b7 ' + money(c.perG, sl.cur) + ' per gram' : '');
+      priceEl.appendChild(w);
+      if (add) add.textContent = 'Add ' + c.label + ' for ' + money(c.price, sl.cur) + ' to cart';
+      hint.textContent = 'Adding ' + c.display + ', ' + money(c.price, sl.cur) + ', from ' + sl.store + '.';
+      hint.className = 'hint';
+      if (h2) h2.textContent = 'Ready. Flip back or add it now.';
+      try { LL.track('size_selected', { size: c.label, value: c.price }); } catch (e) {}
+    });
+  }
+  wireSelect();
+
+  /* ---- the slideshow ----
+   * Slides swap in place rather than reloading, so moving through the ten picks is
+   * instant. The selection is reset on every move: carrying a choice from one
+   * product to the next is how somebody ends up adding a thing they never saw. */
+  function optionHtml(sl){
+    var out = '\\u003coption value=""\\u003eSelect a size...\\u003c/option\\u003e';
+    for (var k = 0; k < sl.sizes.length; k++) {
+      var r = sl.sizes[k];
+      var bits = [r.display, money(r.price, sl.cur)];
+      if (r.perG) bits.push(money(r.perG, sl.cur) + '/g');
+      if (r.isPick) bits.push("this week's pick");
+      var o = document.createElement('option');
+      o.value = String(r.i);
+      o.textContent = bits.join(' \\u00b7 ');
+      out += o.outerHTML;
+    }
+    return out;
+  }
+
+  function render(){
+    var sl = cur();
+    document.getElementById('shot').src = sl.img;
+    document.getElementById('shot').alt = sl.name;
+    document.getElementById('pname').textContent = sl.name;
+    priceEl.innerHTML = '';
+    priceEl.appendChild(document.createTextNode(sl.priceText));
+    if (sl.weight) {
+      var w = document.createElement('span');
+      w.className = 'meta';
+      w.textContent = ' ' + sl.weight;
+      priceEl.appendChild(w);
+    }
+    document.getElementById('pdesc').textContent = sl.desc;
+    document.getElementById('labwrap').innerHTML = sl.lab;
+    document.getElementById('fine').textContent = 'Price and stock come from ' + sl.store +
+      "'s own feed and can move without notice. Legal-Leaf Market does not take the order or " +
+      'hold the stock. Ranking is never affected by commission.';
+
+    var wrap = document.getElementById('pickwrap');
+    if (sl.canAdd) {
+      wrap.innerHTML = '\\u003cdiv class="pickfield"\\u003e\\u003clabel for="size"\\u003e1. Choose your size\\u003c/label\\u003e' +
+        '\\u003cselect id="size"\\u003e' + optionHtml(sl) + '\\u003c/select\\u003e' +
+        '\\u003cp class="hint" id="hint2"\\u003eThe price updates once you choose.\\u003c/p\\u003e\\u003c/div\\u003e';
+      wireSelect();
+    } else {
+      wrap.innerHTML = '\\u003cp class="caution"\\u003eThis store has not published a buyable size for this ' +
+        'product, so it cannot be added to a cart here. The comparison below still has it.\\u003c/p\\u003e';
+    }
+    if (add) {
+      add.hidden = !sl.canAdd;
+      add.disabled = false;
+      add.textContent = 'Add to cart';
+    }
+    hint.className = 'hint';
+    hint.textContent = sl.canAdd
+      ? 'Tap "Details and size" to see the lab numbers and pick your size.'
+      : 'Tap "Details and size" for the lab numbers.';
+
+    var c = document.getElementById('count');
+    if (c) c.textContent = (at + 1) + ' of ' + D.slides.length;
+
+    /* Keep the URL in step so a slide can still be shared, without adding a
+       history entry per tap. */
+    try {
+      var q = new URLSearchParams(location.search);
+      q.set('i', String(at));
+      history.replaceState(null, '', location.pathname + '?' + q.toString());
+    } catch (e) {}
+  }
+
+  function go(delta){
+    var n = D.slides.length;
+    if (n < 2) return;
+    var from = at;
+    at = (at + delta + n) % n;
+    setFlipped(false);
+    render();
+    try { LL.track('slide', { from: from, to: at, pid: cur().pid }); } catch (e) {}
+  }
+
+  var prev = document.getElementById('prev');
+  var next = document.getElementById('next');
+  if (prev) prev.addEventListener('click', function(){ go(-1); });
+  if (next) next.addEventListener('click', function(){ go(1); });
+
+  document.addEventListener('keydown', function(e){
+    var t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
+    if (e.key === 'ArrowLeft') go(-1);
+    else if (e.key === 'ArrowRight') go(1);
+  });
+
+  /* Swipe, since this lands on a phone from a DM. Only a clearly horizontal drag
+     counts, or scrolling the page would flick through the slides. */
+  var x0 = null, y0 = null;
+  var frontFace = flip.querySelector('.front');
+  frontFace.addEventListener('touchstart', function(e){
+    if (e.touches.length !== 1) return;
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+  }, { passive: true });
+  frontFace.addEventListener('touchend', function(e){
+    if (x0 == null || !e.changedTouches.length) return;
+    var dx = e.changedTouches[0].clientX - x0;
+    var dy = e.changedTouches[0].clientY - y0;
+    x0 = y0 = null;
+    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    go(dx < 0 ? 1 : -1);
+  }, { passive: true });
 
   document.getElementById('toBack').addEventListener('click', function(){ setFlipped(true); });
   document.getElementById('toFront').addEventListener('click', function(){ setFlipped(false); });
-
-  if (sel) sel.addEventListener('change', function(){
-    sel.classList.remove('needs');
-    var c = chosen();
-    if (!c) { hint.textContent = 'Choose a size to see the exact price.'; hint.className = 'hint'; return; }
-    priceEl.innerHTML = '';
-    priceEl.appendChild(document.createTextNode(money(c.price)));
-    var w = document.createElement('span');
-    w.className = 'meta';
-    w.textContent = ' ' + c.label + (c.perG ? ' \u00b7 ' + money(c.perG) + ' per gram' : '');
-    priceEl.appendChild(w);
-    add.textContent = 'Add ' + c.label + ' for ' + money(c.price) + ' to cart';
-    hint.textContent = 'Adding ' + c.display + ', ' + money(c.price) + ', from ' + D.store + '.';
-    hint.className = 'hint';
-    hint2.textContent = 'Ready. Flip back or add it now.';
-    try { LL.track('size_selected', { size: c.label, value: c.price }); } catch (e) {}
-  });
+  document.getElementById('toFront2').addEventListener('click', function(){ setFlipped(false); });
 
   if (add) add.addEventListener('click', function(){
-    var c = chosen();
+    var c = chosen(), s = document.getElementById('size');
     /* Nobody adds a mystery item to a cart. No selection means walk them to the
        choice rather than guessing on their behalf. */
     if (!c) {
       setFlipped(true);
-      sel.classList.add('needs');
+      if (s) s.classList.add('needs');
       hint.textContent = 'Choose a size first, so you know exactly what you are adding.';
       hint.className = 'hint warn';
-      hint2.textContent = 'Pick one of these, then add to cart.';
+      var h2 = document.getElementById('hint2');
+      if (h2) h2.textContent = 'Pick one of these, then add to cart.';
       try { LL.track('add_blocked_no_size', {}); } catch (e) {}
       return;
     }
@@ -787,22 +949,6 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
     add.disabled = true;
     location.href = ${JSON.stringify(SITE + '/consumables#cart')};
   });
-
-  /* Shuffle moves to another rank in the same qualifying pool, so every result is
-     still an ounce inside the cap. It preserves the query string, otherwise a
-     custom cap or band would be silently dropped on the first shuffle. */
-  var shuf = document.getElementById('shuf');
-  if (shuf) {
-    shuf.addEventListener('click', function(){
-      var next = D.rank;
-      if (D.pool > 1) { while (next === D.rank) next = Math.floor(Math.random() * D.pool); }
-      try { LL.track('shuffle', { from: D.rank, to: next }); } catch (e) {}
-      shuf.disabled = true;
-      var q = new URLSearchParams(location.search);
-      q.set('i', String(next));
-      location.href = location.pathname + '?' + q.toString();
-    });
-  }
 })();
 <\/script>`;
 
@@ -821,10 +967,10 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
         pid: product.id,
         store: product.store,
         storeKey: product.storeKey,
-        size: item.size,
-        value: Number(item.price) || null,
-        perG: h.perG || null,
-        cur: item.cur,
+        size: slide.size,
+        value: slide.value,
+        perG: slide.perG,
+        cur: slide.cur,
       },
     })
   );

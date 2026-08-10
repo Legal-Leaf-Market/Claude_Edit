@@ -83,14 +83,29 @@ Two defects `test-flow.mjs` caught that review would not have:
   could not be seen**. Measured at 1280x720: `scrollY 329`, dropdown at `y -229`.
   `setFlipped` now scrolls the card into view before focusing.
 
-### Shuffle
+### The slideshow
 
-The pick page walks a ranked pool of every qualifying ounce, capped at 12.
-`?i=<rank>` selects a position and clamps rather than 404s, so a forwarded link
-with a stale index still renders something real. Shuffle preserves the query
-string and changes only `i`, so a custom cap or band survives it. The button is
-absent rather than inert when only one product qualifies, and `shuffle` events
-carry `rank` and `of`.
+Ten slides, walked with prev/next arrows and a position counter on the photo, in
+value order. Every slide ships with the page so moving is instant rather than a
+reload; arrow keys and a horizontal swipe work too. `?i=<rank>` still renders a
+given slide server side with its own og: tags, and clamps rather than 404s, so a
+forwarded link with a stale index shows something real. Moving updates the URL via
+`replaceState`, keeping slides shareable without a history entry per tap.
+
+Ten slides means ten distinct **products**. `pickAll` ranks size rows, so a listing
+selling two qualifying ounces at different prices used to take two slides; dedupe
+keeps the best-value row per product and that slide's dropdown still offers the
+rest.
+
+**A selection never survives a slide change.** Carrying a size choice from one
+product to the next is how somebody adds a thing they never looked at, so the
+dropdown, button label, price line and hint all reset and the gate applies again.
+`test-slideshow.mjs` selects on one slide, moves, and asserts Add writes nothing.
+
+While the card is turned, the arrows are `pointer-events: none` with the photo and
+arrow keys belong to the focused dropdown: browsing and choosing are separate modes,
+and flipping back is the way between them. Which is why there are two flip-back
+buttons, one at each end of the back panel, styled as buttons rather than links.
 
 ## The problem it solves
 

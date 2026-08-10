@@ -87,18 +87,18 @@ const html = await render({ id: 'pick' });
 fs.writeFileSync('/tmp/pick.html', html);
 await page.goto('file:///tmp/pick.html');
 
-console.log('=== layout: shuffle sits on the photo ===');
-const shufBox = await page.locator('#shuf').boundingBox();
+console.log('=== layout: controls sit on the photo ===');
+const shufBox = await page.locator('#next').boundingBox();
 const imgBox = await page.locator('.shot').boundingBox();
-ok(!!shufBox, 'shuffle button exists');
+ok(!!shufBox, 'the next arrow exists');
 ok(shufBox.x >= imgBox.x && shufBox.y >= imgBox.y &&
    shufBox.x + shufBox.width <= imgBox.x + imgBox.width + 1 &&
    shufBox.y + shufBox.height <= imgBox.y + imgBox.height + 1,
-   'shuffle is inside the image bounds, costing no vertical space');
-ok(await page.evaluate(() => getComputedStyle(document.getElementById('shuf')).position) === 'absolute',
+   'it is inside the image bounds, costing no vertical space');
+ok(await page.evaluate(() => getComputedStyle(document.getElementById('next')).position) === 'absolute',
    'and it is an overlay');
-ok((await page.evaluate(() => getComputedStyle(document.getElementById('shuf')).boxShadow)).length > 5,
-   'it glows');
+ok((await page.evaluate(() => getComputedStyle(document.getElementById('toBack')).boxShadow)).length > 5,
+   'the Details pill glows, since that is the one to notice');
 
 console.log('\n=== the flip ===');
 const flipped = () => page.evaluate(() => document.getElementById('flip').classList.contains('flipped'));
@@ -221,11 +221,11 @@ console.log('\n=== front overlays must not show through the flipped card ===');
   ok(await page.evaluate(() =>
     getComputedStyle(document.getElementById('toBack')).pointerEvents) === 'none',
     'and not clickable through the back');
-  const shufOpacity = await page.evaluate(() => {
-    const b = document.getElementById('shuf');
+  const navOpacity = await page.evaluate(() => {
+    const b = document.getElementById('next');
     return b ? getComputedStyle(b).opacity : 'absent';
   });
-  ok(shufOpacity === '0' || shufOpacity === 'absent', 'same for the shuffle pill: ' + shufOpacity);
+  ok(navOpacity === '0' || navOpacity === 'absent', 'same for the nav arrows: ' + navOpacity);
   await page.click('#toFront');
   await page.waitForTimeout(700);
   ok(await opacity() === '1', 'and they come back when flipped to the front');

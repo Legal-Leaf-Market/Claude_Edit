@@ -89,7 +89,7 @@ const itemLine = (evil.html.match(/var D = (\{.*\});/) || [])[1] || '';
 ok(itemLine.length > 0, 'found the embedded payload');
 ok(!itemLine.includes('<'), 'embedded JSON has no raw < at all, so it cannot close the script tag');
 ok(itemLine.includes('\\u003c'), 'the angle brackets are unicode-escaped instead');
-ok(JSON.parse(itemLine).sizes[0].item.name === PRODUCTS[1].name,
+ok(JSON.parse(itemLine).slides[0].sizes[0].item.name === PRODUCTS[1].name,
    'and it still parses back to the exact product name');
 const evilImg = (evil.html.match(/<meta property="og:image" content="([^"]*)"/) || [])[1];
 ok(evilImg === 'https://legal-leafmarket.com/og-image.png', 'javascript: image fell back');
@@ -258,11 +258,11 @@ console.log('\n=== shuffle ===');
   globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: POOL }) });
 
   const first = await run('pick');
-  /* The label is short because it now sits on the photo as an overlay pill; the
-     cap it shuffles within moved into the tooltip. */
-  ok(/id="shuf"[^>]*>Shuffle 1\/3</.test(first.html), 'overlay shuffle button names the position');
-  ok(/class="ov shuf"/.test(first.html), 'and is styled as a glowing photo overlay');
-  ok(/title="Show another ounce under \$50"/.test(first.html), 'tooltip still states the cap');
+  /* Now a slideshow: arrows on the photo and a position counter, rather than a
+     random jump per click. */
+  ok(/id="prev"/.test(first.html) && /id="next"/.test(first.html), 'prev and next arrows exist');
+  ok(/id="count"[^>]*>1 of 3</.test(first.html), 'the counter states the position');
+  ok(/class="ov nav prev"/.test(first.html), 'arrows are photo overlays');
   const b0 = JSON.parse((first.html.match(/var BASE = (\{.*?\});/) || [])[1]);
   ok(b0.rank === 0 && b0.of === 3, 'events carry rank and pool size: rank=' + b0.rank + ' of=' + b0.of);
   ok(b0.pid === 'a', 'rank 0 is the best value');
@@ -272,24 +272,32 @@ console.log('\n=== shuffle ===');
   const t2 = (n) => (second.html.match(new RegExp('<meta property="' + n + '" content="([^"]*)"')) || [])[1];
   ok(t2('og:title') === 'Ounce B (1oz) $44', 'i=1 renders the second best: ' + t2('og:title'));
   ok(second.html.includes('"variantId":"V-b"'), 'and its cart item is the right product');
-  ok(/>Shuffle 2\/3</.test(second.html), 'button reflects the new position');
+  ok(/id="count"[^>]*>2 of 3</.test(second.html), 'counter reflects the requested slide');
 
   // Out of range must clamp rather than 404 or render nothing.
   const far = await run('pick', null, { i: '99' });
   ok(far.status === 200, 'i=99 still renders, status ' + far.status);
-  ok(/>Shuffle 3\/3</.test(far.html), 'clamped to the last rank');
+  ok(/id="count"[^>]*>3 of 3</.test(far.html), 'clamped to the last slide');
   const neg = await run('pick', null, { i: '-4' });
-  ok(/>Shuffle 1\/3</.test(neg.html), 'a negative index falls back to the best');
+  ok(/id="count"[^>]*>1 of 3</.test(neg.html), 'a negative index falls back to the best');
 
-  // Shuffle must not silently drop a custom cap or band.
+  // Moving slides must keep the URL shareable without dropping a custom cap.
   ok(/new URLSearchParams\(location\.search\)/.test(first.html) && /q\.set\('i'/.test(first.html),
-     'shuffle preserves the query string and only changes i');
-  ok(/LL\.track\('shuffle'/.test(first.html), 'shuffle is tracked');
+     'the URL tracks the slide and only changes i');
+  ok(/history\.replaceState/.test(first.html), 'without stacking a history entry per tap');
+  ok(/LL\.track\('slide'/.test(first.html), 'slide moves are tracked');
+  // All ten slides ship with the page, so moving is instant rather than a reload.
+  const allSlides = JSON.parse((first.html.match(/var D = (\{[\s\S]*?\});\n/) || [])[1]);
+  ok(allSlides.slides.length === 3, 'every slide is embedded, got ' + allSlides.slides.length);
+  ok(allSlides.slides.every((z) => z.img && z.lab != null && Array.isArray(z.sizes)),
+     'each carries its own photo, lab panel and sizes');
+  ok(allSlides.start === 0, 'starting slide recorded');
 
-  // One qualifying product means nothing to shuffle to, so no dead button.
+  // One qualifying product means nothing to move between, so no arrows.
   globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [POOL[1]] }) });
   const lone = await run('pick');
-  ok(!/id="shuf"/.test(lone.html), 'no shuffle button when only one ounce qualifies');
+  ok(!/id="next"/.test(lone.html) && !/id="count"/.test(lone.html),
+     'no arrows or counter when only one ounce qualifies');
   ok(/Add to cart/.test(lone.html), 'but the page still works');
 }
 
@@ -337,11 +345,12 @@ console.log('\n=== multi-strain option labels ===');
   ok(__test.saysWeightAlready('1 oz', '1oz'), '"1 oz" counts as already stating 1oz');
   ok(!__test.saysWeightAlready('Mudslide (Indica Hybrid)', '1oz'), 'a strain name does not');
   const D = JSON.parse((page.html.match(/var D = (\{.*?\});\n/) || [])[1]);
-  ok(D.sizes.every((z) => typeof z.display === 'string' && z.display.length > 0),
+  const S0 = D.slides[0];
+  ok(S0.sizes.every((z) => typeof z.display === 'string' && z.display.length > 0),
      'every size in the payload carries a display string');
-  ok(D.sizes[0].display === 'Royal Zkittlez (Indica Hybrid) · 1oz',
-     'display is strain plus weight: ' + D.sizes[0].display);
-  ok(D.sizes[1].item.variantId === 'V2' && D.sizes[1].item.size === 'Mudslide (Indica Hybrid) - New Mediums',
+  ok(S0.sizes[0].display === 'Royal Zkittlez (Indica Hybrid) · 1oz',
+     'display is strain plus weight: ' + S0.sizes[0].display);
+  ok(S0.sizes[1].item.variantId === 'V2' && S0.sizes[1].item.size === 'Mudslide (Indica Hybrid) - New Mediums',
      'the cart item still carries the raw label the site cart expects');
 }
 
@@ -414,16 +423,17 @@ console.log('\n=== a price with no buyable size is not a dead end ===');
   ok(/\$25/.test(pg.html), 'shows the price it has');
   ok(/id="add"/.test(pg.html), 'and still offers Add to cart rather than dead-ending');
   const D = JSON.parse((pg.html.match(/var D = (\{.*?\});\n/) || [])[1]);
-  ok(D.sizes.length === 1, 'one fallback option is offered, got ' + D.sizes.length);
-  ok(D.sizes[0].item.ref === 'refcode' && D.sizes[0].item.coupon === 'CODE',
+  const F = D.slides[0];
+  ok(F.sizes.length === 1, 'one fallback option is offered, got ' + F.sizes.length);
+  ok(F.sizes[0].item.ref === 'refcode' && F.sizes[0].item.coupon === 'CODE',
      'the fallback item keeps the affiliate ref and coupon');
-  ok(D.sizes[0].price === 25, 'at the price shown');
+  ok(F.sizes[0].price === 25, 'at the price shown');
 
   // With no price either, there is nothing to add and it should say so.
   const NOTHING = { ...NOSIZE, id: 's__nothing', sale: 0, startsAt: 0 };
   globalThis.fetch = async () => ({ ok: true, json: async () => ({ products: [NOTHING] }) });
   const none = await run('s__nothing');
-  ok(!/id="add"/.test(none.html), 'no Add button when there is no price at all');
+  ok(/id="add"[^>]*hidden/.test(none.html), 'the Add button is hidden when there is no price at all');
   ok(/has not published a buyable size/.test(none.html), 'says why');
   ok(/consumables/.test(none.html), 'and still offers the comparison');
 }
