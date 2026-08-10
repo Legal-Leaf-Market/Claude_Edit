@@ -122,7 +122,8 @@ app/
     health                  Freshness and config, read this first when confused
     alerts                  Saved alert CRUD
     auth/[...all]           Better Auth
-    cron/*                  4 jobs, all fail closed on CRON_SECRET
+    cron/*                  Ingest per source, refresh-deals, weekly-digest.
+                            All fail closed on CRON_SECRET
 lib/
   env.ts                    Every integration exposes isConfigured; nothing throws
   ingestion/ebay-feed.ts    Transport + TSV parsing (section 3)
@@ -321,7 +322,7 @@ The job functions live in `lib/ingestion/`. There are two triggers:
 
 Never fork the logic between them. Add work to the job function.
 
-- All four cron routes **fail closed on `CRON_SECRET`**: unset returns 503,
+- Every cron route **fails closed on `CRON_SECRET`**: unset returns 503,
   wrong bearer returns 401. Unset mattering more than wrong is the point, these
   routes burn the eBay call budget and send email.
 - Ingestion worker concurrency is **1** on purpose. These jobs are bounded by
@@ -401,7 +402,7 @@ Never fork the logic between them. Add work to the job function.
 | `GOAFFPRO_*_REF_PARAM` / `GOAFFPRO_*_REF_CODE` | One pair per small independent Shopify/WooCommerce seller (Folkcraft, Acoustic Guitar, Jamstik, Jackson Audio, Eminence Digital, Haze Guitar, EART Guitar, Play With Authority, Pures Music, Squaver, Eason Music Store, Go Kalimba). Catalogue ingestion needs no credential at all; an unset code just means a null `affiliate_url` until the referral is confirmed. |
 | `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
 | `REDIS_URL` | BullMQ queues and the shared rate-limit counter. Optional. |
-| `CRON_SECRET` | All nine crons. Unset = 503, wrong = 401. Load bearing. |
+| `CRON_SECRET` | Every `/api/cron/*` route. Unset = 503, wrong = 401. Load bearing: these burn the eBay call budget and send mail to the whole subscriber list. |
 | `BETTER_AUTH_SECRET` | Accounts and alerts. Unset = auth routes 503, rest of site unaffected. |
 | `RESEND_API_KEY` / `DISCORD_WEBHOOK_URL` | Alert delivery. Each no-ops with a warning. |
 | `ADMIN_PASSCODE` | `/admin/operating-model`. Unset = nobody can sign in, ever. See section 12. |
