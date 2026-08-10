@@ -1,13 +1,36 @@
 # Product cards for shared links: patch for legal-leafmarket.com
 
-These two files belong in the **legal-leaf-market/code_backup** repo, not this one.
-They are staged here because this session only had read access to that repo.
+**Merged.** These landed on `code_backup` `main` (merge commit `563f7f7`, plus
+`2c4211f`), so the copies here are a reference, not a pending change.
 
 | File here | Goes to |
 |---|---|
 | `api-share.js` | `api/share.js` |
 | `vercel.json.patch` | apply to `vercel.json` (adds one rewrite) |
 | `test-share.mjs` | wherever you keep test scripts; it imports `../api-share.js` |
+
+## /p/pick, the self-updating weekly pick
+
+`/p/pick` resolves the best-value ounce under $50 from the live feed on every
+request, so there is no weekly step where a product id gets pasted into a link and
+no stored choice that can go stale or sell out. Point a permanent short link at it
+once and the pick rotates itself.
+
+It ranks size rows rather than products, because a product's headline price per
+gram usually comes from a quarter pound. The weight window is a **band** (25 to
+40g), not a floor, and a test is what forced that: with a floor alone a quarter
+pound at $45 wins a "best ounce under $50" query outright, since 112g clears a 28g
+floor and $45 clears the cap. The card would then read "4oz $45" under a message
+promising an ounce.
+
+Overridable per request: `?max=` price cap, `?g=` / `?gmax=` the weight band,
+`?category=` a different category, `?category=any` to drop the filter. If the pick
+ever comes up empty, `?category=any` is the first thing to try, since the likeliest
+cause is the classifier labelling an ounce as something other than THCA Flower.
+
+An empty result answers 200 with a plain "nothing qualifies right now" and no cart
+button, rather than 404 or a fabricated pick. A link already sitting in someone's
+DM should not break because the feed has nothing cheap this week.
 
 ## The problem it solves
 

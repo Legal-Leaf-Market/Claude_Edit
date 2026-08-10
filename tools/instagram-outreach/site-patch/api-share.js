@@ -112,6 +112,63 @@ function cartItem(p, idx) {
   };
 }
 
+/* ---- /p/pick: the weekly pick, computed rather than curated ----
+ *
+ * "Best value ounce under $50" is a query, not an editorial decision, and this
+ * site already holds the one number that answers it: price per gram. So the pick
+ * resolves from live data on every request, which means it cannot advertise a
+ * product that sold out or a price that moved, and there is no weekly step where
+ * somebody pastes a product id into a link.
+ *
+ * It ranks SIZE ROWS, not products: a product's headline perG can come from a
+ * quarter pound, which is not an ounce. Ties break on id so the choice is stable
+ * between requests rather than flipping with feed ordering.
+ *
+ * The weight window is a BAND, not a floor, and that matters. With a floor alone
+ * a quarter pound at $45 wins the "best ounce under $50" query outright: 112g
+ * clears a 28g floor and $45 clears the cap, so the card would read "4oz $45"
+ * under a message promising an ounce. Better value per gram, wrong promise. The
+ * band keeps the pick to the thing that was actually advertised.
+ */
+function pickBest(list, opts) {
+  var best = null;
+  for (var i = 0; i < list.length; i++) {
+    var p = list[i];
+    if (!p || p.inStock === false) continue;
+    if (opts.category && p.category !== opts.category) continue;
+    var sizes = Array.isArray(p.sizes) ? p.sizes : [];
+    for (var j = 0; j < sizes.length; j++) {
+      var price = Number(sizes[j] && sizes[j][1]);
+      var grams = Number(sizes[j] && sizes[j][2]);
+      if (!isFinite(price) || price <= 0) continue;
+      if (!isFinite(grams) || grams < opts.minGrams) continue;
+      if (opts.maxGrams && grams > opts.maxGrams) continue;
+      if (price > opts.maxPrice) continue;
+      var perG = price / grams;
+      var key = p.id + '#' + j;
+      if (!best || perG < best.perG || (perG === best.perG && key < best.key)) {
+        best = { product: p, index: j, perG: perG, key: key };
+      }
+    }
+  }
+  return best;
+}
+
+function noPick(canonical, opts) {
+  return page({
+    title: 'No pick right now: Legal-Leaf Market',
+    ogTitle: 'Legal-Leaf Market',
+    ogDesc: 'Compare legal hemp prices across trusted stores by price per gram.',
+    ogImage: FALLBACK_IMG,
+    canonical,
+    noindex: true,
+    body: `<h1>Nothing qualifies right now</h1>
+<p class="meta">No in-stock ounce under ${esc(money(opts.maxPrice))} in the feed at the moment.
+Rather than show you something that is not the deal it claims to be, here is everything.</p>
+<a class="buy" href="${SITE}/consumables">Compare every store</a>`,
+  });
+}
+
 function description(p, h) {
   const bits = [];
   if (h.weight) bits.push(h.weight);
@@ -197,7 +254,26 @@ export default async function handler(req, res) {
 
   if (!rawId) return res.status(404).send(notFound(canonical));
 
+  /* A price cap and a minimum weight, both overridable, so the same route can
+     answer "best ounce under $50" or "best quarter under $25" later without a
+     second endpoint. */
+  const isPick = rawId.toLowerCase() === 'pick';
+  const pickOpts = {
+    maxPrice: Number(req.query && req.query.max) > 0 ? Number(req.query.max) : 50,
+    /* An ounce is 28g, and stores label it 28 to 31. The band excludes a half
+       (14g) below and two ounces (56g) above, so "the ounce pick" is an ounce. */
+    minGrams: Number(req.query && req.query.g) > 0 ? Number(req.query.g) : 25,
+    maxGrams: Number(req.query && req.query.gmax) > 0 ? Number(req.query.gmax) : 40,
+    /* ?category=any drops the filter, which is the first thing to try if the pick
+       comes up empty: the classifier may label an ounce as something else. */
+    category: (function (c) {
+      if (!c) return 'THCA Flower';
+      return String(c).toLowerCase() === 'any' ? null : String(c);
+    })(req.query && req.query.category),
+  };
+
   let product = null;
+  let chosenIndex = sizeIndex;
   try {
     // Same origin, so this rides the CDN cache /api/products already populates
     // instead of triggering another twenty-store scrape.
@@ -207,15 +283,34 @@ export default async function handler(req, res) {
     if (r.ok) {
       const data = await r.json();
       const list = Array.isArray(data && data.products) ? data.products : [];
-      product = list.find((p) => p && p.id === rawId) || null;
+      if (isPick) {
+        const best = pickBest(list, pickOpts);
+        if (best) { product = best.product; chosenIndex = best.index; }
+      } else {
+        product = list.find((p) => p && p.id === rawId) || null;
+      }
     }
   } catch {
     product = null;
   }
 
-  if (!product) return res.status(404).send(notFound(canonical));
+  if (!product) {
+    /* A pick that found nothing is not a broken link, it is an honest "nothing
+       qualifies", so it answers 200 with a real page rather than a 404. */
+    return isPick
+      ? res.status(200).send(noPick(canonical, pickOpts))
+      : res.status(404).send(notFound(canonical));
+  }
 
-  const h = headline(product);
+  const h = chosenIndex != null && Array.isArray(product.sizes) && product.sizes[chosenIndex]
+    ? (function (row) {
+        return {
+          price: Number(row[1]),
+          weight: weightLabel(Number(row[2])) || row[0] || '',
+          perG: Number(row[2]) > 0 ? Math.round((Number(row[1]) / Number(row[2])) * 100) / 100 : product.perG,
+        };
+      })(product.sizes[chosenIndex])
+    : headline(product);
   const img = httpsOnly(product.image, FALLBACK_IMG);
   const priceText = h.price != null ? money(h.price, product.cur) : '';
   const ogTitle = priceText
@@ -229,7 +324,7 @@ export default async function handler(req, res) {
   // drawer and per-store checkout take it from there. That is what keeps the
   // shopper on our domain: the vendor link is reached through our cart, the same
   // way it is everywhere else on the site, not as a shortcut out of here.
-  const item = cartItem(product, sizeIndex);
+  const item = cartItem(product, chosenIndex);
   const itemJson = JSON.stringify(item).replace(/</g, '\\u003c');
 
   const body = `<img class="shot" src="${esc(img)}" alt="${esc(product.name)}"/>
@@ -273,4 +368,4 @@ Legal-Leaf Market does not take the order or hold the stock. Ranking is never af
 }
 
 // Exported for tests. Not part of the route contract.
-export const __test = { esc, httpsOnly, money, weightLabel, headline, description, cartItem };
+export const __test = { esc, httpsOnly, money, weightLabel, headline, description, cartItem, pickBest };
