@@ -407,8 +407,8 @@ export type SiteResult = {
   totalOrders: number
   totalGmv: number
   /** The LAST month of whatever horizon was requested, not literally month 24 on an extended run. */
-  month24Revenue: number
-  month24Sessions: number
+  finalMonthRevenue: number
+  finalMonthSessions: number
   exitRunRate: number
   maturityRevPerSession: number
   effective: Assumptions
@@ -422,8 +422,8 @@ export type ModelResult = {
     year1Revenue: number
     year2Revenue: number
     totalRevenue: number
-    month24Revenue: number
-    month24Sessions: number
+    finalMonthRevenue: number
+    finalMonthSessions: number
     exitRunRate: number
     blendedRevPerSession: number
     totalSessions: number
@@ -517,8 +517,8 @@ export function runModel(
       totalSessions: months.reduce((s, m) => s + m.sessions, 0),
       totalOrders: months.reduce((s, m) => s + m.orders, 0),
       totalGmv: months.reduce((s, m) => s + m.gmv, 0),
-      month24Revenue: last.revenue,
-      month24Sessions: last.sessions,
+      finalMonthRevenue: last.revenue,
+      finalMonthSessions: last.sessions,
       exitRunRate: last.revenue * 12,
       maturityRevPerSession: maturityRevPerSession(effective),
       effective,
@@ -527,8 +527,8 @@ export function runModel(
   }
 
   const list = order.map((k) => sites[k])
-  const month24Revenue = list.reduce((s, p) => s + p.month24Revenue, 0)
-  const month24Sessions = list.reduce((s, p) => s + p.month24Sessions, 0)
+  const finalMonthRevenue = list.reduce((s, p) => s + p.finalMonthRevenue, 0)
+  const finalMonthSessions = list.reduce((s, p) => s + p.finalMonthSessions, 0)
 
   return {
     sites,
@@ -537,10 +537,10 @@ export function runModel(
       year1Revenue: list.reduce((s, p) => s + p.year1Revenue, 0),
       year2Revenue: list.reduce((s, p) => s + p.year2Revenue, 0),
       totalRevenue: list.reduce((s, p) => s + p.totalRevenue, 0),
-      month24Revenue,
-      month24Sessions,
-      exitRunRate: month24Revenue * 12,
-      blendedRevPerSession: month24Sessions > 0 ? month24Revenue / month24Sessions : 0,
+      finalMonthRevenue,
+      finalMonthSessions,
+      exitRunRate: finalMonthRevenue * 12,
+      blendedRevPerSession: finalMonthSessions > 0 ? finalMonthRevenue / finalMonthSessions : 0,
       totalSessions: list.reduce((s, p) => s + p.totalSessions, 0),
       indexablePages: list.reduce((s, p) => s + p.profile.indexablePages, 0),
     },

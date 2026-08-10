@@ -307,11 +307,11 @@ export function OperatingModelDashboard() {
               Fix those two things and the base case is realistic: roughly{" "}
               <strong className="text-[var(--cream)]">{money(models.base.totals.year1Revenue)}</strong> in
               year one, <strong className="text-[var(--cream)]">{money(models.base.totals.year2Revenue)}</strong> in
-              year two, exiting month 24 around{" "}
-              <strong className="text-[var(--cream)]">{money(models.base.totals.month24Revenue)}/month</strong>. Leave
+              year two, exiting month {horizonMonths} around{" "}
+              <strong className="text-[var(--cream)]">{money(models.base.totals.finalMonthRevenue)}/month</strong>. Leave
               them unfixed and it's the bear column, about{" "}
-              <strong className="text-[var(--cream)]">{money(models.bear.totals.totalRevenue)}</strong> across two
-              years. The upside case is a genuine{" "}
+              <strong className="text-[var(--cream)]">{money(models.bear.totals.totalRevenue)}</strong> across the
+              full {horizonMonths} months. The upside case is a genuine{" "}
               <strong className="text-[var(--cream)]">{money(models.bull.totals.exitRunRate)}</strong> exit
               run-rate if one channel (most likely eBay production access) actually breaks
               through.
@@ -324,9 +324,9 @@ export function OperatingModelDashboard() {
               value={money(t.year2Revenue)}
               sub={`${(t.year1Revenue > 0 ? t.year2Revenue / t.year1Revenue : 0).toFixed(1)}× year 1`}
             />
-            <Stat label="Exit run-rate" value={`${money(t.exitRunRate)}/yr`} sub={`${money(t.month24Revenue)} in month ${horizonMonths}`} />
+            <Stat label="Exit run-rate" value={`${money(t.exitRunRate)}/yr`} sub={`${money(t.finalMonthRevenue)} in month ${horizonMonths}`} />
             <Stat label="Blended rev / session" value={`$${t.blendedRevPerSession.toFixed(3)}`} sub={money(t.blendedRevPerSession * 1000) + " per 1,000"} />
-            <Stat label={`Sessions needed, mo ${horizonMonths}`} value={count(t.month24Sessions)} sub={`≈ ${count(Math.round(t.month24Sessions / 30))} a day`} />
+            <Stat label={`Sessions needed, mo ${horizonMonths}`} value={count(t.finalMonthSessions)} sub={`≈ ${count(Math.round(t.finalMonthSessions / 30))} a day`} />
             <Stat label="Indexable pages today" value={String(t.indexablePages)} sub="category pages; gear pages scale automatically" />
           </div>
         </div>
@@ -538,7 +538,12 @@ export function OperatingModelDashboard() {
         <p className="eyebrow">Trajectory</p>
         <h2>Monthly revenue</h2>
         <p className="intro">
-          {active.label} case, {money(t.month24Revenue)} in {model.monthLabels[23]}.
+          {/* finalMonthRevenue is the FINAL month of the selected horizon, not
+              month 24, so the calendar label has to come from the end of the
+              label array. Pinned to index 23 it read the month-120 revenue
+              under a month-24 date on the default view. */}
+          {active.label} case, {money(t.finalMonthRevenue)} in{" "}
+          {model.monthLabels[model.monthLabels.length - 1]}.
         </p>
         <div className="section-body">
           <RevenueChart months={site.months} color={SITE_PROFILE.color} />

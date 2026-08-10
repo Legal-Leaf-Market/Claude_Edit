@@ -156,9 +156,9 @@ export function AllSitesDashboard() {
         <h2>{horizon === "120" ? "Ten-year" : "Two-year"} totals, all five sites</h2>
         <div className="section-body grid grid-cols-2 gap-4 sm:grid-cols-3">
           <Stat label="Total revenue" value={money(t.totalRevenue)} sub={`${active.label} case, ${horizonMonths} months`} />
-          <Stat label="Exit run-rate" value={`${money(t.exitRunRate)}/yr`} sub={`${money(t.month24Revenue)} in the final month`} />
+          <Stat label="Exit run-rate" value={`${money(t.exitRunRate)}/yr`} sub={`${money(t.finalMonthRevenue)} in the final month`} />
           <Stat label="Blended rev / session" value={rps(t.blendedRevPerSession)} sub={money(t.blendedRevPerSession * 1000) + " per 1,000"} />
-          <Stat label="Total sessions" value={count(t.totalSessions)} sub={`${count(t.month24Sessions)} in the final month`} />
+          <Stat label="Total sessions" value={count(t.totalSessions)} sub={`${count(t.finalMonthSessions)} in the final month`} />
           <Stat label="Indexable pages" value={String(t.indexablePages)} sub="across all five sites today" />
           <Stat label="Sites combined" value={String(ALL_SITE_PROFILES.length)} sub="Gear Avail + 4 sister sites" />
         </div>
@@ -168,7 +168,7 @@ export function AllSitesDashboard() {
         <p className="eyebrow">Trajectory</p>
         <h2>Combined monthly revenue</h2>
         <p className="intro">
-          {active.label} case, summed across all five sites, {money(t.month24Revenue)} in the final
+          {active.label} case, summed across all five sites, {money(t.finalMonthRevenue)} in the final
           month shown.
         </p>
         <div className="section-body">

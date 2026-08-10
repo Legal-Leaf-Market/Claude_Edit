@@ -106,7 +106,7 @@ describe("runModel / scenario multiplier", () => {
     const bull: Scenario = { ...NEUTRAL_SCENARIO, sessions12: 1.6, sessions24: 2.2, conversion: 1.15 }
     const base = runModel([PROFILE], undefined, NEUTRAL_SCENARIO, undefined)
     const bullModel = runModel([PROFILE], undefined, bull, undefined)
-    expect(bullModel.sites.gearavail.month24Sessions).toBeGreaterThan(base.sites.gearavail.month24Sessions)
+    expect(bullModel.sites.gearavail.finalMonthSessions).toBeGreaterThan(base.sites.gearavail.finalMonthSessions)
     expect(PROFILE.assumptions.sessionsMonth24).toBe(12000)
   })
 
