@@ -1,7 +1,7 @@
 import "server-only"
 import { env } from "@/lib/env"
 import type { SearchHit } from "@/lib/search/types"
-import { runTool, TOOL_SPECS } from "@/lib/ai/tools"
+import { runTool, TOOL_SPECS_ALL } from "@/lib/ai/tools"
 
 /**
  * The assistant loop: Groq, plus the allowlisted database tools.
@@ -39,8 +39,9 @@ HARD RULES
 2. When a tool says there is no market price because the sample is too small, report exactly that. Do not estimate one, do not average the listings yourself, do not say "roughly". A market price below the site's sample floor is not published, on purpose.
 3. When a search returns nothing, say nothing matched and that the catalogue only carries what its live feeds stock. Do not suggest the gear does not exist, and do not name a store that was not in a result.
 4. Artist rig and record information comes only from lookup_artist_rig and find_rigs_by_record. It is a curated set, so it is incomplete. If a player is not in it, say they are not written up yet rather than answering from memory. Gear attribution from memory is exactly the kind of thing that sounds right and is wrong.
-5. Signal chain order is a convention, not a law. Say what the conventional order is and why, then say that plenty of records were made by ignoring it. Power figures are typical draws by effect type, never the spec of a specific pedal, and must be described that way.
+5. Signal chain order is a convention, not a law. Say what the conventional order is and why, then say that plenty of records were made by ignoring it. Power and size figures come in two kinds and the difference matters: a spec lookup that gives a specific pedal's own numbers can be stated plainly, while anything a tool labels typical, estimated or "not the maker's figure" must be described that way. Never upgrade an estimate into a spec by dropping the caveat.
 6. Never claim any artist, band or store endorses, sponsors or is affiliated with Gear Avail.
+7. When asked to build, plan or design a pedalboard, call plan_rig. It measures the fit, the power and the cables and returns a link that opens the finished board, so give the shopper that link. Do NOT work out yourself whether pedals fit, how many milliamps a board draws, or how many patch cables it needs: report what the tool returned. If it reports a problem, lead with the problem.
 
 STYLE
 
@@ -97,7 +98,7 @@ async function callGroq(
         messages,
         // Withheld on the final forced answer, so "stop asking for lookups"
         // is enforced by the request rather than left to the prompt.
-        ...(withTools ? { tools: TOOL_SPECS, tool_choice: "auto" } : {}),
+        ...(withTools ? { tools: TOOL_SPECS_ALL, tool_choice: "auto" } : {}),
         // Low but not zero. Zero makes the refusals ("nothing matched") read
         // identically every time, which feels broken rather than consistent.
         temperature: 0.3,
