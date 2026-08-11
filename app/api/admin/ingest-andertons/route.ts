@@ -38,7 +38,7 @@ export const maxDuration = 300
  * credential. It spends no metered call budget (Impact does not charge per
  * pull the way eBay's keyset does) and sends no mail.
  */
-export async function POST() {
+export async function POST(request: Request) {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 })
   }
@@ -53,10 +53,20 @@ export async function POST() {
     )
   }
 
+  /*
+   * A slice per call, so the 300 second ceiling stops being a coin flip.
+   * The upsert is idempotent and keyed on (source, external_id) and the feed
+   * is a full snapshot, so slice N always means the same rows and a repeated
+   * or overlapping call costs nothing but time.
+   */
+  const body = (await request.json().catch(() => ({}))) as { offset?: number; limit?: number }
+  const offset = Number.isFinite(body.offset) ? Math.max(0, Number(body.offset)) : 0
+  const limit = Number.isFinite(body.limit) ? Math.max(1, Number(body.limit)) : 4000
+
   const startedAt = Date.now()
 
   try {
-    const stats = await ingestAndertonsFeed()
+    const stats = await ingestAndertonsFeed(undefined, { offset, limit })
     return NextResponse.json({
       job: "andertons-catalogue",
       ranFrom: "admin",

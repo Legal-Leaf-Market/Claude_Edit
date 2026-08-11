@@ -42,16 +42,55 @@ export function MaintenanceButton() {
 function AndertonsButton() {
   const [state, setState] = useState<"idle" | "running" | "done" | "error">("idle")
   const [message, setMessage] = useState<string | null>(null)
+  const [progress, setProgress] = useState<{ wrote: number; total: number } | null>(null)
 
+  /**
+   * Pull the catalogue a slice at a time, until it is done.
+   *
+   * The loop lives in the browser rather than in the function because a Vercel
+   * function stops at 300 seconds and 27,000 rows may not fit inside one. Each
+   * request writes a slice and reports where to resume; the browser has no
+   * such ceiling, so one click still means one finished catalogue.
+   *
+   * Every slice is idempotent, so a refresh mid-run loses nothing but time.
+   */
   async function run() {
     setState("running")
     setMessage(null)
+    setProgress(null)
+
+    const LIMIT = 4000
+    let offset = 0
+    let written = 0
+    let inserted = 0
+    let updated = 0
+
     try {
-      const response = await fetch("/api/admin/ingest-andertons", { method: "POST" })
-      const body = await response.json()
-      if (!response.ok) throw new Error(`${body?.error ?? response.status}${body?.hint ? ` -- ${body.hint}` : ""}`)
+      for (let guard = 0; guard < 40; guard++) {
+        const response = await fetch("/api/admin/ingest-andertons", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ offset, limit: LIMIT }),
+        })
+        const body = await response.json()
+        if (!response.ok) {
+          throw new Error(`${body?.error ?? response.status}${body?.hint ? ` -- ${body.hint}` : ""}`)
+        }
+        if (body.status === "failed") throw new Error(body.error ?? "The pull failed.")
+        if (body.status === "skipped") throw new Error(body.reason ?? "Skipped.")
+
+        written += body.wrote ?? 0
+        inserted += body.stats?.inserted ?? 0
+        updated += body.stats?.updated ?? 0
+        setProgress({ wrote: written, total: body.totalRows ?? 0 })
+
+        if (body.done) break
+        offset = (body.offset ?? offset) + (body.wrote ?? LIMIT)
+        if (!body.wrote) break
+      }
+
       setMessage(
-        `Done in ${body.seconds}s. Saw ${body.seen ?? "?"} rows, inserted ${body.inserted ?? 0}, updated ${body.updated ?? 0}, skipped ${body.skipped ?? 0}. Now run the rebuild below.`,
+        `Wrote ${written.toLocaleString()} rows: ${inserted.toLocaleString()} new, ${updated.toLocaleString()} updated. Now run the rebuild below so they get priced.`,
       )
       setState("done")
     } catch (caught) {
@@ -64,9 +103,10 @@ function AndertonsButton() {
     <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
       <h2 className="font-display text-base font-black text-[var(--text)]">Pull the Anderton&apos;s catalogue</h2>
       <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
-        Fetches roughly 27,000 products over FTP from Impact and upserts them. This may TIME OUT:
-        a Vercel function gets 300 seconds and this is the largest feed on the site. If it does,
-        that is the answer rather than a fault, and the job needs the BullMQ worker instead.
+        Roughly 27,000 products over FTP from Impact. It arrives in slices of 4,000 because a
+        serverless function stops at 300 seconds, and the browser keeps asking for the next one
+        until it is finished. Leave this tab open. Safe to re-run: every row is keyed, so a repeat
+        costs time and nothing else.
       </p>
 
       <button type="button" onClick={run} disabled={state === "running"} className="stomp">
@@ -74,8 +114,15 @@ function AndertonsButton() {
           className={`h-3.5 w-3.5 ${state === "running" ? "animate-pulse" : ""}`}
           aria-hidden="true"
         />
-        {state === "running" ? "Pulling, this takes minutes" : "Pull it now"}
+        {state === "running" ? "Pulling..." : "Pull it now"}
       </button>
+
+      {state === "running" && progress && (
+        <p className="mt-3 text-sm tabular-nums text-[var(--accent-text)]">
+          {progress.wrote.toLocaleString()}
+          {progress.total ? ` of ${progress.total.toLocaleString()}` : ""} rows written
+        </p>
+      )}
 
       {state === "done" && message && (
         <p className="mt-3 flex items-start gap-2 text-sm text-[var(--money)]">

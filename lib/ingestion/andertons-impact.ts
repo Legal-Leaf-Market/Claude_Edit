@@ -395,6 +395,14 @@ export type AndertonsIngestOutcome = {
   stats: UpsertStats
   resolved: number
   error?: string
+  /** Rows the feed contained in total, so a caller can size the next slice. */
+  totalRows?: number
+  /** Where this slice started. */
+  offset?: number
+  /** How many rows this call actually wrote. */
+  wrote?: number
+  /** False when there is more catalogue left to fetch. */
+  done?: boolean
 }
 
 function emptyStats(): UpsertStats {
@@ -402,7 +410,44 @@ function emptyStats(): UpsertStats {
 }
 
 /**
- * Ingest the Anderton's catalogue.
+ * How much of the catalogue to take in one call.
+ *
+ * WHY THIS EXISTS. 27,052 rows is a lot of upserting, and a Vercel function
+ * stops at 300 seconds whether or not it has finished. All-or-nothing meant
+ * either the whole catalogue landed or the attempt taught us nothing, which is
+ * a bad trade when the alternative is this cheap.
+ *
+ * Chunking works here for one specific reason: the upsert is idempotent and
+ * keyed on (source, external_id), so the same rows can be written twice with
+ * no effect and a run can be resumed by asking for a later slice. The feed is
+ * a full snapshot rather than a delta, so slice N always means the same rows.
+ *
+ * The cost is re-downloading the file per chunk, which is real and worth it:
+ * bandwidth is free and a half-written catalogue is not.
+ */
+export type IngestWindow = {
+  /** Row index to start at, after parsing. */
+  offset?: number
+  /** How many rows to write. Omit for all of them. */
+  limit?: number
+}
+
+/**
+ * Which rows this call writes, and whether anything is left.
+ *
+ * Pulled out as a pure function so the windowing is testable without a
+ * database or an FTP server. `done` is what decides whether the run may expire
+ * missing rows, so getting it wrong retires a live catalogue.
+ */
+export function sliceRows<T>(rows: T[], window: IngestWindow = {}): { slice: T[]; offset: number; done: boolean } {
+  const offset = Math.max(0, window.offset ?? 0)
+  const limit = window.limit && window.limit > 0 ? window.limit : rows.length
+  const slice = rows.slice(offset, offset + limit)
+  return { slice, offset, done: offset + slice.length >= rows.length }
+}
+
+/**
+ * Ingest the Anderton's catalogue, or one slice of it.
  *
  * `fetchImpl` is injectable so the integration test can run the whole job
  * against a fixture without an FTP server, the same way the eBay tests drive
@@ -410,6 +455,7 @@ function emptyStats(): UpsertStats {
  */
 export async function ingestAndertonsFeed(
   fetchImpl: (config: FtpConfig) => Promise<string> = fetchAndertonsCatalogue,
+  window: IngestWindow = {},
 ): Promise<AndertonsIngestOutcome> {
   if (!env.impact.hasAndertonsFeed) {
     const reason =
@@ -431,12 +477,17 @@ export async function ingestAndertonsFeed(
 
     const { rows, seen, skipped, columns } = parseAndertonsFeed(text)
 
-    const stats = await upsertListings(rows)
+    const { slice, offset, done } = sliceRows(rows, window)
+
+    const stats = await upsertListings(slice)
     stats.seen = seen
     stats.skipped += skipped
 
     const { resolved } = await resolveAndReprice(stats)
-    await expirePastEndDate("andertons")
+    // Expiring only makes sense once the whole snapshot has been written.
+    // Doing it after a partial slice would retire every row the feed still
+    // lists but this chunk had not reached yet.
+    if (done) await expirePastEndDate("andertons")
 
     await finishRun(run, {
       status: "ok",
@@ -446,10 +497,10 @@ export async function ingestAndertonsFeed(
       bytesDownloaded: Buffer.byteLength(text),
       // Recording the resolved column names makes a later schema change
       // visible in the run history rather than only in a failure.
-      detail: { resolved, priceChanges: stats.priceChanges, columns },
+      detail: { resolved, priceChanges: stats.priceChanges, columns, offset, wrote: slice.length, done },
     })
 
-    return { status: "ok", stats, resolved }
+    return { status: "ok", stats, resolved, totalRows: rows.length, offset, wrote: slice.length, done }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     console.error(`[andertons] failed: ${message}`)
