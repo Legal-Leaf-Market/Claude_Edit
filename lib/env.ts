@@ -12,8 +12,29 @@
  * The one hard requirement is DATABASE_URL.
  */
 
+/**
+ * Read a string variable, TRIMMED.
+ *
+ * The trim is not tidiness, it is a bug this actually cost a deploy cycle.
+ * `IMPACT_ANDERTONS_FTP_HOST` was pasted into Vercel with a leading space, and
+ * every dashboard preserves surrounding whitespace on paste because it cannot
+ * know whether the value is meant to carry it. " products.impact.com" then
+ * reaches DNS as a hostname containing a space and fails ENOTFOUND, which
+ * reads exactly like an outage or a firewall rather than like a typo, because
+ * the offending character is invisible everywhere it is printed.
+ *
+ * Nothing this file reads is a value whose leading or trailing whitespace is
+ * meaningful: they are hostnames, URLs, ids, paths and keys. That includes the
+ * credentials. An FTP password whose first character is a space is
+ * indistinguishable from a paste accident from here, and the accident is
+ * overwhelmingly the likelier of the two.
+ *
+ * A value that is only whitespace is treated as unset, so a var someone
+ * cleared by putting a space in it falls back rather than reporting itself
+ * configured with nothing behind it.
+ */
 function str(name: string, fallback = ""): string {
-  const v = process.env[name]
+  const v = process.env[name]?.trim()
   return v === undefined || v === "" ? fallback : v
 }
 
