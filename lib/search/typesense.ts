@@ -238,6 +238,14 @@ function filterBy(params: SearchParams): string {
   }
 
   list("source", params.sources)
+  // Region restriction. Must mirror the Postgres backend's excludeSource
+  // clause exactly: the two backends answering the same query differently is
+  // the failure the `backend` field on SearchResult exists to make visible,
+  // and a shopper seeing UK-only stock only when Typesense happens to be down
+  // would be a particularly confusing version of it.
+  if (params.excludeSources?.length) {
+    clauses.push(`source:!=[${params.excludeSources.map((v) => `\`${v}\``).join(",")}]`)
+  }
   list("brand", params.brands)
   list("category", params.categories)
   list("condition", params.conditions)

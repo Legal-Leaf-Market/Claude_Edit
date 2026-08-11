@@ -44,9 +44,33 @@ export type StoreProfile = {
    * back to its monogram in StoreMark; nothing breaks.
    */
   logoUrl?: string
+  /**
+   * ISO 3166-1 alpha-2 countries this store will actually ship an order to.
+   *
+   * ABSENT MEANS UNRESTRICTED, which is the honest default: most stores here
+   * ship broadly and we have no evidence otherwise, so we do not invent a
+   * restriction. Set it only where the merchant genuinely will not deliver
+   * outside a region, and the site then keeps those listings away from
+   * shoppers who cannot buy them.
+   *
+   * This exists because of the house rule in section 15: prices shown must be
+   * prices the shopper can actually get. Anderton's is UK only, so showing a
+   * shopper in Ohio a Guildford price they can never pay is the same failure
+   * as showing a stale one.
+   */
+  shipsTo?: string[]
 }
 
 export const STORES: StoreProfile[] = [
+  {
+    source: "andertons",
+    slug: "andertons",
+    name: "Andertons Music Company",
+    tagline: "Guildford's guitar institution, making musicians since 1964",
+    shipsTo: ["GB"],
+    blurb:
+      "Andertons has been selling instruments out of Guildford since 1964, and the catalogue is the biggest of any store here by a wide margin: guitars, amps, synths, drums and studio gear. Prices are in pounds and they ship from the UK, which is worth factoring in if you are ordering from elsewhere.",
+  },
   {
     source: "eartguitar",
     slug: "eart-guitar",

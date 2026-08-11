@@ -20,6 +20,12 @@ export type SearchParams = {
   categories?: string[]
   conditions?: string[]
   sources?: Source[]
+  /**
+   * Sources to EXCLUDE, on top of any include list. Carries the region filter:
+   * a store that will not ship to the shopper's country is removed here rather
+   * than shown and then apologised for. See lib/regions.ts.
+   */
+  excludeSources?: Source[]
   minPriceCents?: number
   maxPriceCents?: number
   dealsOnly?: boolean

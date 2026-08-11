@@ -10,6 +10,7 @@ import { ingestReverbFeed } from "@/lib/ingestion/reverb-awin"
 import { ingestSweetwaterFeed } from "@/lib/ingestion/sweetwater-linkconnector"
 import { ingestGear4MusicFeed } from "@/lib/ingestion/gear4music-awin"
 import { ingestZzoundsFeed } from "@/lib/ingestion/zzounds-cj"
+import { ingestAndertonsFeed } from "@/lib/ingestion/andertons-impact"
 import { ingestFullCompassFeed } from "@/lib/ingestion/fullcompass-cj"
 import { ingestPinevilleMusicFeed } from "@/lib/ingestion/pinevillemusic-cj"
 import { ingestFolkcraftFeed } from "@/lib/ingestion/folkcraft-shopify"
@@ -76,6 +77,11 @@ export function startIngestionWorker(): Worker<IngestionJob> {
         }
         case "gear4music-feed": {
           const result = await ingestGear4MusicFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "andertons-catalogue": {
+          const result = await ingestAndertonsFeed()
           await syncSearchIndex()
           return result
         }

@@ -35,6 +35,15 @@ const SIMILARITY_FLOOR = 0.15
 type Conditions = {
   text: SQL | null
   source: SQL | null
+  /**
+   * Region restriction: stores that will not ship to this shopper.
+   *
+   * Its own key rather than folded into `source` so that allExcept() keeps it
+   * applied while counting the SOURCE facet. It is a hard constraint, not a
+   * toggleable filter, and a store that cannot deliver must not appear in the
+   * facet list at all, let alone with a count beside it.
+   */
+  excludeSource: SQL | null
   brand: SQL | null
   category: SQL | null
   condition: SQL | null
@@ -60,6 +69,9 @@ function buildConditions(params: SearchParams): Conditions {
              OR g.model ILIKE ${"%" + q + "%"})`
       : null,
 
+    excludeSource: params.excludeSources?.length
+      ? sql`l.source NOT IN ${params.excludeSources}`
+      : null,
     source: params.sources?.length
       ? sql`l.source IN ${params.sources}`
       : null,

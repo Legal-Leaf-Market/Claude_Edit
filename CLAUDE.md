@@ -2,7 +2,7 @@
 
 Read this fully before editing. Sister project to **Legal-Leaf Market**,
 **Herbal Leaf Market** and **Nicotia Market**, and it inherits their house
-rules (section 13). The difference: those sites scrape public storefront JSON
+rules (section 14). The difference: those sites scrape public storefront JSON
 from merchants who want the traffic. This one mostly consumes **gated partner
 feeds** whose terms say exactly what you may and may not do with their data.
 That constraint shapes most of the decisions below, and undoing one of them
@@ -116,19 +116,27 @@ built for that site's own frontend rather than published for this use.
   "Used Gear API" name floating around online is Guitar Center's own URL
   taxonomy, not a data API, and the community tools that exist scrape an
   undocumented frontend Algolia index. Do not build against it.
-- **Anderton's, applied for via Impact.com (formerly Impact Radius). Application
-  submitted 10 Aug 2026 with a written pitch, decision pending.** The site's Universal Tracking Tag
-  (`app/layout.tsx`) is already live sitewide for Impact's own site-verification
-  step; that is independent of catalogue ingestion and does not mean the
-  affiliate program itself is approved. Unlike CJ or Awin, Impact has no fixed
-  product-feed schema: brands configure their own field names per catalogue
-  (confirmed against Impact's own "File Formats for Product Catalogs" docs),
-  so there is nothing to write a row-normaliser against yet.
-  `IMPACT_ANDERTONS_FEED_URL` (`lib/env.ts`) is a reserved placeholder, unset
-  as the expected state, same as every other unconfirmed source above. Once
-  the application is approved and Anderton's actual feed URL and column names
-  are in hand, build `lib/ingestion/andertons-impact.ts` against the real
-  schema rather than a guess, following the same shape as the CJ modules.
+- **Anderton's, via Impact.com. APPROVED, and INGESTED** by
+  `lib/ingestion/andertons-impact.ts`. Roughly 27,000 products, easily the
+  largest source here. Three things make it unlike every other feed:
+  **It arrives by FTP**, not an authenticated HTTPS URL: Impact drops
+  catalogues on `products.impact.com`, one directory per advertiser. That is
+  why the job runs on the BullMQ worker and NOT a cron route, since a
+  serverless function cannot hold an FTP control connection plus passive data
+  ports open for a 27k-row download.
+  **The schema is the brand's, not the network's.** Impact mandates exactly
+  three fields (item id, name, link URL) and lets brands name the rest;
+  Anderton's catalogue is literally "Custom AMC Feed". So the parser binds by
+  HEADER NAME through an alias table and, when a mandatory column cannot be
+  resolved, throws naming the headers it actually saw. Never bind by position,
+  for the same reason section 3 gives for the eBay feed.
+  **It is priced in GBP and ships UK ONLY.** See section 16 on regions: a
+  Guildford price shown to a shopper in Ohio fails the same house rule a stale
+  price does.
+  Commission is 1% to 4%, the 4% scoped to a named brand list, and that list is
+  deliberately invisible to the ingester: a commission-aware feed reader is one
+  refactor from filtering down to the paying brands, which is ranking by payout
+  performed at the row level.
 
 **Facebook Marketplace is out of scope.** Not "later", not "behind a flag". It
 has no public API, scraping it violates Meta's terms, and it is the exact
@@ -511,7 +519,36 @@ legal-leafmarket.com, adapted to one site instead of four.
 
 ---
 
-## 13. House rules inherited from the sister sites
+## 13. Regional serviceability: only show what a shopper can buy
+
+`lib/regions.ts`. Anderton's ships only within the UK, and it is the biggest
+catalogue on the site, so without this a shopper in Ohio searching for a
+Victory preamp gets a page of prices they can never pay.
+
+- **A store declares its own restriction**, as `shipsTo` on its `StoreProfile`.
+  Absent means unrestricted, which is the honest default: most stores here ship
+  broadly and we have no evidence otherwise, so we do not invent a limit.
+- **Restricted stores are HIDDEN, not badged**, for shoppers they cannot reach.
+  A badge on every fourth card still means someone scans, compares, gets
+  interested and then loses.
+- **But never silently.** The count and the store name are always stated, and
+  `?ships=all` is always one click away. Hiding inventory without saying so on
+  a site whose promise is showing everything is its own dishonesty.
+- **An UNKNOWN region shows everything.** Geo-IP is a guess (VPNs, carrier
+  routing, no header in development), and hiding the largest catalogue from a
+  British shopper whose VPN exited in Amsterdam is worse than showing a clearly
+  labelled listing they cannot order.
+- **An explicit cookie choice beats the geo guess.** The expat and the VPN user
+  are exactly who a geo lookup gets wrong.
+- **Both search backends must filter identically.** `excludeSources` is applied
+  in the Postgres WHERE clause and in the Typesense `filter_by`; a shopper
+  seeing UK-only stock only when Typesense happens to be down would be a
+  particularly confusing bug. It is also kept OUT of `allExcept()`, so a store
+  that cannot deliver never appears in the source facet at all.
+
+---
+
+## 14. House rules inherited from the sister sites
 
 - **No em dashes anywhere in copy.** Use a comma, colon, or parentheses.
 - **Do not GET an Awin tracking link in testing** (section 5).
@@ -532,7 +569,7 @@ legal-leafmarket.com, adapted to one site instead of four.
   never the money. The two cases look identical from outside, so write down
   which one it was.
 
-## 14. Hard "do not" list
+## 15. Hard "do not" list
 
 - Do NOT call the Reverb API for listings, or add a scraping fallback anywhere.
 - Do NOT write Facebook Marketplace ingestion.
@@ -551,4 +588,10 @@ legal-leafmarket.com, adapted to one site instead of four.
 - Do NOT publish a market price below `MIN_SAMPLE_SIZE`.
 - Do NOT let the cron guard fail open.
 - Do NOT parse the feed TSV by column position.
+- Do NOT show a listing from a store that cannot ship to the shopper without
+  saying so, and do NOT hide one without saying that either (section 13).
+- Do NOT make the ingester aware of which brands pay commission. Filtering a
+  feed down to the paying brands is ranking by payout at the row level.
+- Do NOT bind the Impact catalogue by column position. It is brand-configured
+  and the order is not stable; bind by header name and fail loudly.
 - Do NOT point the test suite at a database you care about; it truncates.
