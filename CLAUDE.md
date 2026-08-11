@@ -648,6 +648,21 @@ That puts a real credential in clear on the public internet, and it is a
 decision to take deliberately if at all, not one to bury in a `catch` block.
 The same instinct as the Reverb API having no fallback path (section 2).
 
+**THE DROP SERVES AN INCREMENTAL FEED, AND THAT MUST NEVER EXPIRE.** Listing
+the account's home directory found exactly one entry, `INCREMENTAL/`. An
+incremental feed carries what CHANGED rather than what exists, and everything
+downstream of the parser was written for a full snapshot. `expirePastEndDate`
+retires every active row a completed run did not see: correct after a
+snapshot, catastrophic after a delta, where a file of forty changed products
+would retire the other 27,000 with nothing thrown and the run logged as a
+success. `isIncrementalDrop()` reads the PATH, because it has to be known
+before anything is written, and expiry now needs BOTH a finished walk and a
+snapshot. It errs towards "delta" on an ambiguous name: a false positive only
+leaves stale rows visible until a full pull runs, which is the side of the tie
+this project takes everywhere else. **If a `FULL` or snapshot directory ever
+appears, that is the one to point `IMPACT_ANDERTONS_FTP_PATH` at**, and only
+then does expiry mean anything.
+
 **THE DROP IS SFTP, AND THE PROBE IS WHAT SETTLED IT (11 Aug 2026).** Impact's
 documentation says "FTP" throughout, so this was built on `basic-ftp` and every
 failure read as a wrong option on the right library. The probe found:

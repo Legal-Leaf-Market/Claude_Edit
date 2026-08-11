@@ -449,6 +449,31 @@ export type DropListing = {
  */
 const FALLBACK_PATHS = [".", "/"]
 
+/**
+ * Is this drop a DELTA rather than a full snapshot?
+ *
+ * THE MOST DANGEROUS THING ON THIS TRANSPORT, and it was discovered by
+ * listing: the account's home directory contains exactly one directory,
+ * INCREMENTAL. An incremental feed carries what CHANGED, not the catalogue.
+ *
+ * Everything downstream was written for a full snapshot. `expirePastEndDate`
+ * retires every active row the run did not see, which is correct after a
+ * snapshot and catastrophic after a delta: a delta of forty changed products
+ * would retire the other 27,000, every one of them a live listing, with
+ * nothing thrown and the run reported as a success. That is the same failure
+ * as expiring at the API paging ceiling, and it is worse here because the
+ * delta will usually be small.
+ *
+ * Detected from the PATH rather than from the file contents because it has to
+ * be known before anything is written, and because Impact names these
+ * directories rather than marking the rows. A false positive costs nothing:
+ * skipping expiry leaves stale rows visible until a full pull runs, which is
+ * the error this project already chooses in every other tie.
+ */
+export function isIncrementalDrop(path: string): boolean {
+  return /incremental|delta|changes?\b/i.test(path)
+}
+
 function isMissingDirectory(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
   return /No such file|ENOENT/i.test(message)
@@ -531,13 +556,52 @@ export async function listAndertonsDrop(config: SftpConfig): Promise<DropListing
         modified: f.modifyTime ? new Date(f.modifyTime).toISOString() : null,
       }))
 
+    const directories = listing.filter((f) => f.type === "d").map((f) => f.name)
+
+    /*
+     * DESCEND ONE LEVEL WHILE DISCOVERING, and only while discovering.
+     *
+     * The first real listing came back as a single entry, INCREMENTAL/, which
+     * answers "where am I" and not "what do I set the path to". Stopping there
+     * would cost another environment change and another deploy to learn what
+     * is inside it, and this source has already spent several of those. One
+     * level is enough to turn the listing into the answer, and it only runs on
+     * the discovery path, so a normal list stays a single round trip.
+     *
+     * Bounded deliberately: a handful of directories, and failures skipped
+     * rather than thrown, since a directory this account cannot open is
+     * information too and must not lose the rest of the listing.
+     */
+    const children: { name: string; sizeBytes: number; modified: string | null }[] = []
+    if (missing) {
+      for (const dir of directories.slice(0, 5)) {
+        const childPath = `${listedPath.replace(/\/+$/, "")}/${dir}`
+        try {
+          const inner = await client.list(childPath)
+          for (const f of inner.slice(0, 40)) {
+            children.push({
+              name: `${dir}/${f.name}${f.type === "d" ? "/" : ""}`,
+              sizeBytes: f.type === "-" ? f.size : 0,
+              modified: f.modifyTime ? new Date(f.modifyTime).toISOString() : null,
+            })
+          }
+        } catch {
+          children.push({ name: `${dir}/  (could not be opened)`, sizeBytes: 0, modified: null })
+        }
+      }
+    }
+
     return {
       connected: true,
       path: listedPath,
       ...(missing ? { configuredPath: config.path, configuredPathMissing: true } : {}),
       // Directories included by name only, since a drop that turns out to be
       // one directory per date is a path problem rather than an empty one.
-      files: [...files, ...listing.filter((f) => f.type === "d").map((f) => ({ name: `${f.name}/`, sizeBytes: 0, modified: null }))],
+      files: [
+        ...files,
+        ...directories.map((name) => ({ name: `${name}/`, sizeBytes: 0, modified: null })),
+        ...children,
+      ],
       // Never claim a pull target from a fallback directory: the file a pull
       // would take is the one under the CONFIGURED path, and that path does
       // not exist yet.
@@ -1221,6 +1285,12 @@ export type AndertonsIngestOutcome = {
    * is the one ending that must NOT expire missing rows.
    */
   ceilingReached?: boolean
+  /**
+   * True when the file was a delta rather than a snapshot. The other reason a
+   * completed run must not expire: the rows it did not see are unchanged, not
+   * gone.
+   */
+  incremental?: boolean
 }
 
 function emptyStats(): UpsertStats {
@@ -1303,10 +1373,22 @@ export async function ingestAndertonsFeed(
     stats.skipped += skipped
 
     const { resolved } = await resolveAndReprice(stats)
-    // Expiring only makes sense once the whole snapshot has been written.
-    // Doing it after a partial slice would retire every row the feed still
-    // lists but this chunk had not reached yet.
-    if (done) await expirePastEndDate("andertons")
+
+    /*
+     * TWO CONDITIONS, AND BOTH ARE ABOUT THE SAME MISTAKE.
+     *
+     * Expiring retires every active row this run did not see, so it is only
+     * ever correct when "did not see" means "the catalogue no longer lists
+     * it". That needs the whole file written (`done`), because expiring after
+     * a partial slice retires everything the later slices had not reached.
+     *
+     * And it needs the file to be a SNAPSHOT. Anderton's drop turned out to
+     * serve an INCREMENTAL directory, which carries what changed rather than
+     * what exists, and expiring after a delta of forty products would retire
+     * the other 27,000. Nothing would throw and the run would report success.
+     */
+    const incremental = isIncrementalDrop(env.impact.andertonsFtpPath)
+    if (done && !incremental) await expirePastEndDate("andertons")
 
     await finishRun(run, {
       status: "ok",
@@ -1316,10 +1398,19 @@ export async function ingestAndertonsFeed(
       bytesDownloaded: Buffer.byteLength(text),
       // Recording the resolved column names makes a later schema change
       // visible in the run history rather than only in a failure.
-      detail: { resolved, priceChanges: stats.priceChanges, columns, offset, wrote: slice.length, done },
+      detail: {
+        resolved,
+        priceChanges: stats.priceChanges,
+        columns,
+        offset,
+        wrote: slice.length,
+        done,
+        incremental,
+        expired: done && !incremental,
+      },
     })
 
-    return { status: "ok", stats, resolved, totalRows: rows.length, offset, wrote: slice.length, done }
+    return { status: "ok", stats, resolved, totalRows: rows.length, offset, wrote: slice.length, done, incremental }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     console.error(`[andertons] failed: ${message}`)

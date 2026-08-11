@@ -32,7 +32,7 @@ vi.mock("ssh2-sftp-client", () => ({
   },
 }))
 
-const { fetchAndertonsCatalogue, listAndertonsDrop } = await import("@/lib/ingestion/andertons-impact")
+const { fetchAndertonsCatalogue, isIncrementalDrop, listAndertonsDrop } = await import("@/lib/ingestion/andertons-impact")
 
 const CONFIG = {
   host: "products.impact.com",
@@ -256,5 +256,95 @@ describe("when the configured path does not exist", () => {
     list.mockRejectedValue(new Error("No such file or directory /Andertons-Music-Company/"))
 
     await expect(listAndertonsDrop(CONFIG)).rejects.toThrow(/Andertons-Music-Company/)
+  })
+})
+
+/**
+ * INCREMENTAL is a delta, and expiring after one would empty the site.
+ *
+ * The live drop's home directory contained exactly one entry: INCREMENTAL/.
+ * Everything downstream of the parser was written for a full snapshot, and
+ * expirePastEndDate retires every active row a completed run did not see.
+ * After a snapshot that is correct. After a delta of forty changed products
+ * it retires the other 27,000, all of them live, with nothing thrown and the
+ * run reported as a success.
+ */
+describe("telling a delta feed from a snapshot", () => {
+  it("recognises Impact's INCREMENTAL directory however it is written", () => {
+    for (const path of [
+      "/INCREMENTAL/",
+      "INCREMENTAL",
+      "/Andertons/incremental/",
+      "/feeds/Incremental/2026-08-11/",
+    ]) {
+      expect(isIncrementalDrop(path)).toBe(true)
+    }
+  })
+
+  it("does not mistake an ordinary catalogue path for a delta", () => {
+    for (const path of ["/Andertons-Music-Company/", "/FULL/", "/snapshot/", "/"]) {
+      expect(isIncrementalDrop(path)).toBe(false)
+    }
+  })
+
+  /*
+   * Deliberately generous: "delta" and "changes" are the other names Impact
+   * and its merchants use for the same thing. A false positive only skips
+   * expiry, which leaves stale rows visible until a full pull runs, and this
+   * project takes that side of every tie.
+   */
+  it("errs towards treating an ambiguous name as a delta", () => {
+    expect(isIncrementalDrop("/delta/")).toBe(true)
+    expect(isIncrementalDrop("/changes/")).toBe(true)
+  })
+})
+
+describe("descending while discovering", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    connect.mockResolvedValue(undefined)
+    end.mockResolvedValue(undefined)
+  })
+
+  /*
+   * A listing of one directory name answers "where am I" and not "what do I
+   * set the path to". Descending turns it into the answer without another
+   * environment change and another deploy.
+   */
+  it("shows what is inside a directory when the configured path was missing", async () => {
+    list.mockImplementation(async (path: string) => {
+      if (path === "/Andertons-Music-Company/") throw new Error("No such file")
+      if (path === ".") return [entry("INCREMENTAL", "d")]
+      return [entry("andertons-2026-08-11.csv.gz")]
+    })
+
+    const listing = await listAndertonsDrop(CONFIG)
+
+    expect(listing.files.map((f) => f.name)).toContain("INCREMENTAL/")
+    expect(listing.files.map((f) => f.name)).toContain("INCREMENTAL/andertons-2026-08-11.csv.gz")
+  })
+
+  /** A directory that cannot be opened is information, not a reason to fail. */
+  it("keeps the rest of the listing when one directory cannot be opened", async () => {
+    list.mockImplementation(async (path: string) => {
+      if (path === "/Andertons-Music-Company/") throw new Error("No such file")
+      if (path === ".") return [entry("INCREMENTAL", "d"), entry("readme.txt")]
+      throw new Error("Permission denied")
+    })
+
+    const listing = await listAndertonsDrop(CONFIG)
+
+    expect(listing.connected).toBe(true)
+    expect(listing.files.map((f) => f.name)).toContain("readme.txt")
+    expect(listing.files.some((f) => /could not be opened/.test(f.name))).toBe(true)
+  })
+
+  /** A normal list stays one round trip: no descending when the path is right. */
+  it("does not descend when the configured path exists", async () => {
+    list.mockResolvedValue([entry("sub", "d"), entry("catalogue.csv")])
+
+    await listAndertonsDrop(CONFIG)
+
+    expect(list).toHaveBeenCalledTimes(1)
   })
 })
