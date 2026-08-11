@@ -104,10 +104,28 @@
     border-radius: 8px; padding: 12px; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
     margin-top: 10px;
   }
+  .drop {
+    border: 2px dashed var(--border); border-radius: 10px; padding: 22px 16px; text-align: center;
+    color: var(--muted); font-size: 14px; cursor: pointer; background: var(--bg);
+  }
+  .drop.over { border-color: var(--accent); color: var(--text); }
+  .drop b { color: var(--text); }
+  #shotProgress { margin-top: 10px; font-size: 14px; color: var(--muted); min-height: 20px; }
+  /* The review table. Nothing imports without passing through here: OCR is
+     confident and wrong often enough that an unreviewed add would DM a stranger. */
+  .review { margin-top: 12px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .review .rrow { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  .review .rrow:last-child { border-bottom: none; }
+  .review .rrow.dupe { opacity: 0.5; }
+  .review input[type="text"] { flex: 1 1 180px; min-width: 0; font: 600 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 5px 8px; }
+  .review .rname { flex: 1 1 140px; min-width: 0; color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .review .rsrc { flex: none; color: var(--muted); font-size: 12px; }
   @media (max-width: 640px) {
     li { flex-wrap: wrap; }
     .who { flex-basis: 100%; order: 2; }
     .badges, .acts { order: 3; }
+    .review .rrow { flex-wrap: wrap; }
+    .review .rname { flex-basis: 100%; }
   }
 </style>
 
@@ -130,7 +148,65 @@
   </div>
 
   <div class="card">
-    <h2>1. Campaign</h2>
+    <h2>1. Load your followers</h2>
+    <p class="sub" style="margin: 0 0 12px">
+      The list starts empty and stays in this page's own storage, so a reload does not cost
+      you the import. Screenshot your followers list on your phone, scrolling a screen at a
+      time with a row of overlap so nothing falls in a gap, then drop the images here. Reading
+      happens on your machine: the images are never uploaded anywhere.
+    </p>
+    <div class="row-controls" style="margin-bottom: 10px">
+      <label class="inline">your own handle, never imported
+        <input type="text" id="selfHandle" value="legal_leaf_market" style="width: 190px">
+      </label>
+    </div>
+    <div class="drop" id="drop">
+      <b>Drop follower screenshots here</b>, or click to pick them, or paste one with
+      <kbd>Ctrl</kbd> + <kbd>V</kbd>.
+      <input type="file" id="shotInput" accept="image/*" multiple hidden>
+    </div>
+    <div id="shotProgress"></div>
+
+    <details>
+      <summary>Or paste handles as text</summary>
+      <p class="sub" style="margin: 10px 0 6px">
+        One per line, with or without the @. Anything after a comma, a dash or a tab on the
+        same line is kept as the display name. Ending a handle with … or ... marks it as
+        truncated, so it links to Instagram search rather than a profile URL that would 404.
+      </p>
+      <textarea id="pasteBox" placeholder="lucienarmandvoss, Lucien Armand Voss&#10;breezy.1300 - B1300&#10;cannabis_my_medi…"></textarea>
+      <div class="row-controls" style="margin-top: 8px">
+        <button id="pasteParse">Read these</button>
+      </div>
+    </details>
+
+    <div id="reviewWrap" hidden>
+      <p class="sub" style="margin: 14px 0 0">
+        Check each one before adding. A handle read wrong does not fail, it opens a DM with
+        somebody unrelated, so anything the reader was unsure of starts unticked. Edit any
+        cell to fix it.
+      </p>
+      <div class="row-controls" style="margin-top: 10px">
+        <button data-review="all">Tick all</button>
+        <button data-review="none">Tick none</button>
+        <button data-review="sure">Only the confident ones</button>
+      </div>
+      <div class="review" id="review"></div>
+      <div class="row-controls" style="margin-top: 10px">
+        <button class="primary" id="reviewAdd">Add ticked to the list</button>
+        <button id="reviewCancel">Discard this read</button>
+      </div>
+    </div>
+
+    <div class="row-controls" style="margin-top: 12px">
+      <button id="rosterExport">Export the list as JSON</button>
+      <button id="rosterClear">Clear the whole list</button>
+    </div>
+    <div class="sub" id="rosterCount" style="margin-top: 10px"></div>
+  </div>
+
+  <div class="card">
+    <h2>2. Campaign</h2>
     <div class="row-controls">
       <span class="seg">
         <button id="campIntro" aria-pressed="true">Intro, 3 replies</button>
@@ -148,7 +224,7 @@
   </div>
 
   <div class="card">
-    <h2>2. Open the tabs</h2>
+    <h2>3. Open the tabs</h2>
     <p class="sub" style="margin: 0 0 10px">
       Chrome allows exactly one new tab per click, so this walks the list one at a time:
       click "Open next tab" or press <kbd>O</kbd>. Allow pop-ups for this page once
@@ -183,7 +259,7 @@
   </div>
 
   <div class="card">
-    <h2>3. This week's pick</h2>
+    <h2>4. This week's pick</h2>
     <p class="sub" style="margin: 0 0 12px">
       One product, rotated each week, from legal-leafmarket.com. Use the <code>/p/&lt;id&gt;</code>
       share URL: that route emits the product's own Open Graph tags, so Instagram renders a
@@ -216,7 +292,7 @@
   </div>
 
   <div class="card">
-    <h2>4. The intro replies</h2>
+    <h2>5. The intro replies</h2>
     <p class="sub" style="margin: 0 0 12px">Sent on first contact, three short messages. Unchanged from what you are already running.</p>
     <div class="field">
       <label for="r0">Reply 1</label>
@@ -236,7 +312,7 @@
   </div>
 
   <div class="card">
-    <h2>5. Install the sender</h2>
+    <h2>6. Install the sender</h2>
     <div class="row-controls">
       <a class="bmk" id="bmk" href="#" title="Drag me to your bookmarks bar">Outreach sender</a>
       <button id="copyBmk">Copy bookmarklet code</button>
@@ -266,7 +342,7 @@
   </div>
 
   <div class="card">
-    <h2>6. Muted, and never messaged again</h2>
+    <h2>7. Muted, and never messaged again</h2>
     <p class="sub" style="margin: 0 0 10px">
       Anyone who asks to be left alone goes here. Muted accounts are excluded from every
       selection and every batch, in both campaigns, permanently. Paste handles one per
@@ -785,88 +861,41 @@
 
 <script>
 /* ------------------------------------------------------------------ *
- * Follower list read off the 8 screenshots, newest first.
+ * The roster. Empty until you load one, and kept in this page's own
+ * localStorage afterwards, so a reload does not cost you the import.
+ *
+ * It used to be a hard-coded list transcribed off eight screenshots, which
+ * meant the file only ever knew one person's followers and went stale the
+ * day after it was written. Section 1 reads them off screenshots instead.
  *
  * handle : the Instagram username.
- * exact  : false when the screenshot cut the handle off, so its link goes to
- *          Instagram search rather than a profile URL that would 404.
+ * exact  : false when the handle was cut off, by the screenshot or by
+ *          Instagram's own ellipsis, so its link goes to Instagram search
+ *          rather than a profile URL that would 404.
+ * name   : the display name under the handle, when one was readable.
  * kind   : 'shop' for a business or brand, 'person' for an individual,
  *          'noise' for engagement-farm and default-avatar number-string
  *          accounts. A starting guess for segmentation, not gospel: the
- *          under-$50 ounce is for people who might buy one.
+ *          under-$50 ounce is for people who might buy one. The screenshot
+ *          reader cannot infer this, so imported rows carry no kind until
+ *          you set one.
  * geo    : 'us' or 'intl' where the profile made it obvious, otherwise absent.
  *          A US hemp offer is noise to an account in Dubai or Bangkok.
  * ------------------------------------------------------------------ */
-const FOLLOWERS = [
-  { handle: "j.a.k.50a", name: "jak", exact: true, kind: "shop" },
-  { handle: "alexa_n6738", name: "", exact: true, kind: "person" },
-  { handle: "hebborns_family_f", name: "Hebborns Family Fu...", exact: false, kind: "shop", geo: "intl" },
-  { handle: "blazeone", name: "Blazeone45__", exact: false, kind: "shop", note: "trailing underscores unclear" },
-  { handle: "the_10.10_2026", name: "10/10", exact: true, kind: "shop" },
-  { handle: "charliemalandro", name: "Neko Hashi", exact: true, kind: "person" },
-  { handle: "evo.bubba.420", name: "", exact: true, kind: "person" },
-  { handle: "spareman87", name: "Alieu saidykhan", exact: true, kind: "person", geo: "intl" },
-  { handle: "afterlifedropss", name: "AfterlifeDrops", exact: true, kind: "shop", requested: true },
-  { handle: "paul1531993", name: "Paul", exact: true, kind: "person" },
-  { handle: "tuftonez.creations", name: "Beanie", exact: true, kind: "shop" },
-  { handle: "waynewell10", name: "Wayne well", exact: true, kind: "noise" },
-  { handle: "subscribe_1m_peo", name: "100 day challenge", exact: false, kind: "noise" },
-  { handle: "sacpl.ug420", name: "Sacplug", exact: true, kind: "shop", geo: "us" },
-  { handle: "geeklights.company", name: "Geeklights company", exact: true, kind: "shop" },
-  { handle: "jerry967997", name: "", exact: true, kind: "person" },
-  { handle: "kids05tj", name: "baby kids", exact: true, kind: "noise" },
-  { handle: "hellboy999m", name: "BABY KILO", exact: true, kind: "person" },
-  { handle: "premocremo420", name: "Cremo Premo", exact: true, kind: "shop" },
-  { handle: "la.reserve.bcn", name: "La Reserve backup", exact: true, kind: "shop", geo: "intl" },
-  { handle: "muggle_born92", name: "Chico_O'malley", exact: true, kind: "person" },
-  { handle: "thesnacklabrva", name: "The Snack Lab RVA", exact: true, kind: "shop", geo: "us" },
-  { handle: "flaco_weed4.20", name: "Flacoweed", exact: true, kind: "person" },
-  { handle: "vape_pod_supplier", name: "HuaWen Vape-Kevin", exact: true, kind: "shop", geo: "intl" },
-  { handle: "tribu.pampa.comu", name: "TRIBU PAMPA - Co...", exact: false, kind: "shop", geo: "intl" },
-  { handle: "lidupofficial", name: "LidUp", exact: true, kind: "shop" },
-  { handle: "rwandan_que", name: "Rwanda Queens in E...", exact: false, kind: "noise", geo: "intl", requested: true, note: "real handle starts with four underscores" },
-  { handle: "calidispensary018", name: "cali dispensary", exact: true, kind: "shop", geo: "us" },
-  { handle: "extractmanthailand", name: "extract man Thailand", exact: true, kind: "shop", geo: "intl" },
-  { handle: "capo_corleone8", name: "Teflon Don Cloudz", exact: true, kind: "shop", geo: "us" },
-  { handle: "chris.9897174", name: "", exact: true, kind: "noise" },
-  { handle: "labelbackup", name: "Logistic king", exact: true, kind: "shop" },
-  { handle: "josecreams__041", name: "rikinho__creams", exact: true, kind: "shop" },
-  { handle: "ddgreens349", name: "DdGreens349", exact: true, kind: "shop" },
-  { handle: "xwizard_kgx", name: "", exact: true, kind: "person" },
-  { handle: "giraffe.39609308", name: "", exact: true, kind: "noise" },
-  { handle: "puertoricospaceag", name: "puertoricospaceage...", exact: false, kind: "shop", geo: "us" },
-  { handle: "bigamoni", name: "", exact: true, kind: "person" },
-  { handle: "cloudyvibes881", name: "", exact: true, kind: "person", requested: true },
-  { handle: "functionjordan", name: "Jordan function", exact: true, kind: "shop", geo: "us" },
-  { handle: "grimsplix", name: "Splix", exact: true, kind: "shop" },
-  { handle: "mbembacalvados", name: "Mbemba Calvados", exact: true, kind: "person", geo: "intl" },
-  { handle: "lilkidmsa", name: "African Kid Voice", exact: true, kind: "person", geo: "intl" },
-  { handle: "saputra.4111757", name: "FARDA SAPUTRA", exact: true, kind: "noise", geo: "intl" },
-  { handle: "chelmodank710", name: "", exact: true, kind: "shop" },
-  { handle: "blackstamptriercof", name: "Black Stamp Trier", exact: false, kind: "shop", geo: "intl" },
-  { handle: "kaiquenascimento", name: "Kaique Nascimento", exact: false, kind: "person", geo: "intl" },
-  { handle: "khaneshaqzaai", name: "Khan_Eshaqzaai", exact: true, kind: "person", geo: "intl" },
-  { handle: "Kourtney Eaken", name: "handle was scrolled off screen", exact: false, kind: "person", note: "search by display name" },
-  { handle: "squashbros710", name: "", exact: true, kind: "shop", geo: "us" },
-  { handle: "anna.p.bergholm", name: "Anna Bergholm", exact: true, kind: "noise" },
-  { handle: "tenerifesocialclub", name: "Happy Island", exact: true, kind: "shop", geo: "intl" },
-  { handle: "exotic_kingdom_g", name: "Exotic Kingdom CS...", exact: false, kind: "shop", geo: "intl" },
-  { handle: "whv.headgrower", name: "Chief Cultivator", exact: true, kind: "shop" },
-  { handle: "puredry_eu", name: "Pure Dry", exact: true, kind: "shop", geo: "intl" },
-  { handle: "cannatrak", name: "Cannatrak", exact: true, kind: "shop" },
-  { handle: "qihe.biotech", name: "nickqi", exact: true, kind: "shop", geo: "intl" },
-  { handle: "drakensbergtattoos", name: "Wolf Moon Tattoos", exact: true, kind: "shop", geo: "intl" },
-  { handle: "velvetsmoking", name: "Velvet smoking", exact: true, kind: "shop", geo: "intl" },
-  { handle: "jellojayy191", name: "", exact: true, kind: "person" },
-  { handle: "smith_feff", name: "Jeff Smith", exact: true, kind: "noise" },
-  { handle: "verdelion__cannabi", name: "Verdelion | Cannabis...", exact: false, kind: "shop", geo: "intl" },
-  { handle: "uniqueconnoisseurs", name: "Unique Connoisseur's", exact: true, kind: "shop" },
-  { handle: "mediiicaliiius", name: "MediiiCaliii", exact: true, kind: "person" },
-  { handle: "arianamariah209", name: "Ariana M", exact: true, kind: "person" },
-  { handle: "mark.8447642", name: "", exact: true, kind: "noise" },
-  { handle: "scouseshell_420", name: "", exact: true, kind: "person", geo: "intl" },
-  { handle: "certifiedgreen1", name: "", exact: true, kind: "shop" }
-];
+const ROSTER_KEY = "llmOutreach.roster.v1";
+
+function loadRoster() {
+  try {
+    const r = JSON.parse(localStorage.getItem(ROSTER_KEY));
+    return Array.isArray(r) ? r.filter(f => f && typeof f.handle === "string" && f.handle) : [];
+  } catch (e) { return []; }
+}
+function saveRoster() {
+  try { localStorage.setItem(ROSTER_KEY, JSON.stringify(FOLLOWERS)); } catch (e) {}
+}
+
+let FOLLOWERS = loadRoster();
+
 
 const searchUrl = f => "https://www.instagram.com/explore/search/keyword/?q=" + encodeURIComponent(f.handle);
 /* ig.me/m/<handle> is a mobile app deep link and does not open a thread on
@@ -978,6 +1007,14 @@ function renderList() {
       .map(cb => cb.dataset.handle)
   );
   listEl.textContent = "";
+
+  if (!FOLLOWERS.length) {
+    const li = document.createElement("li");
+    li.style.cssText = "display:block;padding:22px 14px;color:var(--muted);text-align:center";
+    li.textContent = "No followers loaded. Drop some screenshots into section 1.";
+    listEl.appendChild(li);
+    return;
+  }
 
   FOLLOWERS.forEach((f, i) => {
     const li = document.createElement("li");
@@ -1385,6 +1422,358 @@ document.getElementById("copyBmk").addEventListener("click", async () => {
   setTimeout(() => { btn.textContent = "Copy bookmarklet code"; }, 2600);
 });
 
+function refreshFoot() {
+  const n = FOLLOWERS.length;
+  const partial = FOLLOWERS.filter(f => !f.exact).length;
+  const count = document.getElementById("rosterCount");
+  if (!n) {
+    count.textContent = "The list is empty. Load it from screenshots above.";
+    document.getElementById("foot").textContent =
+      "No accounts loaded yet. Nothing on this page can send anything until there are some.";
+    return;
+  }
+  const shops = FOLLOWERS.filter(f => f.kind === "shop").length;
+  const noise = FOLLOWERS.filter(f => f.kind === "noise").length;
+  const intl = FOLLOWERS.filter(f => f.geo === "intl").length;
+  count.textContent = n + (n === 1 ? " account" : " accounts") + " in the list" +
+    (partial ? ", " + partial + " with a partial handle" : "") + ".";
+  const extra = (shops || noise || intl)
+    ? " Tagged so far: " + shops + " shops or brands, " + noise + " that look like bots, " +
+      intl + " visibly outside the US."
+    : "";
+  document.getElementById("foot").textContent =
+    n + (n === 1 ? " account" : " accounts") + " loaded: " + (n - partial) +
+    " with an exact handle, " + partial + " truncated and pointed at Instagram search " +
+    "instead, since a guessed tail would 404." + extra;
+}
+
+/* ------------------------------------------------------------------ *
+ * Reading followers off screenshots.
+ *
+ * Instagram publishes no export and its API does not hand a business its own
+ * follower list, so a screenshot is the only route that does not involve
+ * scraping the site. The reading is done here in the page by tesseract.js,
+ * fetched once from a CDN on first use: the images never leave the machine,
+ * which matters because a follower list is other people's data.
+ *
+ * The output is REVIEWED, never added straight in. OCR is confident and wrong
+ * often enough that an unchecked import does not fail visibly, it opens a DM
+ * with somebody unrelated, and that is a worse outcome than reading nothing.
+ * ------------------------------------------------------------------ */
+
+const TESSERACT_SRC = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+
+/* Instagram's own chrome. Every one of these is a valid handle by shape, and
+   the row buttons in particular appear once per row, so without this list the
+   commonest "follower" in any import is @message. */
+const CHROME = new Set([
+  "message", "requested", "following", "follow", "followback", "remove", "removed",
+  "confirm", "delete", "cancel", "done", "edit", "share", "search", "subscriptions",
+  "followers", "flagged", "flag", "sort", "by", "date", "followed", "latest", "earliest",
+  "suggested", "for", "you", "verified", "new", "all", "instagram", "profile", "story",
+  "stories", "reels", "posts", "tagged", "close", "friends"
+]);
+
+/* The giveaway that a line holds a HANDLE rather than a display name: Instagram
+   puts the row button on the handle's line and never on the name's. Both look
+   alike to OCR otherwise, since plenty of display names ("comme222",
+   "geekbar_arabia", "Stickybanditofficial") are handle-shaped. */
+const ROW_BUTTON = /\b(message|requested|follow(?:ing|back)?|remove)\b/i;
+
+/* The tab row over the list, "417 followers 1,105 following Subscriptions Fla".
+   It contains "following", so it reads as a row button and the line looks like
+   an account; the counts are then rejected as numbers and the scan walks on to
+   the tab labels, where a truncated "Flagged" arrives as a perfectly plausible
+   handle. Recognising the line by its shape kills that whatever the labels are
+   cut down to, which is better than blacklisting "fla" and meeting "flag" next
+   time on a wider phone. */
+const CHROME_LINE = /\d[\d,.]*\s*follow(?:ers|ing)\b/i;
+
+function cleanHandle(raw) {
+  let s = String(raw || "").trim().replace(/^@+/, "");
+  let truncated = false;
+  /* Instagram truncates a long handle with its own ellipsis, and a screenshot
+     clips one at the edge. Either way the tail is unknown, so the row is marked
+     partial and links to search instead of a profile URL that would 404. */
+  if (/(…|\.{3})$/.test(s)) { truncated = true; s = s.replace(/(…|\.{3})$/, ""); }
+  s = s.toLowerCase().replace(/[^a-z0-9._]/g, "").replace(/^\.+/, "");
+  if (!truncated) s = s.replace(/\.+$/, "");     // a handle cannot end in a dot
+  return { handle: s, truncated: truncated };
+}
+
+function looksLikeHandle(s) {
+  if (!s || s.length < 2 || s.length > 30) return false;
+  if (!/^[a-z0-9._]+$/.test(s)) return false;
+  if (/^\d+$/.test(s)) return false;             // "417", "1,105": the counts, not people
+  if (/\.\./.test(s)) return false;
+  return !CHROME.has(s);
+}
+
+function selfHandle() { return cleanHandle(document.getElementById("selfHandle").value).handle; }
+
+function firstHandleToken(line) {
+  for (const part of line.split(/\s+/)) {
+    if (ROW_BUTTON.test(part)) continue;
+    const c = cleanHandle(part);
+    if (!looksLikeHandle(c.handle)) continue;
+    /* "sure" decides whether the row arrives ticked. A token that needed
+       characters stripped to become legal is a token the reader misread, and it
+       has to be looked at rather than quietly corrected. */
+    const asRead = String(part).trim().replace(/^@+/, "").toLowerCase();
+    return { handle: c.handle, truncated: c.truncated, sure: !c.truncated && c.handle === asRead };
+  }
+  return null;
+}
+
+function parseScreenshotText(text, src) {
+  const lines = String(text || "").split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const buttonLines = lines.filter(l => ROW_BUTTON.test(l)).length;
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (CHROME_LINE.test(lines[i])) continue;
+    /* With the buttons legible, only their lines are rows, and the display
+       names drop out for free. Without them (a narrow crop, a bad read) fall
+       back to every handle-shaped line and let the review catch the names. */
+    if (buttonLines >= 3 && !ROW_BUTTON.test(lines[i])) continue;
+    const tok = firstHandleToken(lines[i]);
+    if (!tok) continue;
+    const next = lines[i + 1];
+    const name = (next && !ROW_BUTTON.test(next) && !/^\d+$/.test(next)) ? next.replace(/\s+/g, " ") : "";
+    out.push({ handle: tok.handle, truncated: tok.truncated, sure: tok.sure, name: name, src: src });
+  }
+  return out;
+}
+
+function parsePastedText(raw) {
+  return String(raw || "").split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(line => {
+    const bits = line.split(/\s*(?:,|\t|\||\s[-–]\s)\s*/);
+    const c = cleanHandle(bits[0]);
+    if (!looksLikeHandle(c.handle)) return null;
+    return {
+      handle: c.handle, truncated: c.truncated, sure: !c.truncated,
+      name: (bits[1] || "").trim(), src: "pasted"
+    };
+  }).filter(Boolean);
+}
+
+/* ---------- the reader ---------- */
+
+let tessPromise = null;
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  if (tessPromise) return tessPromise;
+  tessPromise = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = TESSERACT_SRC;
+    s.onload = () => window.Tesseract ? resolve(window.Tesseract) : reject(new Error("script loaded but empty"));
+    s.onerror = () => reject(new Error("could not fetch the reader"));
+    document.head.appendChild(s);
+  });
+  return tessPromise;
+}
+
+const progressEl = document.getElementById("shotProgress");
+const reviewWrap = document.getElementById("reviewWrap");
+const reviewEl = document.getElementById("review");
+let pending = [];
+
+async function readShots(files) {
+  const list = Array.from(files).filter(f => /^image\//.test(f.type));
+  if (!list.length) { progressEl.textContent = "Those were not images."; return; }
+  progressEl.textContent = "Fetching the reader, one time only...";
+  let T;
+  try { T = await loadTesseract(); }
+  catch (e) {
+    progressEl.textContent = "The reader could not be fetched, so this needs a connection the " +
+      "first time. Paste the handles as text instead, under the toggle above.";
+    return;
+  }
+  const found = [];
+  for (let i = 0; i < list.length; i++) {
+    const f = list[i];
+    progressEl.textContent = "Reading " + (i + 1) + " of " + list.length + ": " + f.name;
+    let worker;
+    try {
+      worker = await T.createWorker("eng", 1, {
+        logger: m => {
+          if (m.status === "recognizing text") {
+            progressEl.textContent = "Reading " + (i + 1) + " of " + list.length + ": " +
+              f.name + "  " + Math.round(m.progress * 100) + "%";
+          }
+        }
+      });
+      const res = await worker.recognize(f);
+      found.push.apply(found, parseScreenshotText(res.data && res.data.text, f.name));
+    } catch (e) {
+      progressEl.textContent = "Could not read " + f.name + ": " + ((e && e.message) || e);
+    } finally {
+      if (worker) { try { await worker.terminate(); } catch (e) {} }
+    }
+  }
+  offerForReview(found, list.length + (list.length === 1 ? " screenshot" : " screenshots"));
+}
+
+/* ---------- review ---------- */
+
+function offerForReview(rows, what) {
+  const self = selfHandle();
+  const seenHere = new Set();
+  pending = rows.filter(r => {
+    if (self && r.handle === self) return false;      // your own handle heads every screenshot
+    if (seenHere.has(r.handle)) return false;         // screenshots overlap by design
+    seenHere.add(r.handle);
+    return true;
+  });
+  if (!pending.length) {
+    progressEl.textContent = "Read " + what + " and found no handles. If the crop is tight " +
+      "around the names, include the Message buttons: that column is how a handle is told " +
+      "from a display name.";
+    reviewWrap.hidden = true;
+    return;
+  }
+  progressEl.textContent = "Read " + what + ": " + pending.length + " to check below.";
+  renderReview();
+}
+
+function existingHandles() { return new Set(FOLLOWERS.map(f => f.handle.toLowerCase())); }
+
+function renderReview() {
+  const have = existingHandles();
+  reviewEl.textContent = "";
+  pending.forEach((r, i) => {
+    const dupe = have.has(r.handle.toLowerCase());
+    const row = document.createElement("div");
+    row.className = "rrow" + (dupe ? " dupe" : "");
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.dataset.i = i;
+    cb.checked = r.sure && !dupe;
+    cb.disabled = dupe;
+
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.value = r.handle;
+    inp.addEventListener("input", () => {
+      pending[i].handle = cleanHandle(inp.value).handle;
+      pending[i].edited = true;
+    });
+
+    const nm = document.createElement("span");
+    nm.className = "rname";
+    nm.textContent = r.name || "";
+
+    row.appendChild(cb);
+    row.appendChild(inp);
+    row.appendChild(nm);
+    if (dupe) row.appendChild(badge("already in the list"));
+    else if (r.truncated) row.appendChild(badge("partial", "flag"));
+    else if (!r.sure) row.appendChild(badge("check this", "flag"));
+
+    const src = document.createElement("span");
+    src.className = "rsrc";
+    src.textContent = r.src || "";
+    row.appendChild(src);
+
+    reviewEl.appendChild(row);
+  });
+  reviewWrap.hidden = false;
+}
+
+function commitReview() {
+  const have = existingHandles();
+  let added = 0;
+  Array.from(reviewEl.querySelectorAll('input[type="checkbox"]')).forEach(cb => {
+    if (!cb.checked) return;
+    const r = pending[Number(cb.dataset.i)];
+    if (!r || !looksLikeHandle(r.handle) || have.has(r.handle.toLowerCase())) return;
+    have.add(r.handle.toLowerCase());
+    /* exact is the field the rest of the page already keys on: false sends the
+       row to Instagram search instead of a profile URL. A handle whose tail was
+       cut off is exactly that case. kind and geo stay unset, because a
+       screenshot cannot tell you whether an account is a shop or where it is. */
+    FOLLOWERS.push({
+      handle: r.handle,
+      name: r.name || "",
+      exact: !r.truncated,
+      note: r.truncated ? "handle was cut off, tail unknown" : undefined
+    });
+    added++;
+  });
+  saveRoster();
+  pending = [];
+  reviewWrap.hidden = true;
+  progressEl.textContent = added + (added === 1 ? " account added." : " accounts added.");
+  renderList();
+  refreshCadence();
+  refreshFoot();
+}
+
+/* ---------- wiring ---------- */
+
+const drop = document.getElementById("drop");
+const shotInput = document.getElementById("shotInput");
+
+drop.addEventListener("click", () => shotInput.click());
+shotInput.addEventListener("change", () => { readShots(shotInput.files); shotInput.value = ""; });
+["dragenter", "dragover"].forEach(ev =>
+  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev =>
+  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => { if (e.dataTransfer) readShots(e.dataTransfer.files); });
+document.addEventListener("paste", e => {
+  if (!e.clipboardData) return;
+  const imgs = Array.from(e.clipboardData.files || []).filter(f => /^image\//.test(f.type));
+  if (imgs.length) { e.preventDefault(); readShots(imgs); }
+});
+
+document.getElementById("pasteParse").addEventListener("click", () => {
+  const box = document.getElementById("pasteBox");
+  offerForReview(parsePastedText(box.value), "the pasted text");
+});
+
+document.querySelectorAll("[data-review]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const mode = btn.dataset.review;
+    Array.from(reviewEl.querySelectorAll('input[type="checkbox"]')).forEach(cb => {
+      if (cb.disabled) return;
+      const r = pending[Number(cb.dataset.i)];
+      cb.checked = mode === "all" ? true : mode === "none" ? false : !!(r && r.sure);
+    });
+  });
+});
+
+document.getElementById("reviewAdd").addEventListener("click", commitReview);
+document.getElementById("reviewCancel").addEventListener("click", () => {
+  pending = [];
+  reviewWrap.hidden = true;
+  progressEl.textContent = "Discarded.";
+});
+
+document.getElementById("rosterExport").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(FOLLOWERS, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "followers.json";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+});
+
+document.getElementById("rosterClear").addEventListener("click", () => {
+  if (!FOLLOWERS.length) return;
+  if (!confirm("Remove all " + FOLLOWERS.length + " accounts from the list? Your contact " +
+               "history and mutes are kept, so re-importing the same people restores their state."))
+    return;
+  FOLLOWERS = [];
+  saveRoster();
+  /* The queue holds positions in the list, so it cannot outlive it. */
+  queue = [];
+  renderList();
+  refreshCadence();
+  refreshQueueUI();
+  refreshFoot();
+});
+
 /* ---------- boot ---------- */
 
 renderList();
@@ -1393,15 +1782,5 @@ refreshQueueUI();
 refreshPick();
 gapDaysEl.disabled = true;
 
-const exactCount = FOLLOWERS.filter(f => f.exact).length;
-const shops = FOLLOWERS.filter(f => f.kind === "shop").length;
-const noise = FOLLOWERS.filter(f => f.kind === "noise").length;
-const intl = FOLLOWERS.filter(f => f.geo === "intl").length;
-document.getElementById("foot").textContent =
-  FOLLOWERS.length + " accounts read off the screenshots: " + exactCount +
-  " with an exact handle, " + (FOLLOWERS.length - exactCount) +
-  " truncated and pointed at Instagram search instead. Rough split: " + shops +
-  " shops or brands, " + noise + " that look like bots, " + intl +
-  " visibly outside the US. One row between bigamoni and cloudyvibes881 may have " +
-  "fallen in a gap between two screenshots.";
+refreshFoot();
 </script>
