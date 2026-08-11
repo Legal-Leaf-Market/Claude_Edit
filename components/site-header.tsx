@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Suspense } from "react"
 import { AskButton } from "@/components/ask/ask-button"
 import { CartBadge } from "@/components/cart-badge"
-import { LogoMark } from "@/components/logo-mark"
+import { GearAvailMark, GearAvailWordmark } from "@/components/brand/logo"
 import { MainNav } from "@/components/nav/main-nav"
 import { MobileNav } from "@/components/nav/mobile-nav"
 import { SearchBox } from "@/components/search-box"
@@ -36,15 +36,17 @@ export function SiteHeader() {
             italic first appears. */}
         <Link
           href="/"
+          aria-label="Gear Avail, home"
           className="flex shrink-0 items-center gap-[11px] transition-opacity hover:opacity-85"
         >
-          <LogoMark />
+          <GearAvailMark size={38} />
           <span className="block leading-none">
-            <span className="block font-display text-[1.24rem] font-black uppercase tracking-[0.04em] text-[var(--text)]">
-              Gear Avail
-            </span>
-            <span className="mt-px hidden font-script text-[0.74rem] font-semibold uppercase italic tracking-[0.16em] text-[var(--accent-text)] sm:block">
-              Used, vintage and new
+            <GearAvailWordmark height={17} />
+            {/* The rule under the wordmark is the same hairline the mark
+                silkscreens inside its edge, which is what binds a square mark
+                to a wide wordmark without boxing the whole lockup. */}
+            <span className="mt-[5px] hidden border-t border-[color:color-mix(in_srgb,var(--brand-gold)_38%,transparent)] pt-[3px] font-sans text-[0.56rem] font-semibold uppercase tracking-[0.28em] text-[var(--dim)] sm:block">
+              Used &middot; Vintage &middot; New
             </span>
           </span>
         </Link>

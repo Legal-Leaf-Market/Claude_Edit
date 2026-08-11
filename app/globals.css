@@ -61,80 +61,101 @@
 }
 
 /* ============================================================
-   The Leaf Market family design system, Gear Avail's dialect.
+   Gear Avail's design system.
    ------------------------------------------------------------
-   Ported from nicotiamarket.com's public/css/tokens.css, whose own
-   header states the rule: --gold, --red, --sage, --sage-dk and the
-   three font families are SHARED across the family, and changing one
-   here means changing it on the sister sites too or the family stops
-   looking like a family.
+   THIS FILE USED TO BE THE FAMILY SCHEME AND NO LONGER IS.
 
-   Each sister then owns exactly one accent of its own:
-     legal-leafmarket.com   leaf green
-     herballeafmarket.com   terracotta
-     nicotiamarket.com      --ember, tobacco amber
-     gearavail (here)       --copper, valve amber
+   It began as a port of nicotiamarket.com's tokens.css, sharing
+   --gold, --red, --sage and the three faces with Legal-Leaf, Herbal
+   Leaf and Nicotia, with valve-amber copper as this site's one
+   accent. That was a deliberate choice and it was wrong: it made
+   Gear Avail look like a hemp marketplace that had changed its
+   product photos. Diverging was an explicit product decision, so if
+   a future change here is proposed on the grounds of "matching the
+   sister sites", that is no longer a reason.
 
-   TWO THEMES, ONE PALETTE
-   -----------------------
-   The hues above are the family's identity and they do NOT change
-   between light and dark. What changes is only the neutral scale
-   underneath them, which is why the light theme below redefines --bg,
-   --surface, --line, --text and --dim and nothing else structural.
-   That keeps this site recognisably part of the family in either mode
-   and means a future palette change still happens in one place.
+   WHAT REPLACED IT. A guitarist's visual world is grey. Anodised
+   aluminium, powder-coated steel, amp chassis, flight cases, road
+   boxes. The warm metal in that world is brass, and the only
+   saturated colour is the LED that says a pedal is engaged. So:
 
-   Two hues DO get a per-theme value, and both for contrast reasons
-   rather than taste. --money (the price colour) is #4ade80 on dark and
-   a much darker green on white, because the light sage fails contrast
-   on paper. --accent-text is the copper used for body-sized text, and
-   it darkens on light for the same reason. Any component printing a
-   price or an accent-coloured sentence must use those two rather than
-   reaching for --sage / --copper directly, or it will read fine in one
-   theme and be unreadable in the other.
+     a genuinely neutral graphite scale, six steps
+     saturated gold, used as an EDGE and almost never as a fill
+     one bright green, reserved for things that are lit
 
-   Dark is the default. The surfaces here are deliberately a step
-   lighter than the first version of this file: product photography
-   arrives from the feeds on white and near-white backgrounds, and on a
-   near-black plate it either blends into the page or rings with a hard
-   edge. A real tonal step between page, panel and card plate is what
-   separates a photo from its surroundings.
+   TWO THEMES, ONE PALETTE. The brand hues do not change between
+   light and dark; only the neutral scale does. The metal tokens do
+   not change either, because a pedal enclosure is a dark object
+   whatever it is standing on, and buttons that keep their material
+   across themes are what stop the interface feeling like two
+   interfaces.
+
+   THE TWO CONTRAST-CRITICAL EXCEPTIONS. --money and --accent-text
+   get a per-theme value, for legibility rather than taste. Bright
+   gold is about 1.8:1 on white and bright green about 1.9:1, both
+   far under the 4.5:1 a price or a sentence needs. Any component
+   printing a price or accent-coloured body text MUST use those two
+   rather than reaching for --brand-gold or --sage, or it will read
+   in one theme and be invisible in the other.
+
+   Dark is the default, and the surfaces sit a real step apart:
+   product photography arrives from the feeds cut out on white, and
+   on a near-black plate it either blends into the page or rings with
+   a hard edge.
    ============================================================ */
 
 :root {
   color-scheme: dark;
 
-  /* --- SHARED WITH THE SISTER SITES: do not drift these --- */
-  --gold: #f0b93c;
-  --gold-dk: #c8922a;
-  --red: #ef5350;
-  --sage: #4ade80;
-  --sage-dk: #22c55e;
+  /* --gold / --sage / --red keep their names because roughly 300 call sites
+     use them, but they now resolve to this site's values, not the family's.
+     See the block comment above for why the palette diverged. */
 
-  /* --- OURS ALONE --- */
-  --copper: #d2703a;
-  --copper-dk: #b4551f;
+  /* Brass and gold, saturated. This is the outline colour. */
+  --brand-gold: #ffc233;
+  --brand-gold-dk: #d99a12;
+  --brand-gold-lo: #8a6410;
+  /* The engaged-pedal LED. Bright, and used sparingly enough to still read. */
+  --brand-led: #24e07a;
+  --brand-led-dk: #12b45e;
 
-  /* --- warm neutral scale, dark theme --- */
-  --bg: #100d0a;
-  --bg2: #17130e;
-  /* Three real surface steps. Anything sitting on the page uses --surface,
-     anything sitting on a surface uses --surface-2. */
-  --surface: #1c1712;
-  --surface-2: #241d17;
-  --panel: rgba(28, 23, 18, 0.78);
-  --panel2: rgba(16, 13, 10, 0.9);
-  --glass: rgba(28, 23, 18, 0.55);
-  --glass-line: rgba(210, 112, 58, 0.22);
-  --line: #322a21;
-  --line-strong: #443a2e;
-  --chip: #1f1811;
-  --text: #f4ece0;
-  --dim: #9b8f81;
+  /* Enclosure metal, for anything that should feel like a machined object.
+     Deliberately dark in BOTH themes: a pedal is a dark thing on any stage. */
+  --metal-hi: #3a4045;
+  --metal: #23272b;
+  --metal-lo: #15181a;
+
+  --gold: var(--brand-gold);
+  --gold-dk: var(--brand-gold-dk);
+  --red: #ff5a52;
+  --sage: var(--brand-led);
+  --sage-dk: var(--brand-led-dk);
+
+  /* Kept so the legacy aliases below still resolve. Copper is no longer used
+     as an accent anywhere; gold does that job now. */
+  --copper: var(--brand-gold);
+  --copper-dk: var(--brand-gold-dk);
+
+  /* --- graphite scale, dark theme ---
+     Six real steps. Product photos arrive cut out on white, and a neutral
+     grey plate separates them far better than a brown one did. */
+  --bg: #0d0f10;
+  --bg2: #141719;
+  --surface: #1a1e21;
+  --surface-2: #23282c;
+  --panel: rgba(26, 30, 33, 0.8);
+  --panel2: rgba(13, 15, 16, 0.92);
+  --glass: rgba(26, 30, 33, 0.58);
+  --glass-line: rgba(255, 194, 51, 0.2);
+  --line: #2b3136;
+  --line-strong: #3c444a;
+  --chip: #191d20;
+  --text: #eef1f4;
+  --dim: #8b949e;
 
   /* Contrast-critical hues, per theme. See the header note above. */
   --money: var(--sage);
-  --accent-text: #e8a06e;
+  --accent-text: #ffd06b;
 
   /* --- type: the three house faces --- */
   --display: 'Fraunces', Georgia, serif;
@@ -188,52 +209,59 @@
 /*
  * Light theme.
  *
- * Warm paper rather than pure white: #faf6f0 keeps the valve-amp warmth the
- * family reads for, and a true #fff next to copper and gold looks clinical.
+ * Cool paper, not warm. The dark theme is an amp chassis; this is the sheet of
+ * spec paper next to it, and the neutral runs very slightly blue so that the
+ * gold edge reads as brass rather than as mustard.
+ *
  * Product photos, which nearly all arrive cut out on white, sit on --surface
- * (pure white) so they separate from the paper page behind them. That is the
+ * (pure white) so they separate from the grey page behind them. That is the
  * inverse of the dark theme's problem and it wants the same fix: a real tonal
  * step between page and plate.
+ *
+ * The metal tokens are NOT redefined here. A pedal enclosure is a dark object
+ * whatever it is standing on, and buttons that stay dark in both themes are
+ * what keeps the interface recognisably the same interface.
  */
 [data-theme='light'] {
   color-scheme: light;
 
-  --bg: #faf6f0;
-  --bg2: #f3ece2;
+  --bg: #f1f3f5;
+  --bg2: #e7eaed;
   --surface: #ffffff;
-  --surface-2: #f6f1e9;
-  --panel: rgba(255, 255, 255, 0.86);
+  --surface-2: #f7f9fa;
+  --panel: rgba(255, 255, 255, 0.88);
   --panel2: #ffffff;
-  --glass: rgba(255, 255, 255, 0.78);
-  --glass-line: rgba(180, 85, 31, 0.22);
-  --line: #e2d7c7;
-  --line-strong: #cbbba4;
-  --chip: #f1e9dd;
-  --text: #221a13;
-  --dim: #756654;
+  --glass: rgba(255, 255, 255, 0.8);
+  --glass-line: rgba(138, 100, 16, 0.24);
+  --line: #d8dde1;
+  --line-strong: #b4bcc3;
+  --chip: #eceff2;
+  --text: #12161a;
+  --dim: #5a646d;
 
-  /* Both darkened for contrast on paper. --sage at #4ade80 is roughly 1.7:1
-     on white, nowhere near the 4.5:1 a price needs to be legible. */
+  /* Contrast-critical, and the reason these two exist at all. Bright gold is
+     about 1.8:1 on white and bright green about 1.9:1, so neither may ever
+     carry body text. These are their darkened, legible counterparts. */
   --money: #15803d;
-  --accent-text: #9a4715;
+  --accent-text: #8a6410;
 
-  --shadow: 0 10px 34px rgba(60, 40, 20, 0.1);
-  --shadow-sm: 0 1px 3px rgba(60, 40, 20, 0.12);
+  --shadow: 0 10px 34px rgba(20, 30, 40, 0.1);
+  --shadow-sm: 0 1px 3px rgba(20, 30, 40, 0.12);
 
-  --wash-1: rgba(210, 112, 58, 0.07);
-  --wash-2: rgba(34, 197, 94, 0.05);
+  --wash-1: rgba(255, 194, 51, 0.09);
+  --wash-2: rgba(36, 224, 122, 0.05);
   --texture-light: rgba(255, 255, 255, 0.5);
-  --texture-dark: rgba(120, 90, 60, 0.028);
+  --texture-dark: rgba(40, 60, 80, 0.03);
 
   --popover: #ffffff;
-  --primary: var(--copper-dk);
-  --primary-foreground: #fff8f2;
-  --secondary: rgba(34, 26, 19, 0.05);
-  --muted: rgba(34, 26, 19, 0.04);
-  --muted-foreground: #6b5c4a;
-  --accent: rgba(210, 112, 58, 0.12);
-  --input: rgba(34, 26, 19, 0.09);
-  --ring: rgba(180, 85, 31, 0.45);
+  --primary: var(--brand-gold-lo);
+  --primary-foreground: #fffdf6;
+  --secondary: rgba(18, 22, 26, 0.05);
+  --muted: rgba(18, 22, 26, 0.04);
+  --muted-foreground: #576169;
+  --accent: rgba(255, 194, 51, 0.16);
+  --input: rgba(18, 22, 26, 0.09);
+  --ring: rgba(217, 154, 18, 0.5);
 }
 
 @layer base {
@@ -1126,4 +1154,452 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ============================================================
+   PEDAL CONTROLS: the site's button language
+   ------------------------------------------------------------
+   Every button here is a stompbox face and every icon control is a
+   knob. That is not decoration for its own sake: the logo is an
+   enclosure, the planner lays out enclosures, and a shopper who has
+   pressed a footswitch already knows what these do. Reusing one
+   physical vocabulary across a whole interface is what makes it feel
+   designed rather than assembled.
+
+   THE RULES THAT KEEP IT FROM GOING CHEESY.
+
+   1. The metal is dark in BOTH themes and never tinted. Skeuomorphism
+      fails when it tries to be pretty; real enclosures are drab, and
+      the drabness is what makes the gold edge and the LED read.
+   2. Gold is an EDGE, never a fill. One hairline border plus one
+      silkscreen line inside it, exactly as a pedal is printed.
+   3. The LED is the only saturated colour and it means the same thing
+      everywhere: this control is live, or hovered, or on.
+   4. Travel is small. 2px on press, and the shadow collapses under it,
+      so it feels like a switch bottoming out rather than a box
+      falling over.
+   5. Nothing spins, bounces or glows on idle. A rack of gear at rest
+      is still.
+   ============================================================ */
+
+.stomp {
+  --stomp-face-hi: var(--metal-hi);
+  --stomp-face: var(--metal);
+  --stomp-face-lo: var(--metal-lo);
+  /* Muted at rest. Full brass is reserved for :hover and for .stomp-go, so
+     a row of eight buttons is not a row of eight gold rings. */
+  --stomp-edge: color-mix(in srgb, var(--brand-gold) 46%, var(--line-strong));
+  --stomp-ink: #f2f5f8;
+  --stomp-led: var(--brand-led);
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.62em;
+  padding: 0.74rem 1.2rem;
+  border-radius: 11px;
+  border: 1.5px solid var(--stomp-edge);
+  background: linear-gradient(
+    180deg,
+    var(--stomp-face-hi),
+    var(--stomp-face) 54%,
+    var(--stomp-face-lo)
+  );
+  color: var(--stomp-ink);
+  font-family: var(--sans);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  isolation: isolate;
+  /* The bottom edge is the enclosure's own thickness, which is what
+     gives the press somewhere to travel to. */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 2px 0 color-mix(in srgb, var(--stomp-edge) 34%, #000),
+    0 5px 14px rgba(0, 0, 0, 0.42);
+  transition:
+    transform 90ms ease,
+    box-shadow 90ms ease,
+    border-color 170ms ease;
+}
+
+/* The silkscreen hairline, the same detail the logo prints inside its edge. */
+.stomp::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--stomp-edge) 24%, transparent);
+  pointer-events: none;
+}
+
+/* The status LED. Dim at rest, lit on hover, blazing while held. */
+.stomp::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--stomp-led);
+  opacity: 0.5;
+  box-shadow: 0 0 5px var(--stomp-led);
+  transition: opacity 170ms ease, box-shadow 170ms ease;
+}
+
+.stomp:hover {
+  border-color: var(--brand-gold);
+}
+.stomp:hover::before {
+  opacity: 1;
+  box-shadow:
+    0 0 7px var(--stomp-led),
+    0 0 16px color-mix(in srgb, var(--stomp-led) 60%, transparent);
+}
+
+.stomp:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 2px 7px rgba(0, 0, 0, 0.62),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 color-mix(in srgb, var(--stomp-edge) 34%, #000);
+}
+.stomp:active::before {
+  opacity: 1;
+  box-shadow:
+    0 0 9px var(--stomp-led),
+    0 0 22px color-mix(in srgb, var(--stomp-led) 70%, transparent);
+}
+
+.stomp:disabled,
+.stomp[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+  border-color: var(--line-strong);
+  box-shadow: none;
+}
+.stomp:disabled::before,
+.stomp[aria-disabled='true']::before {
+  opacity: 0.18;
+  box-shadow: none;
+}
+
+/* The primary action: a bright green enclosure with a brass edge. Used once
+   per view, because two of these on one screen is a fairground. */
+.stomp-go {
+  --stomp-edge: var(--brand-gold);
+  --stomp-face-hi: #3df191;
+  --stomp-face: #24e07a;
+  --stomp-face-lo: #12b262;
+  --stomp-ink: #04240f;
+  --stomp-led: #f2fff7;
+}
+.stomp-go::before {
+  opacity: 0.85;
+}
+
+/* No LED: for a button in a row of buttons, where six lights is a runway. */
+.stomp-plain::before {
+  display: none;
+}
+
+/* Quiet variant: the edge and the type, no enclosure. */
+.stomp-ghost {
+  background: transparent;
+  border-color: var(--line-strong);
+  color: var(--text);
+  box-shadow: none;
+}
+.stomp-ghost::after,
+.stomp-ghost::before {
+  display: none;
+}
+.stomp-ghost:hover {
+  border-color: var(--brand-gold);
+  background: color-mix(in srgb, var(--brand-gold) 8%, transparent);
+}
+.stomp-ghost:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.stomp-sm {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.68rem;
+  border-radius: 9px;
+}
+.stomp-lg {
+  padding: 0.95rem 1.6rem;
+  font-size: 0.86rem;
+  border-radius: 13px;
+}
+
+/* ------------------------------------------------------------
+   Knobs: circular controls, for icon-only buttons.
+   ------------------------------------------------------------ */
+
+.knob {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--brand-gold) 62%, transparent);
+  color: var(--dim);
+  cursor: pointer;
+  /* Knurling, then the domed metal under it. A real knob is milled with
+     fine vertical ridges so a sweaty hand can still turn it. */
+  background:
+    repeating-conic-gradient(
+      from 0deg,
+      rgba(255, 255, 255, 0.09) 0deg 2.4deg,
+      rgba(0, 0, 0, 0.2) 2.4deg 4.8deg
+    ),
+    radial-gradient(circle at 50% 32%, var(--metal-hi), var(--metal) 58%, var(--metal-lo));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 2px 6px rgba(0, 0, 0, 0.45);
+  transition:
+    transform 180ms ease,
+    color 170ms ease,
+    border-color 170ms ease;
+}
+
+/* The pointer line, so the knob has an angle to be at. */
+.knob::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 2px;
+  height: 8px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--brand-gold);
+  opacity: 0.75;
+}
+
+.knob:hover {
+  color: var(--text);
+  border-color: var(--brand-gold);
+  /* Turned up a notch. Small, because a knob that spins is a toy. */
+  transform: rotate(14deg);
+}
+.knob:hover::after {
+  opacity: 1;
+}
+.knob:active {
+  transform: rotate(14deg) scale(0.95);
+}
+/* The icon inside must not rotate with the knob body. */
+.knob > svg {
+  transition: transform 180ms ease;
+}
+.knob:hover > svg {
+  transform: rotate(-14deg);
+}
+
+.knob-sm {
+  width: 30px;
+  height: 30px;
+}
+.knob-sm::after {
+  height: 6px;
+  top: 3px;
+}
+
+/* A knob that is currently engaged: the pointer goes green and stays turned. */
+.knob[aria-pressed='true'],
+.knob[data-on='true'] {
+  transform: rotate(28deg);
+  border-color: var(--brand-led);
+  color: var(--text);
+}
+.knob[aria-pressed='true']::after,
+.knob[data-on='true']::after {
+  background: var(--brand-led);
+  opacity: 1;
+  box-shadow: 0 0 6px var(--brand-led);
+}
+.knob[aria-pressed='true'] > svg,
+.knob[data-on='true'] > svg {
+  transform: rotate(-28deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stomp,
+  .knob,
+  .knob > svg {
+    transition: none;
+  }
+  .knob:hover,
+  .knob:active,
+  .knob[aria-pressed='true'],
+  .knob[data-on='true'] {
+    transform: none;
+  }
+  .knob:hover > svg,
+  .knob[aria-pressed='true'] > svg,
+  .knob[data-on='true'] > svg {
+    transform: none;
+  }
+  .stomp:active {
+    transform: none;
+  }
+}
+
+/* ============================================================
+   THE RACK PANEL
+   ------------------------------------------------------------
+   What replaced the family hero.
+
+   The inherited one was a centred editorial stack: eyebrow, a
+   Cormorant italic lead line, a Fraunces gradient headline, a script
+   pull quote. It is a good hero and it belongs to the hemp sites,
+   where the product is an artisanal jar and the voice is a market
+   stall. Here it read as a borrowed suit.
+
+   This is a 19-inch rack panel instead: brushed metal, a brass rail
+   top and bottom, a status LED, and readouts in the corner. Left
+   aligned rather than centred, because equipment is labelled from
+   the left and centred type reads as a brochure. The headline moves
+   from serif to heavy condensed uppercase for the same reason the
+   wordmark is chamfered: it is the type on the front of an amp.
+   ============================================================ */
+
+.rack {
+  position: relative;
+  border-radius: 18px;
+  border: 1px solid var(--line-strong);
+  background:
+    /* fine vertical brushing, barely there until the light catches it */
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.014) 0px,
+      rgba(255, 255, 255, 0.014) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--metal-hi) 40%, var(--surface)) 0%,
+      var(--surface) 26%,
+      var(--surface) 74%,
+      var(--bg2) 100%
+    );
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+/* The rails. A rack unit is bounded top and bottom, never on the sides. */
+.rack::before,
+.rack::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--brand-gold) 18%,
+    var(--brand-gold) 82%,
+    transparent
+  );
+  opacity: 0.5;
+  pointer-events: none;
+}
+.rack::before {
+  top: 0;
+}
+.rack::after {
+  bottom: 0;
+}
+
+.rack-inner {
+  padding: clamp(1.75rem, 4vw, 3.25rem);
+}
+
+/* Heavy condensed uppercase: the type on the front of an amplifier. */
+.rack-title {
+  font-family: var(--sans);
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: clamp(2.1rem, 6.2vw, 4.35rem);
+  line-height: 0.94;
+  letter-spacing: -0.012em;
+  color: var(--text);
+  margin: 0;
+}
+.rack-title em {
+  font-style: normal;
+  color: var(--accent-text);
+}
+
+.rack-sub {
+  margin-top: 1.05rem;
+  max-width: 62ch;
+  font-size: clamp(0.95rem, 1.4vw, 1.06rem);
+  line-height: 1.62;
+  color: var(--dim);
+}
+
+/* The status strip: an LED and a label, the way a unit reports itself. */
+.rack-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.rack-status .led {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brand-led);
+  box-shadow: 0 0 6px var(--brand-led), 0 0 14px color-mix(in srgb, var(--brand-led) 55%, transparent);
+}
+
+/* Readouts. Tabular numerals so the row does not jitter as counts change. */
+.readouts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0;
+}
+.readout {
+  flex: 1 1 9rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  padding: 0.7rem 0.85rem;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.readout dt {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.readout dd {
+  margin: 0.28rem 0 0;
+  font-family: var(--sans);
+  font-size: 1.45rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--accent-text);
 }
