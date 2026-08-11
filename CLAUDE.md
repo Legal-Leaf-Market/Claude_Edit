@@ -507,6 +507,15 @@ Never fork the logic between them. Add work to the job function.
 
 ## 11. Environment variables
 
+**Every string value is trimmed on read, and a whitespace-only value counts as
+unset** (`str()` in `lib/env.ts`). This is not tidiness. A leading space pasted
+into `IMPACT_ANDERTONS_FTP_HOST` sent DNS a hostname containing a space, which
+failed `ENOTFOUND` and read for a while like an outage, because the offending
+character is invisible everywhere the value is printed. Nothing this file reads
+has meaningful edge whitespace, credentials included: a password whose first
+character is a space cannot be told apart from a paste accident from inside the
+process, and the accident is far likelier.
+
 | Var | Gates |
 |---|---|
 | `DATABASE_URL` | Everything. The only hard requirement, and it is needed AT BUILD TIME as well as at runtime, because the build migrates before it compiles. Unset at build time skips migrations rather than failing, so a preview deploy with no database still ships. |

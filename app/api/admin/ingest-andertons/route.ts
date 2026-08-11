@@ -94,7 +94,15 @@ export async function POST(request: Request) {
      * whether one exists.
      */
     const usedHost = env.impact.andertonsFtpHost
-    const looksMalformed = /[:/@]/.test(usedHost) || usedHost.trim() !== usedHost
+    /*
+     * Surrounding whitespace is no longer possible here: lib/env.ts trims
+     * every value it reads, precisely because a pasted leading space on this
+     * variable produced an ENOTFOUND that read like an outage. What remains
+     * catchable is a value that is the wrong SHAPE rather than the wrong
+     * spacing: a whole ftp:// URL, a host with the path appended, credentials
+     * in user@host form, an interior space, or something with no dot in it.
+     */
+    const looksMalformed = /[:/@]/.test(usedHost) || /\s/.test(usedHost) || !usedHost.includes(".")
 
     return NextResponse.json(
       {
