@@ -540,6 +540,36 @@ process, and the accident is far likelier.
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | "Continue with Google" on sign-in/sign-up. Unset means email and password only. |
 | `YOUTUBE_API_KEY` | Anderton's TV metadata and comments, via the YouTube Data API v3 (section 19). Unset means the reader no-ops. |
 
+| `IMPACT_ACCOUNT_SID` / `IMPACT_AUTH_TOKEN` / `IMPACT_ANDERTONS_CATALOG_ID` | The OTHER way into the same catalogue: Impact's partner REST API (`api.impact.com/Mediapartners/{sid}/Catalogs/{id}/Items`, HTTP Basic, JSON, paginated). Both credentials are on Impact's API settings page. **Prefer this over the FTP block where it works**: ordinary HTTPS with no control connection or passive ports, and a slice is a page rather than a re-download of the whole catalogue per chunk. The catalogue id defaults to Anderton's 30480 (campaign 43829, 27,052 products) since it is not a secret; the gate is on the SID and token. |
+
+**Two transports, ONE normaliser.** `normalizeRecords()` in
+`lib/ingestion/andertons-impact.ts` is shared: the FTP drop arrives as
+delimited text and the API as JSON objects, but from binding down they are the
+same thing, a list of records whose field names are the brand's choice rather
+than the network's. This is section 7's "never fork the logic" applied to
+transports rather than triggers. Do not let the API path grow its own parser.
+
+**Impact's API is a legitimate partner channel, not a workaround** for the FTP
+server being awkward. It is their published Mediapartners API, authenticated
+with our own account credentials, serving the catalogue Anderton's publishes to
+partners for this purpose. That is a different thing entirely from the frontend
+Algolia index rejected for Guitar Center (section 2).
+
+**Check the schema before the first pull.** `{"mode":"peek"}` on
+`/api/admin/andertons-api`, surfaced as a button, reads one page, writes
+nothing, and lists every field name found beside the ones the alias table
+bound. This is the header-row rule made self-service: the FTP parser earned its
+bindings from a real header row somebody pasted in, and the API earns its own
+without a round trip. **The output that matters is a field PRESENT BUT
+UNBOUND**, which is exactly how a column silently arrives null on every row.
+That check has already earned itself once: `originalUrl` carried only the
+spaced spelling, so Impact's CamelCase `OriginalUrl` bound to nothing and
+`rawUrl` fell back to the TRACKED url on every row. Nothing throws and no row
+is skipped; the only symptom is `/go` handing out affiliate links where the
+merchant's own page belongs. Header matching collapses spaces and underscores
+but cannot split `OriginalUrl` into two words, so both spellings have to be in
+the table.
+
 **Debugging the Anderton's FTP pull.** Two admin buttons, both behind
 `ADMIN_PASSCODE`. "Pull the Anderton's catalogue" does the work; "Diagnose the
 Anderton's connection" (`/api/admin/probe-ftp`) opens a socket to ports 21, 990
