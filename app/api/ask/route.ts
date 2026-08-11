@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { ask, AskUnavailableError, type AskTurn } from "@/lib/ai/ask"
 import { env } from "@/lib/env"
-import { consumeDailyBudget } from "@/lib/ingestion/rate-limit"
+import { consumeHourlyBudget } from "@/lib/ingestion/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -22,10 +22,11 @@ const MAX_HISTORY_TURNS = 6
  *
  * Rate limited per IP because this endpoint spends real money per call and is
  * unauthenticated by design (a shopper should be able to ask a question
- * without making an account). The counter reuses the same daily-budget helper
- * the eBay feed guard uses, so it is shared across instances when Redis is
- * configured and per-process otherwise, which is the same honest compromise
- * documented there.
+ * without making an account). The counter shares the budget helper the eBay
+ * feed guard uses, so it is shared across instances when Redis is configured
+ * and per-process otherwise, which is the same honest compromise documented
+ * there. The window is a fixed clock hour, not eBay's calendar day: a shopper
+ * who hits the cap should wait minutes, not until midnight UTC.
  */
 export async function POST(request: NextRequest) {
   if (!env.groq.isConfigured) {
@@ -64,10 +65,10 @@ export async function POST(request: NextRequest) {
     request.headers.get("x-real-ip") ||
     "unknown"
 
-  const budget = await consumeDailyBudget(`ask:${ip}`, env.groq.hourlyLimitPerIp).catch(() => null)
+  const budget = await consumeHourlyBudget(`ask:${ip}`, env.groq.hourlyLimitPerIp).catch(() => null)
   if (budget && !budget.allowed) {
     return NextResponse.json(
-      { error: "That is a lot of questions for one day. Try again tomorrow." },
+      { error: "That is a lot of questions in one hour. Try again shortly, or use search." },
       { status: 429 },
     )
   }

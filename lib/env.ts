@@ -233,7 +233,10 @@ export const env = {
     apiKey: str("GROQ_API_KEY"),
     model: str("GROQ_MODEL", "openai/gpt-oss-120b"),
     baseUrl: str("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
-    /** Per-IP question budget per rolling hour. Generous for a person, useless for a scraper. */
+    /**
+     * Per-IP question budget per FIXED CLOCK HOUR, resetting on the hour, not a
+     * rolling window. Generous for a person, useless for a scraper.
+     */
     hourlyLimitPerIp: int("GROQ_HOURLY_LIMIT_PER_IP", 30),
     get isConfigured(): boolean {
       return Boolean(env.groq.apiKey)
