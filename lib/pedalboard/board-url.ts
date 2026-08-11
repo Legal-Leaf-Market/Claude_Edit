@@ -92,3 +92,100 @@ export const STARTER_ROLES: { type: EffectType; label: string; why: string }[] =
   { type: "delay", label: "A delay", why: "Space and depth, and half of what makes a part sound finished." },
   { type: "reverb", label: "A reverb", why: "Last, so everything in front of it happens in the same room." },
 ]
+
+/* -------------------------------------------------------------------------- */
+/*  A whole rig in a URL                                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The board slots above describe WHAT is on the board. This describes the rest
+ * of the rig: which board, which power supply, and where each pedal physically
+ * sits.
+ *
+ * It is a separate parameter rather than a richer slot encoding, deliberately.
+ * Every link ever shared carries `?board=` and must keep working, so placement
+ * arrives alongside it in `?rig=` and a link without one simply has no layout
+ * yet. The builder then auto-arranges, which is the same thing it does for a
+ * freshly loaded artist rig.
+ *
+ * FORMAT, chosen to stay short enough to paste into a text message:
+ *
+ *   rig=<boardId>~<supplyId>~<key>:<x>:<y>:<rot>,<key>:<x>:<y>:<rot>,...
+ *
+ * Coordinates are whole millimetres. Sub-millimetre precision on a hand-dragged
+ * pedal is noise, and rounding halves the length of the string.
+ */
+
+import type { Rotation } from "./catalog/types"
+
+export type RigPlacement = {
+  key: string
+  xMm: number
+  yMm: number
+  rotation: Rotation
+}
+
+export type RigLayout = {
+  boardId: string | null
+  supplyId: string | null
+  placements: RigPlacement[]
+}
+
+const RIG_SEPARATOR = "~"
+const PLACEMENT_SEPARATOR = ","
+const FIELD_SEPARATOR = ":"
+
+/** Ids are our own slugs, so the same shape the slot decoder enforces. */
+const ID_PATTERN = /^[a-z0-9-]{1,80}$/
+
+function isRotation(value: number): value is Rotation {
+  return value === 0 || value === 90 || value === 180 || value === 270
+}
+
+export function encodeRig(layout: RigLayout): string {
+  const placements = layout.placements
+    .slice(0, MAX_SLOTS)
+    .map((p) =>
+      [p.key, Math.round(p.xMm), Math.round(p.yMm), p.rotation].join(FIELD_SEPARATOR),
+    )
+    .join(PLACEMENT_SEPARATOR)
+
+  return [layout.boardId ?? "", layout.supplyId ?? "", placements].join(RIG_SEPARATOR)
+}
+
+export function decodeRig(raw: string | undefined | null): RigLayout {
+  const empty: RigLayout = { boardId: null, supplyId: null, placements: [] }
+  if (!raw) return empty
+
+  const [boardRaw = "", supplyRaw = "", placementsRaw = ""] = raw.split(RIG_SEPARATOR)
+
+  const placements: RigPlacement[] = []
+  const seen = new Set<string>()
+
+  for (const token of placementsRaw.split(PLACEMENT_SEPARATOR)) {
+    if (!token) continue
+    const [key, x, y, rot] = token.split(FIELD_SEPARATOR)
+    if (!key || seen.has(key)) continue
+
+    const xMm = Number.parseInt(x ?? "", 10)
+    const yMm = Number.parseInt(y ?? "", 10)
+    const rotation = Number.parseInt(rot ?? "", 10)
+
+    // A crafted URL must not be able to push a pedal to a coordinate that
+    // breaks the canvas. Anything out of range is dropped rather than clamped,
+    // so a corrupt link loses one placement instead of silently relocating it.
+    if (!Number.isFinite(xMm) || !Number.isFinite(yMm)) continue
+    if (xMm < 0 || yMm < 0 || xMm > 5000 || yMm > 5000) continue
+    if (!isRotation(rotation)) continue
+
+    seen.add(key)
+    placements.push({ key: key.slice(0, 220), xMm, yMm, rotation })
+    if (placements.length >= MAX_SLOTS) break
+  }
+
+  return {
+    boardId: ID_PATTERN.test(boardRaw) ? boardRaw : null,
+    supplyId: ID_PATTERN.test(supplyRaw) ? supplyRaw : null,
+    placements,
+  }
+}
