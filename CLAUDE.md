@@ -116,19 +116,38 @@ built for that site's own frontend rather than published for this use.
   "Used Gear API" name floating around online is Guitar Center's own URL
   taxonomy, not a data API, and the community tools that exist scrape an
   undocumented frontend Algolia index. Do not build against it.
-- **Anderton's, applied for via Impact.com (formerly Impact Radius). Application
-  submitted 10 Aug 2026 with a written pitch, decision pending.** The site's Universal Tracking Tag
-  (`app/layout.tsx`) is already live sitewide for Impact's own site-verification
-  step; that is independent of catalogue ingestion and does not mean the
-  affiliate program itself is approved. Unlike CJ or Awin, Impact has no fixed
+- **Anderton's, via Impact.com (formerly Impact Radius). APPROVED 11 Aug 2026**,
+  one day after the application went in. The site's Universal Tracking Tag
+  (`app/layout.tsx`) was already live sitewide for Impact's own site-verification
+  step; that was always independent of catalogue ingestion and is not what the
+  approval turned on.
+  **Commission is 4%, and it is scoped to a NAMED BRAND LIST, not the
+  catalogue.** As of the welcome mail: Victory, Ordo, Browne, EastCoast,
+  Landlord, Tone City, Alvarez, Sire, Valeton, Behringer, TC Electronic,
+  Divitone, Hils, Soloking, Music Man and Sterling by Music Man. Andertons
+  told us they expect to add more later, so treat the list as current rather
+  than final.
+  **That brand list must never become an ingestion filter or a ranking input.**
+  Andertons stocks far more than those sixteen brands and we earn nothing on
+  the rest, which makes this the sharpest test yet of the section 15 rule that
+  commission never affects ranking and that payout is not why a merchant is
+  listed. Ingest the whole feed, rank it exactly like every other source, and
+  earn on the subset. Filtering the feed down to the commissionable brands
+  would be ranking by payout performed at the row level, and the footer
+  promises shoppers it does not happen.
+  **Still blocked on the feed itself.** Unlike CJ or Awin, Impact has no fixed
   product-feed schema: brands configure their own field names per catalogue
-  (confirmed against Impact's own "File Formats for Product Catalogs" docs),
-  so there is nothing to write a row-normaliser against yet.
-  `IMPACT_ANDERTONS_FEED_URL` (`lib/env.ts`) is a reserved placeholder, unset
-  as the expected state, same as every other unconfirmed source above. Once
-  the application is approved and Anderton's actual feed URL and column names
-  are in hand, build `lib/ingestion/andertons-impact.ts` against the real
-  schema rather than a guess, following the same shape as the CJ modules.
+  (confirmed against Impact's own "File Formats for Product Catalogs" docs).
+  The welcome mail carries the commission terms and no catalogue details, so
+  `IMPACT_ANDERTONS_FEED_URL` (`lib/env.ts`) stays a reserved placeholder and
+  no ingestion module exists yet. What is needed before one can be written:
+  the feed URL, the exact column headers, and whether the feed exposes an
+  untracked merchant URL alongside Impact's tracking link (CJ exposes only a
+  pre-built `BUY_URL`, which is why `isCjTrackingUrl` exists). Build
+  `lib/ingestion/andertons-impact.ts` against the real schema when those are
+  in hand, following the same shape as the CJ modules. Do not write it against
+  a guessed schema; a silently mis-mapped column is the exact failure the
+  header-name binding rule in section 3 exists to prevent.
 
 **Facebook Marketplace is out of scope.** Not "later", not "behind a flag". It
 has no public API, scraping it violates Meta's terms, and it is the exact
@@ -436,7 +455,7 @@ Never fork the logic between them. Add work to the job function.
 | `LINKCONNECTOR_SWEETWATER_FEED_URL` | Sweetwater catalogue. Unset is expected; the job no-ops. Never falls back to scraping. |
 | `AWIN_GEAR4MUSIC_MERCHANT_ID` / `AWIN_GEAR4MUSIC_FEED_URL` | Gear4music catalogue and deep links. Same shape as the Reverb pair, independent ids. |
 | `CJ_ZZOUNDS_FEED_URL` / `CJ_FULLCOMPASS_FEED_URL` / `CJ_PINEVILLEMUSIC_FEED_URL` | Three independent CJ Affiliate programmes. Each no-ops when unset. |
-| `IMPACT_ANDERTONS_FEED_URL` | Reserved for Anderton's via Impact.com; application pending, no ingestion module exists yet since Impact's product-feed schema is brand-configured, not fixed. Unset is expected. |
+| `IMPACT_ANDERTONS_FEED_URL` | Anderton's via Impact.com. Programme APPROVED 11 Aug 2026 (4%, on a named brand list), but the feed URL and column names are not in hand yet and Impact's schema is brand-configured rather than fixed, so no ingestion module exists. Unset is still the expected state. |
 | `GOAFFPRO_*_REF_PARAM` / `GOAFFPRO_*_REF_CODE` | One pair per small independent Shopify/WooCommerce seller (Folkcraft, Acoustic Guitar, Jamstik, Jackson Audio, Eminence Digital, Haze Guitar, EART Guitar, Play With Authority, Pures Music, Squaver, Eason Music Store, Go Kalimba). Catalogue ingestion needs no credential at all; an unset code just means a null `affiliate_url` until the referral is confirmed. |
 | `GROQ_API_KEY` / `GROQ_MODEL` | The Ask assistant (section 14). Unset means /api/ask 503s and the button never renders. The model default is overridable because Groq retires models often. |
 | `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
