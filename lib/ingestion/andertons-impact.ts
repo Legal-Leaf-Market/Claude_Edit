@@ -1,5 +1,4 @@
 import { gunzipSync } from "node:zlib"
-import { Writable } from "node:stream"
 import { isImpactTrackingUrl } from "@/lib/affiliate/impact"
 import { env } from "@/lib/env"
 import { detectDelimiter, parseCsv } from "./csv"
@@ -19,13 +18,18 @@ import type { NewMarketplaceListing } from "@/lib/db/schema"
  * Three things make this different from every other source here, and all three
  * are load bearing.
  *
- * 1. IT ARRIVES BY FTP, NOT HTTPS. Awin, CJ and LinkConnector all publish an
- *    authenticated feed URL. Impact drops catalogues on an FTP server
+ * 1. IT ARRIVES BY SFTP, NOT HTTPS. Awin, CJ and LinkConnector all publish an
+ *    authenticated feed URL. Impact drops catalogues on a file server
  *    (products.impact.com, one directory per advertiser) and the publisher
- *    pulls them. That is why this job belongs on the BullMQ worker rather than
- *    a Vercel cron route: a serverless function cannot hold an FTP control
- *    connection plus passive data ports open for the length of a 27k-row
- *    download.
+ *    pulls them.
+ *
+ *    SFTP rather than FTP, which was measured rather than read off the docs.
+ *    Impact's documentation says "FTP" throughout and this module was written
+ *    against basic-ftp on that basis; probing the host found port 21 denying
+ *    FEAT before any credential and refusing AUTH TLS with a 431, port 990 not
+ *    listening at all, and port 22 answering SSH-2.0-APACHE-SSHD-2.14.0. See
+ *    fetchAndertonsCatalogue below, and lib/ingestion/ftp-probe.ts for the
+ *    probe that settled it without sending a password anywhere.
  *
  * 2. THE SCHEMA IS THE BRAND'S, NOT THE NETWORK'S. Impact mandates exactly
  *    three fields (a link URL, a catalogue item id, and a name) and lets each
@@ -385,59 +389,76 @@ function pickCatalogueFile(names: string[]): string | null {
   return candidates[0] ?? null
 }
 
-export type FtpConfig = {
+export type SftpConfig = {
   host: string
+  port: number
   user: string
   password: string
   path: string
 }
 
 /**
- * Download the newest catalogue file from the Impact FTP drop.
+ * Download the newest catalogue file from the Impact drop, over SFTP.
  *
- * Deliberately the only part of this module that touches the network, so
- * everything above it is testable against a fixture without a server. The
- * import is dynamic because `basic-ftp` pulls in node:net and node:tls, and a
- * static import would drag those into any bundle that imports this file for
- * the parser alone.
+ * IT IS SFTP, NOT FTPS, AND THAT WAS MEASURED RATHER THAN ASSUMED. Everything
+ * here was originally written against `basic-ftp` on the reasonable reading of
+ * Impact's own docs, which say "FTP" throughout. Probing the host settled it:
+ *
+ *   port 21   220 banner, then 530 Access denied to FEAT before any
+ *             credential, then 431 to AUTH TLS. 431 is RFC 2228's security
+ *             range, so TLS is refused outright rather than being unavailable
+ *             temporarily. That port is a dead end, and the only thing it
+ *             offers instead is plaintext FTP, which would put the password on
+ *             the wire in clear.
+ *   port 990  connection timed out, so implicit FTPS is not listening.
+ *   port 22   SSH-2.0-APACHE-SSHD-2.14.0.
+ *
+ * An SSH banner means the drop speaks SSH, and `basic-ftp` cannot speak SSH at
+ * all. This was never a wrong option on the right library; it was the wrong
+ * library, which is exactly the distinction the probe exists to draw and the
+ * reason it sends no credential while drawing it.
+ *
+ * The credential pair Impact mails out is therefore an SSH login. Same pair,
+ * different protocol.
+ *
+ * Deliberately the only part of this module that touches a file server, so
+ * everything above it stays testable against a fixture. The import is dynamic
+ * because ssh2 pulls in native crypto bindings, and a static import would drag
+ * them into any bundle that wants this file for the parser alone.
  */
-export async function fetchAndertonsCatalogue(config: FtpConfig): Promise<string> {
-  const { Client } = await import("basic-ftp")
-  const client = new Client(60_000)
+export async function fetchAndertonsCatalogue(config: SftpConfig): Promise<string> {
+  const { default: SftpClient } = await import("ssh2-sftp-client")
+  const client = new SftpClient()
 
   try {
-    await client.access({
+    await client.connect({
       host: config.host,
-      user: config.user,
+      port: config.port,
+      username: config.user,
       password: config.password,
-      secure: true,
-      // Impact's server presents a certificate that does not always match the
-      // connecting hostname. The credential is still sent over TLS; this only
-      // relaxes the name check, and the alternative offered by the server is
-      // plaintext FTP, which would put the password on the wire in clear.
-      secureOptions: { rejectUnauthorized: false },
+      readyTimeout: 60_000,
     })
 
     const listing = await client.list(config.path)
-    const chosen = pickCatalogueFile(listing.filter((f) => f.isFile).map((f) => f.name))
+    // ssh2-sftp-client marks a plain file with "-", the same convention as ls.
+    const chosen = pickCatalogueFile(listing.filter((f) => f.type === "-").map((f) => f.name))
     if (!chosen) {
       throw new Error(
         `No catalogue file in ${config.path}. Saw: ${listing.map((f) => f.name).join(", ") || "(empty directory)"}`,
       )
     }
 
-    const chunks: Buffer[] = []
-    const sink = new Writable({
-      write(chunk, _encoding, callback) {
-        chunks.push(Buffer.from(chunk))
-        callback()
-      },
-    })
-
-    await client.downloadTo(sink, `${config.path.replace(/\/+$/, "")}/${chosen}`)
-    return maybeGunzip(Buffer.concat(chunks)).toString("utf-8")
+    const downloaded = await client.get(`${config.path.replace(/\/+$/, "")}/${chosen}`)
+    /*
+     * `get` hands back a Buffer when no destination is given, but its type
+     * admits a string and a stream too. Normalising here keeps the gzip sniff
+     * below working on bytes rather than on a string that has already been
+     * decoded, which would corrupt a compressed file beyond recovery.
+     */
+    const buffer = Buffer.isBuffer(downloaded) ? downloaded : Buffer.from(String(downloaded), "binary")
+    return maybeGunzip(buffer).toString("utf-8")
   } finally {
-    client.close()
+    await client.end().catch(() => {})
   }
 }
 
@@ -1069,7 +1090,7 @@ export function sliceRows<T>(rows: T[], window: IngestWindow = {}): { slice: T[]
  * the feed parser.
  */
 export async function ingestAndertonsFeed(
-  fetchImpl: (config: FtpConfig) => Promise<string> = fetchAndertonsCatalogue,
+  fetchImpl: (config: SftpConfig) => Promise<string> = fetchAndertonsCatalogue,
   window: IngestWindow = {},
 ): Promise<AndertonsIngestOutcome> {
   if (!env.impact.hasAndertonsFeed) {
@@ -1085,6 +1106,7 @@ export async function ingestAndertonsFeed(
   try {
     const text = await fetchImpl({
       host: env.impact.andertonsFtpHost,
+      port: env.impact.andertonsFtpPort,
       user: env.impact.andertonsFtpUser,
       password: env.impact.andertonsFtpPassword,
       path: env.impact.andertonsFtpPath,

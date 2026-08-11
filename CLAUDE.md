@@ -631,6 +631,30 @@ That puts a real credential in clear on the public internet, and it is a
 decision to take deliberately if at all, not one to bury in a `catch` block.
 The same instinct as the Reverb API having no fallback path (section 2).
 
+**THE DROP IS SFTP, AND THE PROBE IS WHAT SETTLED IT (11 Aug 2026).** Impact's
+documentation says "FTP" throughout, so this was built on `basic-ftp` and every
+failure read as a wrong option on the right library. The probe found:
+
+| Port | What it said |
+|---|---|
+| 21 | `220` banner, `530 Access denied` to `FEAT` before any credential, `431` to `AUTH TLS` |
+| 990 | nothing, connection timed out |
+| 22 | `SSH-2.0-APACHE-SSHD-2.14.0` |
+
+An SSH banner means it was the **wrong library outright**, which is exactly the
+distinction the probe exists to draw and the reason it draws it without sending
+a password. Port 21 is not a fallback: it denies commands before authentication
+and refuses TLS, and the only thing it offers instead is plaintext.
+
+So the transport is `ssh2-sftp-client` on port 22 (`IMPACT_ANDERTONS_FTP_PORT`,
+defaulted to 22 and keeping the FTP name so the credential block still reads as
+one group). `basic-ftp` has been removed from the dependencies rather than left
+in place, because a dead client for a protocol this host does not speak is an
+invitation to try FTPS again. **The credential pair Impact mails out is an SSH
+login**: same pair, different protocol. If a future Impact merchant genuinely
+serves FTPS, add the client back for that merchant rather than reopening this
+one.
+
 ---
 
 ## 12. Admin: the operating-model business projection

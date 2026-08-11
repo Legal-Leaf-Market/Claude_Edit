@@ -185,6 +185,16 @@ export const env = {
      * state until then, same as every other unconfirmed source in this file.
      */
     andertonsFtpHost: str("IMPACT_ANDERTONS_FTP_HOST", "products.impact.com"),
+    /**
+     * 22, because the drop is SFTP.
+     *
+     * Probing products.impact.com settled what its docs leave ambiguous: port
+     * 21 refuses AUTH TLS with a 431 and denies FEAT before any credential,
+     * port 990 does not listen, and port 22 answers SSH-2.0-APACHE-SSHD-2.14.0.
+     * The variable keeps the name IMPACT_ANDERTONS_FTP_PORT so the whole block
+     * still reads as one group; the protocol it selects is SSH.
+     */
+    andertonsFtpPort: int("IMPACT_ANDERTONS_FTP_PORT", 22),
     andertonsFtpUser: str("IMPACT_ANDERTONS_FTP_USER"),
     andertonsFtpPassword: str("IMPACT_ANDERTONS_FTP_PASSWORD"),
     andertonsFtpPath: str("IMPACT_ANDERTONS_FTP_PATH", "/Andertons-Music-Company/"),

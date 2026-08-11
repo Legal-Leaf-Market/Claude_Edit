@@ -12,6 +12,20 @@ const securityHeaders = [
 ]
 
 const nextConfig = {
+  /*
+   * SSH BINDINGS CANNOT BE BUNDLED, so they are loaded at runtime instead.
+   *
+   * The Anderton's catalogue arrives over SFTP (probed: port 22 answers with
+   * an SSH banner, port 21 refuses AUTH TLS), which means ssh2, which ships
+   * optional native addons for its crypto. Turbopack fails the whole build on
+   * those with "non-ecmascript placeable asset" rather than skipping them, and
+   * the failure names the asset rather than the import that dragged it in.
+   *
+   * Listing them here leaves them as ordinary runtime requires in the server
+   * bundle. The import in lib/ingestion/andertons-impact.ts is already dynamic
+   * so nothing loads ssh2 unless a pull actually runs.
+   */
+  serverExternalPackages: ["ssh2", "ssh2-sftp-client"],
   images: {
     // Marketplace CDNs only. Anything not listed here falls back to a plain
     // <img> via components/listing-image.tsx rather than 404ing the optimizer.
