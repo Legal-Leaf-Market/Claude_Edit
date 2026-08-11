@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import {
   bindColumns,
+  sliceRows,
   ImpactSchemaError,
   normalizeAndertonsRow,
   parseAndertonsFeed,
@@ -403,5 +404,69 @@ describe("parseAndertonsFeed", () => {
     const { columns } = parseAndertonsFeed(feed(CANONICAL_HEADER, CANONICAL_ROW))
     expect(columns.itemId).toBe("Catalog Item Id")
     expect(columns.currentPrice).toBe("Current Price")
+  })
+})
+
+describe("slicing the catalogue", () => {
+  /**
+   * The 300 second ceiling made all-or-nothing a coin flip on 27,052 rows.
+   * Slicing works only because the upsert is idempotent and keyed on
+   * (source, external_id) and the feed is a full snapshot, so slice N always
+   * means the same rows however many times it is asked for.
+   *
+   * Tested as a pure function: the windowing is the part that can be wrong,
+   * and it needs neither a database nor an FTP server to prove.
+   */
+  const rows = Array.from({ length: 7 }, (_, i) => `row${i}`)
+
+  it("takes the whole feed when no window is given", () => {
+    const { slice, done } = sliceRows(rows)
+    expect(slice).toHaveLength(7)
+    expect(done).toBe(true)
+  })
+
+  it("takes only the requested window, and says there is more to come", () => {
+    const { slice, offset, done } = sliceRows(rows, { offset: 0, limit: 3 })
+    expect(slice).toEqual(["row0", "row1", "row2"])
+    expect(offset).toBe(0)
+    expect(done).toBe(false)
+  })
+
+  it("resumes from an offset and reports done on the last slice", () => {
+    const middle = sliceRows(rows, { offset: 3, limit: 3 })
+    expect(middle.slice).toEqual(["row3", "row4", "row5"])
+    expect(middle.done).toBe(false)
+
+    const last = sliceRows(rows, { offset: 6, limit: 3 })
+    expect(last.slice).toEqual(["row6"])
+    expect(last.done).toBe(true)
+  })
+
+  /**
+   * `done` gates expiring rows the feed no longer lists. An offset past the
+   * end must therefore report done rather than false, or a caller looping to
+   * completion never finishes and never expires anything.
+   */
+  it("treats an offset past the end as done with nothing to write", () => {
+    const past = sliceRows(rows, { offset: 99, limit: 10 })
+    expect(past.slice).toEqual([])
+    expect(past.done).toBe(true)
+  })
+
+  it("ignores a nonsense window rather than writing nothing", () => {
+    expect(sliceRows(rows, { offset: -5 }).slice).toHaveLength(7)
+    expect(sliceRows(rows, { limit: 0 }).slice).toHaveLength(7)
+  })
+
+  it("never loses a row when a caller walks the whole feed in slices", () => {
+    const seen: string[] = []
+    let offset = 0
+    for (let guard = 0; guard < 20; guard++) {
+      const { slice, done } = sliceRows(rows, { offset, limit: 2 })
+      seen.push(...slice)
+      if (done) break
+      offset += slice.length
+    }
+    expect(seen).toEqual(rows)
   })
 })
