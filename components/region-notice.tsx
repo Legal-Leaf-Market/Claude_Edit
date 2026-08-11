@@ -16,9 +16,21 @@ import { excludedStoreNamesFor, type Region } from "@/lib/regions"
  */
 export function RegionNotice({
   region,
+  showAllHref,
   className = "",
 }: {
   region: Region
+  /**
+   * Where "show anyway" goes. REQUIRED, and passed in rather than hardcoded,
+   * because this component cannot see the shopper's current search.
+   *
+   * The first version used a bare `href="?ships=all"`, which in Next replaces
+   * the entire query string: clicking it threw away the search term and every
+   * active filter. Making the caller supply a URL built from the live params
+   * is what stops that coming back, since there is no longer a default to
+   * quietly fall back to.
+   */
+  showAllHref: string
   className?: string
 }) {
   const hidden = excludedStoreNamesFor(region)
@@ -38,7 +50,7 @@ export function RegionNotice({
         Hiding {names}, which {hidden.length === 1 ? "does" : "do"} not ship to you.
       </span>
       <Link
-        href="?ships=all"
+        href={showAllHref}
         className="font-semibold text-[var(--accent-text)] underline-offset-2 hover:underline"
       >
         Show anyway

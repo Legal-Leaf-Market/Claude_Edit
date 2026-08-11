@@ -44,13 +44,28 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
    *
    * `?ships=all` opts out, which is what the notice links to.
    */
-  const region = query.ships === "all" ? null : regionFromHeaders(await headers())
+  const region = params.shipsAll ? null : regionFromHeaders(await headers())
   const excludeSources = excludedSourcesFor(region)
+
+  /*
+   * The opt-out link, built from the CURRENT params rather than as a bare
+   * "?ships=all". A query-only href replaces the whole query string, so the
+   * bare version threw away the shopper's search and every active filter,
+   * which is a strange reward for clicking "show me more". Page is dropped
+   * because unhiding a store changes how many results there are and page
+   * seven of the old set means nothing in the new one.
+   */
+  const showAllQuery = queryFromParams({ ...params, shipsAll: true, page: undefined })
+  const showAllHref = showAllQuery ? `/search?${showAllQuery}` : "/search?ships=all"
 
   return (
     <div className="shell py-6">
       <Suspense fallback={<ResultsSkeleton />}>
-        <Results params={{ ...params, excludeSources }} region={region} />
+        <Results
+          params={{ ...params, excludeSources }}
+          region={region}
+          showAllHref={showAllHref}
+        />
       </Suspense>
     </div>
   )
@@ -59,9 +74,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 async function Results({
   params,
   region,
+  showAllHref,
 }: {
   params: ReturnType<typeof paramsFromQuery>
   region: string | null
+  showAllHref: string
 }) {
   const result = await search(params)
 
@@ -89,7 +106,7 @@ async function Results({
           <SortSelect />
         </header>
 
-        <RegionNotice region={region} className="mb-4" />
+        <RegionNotice region={region} showAllHref={showAllHref} className="mb-4" />
 
         {result.hits.length === 0 ? (
           <EmptyState query={params.q} />
