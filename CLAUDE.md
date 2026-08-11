@@ -529,6 +529,7 @@ Never fork the logic between them. Add work to the job function.
 | `ADMIN_PASSCODE` | `/admin/operating-model`. Unset = nobody can sign in, ever. See section 12. |
 | `INSTAGRAM_HANDLE` / `INSTAGRAM_POST_URLS` | Homepage and footer follow strip. Handle defaults to `stompbox.world`; unset post URLs render a plain follow callout instead of embeds. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | "Continue with Google" on sign-in/sign-up. Unset means email and password only. |
+| `YOUTUBE_API_KEY` | Anderton's TV metadata and comments, via the YouTube Data API v3 (section 19). Unset means the reader no-ops. |
 
 ---
 
