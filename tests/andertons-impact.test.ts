@@ -726,3 +726,48 @@ describe("the Impact API transport", () => {
     expect(walk.nextPage).toBeNull()
   })
 })
+
+/**
+ * The answer the live API actually gave, on 11 Aug 2026.
+ *
+ * Every parameter variation was refused identically with
+ * "The requested catalog has not been made available via API by the
+ * Advertiser", while listing catalogues answered 200 with zero rows. So the
+ * credentials are good, the catalogue id is right, and the channel is closed
+ * by the brand.
+ *
+ * Pinned because the first version of the explainer offered a list of causes
+ * that could not have been it, and sent a real debugging session after
+ * PageSize. Reading the BODY rather than only the status is what separates
+ * "we asked wrongly" from "you may not ask at all", and that distinction is
+ * the difference between a code change and an email to the merchant.
+ */
+describe("an advertiser who has not enabled the API", () => {
+  const MESSAGE = '{ "Status": "ERROR", "Message": "The requested catalog has not been made available via API by the Advertiser." }'
+
+  it("says the request was fine and the brand has not switched it on", () => {
+    const explained = explainImpactStatus(400, "30480", MESSAGE)
+    expect(explained).toMatch(/advertiser/i)
+    expect(explained).toMatch(/credentials|catalogue id/i)
+  })
+
+  /*
+   * The point of the whole fix. Sending somebody to check PageSize when the
+   * server has said "you are not allowed to read this" wastes the one clue
+   * the response actually contained.
+   */
+  it("does not blame PageSize or the paging ceiling for it", () => {
+    const explained = explainImpactStatus(400, "30480", MESSAGE)
+    expect(explained).not.toMatch(/PageSize/i)
+    expect(explained).not.toMatch(/20,000/)
+  })
+
+  it("still offers the parameter checklist for a 400 that says something else", () => {
+    const explained = explainImpactStatus(400, "30480", '{"Message":"Invalid value for PageSize"}')
+    expect(explained).toMatch(/PageSize/i)
+  })
+
+  it("points at the transport that does work", () => {
+    expect(explainImpactStatus(400, "30480", MESSAGE)).toMatch(/SFTP/i)
+  })
+})

@@ -609,11 +609,37 @@ async function impactApiGet(
  * for a bad parameter AND for paging past the 20,000 ceiling, so naming both
  * candidates beside the server's own words is what makes it actionable.
  */
-export function explainImpactStatus(status: number, catalogId: string): string {
+export function explainImpactStatus(status: number, catalogId: string, body = ""): string {
+  /*
+   * THE CAUSE THAT IS NOT OURS, checked before any of the parameter guesses.
+   *
+   * Impact returns 400 with this message when the BRAND has not ticked "make
+   * this catalogue available via API", which is a switch in the advertiser's
+   * own Impact account and not a request we can reshape. Anderton's answered
+   * exactly this on 11 Aug 2026 with valid credentials and the right catalogue
+   * id, and the first version of this function sent the reader down a list of
+   * parameter causes that could never have been the answer.
+   *
+   * Reading the body rather than only the status is the whole reason the body
+   * is captured. A status of 400 is shared by every one of these; the sentence
+   * underneath is what separates "we asked wrongly" from "you are not allowed
+   * to ask at all".
+   */
+  if (/not been made available via api/i.test(body)) {
+    return (
+      "This is not a problem with the request, the credentials or the catalogue id: all three are fine, " +
+      "and the credentials clearly work because Impact got far enough to refuse on policy rather than on auth. " +
+      "The ADVERTISER has not enabled API access for this catalogue in their own Impact account. " +
+      "Nothing here can change that; it needs the brand or the Impact account manager to switch it on. " +
+      "Until they do, the SFTP drop is the only channel for this catalogue."
+    )
+  }
+
   switch (status) {
     case 400:
       return (
         "Impact rejected the request itself rather than the credentials. The usual causes, in order: " +
+        "the advertiser not having enabled API access for the catalogue (the body says so in as many words), " +
         `a PageSize the endpoint will not accept (its documented default is ${IMPACT_DEFAULT_PAGE_SIZE}), ` +
         `paging past the ${IMPACT_PAGING_CEILING.toLocaleString()}-record ceiling on catalogue items, ` +
         "or an API version this account cannot serve. The server's own words are below."
@@ -734,7 +760,7 @@ export async function fetchAndertonsApiPage(
         })
 
   if (!response.ok) {
-    const detail = explainImpactStatus(response.status, config.catalogId)
+    const detail = explainImpactStatus(response.status, config.catalogId, response.body)
     throw new Error(
       `Impact API returned ${response.status} ${response.statusText}. ${detail}`.trim() +
         (response.body ? `\n\nImpact said: ${response.body}` : "") +
@@ -885,6 +911,40 @@ function verdictFor(
 
   if (!catalogList.ok && catalogList.status === 401) {
     return "The credentials themselves are being rejected, so nothing else in this list matters yet. IMPACT_ACCOUNT_SID and IMPACT_AUTH_TOKEN come from Impact's API settings page and are NOT the FTP pair."
+  }
+
+  /*
+   * THE CONCLUSIVE CASE, and the one this whole matrix was built to reach.
+   *
+   * When every variation fails with the same advertiser-policy message, the
+   * matrix has done its job: it has ruled out PageSize, paging parameters and
+   * the API version by varying each one and getting the identical refusal. At
+   * that point telling the reader to go and read the rows is a worse answer
+   * than the rows themselves, so say it outright.
+   */
+  const blocked = items.filter((p) => /not been made available via api/i.test(p.note))
+  if (items.length > 0 && blocked.length === items.length) {
+    return (
+      "Conclusive: the ADVERTISER has not enabled API access for this catalogue. Every variation above was refused " +
+      "identically, which rules out PageSize, the paging parameters and the API version, and the catalogue listing " +
+      `${catalogList.ok ? "succeeded, so the credentials are fine" : "is the one to read next"}. ` +
+      "This is a switch in the brand's own Impact account and nothing here can change it. The SFTP drop is the " +
+      "channel for this catalogue until they turn it on."
+    )
+  }
+
+  /*
+   * A 200 with nothing in it. Not the same as a wrong catalogue id: the
+   * account authenticates and is simply entitled to read no catalogue at all
+   * over the API, which is what a publisher sees when no advertiser they work
+   * with has enabled the channel.
+   */
+  if (catalogList.ok && catalogList.catalogs.length === 0) {
+    return (
+      "The credentials work: listing catalogues answered 200. It returned NO catalogues at all, which means this " +
+      "account is not entitled to read any catalogue over the API rather than that the id is wrong. That is set by " +
+      "each advertiser, so it is a question for the brand or the Impact account manager, not a setting here."
+    )
   }
 
   if (catalogList.ok) {

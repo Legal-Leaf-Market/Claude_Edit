@@ -555,8 +555,25 @@ with our own account credentials, serving the catalogue Anderton's publishes to
 partners for this purpose. That is a different thing entirely from the frontend
 Algolia index rejected for Guitar Center (section 2).
 
-**THE API CANNOT REACH THE WHOLE CATALOGUE, and this is why both transports
-stay.** Impact's catalogue Items endpoint refuses to page beyond 20,000
+**THE API IS CLOSED FOR ANDERTON'S, BY ANDERTON'S (confirmed 11 Aug 2026).**
+Every catalogue-items call answers 400 with `{"Status":"ERROR","Message":"The
+requested catalog has not been made available via API by the Advertiser."}`,
+and the diagnose matrix ruled out every alternative: documented defaults, no
+paging parameters, the old PageSize and no version all failed identically,
+while listing catalogues answered **200 with zero rows**. So the credentials
+are valid, catalogue 30480 is the right id, and the channel is switched off in
+the BRAND's own Impact account. Nothing in this repo can change that: it needs
+Anderton's or the Impact account manager to enable it.
+
+**So the SFTP drop is not one of two transports for Anderton's, it is the
+only one.** The API code stays because it is correct, tested, and the next
+Impact merchant may well have the switch on, but do not spend another hour on
+the 400. `explainImpactStatus` reads the response BODY for this message and
+says so in as many words, and `tests/andertons-impact.test.ts` pins that it
+never blames PageSize for it. That distinction is the difference between a
+code change and an email to the merchant.
+
+**IF IT IS EVER ENABLED, THE API STILL CANNOT REACH THE WHOLE CATALOGUE.** Impact's catalogue Items endpoint refuses to page beyond 20,000
 records: a request past it answers 400 rather than an empty page. Anderton's
 publishes 27,052 products, so plain paging reaches at most about three
 quarters of it. That is not a bug to route around, it is the documented reason
