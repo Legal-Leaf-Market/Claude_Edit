@@ -24,7 +24,7 @@ import { SISTER_SITE_PROFILES } from "./sister-sites"
  * That set has shrunk as the network directories came in. The CJ programmes
  * (zZounds 6%, Pineville Music 7%, Full Compass Systems 4%, Nicokick 3%) and
  * Gear4music (3.5%) are now real numbers read off CJ's and Awin's own
- * advertiser directories. Still null: eBay, Reverb and Sweetwater. Reverb is
+ * advertiser directories. Still null: eBay and Reverb. Reverb is
  * the notable one, since its Awin listing publishes min and max commission as
  * 0, which means "not disclosed in the directory", not "pays nothing".
  *
@@ -77,9 +77,14 @@ export type MasterVendorRow = {
 const SISTER_VENDORS: Record<string, MasterVendorRow[]> = {
   legal: [
     { merchant: "Puffy (HiPuffy)", platform: "Shopify", ratePct: 10, status: "tracking", sharePct: 18, note: "Coupon verified at checkout" },
-    { merchant: "THCA King", platform: "Shopify", ratePct: 10, status: "tracking", sharePct: 15, note: "Coupon verified, 184 lab records" },
     { merchant: "Black Tie CBD", platform: "Shopify", ratePct: 12, status: "tracking", sharePct: 13, note: "161 own certificates, richest data" },
-    { merchant: "THCA Small Buds", platform: "Shopify", ratePct: 10, status: "tracking", sharePct: 11, note: "Coupon verified" },
+    /* A merchant was delisted from Legal Leaf on 10 Aug 2026 for short-shipping an order,
+       and its 15 points moved here rather than being deleted, matching the change made in
+       that site's own `_client-engine.js`. These shares are a distribution summing to 100
+       and the consumer sums them absolutely, so a deleted row would have modelled the
+       legal site at 85. Where the same demand actually lands is an assumption until real
+       months say otherwise. */
+    { merchant: "THCA Small Buds", platform: "Shopify", ratePct: 10, status: "tracking", sharePct: 26, note: "Coupon verified, absorbed a delisted peer's share" },
     { merchant: "Binoid", platform: "WooCommerce", ratePct: 15, status: "tracking", sharePct: 9, note: "Cart pre-fill working" },
     { merchant: "Bloomz", platform: "WooCommerce", ratePct: 15, status: "tracking", sharePct: 7, note: "Cart pre-fill working" },
     { merchant: "Exhale", platform: "WooCommerce", ratePct: 15, status: "tracking", sharePct: 6, note: "" },

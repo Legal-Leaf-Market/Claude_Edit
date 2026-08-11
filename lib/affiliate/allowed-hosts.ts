@@ -12,7 +12,6 @@ export const ALLOWED_HOSTS = [
   /(^|\.)reverb\.com$/i,
   /(^|\.)awin1\.com$/i,
   /(^|\.)ebay\.to$/i,
-  /(^|\.)sweetwater\.com$/i,
   /(^|\.)gear4music\.[a-z.]{2,6}$/i,
   /(^|\.)zzounds\.com$/i,
   /(^|\.)fullcompass\.com$/i,

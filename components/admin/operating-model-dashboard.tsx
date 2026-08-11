@@ -300,7 +300,7 @@ export function OperatingModelDashboard() {
               is already live, and unlike the affiliate sites in this family that deal in
               restricted categories, this one can legally advertise. The constraint right now is
               that roughly a third of live catalogue by product count has no confirmed referral
-              link, and every gated feed (eBay, Reverb, Sweetwater, Gear4music, the CJ trio) is
+              link, and every gated feed (eBay, Reverb, Gear4music, the CJ trio) is
               paused pending an approval, not a technical blocker.
             </p>
             <p>

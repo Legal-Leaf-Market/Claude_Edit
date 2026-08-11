@@ -1,0 +1,85 @@
+<meta charset="utf-8">
+<title>Mock new message</title>
+<style>
+  body{font:15px sans-serif;margin:0;padding:20px;background:#000;color:#eee}
+  input{width:100%;padding:10px;font:inherit;background:#111;color:#eee;border:1px solid #333;border-radius:8px}
+  #results div[role=button]{padding:10px;border-bottom:1px solid #222;cursor:pointer}
+  #chat{margin-top:12px;padding:10px 16px;background:#4d82ff;color:#000;font-weight:700;border-radius:8px;display:inline-block;cursor:pointer}
+  [aria-disabled=true]{opacity:.4}
+  .composer{display:none;margin-top:16px;border:1px solid #333;border-radius:20px;padding:8px 12px}
+  .composer.on{display:flex;gap:8px}
+  [role=textbox]{flex:1;min-height:22px;outline:none}
+</style>
+
+<h3>New message</h3>
+<input name="queryBox" placeholder="Search..." autocomplete="off"/>
+<div id="results"></div>
+<div id="chat" role="button" aria-disabled="true">Chat</div>
+
+<div class="composer" id="comp">
+  <div role="textbox" contenteditable="true" aria-label="Message" id="box"></div>
+  <div role="button" id="send" aria-disabled="true">Send</div>
+</div>
+
+<script>
+/* Mirrors the shape of Instagram's new-message picker: a React-controlled search
+ * input, result rows showing "username\nFull Name", a Chat button that is disabled
+ * until someone is selected, and a composer that only exists once the thread is
+ * open. Directory is seeded so a prefix query returns several near misses, which
+ * is the case that must NOT be auto-picked. */
+const DIRECTORY = (new URLSearchParams(location.search).get('dir') ||
+  'jellojayy191:Jello Jay,jellojayy:Jello Jay Alt,jellojayy1910:Jay').split(',')
+  .map(s => { const [h, n] = s.split(':'); return { h, n }; });
+
+window.__picked = null;
+window.__sent = [];
+let model = '';
+
+const q = document.querySelector('input[name=queryBox]');
+const results = document.getElementById('results');
+const chat = document.getElementById('chat');
+const comp = document.getElementById('comp');
+const box = document.getElementById('box');
+const send = document.getElementById('send');
+
+q.addEventListener('input', () => {
+  const v = q.value.trim().toLowerCase();
+  results.textContent = '';
+  if (!v) return;
+  DIRECTORY.filter(d => d.h.toLowerCase().includes(v)).forEach(d => {
+    const row = document.createElement('div');
+    row.setAttribute('role', 'button');
+    row.textContent = d.h + '\n' + d.n;
+    row.addEventListener('click', () => {
+      window.__picked = d.h;
+      chat.setAttribute('aria-disabled', 'false');
+    });
+    results.appendChild(row);
+  });
+});
+
+chat.addEventListener('click', () => {
+  if (chat.getAttribute('aria-disabled') === 'true') return;
+  comp.classList.add('on');
+});
+
+// Model-owning editor, same as mock-dm.html's default mode.
+box.addEventListener('beforeinput', (e) => {
+  if (e.inputType === 'insertText' && e.data != null) { e.preventDefault(); model += e.data; render(); }
+});
+box.addEventListener('paste', (e) => {
+  e.preventDefault();
+  const t = e.clipboardData && e.clipboardData.getData('text/plain');
+  if (t) { model += t; render(); }
+});
+function render() {
+  if (box.textContent !== model) box.textContent = model;
+  send.setAttribute('aria-disabled', model.trim() ? 'false' : 'true');
+}
+function commit() {
+  window.__sent.push(model.trim());
+  model = ''; render();
+}
+box.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commit(); } });
+send.addEventListener('click', () => { if (send.getAttribute('aria-disabled') !== 'true') commit(); });
+</script>
