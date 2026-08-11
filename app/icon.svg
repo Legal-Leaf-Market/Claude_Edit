@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!--
+    The favicon. Next's App Router picks this up from app/icon.svg
+    automatically; before this file existed the site shipped no icon at all and
+    browsers drew the default blank page glyph.
+
+    Colours are literal rather than var(), unlike components/brand/logo.tsx.
+    A favicon renders outside the document, so custom properties never resolve
+    and every one of them would fall back to nothing.
+
+    The dark plate is deliberate. A bare gold fork disappears against a light
+    browser chrome and a dark one alike, whereas a dark tile with a gold mark
+    on it reads on both, which is the whole job at 16 pixels.
+  -->
+  <rect width="32" height="32" rx="7" fill="#15181a"/>
+  <circle cx="16" cy="16" r="12.4" stroke="#ffc233" stroke-width="1.5" opacity="0.5" fill="none"/>
+  <path d="M11.9 9.8v6.6a4.1 4.1 0 0 0 8.2 0V9.8" stroke="#ffc233" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  <path d="M16 20.2v5.1" stroke="#ffc233" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="16" cy="16" r="1.3" fill="#ffc233"/>
+</svg>
