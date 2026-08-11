@@ -253,6 +253,29 @@ export const env = {
    * because that list keeps moving: when this one is retired in turn, set
    * GROQ_MODEL rather than shipping a code change.
    */
+  /**
+   * Anderton's TV, via the YouTube Data API v3.
+   *
+   * A published partner API meant for third-party use, which is the standard
+   * section 2 sets, so video metadata and comments are fair game. TRANSCRIPTS
+   * ARE NOT: the API's captions.download only works for videos you own, and
+   * every "youtube-transcript" library gets around that by hitting YouTube's
+   * internal timedtext endpoint, which is the same "built for the site's own
+   * frontend rather than published for this use" shape rejected for Guitar
+   * Center. Anderton's own permission would not cover it either, since the
+   * access terms are Google's rather than theirs. The legitimate route to
+   * transcripts is asking Anderton's for the files directly.
+   */
+  youtube: {
+    apiKey: str("YOUTUBE_API_KEY"),
+    /** Resolved from the handle at runtime, so no channel id has to be hardcoded. */
+    andertonsHandle: str("YOUTUBE_ANDERTONS_HANDLE", "@Andertons"),
+    baseUrl: str("YOUTUBE_BASE_URL", "https://www.googleapis.com/youtube/v3"),
+    get isConfigured(): boolean {
+      return Boolean(env.youtube.apiKey)
+    },
+  },
+
   groq: {
     apiKey: str("GROQ_API_KEY"),
     model: str("GROQ_MODEL", "openai/gpt-oss-120b"),
