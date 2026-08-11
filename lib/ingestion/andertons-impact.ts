@@ -426,6 +426,68 @@ export type SftpConfig = {
  * because ssh2 pulls in native crypto bindings, and a static import would drag
  * them into any bundle that wants this file for the parser alone.
  */
+export type DropListing = {
+  connected: boolean
+  path: string
+  files: { name: string; sizeBytes: number; modified: string | null }[]
+  /** The file a pull would actually take, by the same rule the pull uses. */
+  chosen: string | null
+}
+
+/**
+ * Open the drop, list it, and close. No download.
+ *
+ * THE CHEAP STEP BEFORE THE EXPENSIVE ONE. A pull of this catalogue is 27,052
+ * rows against a 300 second ceiling, so an attempt that fails on the login or
+ * on the directory path costs several minutes and reports a timeout, which
+ * looks exactly like the size problem it is not. Listing costs a second and
+ * separates them outright: it either authenticates or it does not, and the
+ * directory either holds a catalogue or names what it holds instead.
+ *
+ * Same shape of reasoning as the peek on the API side and the port probe
+ * before that. The pattern is worth stating plainly, because this source has
+ * now cost four round trips of guessing: when a step is slow, expensive or
+ * hard to interpret, put a fast and unambiguous one in front of it.
+ *
+ * `chosen` runs the real selection rule, so the answer to "which file would a
+ * pull take" comes from the code that would take it rather than from reading
+ * the list and assuming.
+ */
+export async function listAndertonsDrop(config: SftpConfig): Promise<DropListing> {
+  const { default: SftpClient } = await import("ssh2-sftp-client")
+  const client = new SftpClient()
+
+  try {
+    await client.connect({
+      host: config.host,
+      port: config.port,
+      username: config.user,
+      password: config.password,
+      readyTimeout: 30_000,
+    })
+
+    const listing = await client.list(config.path)
+    const files = listing
+      .filter((f) => f.type === "-")
+      .map((f) => ({
+        name: f.name,
+        sizeBytes: f.size,
+        modified: f.modifyTime ? new Date(f.modifyTime).toISOString() : null,
+      }))
+
+    return {
+      connected: true,
+      path: config.path,
+      // Directories included by name only, since a drop that turns out to be
+      // one directory per date is a path problem rather than an empty one.
+      files: [...files, ...listing.filter((f) => f.type === "d").map((f) => ({ name: `${f.name}/`, sizeBytes: 0, modified: null }))],
+      chosen: pickCatalogueFile(files.map((f) => f.name)),
+    }
+  } finally {
+    await client.end().catch(() => {})
+  }
+}
+
 export async function fetchAndertonsCatalogue(config: SftpConfig): Promise<string> {
   const { default: SftpClient } = await import("ssh2-sftp-client")
   const client = new SftpClient()

@@ -32,7 +32,7 @@ vi.mock("ssh2-sftp-client", () => ({
   },
 }))
 
-const { fetchAndertonsCatalogue } = await import("@/lib/ingestion/andertons-impact")
+const { fetchAndertonsCatalogue, listAndertonsDrop } = await import("@/lib/ingestion/andertons-impact")
 
 const CONFIG = {
   host: "products.impact.com",
@@ -130,5 +130,65 @@ describe("the Anderton's SFTP transport", () => {
     end.mockRejectedValue(new Error("socket already gone"))
 
     await expect(fetchAndertonsCatalogue(CONFIG)).rejects.toThrow(/permission denied/)
+  })
+})
+
+/**
+ * Listing the drop without downloading it.
+ *
+ * The cheap step in front of the expensive one. A pull is 27,052 rows against
+ * a 300 second ceiling, so a rejected login or a wrong directory surfaces as a
+ * slow failure that reads exactly like the size problem it is not.
+ */
+describe("listing the Anderton's drop", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    connect.mockResolvedValue(undefined)
+    end.mockResolvedValue(undefined)
+  })
+
+  it("reports the file a pull would take, chosen by the same rule the pull uses", async () => {
+    list.mockResolvedValue([entry("andertons-2026-08-10.csv"), entry("andertons-2026-08-11.csv")])
+
+    const listing = await listAndertonsDrop(CONFIG)
+
+    expect(listing.connected).toBe(true)
+    expect(listing.chosen).toBe("andertons-2026-08-11.csv")
+  })
+
+  it("downloads nothing", async () => {
+    list.mockResolvedValue([entry("catalogue.csv")])
+
+    await listAndertonsDrop(CONFIG)
+
+    expect(get).not.toHaveBeenCalled()
+  })
+
+  /*
+   * A drop that turns out to be one directory per date is a path problem, and
+   * an empty file list would hide it. Directories are listed by name so the
+   * next thing to try is visible rather than deduced.
+   */
+  it("shows directories too, so a wrong path is visible rather than empty", async () => {
+    list.mockResolvedValue([entry("2026-08-11", "d"), entry("readme.txt")])
+
+    const listing = await listAndertonsDrop(CONFIG)
+
+    expect(listing.files.map((f) => f.name)).toContain("2026-08-11/")
+  })
+
+  it("reports no chosen file rather than guessing when none looks like a catalogue", async () => {
+    list.mockResolvedValue([entry("readme.pdf")])
+
+    const listing = await listAndertonsDrop(CONFIG)
+
+    expect(listing.chosen).toBeNull()
+    expect(listing.connected).toBe(true)
+  })
+
+  it("closes the connection", async () => {
+    list.mockResolvedValue([entry("catalogue.csv")])
+    await listAndertonsDrop(CONFIG)
+    expect(end).toHaveBeenCalled()
   })
 })

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { isAdmin } from "@/lib/admin/gate"
 import { env } from "@/lib/env"
-import { ingestAndertonsFeed } from "@/lib/ingestion/andertons-impact"
+import { ingestAndertonsFeed, listAndertonsDrop } from "@/lib/ingestion/andertons-impact"
 import { explainFtpFailure } from "@/lib/ingestion/ftp-probe"
 
 export const dynamic = "force-dynamic"
@@ -60,13 +60,38 @@ export async function POST(request: Request) {
    * is a full snapshot, so slice N always means the same rows and a repeated
    * or overlapping call costs nothing but time.
    */
-  const body = (await request.json().catch(() => ({}))) as { offset?: number; limit?: number }
+  const body = (await request.json().catch(() => ({}))) as {
+    mode?: "list" | "pull"
+    offset?: number
+    limit?: number
+  }
   const offset = Number.isFinite(body.offset) ? Math.max(0, Number(body.offset)) : 0
   const limit = Number.isFinite(body.limit) ? Math.max(1, Number(body.limit)) : 4000
 
   const startedAt = Date.now()
 
   try {
+    /*
+     * List before pulling. A failed login and a catalogue too big for 300
+     * seconds both surface as a slow failure otherwise, and they are opposite
+     * problems. This costs a second and tells them apart.
+     */
+    if (body.mode === "list") {
+      const listing = await listAndertonsDrop({
+        host: env.impact.andertonsFtpHost,
+        port: env.impact.andertonsFtpPort,
+        user: env.impact.andertonsFtpUser,
+        password: env.impact.andertonsFtpPassword,
+        path: env.impact.andertonsFtpPath,
+      })
+      return NextResponse.json({
+        mode: "list",
+        seconds: Math.round((Date.now() - startedAt) / 100) / 10,
+        used: { host: env.impact.andertonsFtpHost, port: env.impact.andertonsFtpPort },
+        ...listing,
+      })
+    }
+
     const stats = await ingestAndertonsFeed(undefined, { offset, limit })
     return NextResponse.json({
       job: "andertons-catalogue",
@@ -111,6 +136,9 @@ export async function POST(request: Request) {
         seconds: Math.round((Date.now() - startedAt) / 100) / 10,
         used: {
           host: usedHost,
+          // The port matters now that the transport is SSH: a 22 here and an
+          // FTP-shaped error is a contradiction worth seeing at a glance.
+          port: env.impact.andertonsFtpPort,
           path: env.impact.andertonsFtpPath,
           userSet: Boolean(env.impact.andertonsFtpUser),
           passwordSet: Boolean(env.impact.andertonsFtpPassword),

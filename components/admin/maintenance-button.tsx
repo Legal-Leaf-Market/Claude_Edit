@@ -400,9 +400,53 @@ function ProbeButton() {
  * rather than looking broken when it does.
  */
 function AndertonsButton() {
-  const [state, setState] = useState<"idle" | "running" | "done" | "error">("idle")
+  const [state, setState] = useState<"idle" | "listing" | "running" | "done" | "error">("idle")
   const [message, setMessage] = useState<string | null>(null)
+  const [detail, setDetail] = useState<string | null>(null)
   const [progress, setProgress] = useState<{ wrote: number; total: number } | null>(null)
+
+  /**
+   * Open the drop, list it, close. No download.
+   *
+   * Worth its own button because a pull is 27,000 rows against a 300 second
+   * ceiling: a wrong path or a rejected login costs minutes and then reports a
+   * timeout, which is indistinguishable from the catalogue simply being too
+   * big. This answers "does the login work and is there a file there" in about
+   * a second, and shows which file a pull would actually take.
+   */
+  async function list() {
+    setState("listing")
+    setMessage(null)
+    setDetail(null)
+    try {
+      const response = await fetch("/api/admin/ingest-andertons", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mode: "list" }),
+      })
+      const body = await response.json()
+      if (!response.ok) throw new Error(body?.hint || body?.error || `HTTP ${response.status}`)
+
+      const files: { name: string; sizeBytes: number; modified: string | null }[] = body.files ?? []
+      setMessage(
+        body.chosen
+          ? `Connected over SSH and found ${files.length} entries in ${body.path}. A pull would take ${body.chosen}.`
+          : `Connected over SSH, but nothing in ${body.path} looks like a catalogue file. What is actually there is listed below.`,
+      )
+      setDetail(
+        files
+          .map(
+            (f) =>
+              `  ${f.name.padEnd(44)} ${(f.sizeBytes ? `${(f.sizeBytes / 1_048_576).toFixed(1)} MB` : "").padStart(9)}  ${f.modified ?? ""}`,
+          )
+          .join("\n") || "(the directory is empty)",
+      )
+      setState("done")
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Something went wrong.")
+      setState("error")
+    }
+  }
 
   /**
    * Pull the catalogue a slice at a time, until it is done.
@@ -468,19 +512,44 @@ function AndertonsButton() {
     <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
       <h2 className="font-display text-base font-black text-[var(--text)]">Pull the Anderton&apos;s catalogue</h2>
       <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
-        Roughly 27,000 products over FTP from Impact. It arrives in slices of 4,000 because a
-        serverless function stops at 300 seconds, and the browser keeps asking for the next one
-        until it is finished. Leave this tab open. Safe to re-run: every row is keyed, so a repeat
-        costs time and nothing else.
+        Roughly 27,000 products over <strong className="text-[var(--text)]">SFTP</strong> from
+        Impact. It arrives in slices of 4,000 because a serverless function stops at 300 seconds,
+        and the browser keeps asking for the next one until it is finished. Leave this tab open.
+        Safe to re-run: every row is keyed, so a repeat costs time and nothing else.
+      </p>
+      <p className="mb-3 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+        <strong className="text-[var(--text)]">List the drop first.</strong> A rejected login or a
+        wrong directory takes minutes to surface as a failed pull and then looks like a timeout,
+        which is the opposite problem. Listing answers it in a second and names the file a pull
+        would take.
       </p>
 
-      <button type="button" onClick={run} disabled={state === "running"} className="stomp">
-        <Download
-          className={`h-3.5 w-3.5 ${state === "running" ? "animate-pulse" : ""}`}
-          aria-hidden="true"
-        />
-        {state === "running" ? "Pulling..." : "Pull it now"}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={list}
+          disabled={state === "running" || state === "listing"}
+          className="stomp stomp-ghost"
+        >
+          <Stethoscope
+            className={`h-3.5 w-3.5 ${state === "listing" ? "animate-pulse" : ""}`}
+            aria-hidden="true"
+          />
+          {state === "listing" ? "Listing..." : "List the drop"}
+        </button>
+        <button
+          type="button"
+          onClick={run}
+          disabled={state === "running" || state === "listing"}
+          className="stomp"
+        >
+          <Download
+            className={`h-3.5 w-3.5 ${state === "running" ? "animate-pulse" : ""}`}
+            aria-hidden="true"
+          />
+          {state === "running" ? "Pulling..." : "Pull it now"}
+        </button>
+      </div>
 
       {state === "running" && progress && (
         <p className="mt-3 text-sm tabular-nums text-[var(--accent-text)]">
@@ -500,6 +569,12 @@ function AndertonsButton() {
           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{message}</span>
         </p>
+      )}
+
+      {detail && (
+        <pre className="readout mt-3 max-h-80 overflow-auto whitespace-pre-wrap p-3 text-[0.7rem] leading-relaxed">
+          {detail}
+        </pre>
       )}
     </div>
   )
