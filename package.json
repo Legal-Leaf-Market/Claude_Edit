@@ -34,7 +34,9 @@
     "ingest:squaver": "tsx scripts/run-ingest.ts squaver",
     "ingest:easonmusicstore": "tsx scripts/run-ingest.ts easonmusicstore",
     "ingest:gokalimba": "tsx scripts/run-ingest.ts gokalimba",
-    "search:reindex": "tsx scripts/reindex.ts"
+    "search:reindex": "tsx scripts/reindex.ts",
+    "rigs:covers": "tsx scripts/fetch-album-covers.ts",
+    "rigs:photos": "tsx scripts/fetch-artist-photos.ts"
   },
   "dependencies": {
     "@vercel/analytics": "1.6.1",

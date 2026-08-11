@@ -115,7 +115,53 @@ async function main() {
 
   const path = "lib/rigs/covers.ts"
   const current = readFileSync(path, "utf8")
-  const updated = current.replace(/export const COVERS: AlbumCover\[\] = \[[\s\S]*?\n\]/, render(found))
+
+  /*
+   * Match the EMPTY array as well as a populated one.
+   *
+   * The committed file starts life as `= []` on a single line, and a pattern
+   * requiring a newline before the bracket does not match that at all. So the
+   * very first real run, the only one that has ever mattered here, threw
+   * "Could not find the COVERS array to replace" after politely spending a
+   * minute and a half of MusicBrainz's rate limit. The alternation covers the
+   * empty form first, then the multi-line form.
+   */
+  const ARRAY = /export const COVERS: AlbumCover\[\] = \[\s*\]|export const COVERS: AlbumCover\[\] = \[[\s\S]*?\n\]/
+
+  /*
+   * REFUSE TO WRITE A WORSE FILE THAN THE ONE ALREADY COMMITTED.
+   *
+   * Every lookup failing looks identical, from here, to every record being
+   * genuinely unresolvable: `found` is empty either way. The first is a
+   * blocked network or a MusicBrainz outage and happens often; the second has
+   * never happened. Writing on an empty result would replace good committed
+   * identifiers with `[]` and report it as success, and the next deploy would
+   * quietly drop every cover on the site.
+   *
+   * Counted INSIDE the array rather than across the file: the AlbumCover type
+   * declares the same field names, so counting the whole file reads one entry
+   * too many and would refuse a run that resolved exactly as much as last
+   * time. A guard that fires on a good run gets disabled, which costs more
+   * than the guard is worth.
+   *
+   * --force is for the one legitimate shrink, deliberately dropping records,
+   * and has to be typed out rather than defaulted into.
+   */
+  const existingBlock = current.match(ARRAY)?.[0] ?? ""
+  const existing = (existingBlock.match(/releaseGroupMbid:/g) ?? []).length
+  const force = process.argv.includes("--force")
+
+  if (!force && found.length < existing) {
+    console.error(
+      `\nRefusing to write. This run resolved ${found.length} records and ${path} already has ${existing}.\n` +
+        "That is what a network failure looks like, and writing would discard identifiers that are already good.\n" +
+        "Check the failures above. If the shrink is deliberate, re-run with --force.",
+    )
+    process.exitCode = 1
+    return
+  }
+
+  const updated = current.replace(ARRAY, render(found))
   if (updated === current) throw new Error("Could not find the COVERS array to replace.")
   writeFileSync(path, updated)
   console.log(`Wrote ${found.length} entries to ${path}. Review the diff before committing.`)
