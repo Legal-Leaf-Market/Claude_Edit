@@ -10,6 +10,7 @@ import {
 } from "@/lib/pedalboard/layout"
 import { BOARDS, boardById } from "@/lib/pedalboard/catalog/boards"
 import { pedalById } from "@/lib/pedalboard/catalog/pedals"
+import { findPedalSpec, resolvePedal } from "@/lib/pedalboard/catalog"
 import type { BoardSpec } from "@/lib/pedalboard/catalog/types"
 
 /**
@@ -332,5 +333,92 @@ describe("the board catalogue", () => {
         expect(rail.offsetMm + rail.depthMm, b.id).toBeLessThanOrEqual(b.usableDepthMm + 0.5)
       }
     }
+  })
+})
+
+describe("matching a listing to a physical spec", () => {
+  it("finds a spec through the noise a feed title carries", () => {
+    expect(findPedalSpec("Boss", "DS-1 Distortion Pedal")?.id).toBe("boss-ds-1")
+    expect(findPedalSpec("BOSS", "  ds-1   distortion ")?.id).toBe("boss-ds-1")
+    expect(findPedalSpec("Ibanez", "TS9 Tube Screamer Overdrive")?.id).toBe("ibanez-ts9")
+  })
+
+  it("resolves brand synonyms seen in real feeds", () => {
+    expect(findPedalSpec("EHX", "Big Muff Pi")?.id).toBe("ehx-big-muff-pi")
+    expect(findPedalSpec("Electro-Harmonix", "Big Muff Pi")?.id).toBe("ehx-big-muff-pi")
+    expect(findPedalSpec("Jim Dunlop", "Cry Baby GCB95")?.id).toBe("dunlop-cry-baby")
+  })
+
+  /**
+   * The bias that matters, and the same one CLAUDE.md section 4 takes: a pedal
+   * with no spec is drawn at a neutral default and labelled an estimate, which
+   * is a small inaccuracy. A pedal matched to the WRONG spec is laid out at
+   * the wrong size and powered against the wrong draw, which is a confident
+   * lie.
+   */
+  it("refuses to match across brands", () => {
+    expect(findPedalSpec("Squier", "Big Muff Pi")).toBeNull()
+    expect(findPedalSpec("Behringer", "TS9 Tube Screamer")).toBeNull()
+  })
+
+  it("returns null rather than guessing at an unknown pedal", () => {
+    expect(findPedalSpec("Boss", "XY-9000 Imaginary")).toBeNull()
+    expect(findPedalSpec("", "")).toBeNull()
+  })
+
+  it("prefers the longest matching name when two could apply", () => {
+    // "Nano Big Muff Pi" must not be won by the plain "Big Muff Pi" entry.
+    expect(findPedalSpec("Electro-Harmonix", "Nano Big Muff Pi")?.id).toBe("ehx-nano-big-muff")
+  })
+})
+
+describe("resolvePedal", () => {
+  it("marks an unmatched pedal as estimated rather than pretending", () => {
+    const resolved = resolvePedal("Nobody", "Mystery Fuzz", "drive")
+    expect(resolved.matched).toBe(false)
+    expect(resolved.spec).toBeNull()
+    expect(resolved.dims.source).toBe("estimate")
+    expect(resolved.dims.widthMm).toBeGreaterThan(0)
+  })
+
+  it("still spots a treadle it has no spec for, since one eats a lot of board", () => {
+    expect(resolvePedal("Nobody", "Vintage Wah", "filter").treadle).toBe(true)
+    expect(resolvePedal("Nobody", "Volume Pedal", "volume").treadle).toBe(true)
+    expect(resolvePedal("Nobody", "Mystery Fuzz", "drive").treadle).toBe(false)
+  })
+
+  it("carries the real dimensions through for a pedal it does know", () => {
+    const resolved = resolvePedal("Boss", "DS-1 Distortion", "drive")
+    expect(resolved.matched).toBe(true)
+    expect(resolved.dims.widthMm).toBe(73)
+    expect(resolved.dims.source).not.toBe("estimate")
+  })
+})
+
+describe("autoArrange and the checker agree", () => {
+  /**
+   * The arranger must never produce a layout its own validator complains
+   * about. It did: a wah was packed flush to the front edge and then warned
+   * about for having no toe room, which makes the tool look like it is
+   * arguing with itself.
+   */
+  it("leaves toe room, so a wah it placed does not trip its own treadle warning", () => {
+    const b = board("pedaltrain-classic-2")
+    const items = [item("dunlop-cry-baby"), item("boss-ds-1"), item("boss-dd-3")]
+
+    const result = autoArrange(b, items)
+
+    expect(result.unplaced).toHaveLength(0)
+    const treadleWarnings = result.issues.filter(
+      (i) => i.key === "dunlop-cry-baby" && /room to rock/i.test(i.message),
+    )
+    expect(treadleWarnings).toHaveLength(0)
+  })
+
+  it("emits no issues at all for a chain that comfortably fits", () => {
+    const b = board("pedaltrain-novo-24")
+    const items = [item("boss-tu-3"), item("ibanez-ts9"), item("boss-dd-3")]
+
+    expect(autoArrange(b, items).issues).toHaveLength(0)
   })
 })

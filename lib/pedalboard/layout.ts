@@ -257,9 +257,20 @@ export function autoArrange(
   const treadles = items.filter((i) => i.treadle)
   const rest = items.filter((i) => !i.treadle)
 
+  /*
+   * Reserve toe room the moment a treadle is in play.
+   *
+   * Without this the arranger packs the wah flush to the front edge and then
+   * its own checker warns about the layout it just produced, which makes the
+   * tool look like it is arguing with itself. The whole front row moves back,
+   * not just the treadle: the front row is the one you stomp, so the clearance
+   * is useful there regardless.
+   */
+  const toeRoom = treadles.length > 0 ? TREADLE_TOE_ROOM_MM : 0
+
   // Rows are laid from the front edge backwards, each as deep as its tallest
   // member, so a row of compacts does not reserve a wah's worth of depth.
-  let rowBackY = board.usableDepthMm
+  let rowBackY = board.usableDepthMm - toeRoom
   let cursorX = 0
   let rowDepth = 0
 

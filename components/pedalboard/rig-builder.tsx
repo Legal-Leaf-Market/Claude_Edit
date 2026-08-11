@@ -15,6 +15,7 @@ import {
 import { Board, type BoardSlot } from "./board"
 import { PedalSearch } from "./pedal-search"
 import { RigPicker } from "./rig-picker"
+import { BoardPlanner } from "./board-planner"
 import { useCart } from "@/lib/cart/context"
 import {
   analyzeChain,
@@ -464,6 +465,23 @@ export function RigBuilder({
           </section>
         </div>
       )}
+
+      {/*
+        The physical half: what fits, what powers it, what to patch it with.
+        Below the chain rather than replacing it, because the two answer
+        different questions. The chain is "will this sound right in this
+        order"; the planner is "will this actually go on a board and switch
+        on". Every tool worth comparing against does the second and none of
+        them does both.
+      */}
+      <BoardPlanner
+        slots={slots.map((slot) => ({
+          key: slot.key,
+          brand: slot.brand,
+          model: slot.model,
+          type: slot.type,
+        }))}
+      />
     </div>
   )
 }
