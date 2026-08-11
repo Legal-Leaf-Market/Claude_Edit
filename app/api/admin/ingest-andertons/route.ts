@@ -82,12 +82,35 @@ export async function POST(request: Request) {
      * the headers it saw), or the function running out of time.
      */
     const message = error instanceof Error ? error.message : String(error)
+
+    /*
+     * Echo back the connection settings, minus the password.
+     *
+     * A DNS failure and a wrong hostname produce the same ENOTFOUND, and the
+     * env var is the likelier of the two: pasting the whole ftp:// URL into
+     * IMPACT_ANDERTONS_FTP_HOST fails exactly this way, and nothing in the
+     * error names what was actually used. Showing it turns a guess into a
+     * glance. The password is never included, and `userSet` reports only
+     * whether one exists.
+     */
+    const usedHost = env.impact.andertonsFtpHost
+    const looksMalformed = /[:/@]/.test(usedHost) || usedHost.trim() !== usedHost
+
     return NextResponse.json(
       {
         error: message,
         seconds: Math.round((Date.now() - startedAt) / 100) / 10,
-        hint:
-          "If this ran for close to 300 seconds, the function timed out and the feed needs the BullMQ worker after all. If it failed fast, it is the credentials or the feed's shape, and the message above says which.",
+        used: {
+          host: usedHost,
+          path: env.impact.andertonsFtpPath,
+          userSet: Boolean(env.impact.andertonsFtpUser),
+          passwordSet: Boolean(env.impact.andertonsFtpPassword),
+        },
+        hint: looksMalformed
+          ? `IMPACT_ANDERTONS_FTP_HOST is "${usedHost}", which is not a bare hostname. It must be exactly "products.impact.com": no ftp:// prefix, no slashes, no path, no trailing space. Delete the variable entirely to use that default.`
+          : /ENOTFOUND|EAI_AGAIN/.test(message)
+            ? "The hostname did not resolve from Vercel, though it does resolve publicly. Check the variable for stray whitespace, then consider Impact's HTTPS catalogue API instead of FTP."
+            : "If this ran for close to 300 seconds it timed out. If it failed fast it is the credentials or the feed's shape, and the message above says which.",
       },
       { status: 500 },
     )

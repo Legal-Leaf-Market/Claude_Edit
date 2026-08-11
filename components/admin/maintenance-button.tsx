@@ -74,7 +74,12 @@ function AndertonsButton() {
         })
         const body = await response.json()
         if (!response.ok) {
-          throw new Error(`${body?.error ?? response.status}${body?.hint ? ` -- ${body.hint}` : ""}`)
+          // The settings actually used matter as much as the error: a wrong
+          // hostname and a DNS outage read identically otherwise.
+          const used = body?.used
+            ? ` [host: ${JSON.stringify(body.used.host)}, path: ${JSON.stringify(body.used.path)}, user set: ${body.used.userSet}, password set: ${body.used.passwordSet}]`
+            : ""
+          throw new Error(`${body?.error ?? response.status}${used}${body?.hint ? ` -- ${body.hint}` : ""}`)
         }
         if (body.status === "failed") throw new Error(body.error ?? "The pull failed.")
         if (body.status === "skipped") throw new Error(body.reason ?? "Skipped.")
