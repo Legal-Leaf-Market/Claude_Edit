@@ -1,8 +1,9 @@
 import { sql } from "drizzle-orm"
 import { db } from "@/lib/db"
+import { inferEffectType, type EffectType } from "@/lib/pedalboard/chain"
 
 /**
- * Data layer for the "build your pedalboard" tool (/pedalboard).
+ * Data layer for the rig builder (/pedalboard).
  *
  * Deliberately scoped to canonical_gear rather than raw listings: the board
  * places one instrument per slot, and a slot showing "3 listings, 2 stores"
@@ -19,6 +20,8 @@ export type PedalSummary = {
   imageUrl: string | null
   marketPriceCents: number | null
   sampleSize: number
+  /** Guessed from the name. The shopper can override it on the board. */
+  type: EffectType
 }
 
 /**
@@ -47,14 +50,26 @@ export async function searchPedals(q: string, limit = 8): Promise<PedalSummary[]
     LIMIT ${limit}
   `)
 
-  return result.rows.map((r) => ({
+  return result.rows.map(toSummary)
+}
+
+function toSummary(r: {
+  slug: string
+  brand: string
+  model: string
+  image_url: string | null
+  avg_used_price_cents: number | null
+  price_sample_size: number
+}): PedalSummary {
+  return {
     slug: r.slug,
     brand: r.brand,
     model: r.model,
     imageUrl: r.image_url,
     marketPriceCents: r.avg_used_price_cents,
     sampleSize: r.price_sample_size,
-  }))
+    type: inferEffectType(r.brand, r.model, PEDAL_CATEGORY),
+  }
 }
 
 export type PedalSourceAvailability = {
@@ -62,6 +77,8 @@ export type PedalSourceAvailability = {
   cheapestNewCents: number | null
   cheapestUsedCents: number | null
   count: number
+  /** Cheapest live listing's id, so a slot can link straight at /go without a second query. */
+  cheapestListingId: string | null
 }
 
 export type PedalBoardEntry = PedalSummary & {
@@ -90,6 +107,7 @@ export async function pedalBoardDetails(slugs: string[]): Promise<PedalBoardEntr
     source: string | null
     cheapest_new_cents: number | null
     cheapest_used_cents: number | null
+    cheapest_listing_id: string | null
     count: number
   }>(sql`
     SELECT
@@ -97,6 +115,9 @@ export async function pedalBoardDetails(slugs: string[]): Promise<PedalBoardEntr
       l.source,
       MIN(l.price_cents) FILTER (WHERE l.condition ILIKE 'new') AS cheapest_new_cents,
       MIN(l.price_cents) FILTER (WHERE l.condition IS NULL OR l.condition NOT ILIKE 'new') AS cheapest_used_cents,
+      -- The id of the cheapest live listing at this store, so the slot's buy
+      -- link goes through /go for the right row rather than guessing at one.
+      (ARRAY_AGG(l.id ORDER BY l.price_cents ASC))[1]::text AS cheapest_listing_id,
       COUNT(l.id)::int AS count
     FROM canonical_gear g
     LEFT JOIN marketplace_listings l
@@ -109,15 +130,7 @@ export async function pedalBoardDetails(slugs: string[]): Promise<PedalBoardEntr
   for (const row of result.rows) {
     let entry = bySlug.get(row.slug)
     if (!entry) {
-      entry = {
-        slug: row.slug,
-        brand: row.brand,
-        model: row.model,
-        imageUrl: row.image_url,
-        marketPriceCents: row.avg_used_price_cents,
-        sampleSize: row.price_sample_size,
-        bySource: [],
-      }
+      entry = { ...toSummary(row), bySource: [] }
       bySlug.set(row.slug, entry)
     }
     if (row.source) {
@@ -125,6 +138,7 @@ export async function pedalBoardDetails(slugs: string[]): Promise<PedalBoardEntr
         source: row.source,
         cheapestNewCents: row.cheapest_new_cents,
         cheapestUsedCents: row.cheapest_used_cents,
+        cheapestListingId: row.cheapest_listing_id,
         count: row.count,
       })
     }
@@ -141,4 +155,67 @@ export async function pedalBoardDetails(slugs: string[]): Promise<PedalBoardEntr
   }
 
   return slugs.map((slug) => bySlug.get(slug)).filter((e): e is PedalBoardEntry => e != null)
+}
+
+/**
+ * Match a documented rig's pedals against the live catalogue, in one query.
+ *
+ * Returns one entry per INPUT pedal, matched or not, and that is the important
+ * part. The old builder could only place pedals it stocked, which meant every
+ * famous rig was unbuildable: none of the feeds live today carry Ibanez, MXR,
+ * EHX or Boss back catalogue, so "load Gilmour's board" produced an empty
+ * board and a shrug. Now an unmatched pedal still becomes a real slot that
+ * counts towards the chain analysis and the power estimate, and says plainly
+ * that nobody we track has one. That is a more useful and more honest answer
+ * than pretending the pedal is not part of the rig.
+ *
+ * The match is brand AND model, both loose, because a catalogue row reads
+ * "Ibanez TS9 Tube Screamer Overdrive Reissue" where the rig says "Ibanez /
+ * TS9 Tube Screamer". Scoping to the brand is what stops "Blender" matching a
+ * kitchen appliance in a mis-categorised feed row, the same reasoning that
+ * scopes MPN and fuzzy matching to the brand in the resolver.
+ */
+export type RigMatch = {
+  brand: string
+  model: string
+  matched: PedalSummary | null
+}
+
+export async function matchPedalsByName(
+  pedals: { brand: string; model: string }[],
+): Promise<RigMatch[]> {
+  if (pedals.length === 0) return []
+
+  const conditions = pedals.map(
+    (p) => sql`(g.brand ILIKE ${`%${p.brand}%`} AND g.model ILIKE ${`%${p.model}%`})`,
+  )
+
+  const result = await db.execute<{
+    slug: string
+    brand: string
+    model: string
+    image_url: string | null
+    avg_used_price_cents: number | null
+    price_sample_size: number
+  }>(sql`
+    SELECT g.slug, g.brand, g.model, g.image_url, g.avg_used_price_cents, g.price_sample_size
+    FROM canonical_gear g
+    WHERE g.category = ${PEDAL_CATEGORY}
+      AND (${sql.join(conditions, sql` OR `)})
+    ORDER BY g.price_sample_size DESC
+  `)
+
+  const candidates = result.rows.map(toSummary)
+
+  return pedals.map((pedal) => {
+    const brand = pedal.brand.toLowerCase()
+    const model = pedal.model.toLowerCase()
+    const matched =
+      candidates.find(
+        (c) =>
+          c.brand.toLowerCase().includes(brand) &&
+          (c.model.toLowerCase().includes(model) || model.includes(c.model.toLowerCase())),
+      ) ?? null
+    return { brand: pedal.brand, model: pedal.model, matched }
+  })
 }

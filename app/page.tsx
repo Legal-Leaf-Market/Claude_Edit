@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { sql } from "drizzle-orm"
-import { ArrowRight, BellRing, Cable, LineChart, Search as SearchIcon } from "lucide-react"
+import { ArrowRight, BellRing, Cable, Disc3, LineChart, Search as SearchIcon } from "lucide-react"
 import { InstagramStrip } from "@/components/instagram-strip"
 import { SubscribeForm } from "@/components/subscribe-form"
 import { CategoryIcon, CATEGORY_HUE, FALLBACK_HUE } from "@/components/category-icon"
@@ -10,6 +10,8 @@ import { STORES } from "@/lib/stores"
 import { BOARDS } from "@/lib/boards"
 import { ListingCard } from "@/components/listing-card"
 import { db } from "@/lib/db"
+import { EFFECTS } from "@/lib/pedalboard/chain"
+import { FEATURED_RIG_SLUGS, hueFor, initialsFor, rigStats, RIG_BY_SLUG, signaturePedal } from "@/lib/rigs"
 import { search } from "@/lib/search"
 
 export const revalidate = 300
@@ -50,6 +52,7 @@ export default async function HomePage() {
     siteStats(),
     search({ dealsOnly: true, sort: "deal", perPage: 6 }).catch(() => null),
   ])
+  const rigs = rigStats()
 
   return (
     <div className="shell">
@@ -80,7 +83,7 @@ export default async function HomePage() {
             so you can browse everything in one place instead of hunting down each store. Sorted by
             price, with the genuinely underpriced gear marked.
           </p>
-          <p className="mx-auto mt-3 max-w-[56ch] font-script text-lg italic text-[var(--amber-soft)]">
+          <p className="mx-auto mt-3 max-w-[56ch] font-script text-lg italic text-[var(--accent-text)]">
             No fees. No sellout. Built by a musician who&apos;s flipped over a thousand pedals, not
             a pitch deck.
           </p>
@@ -94,10 +97,10 @@ export default async function HomePage() {
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
             <Link
-              href="/search?deals=1&sort=deal"
-              className="inline-flex h-11 items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--chip)] px-6 text-[13px] font-bold tracking-[0.03em] text-[var(--cream)] transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]"
+              href="/rigs"
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-[var(--line-strong)] bg-[var(--chip)] px-6 text-[13px] font-bold tracking-[0.03em] text-[var(--text)] transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]"
             >
-              See what is below market
+              See the boards behind the records
             </Link>
           </div>
 
@@ -111,17 +114,80 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/*
+        The two tools, immediately after the hero and before any inventory.
+
+        This is the ordering decision the redesign turns on. Every gear
+        aggregator opens with a wall of listings, and a wall of listings is
+        the one thing this site cannot win on: it will never have more
+        inventory than Reverb. What it has that they do not is the rig
+        database and a builder that checks a chain, so those go where a
+        visitor actually sees them.
+      */}
+      <section className="pb-12">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ToolCard
+            hue="#c678b4"
+            icon={<Disc3 className="h-6 w-6" aria-hidden="true" />}
+            eyebrow="Gear history"
+            title="The boards behind the records"
+            body={`${rigs.rigs} documented pedalboards, the ${rigs.records} records and ${rigs.tracks} tracks each is documented on, and what every pedal on them costs today.`}
+            href="/rigs"
+            cta="Browse the rigs"
+          >
+            <ul className="mt-4 flex flex-wrap gap-1.5">
+              {FEATURED_RIG_SLUGS.map((slug) => {
+                const rig = RIG_BY_SLUG.get(slug)
+                if (!rig) return null
+                return (
+                  <li key={slug}>
+                    <Link
+                      href={`/rigs/${slug}`}
+                      className="icon-badge h-10 w-10 text-[0.7rem]"
+                      style={{ "--icon-hue": hueFor(rig) } as React.CSSProperties}
+                      title={`${rig.name}: ${signaturePedal(rig).brand} ${signaturePedal(rig).model}`}
+                    >
+                      {initialsFor(rig)}
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </ToolCard>
+
+          <ToolCard
+            hue="#22d3ee"
+            icon={<Cable className="h-6 w-6" aria-hidden="true" />}
+            eyebrow="Interactive"
+            title="Build the board"
+            body="Chain pedals the way you would actually run them. It flags anything out of the usual signal order, sizes a power supply, and prices the whole thing against live listings."
+            href="/pedalboard"
+            cta="Open the builder"
+          >
+            <ul className="mt-4 flex flex-wrap gap-1.5">
+              {(["tuner", "filter", "compressor", "drive", "modulation", "delay", "reverb"] as const).map(
+                (type) => (
+                  <li
+                    key={type}
+                    className="rounded-full border px-2.5 py-1 text-xs"
+                    style={{ borderColor: EFFECTS[type].hue, color: EFFECTS[type].hue }}
+                  >
+                    {EFFECTS[type].label}
+                  </li>
+                ),
+              )}
+            </ul>
+          </ToolCard>
+        </div>
+      </section>
+
       {deals && deals.hits.length > 0 && (
         <section className="pb-12">
-          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-xl font-black tracking-[-0.01em] text-[var(--cream)]">Biggest discounts right now</h2>
-            <Link
-              href="/search?deals=1&sort=deal"
-              className="text-sm text-[var(--amber)] underline-offset-2 hover:underline"
-            >
-              See all
-            </Link>
-          </div>
+          <SectionHead
+            title="Biggest discounts right now"
+            href="/search?deals=1&sort=deal"
+            linkLabel="See all"
+          />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {deals.hits.map((hit) => (
               <ListingCard key={hit.id} hit={hit} />
@@ -131,37 +197,13 @@ export default async function HomePage() {
       )}
 
       <section className="pb-12">
-        <div className="panel flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-4">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#c678b422] text-[#c678b4]">
-              <Cable className="h-6 w-6" aria-hidden="true" />
-            </span>
-            <div>
-              <h2 className="text-lg font-black tracking-[-0.01em] text-[var(--cream)]">Build your pedalboard</h2>
-              <p className="mt-1 max-w-xl text-sm leading-relaxed text-[var(--muted-foreground)]">
-                Chain pedals together the way you would actually run them, and see who has each one
-                in stock, new or used, and what it should cost, all in one page.
-              </p>
-            </div>
-          </div>
-          <Link
-            href="/pedalboard"
-            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-[var(--primary)] px-4 text-sm font-medium text-[var(--primary-foreground)] transition-colors hover:bg-[var(--amber-soft)]"
-          >
-            Start building
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-        </div>
-      </section>
-
-      <section className="pb-12">
-        <h2 className="mb-4 text-xl font-black tracking-[-0.01em] text-[var(--cream)]">Browse by category</h2>
+        <SectionHead title="Browse by category" href="/search" linkLabel="Everything" />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {CATEGORIES.map((category) => (
             <Link
               key={category.slug}
               href={`/used/${category.slug}`}
-              className="panel flex items-center gap-3 px-4 py-3.5 text-sm text-[var(--cream)] transition-colors hover:border-[var(--amber)]/40 hover:bg-[var(--secondary)]"
+              className="card-face flex items-center gap-3 px-4 py-3.5 text-sm text-[var(--text)] transition-colors hover:border-[var(--copper)]"
             >
               <span
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
@@ -179,12 +221,11 @@ export default async function HomePage() {
       </section>
 
       <section className="pb-12">
-        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-xl font-black tracking-[-0.01em] text-[var(--cream)]">Shop by store</h2>
-          <Link href="/shop" className="text-sm text-[var(--amber)] underline-offset-2 hover:underline">
-            All {STORES.length} stores
-          </Link>
-        </div>
+        <SectionHead
+          title="Shop by store"
+          href="/shop"
+          linkLabel={`All ${STORES.length} stores`}
+        />
         <p className="mb-4 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">
           Independent makers and shops, each with their own page. None of them paid to be listed,
           and none of them can pay to rank higher.
@@ -194,7 +235,7 @@ export default async function HomePage() {
             <Link
               key={store.slug}
               href={`/shop/${store.slug}`}
-              className="panel flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--cream)] transition-colors hover:border-[var(--amber)]/40 hover:bg-[var(--secondary)]"
+              className="card-face flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--text)] transition-colors hover:border-[var(--copper)]"
             >
               <StoreMark source={store.source} name={store.name} size="sm" />
               <span className="truncate">{store.name}</span>
@@ -204,12 +245,7 @@ export default async function HomePage() {
       </section>
 
       <section className="pb-12">
-        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-xl font-black tracking-[-0.01em] text-[var(--cream)]">The community</h2>
-          <Link href="/feed" className="text-sm text-[var(--amber)] underline-offset-2 hover:underline">
-            See the feed
-          </Link>
-        </div>
+        <SectionHead title="The community" href="/feed" linkLabel="See the feed" />
         <p className="mb-4 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">
           Public boards, no DMs and no fees. Flip your gear, find a bandmate, book a lesson, post a
           show. Whatever changes hands is between you and the other person.
@@ -219,7 +255,7 @@ export default async function HomePage() {
             <Link
               key={board.slug}
               href={`/boards/${board.slug}`}
-              className="panel px-4 py-3 text-sm text-[var(--cream)] transition-colors hover:border-[var(--amber)]/40 hover:bg-[var(--secondary)]"
+              className="card-face px-4 py-3 text-sm text-[var(--text)] transition-colors hover:border-[var(--copper)]"
             >
               {board.navLabel}
             </Link>
@@ -228,7 +264,9 @@ export default async function HomePage() {
       </section>
 
       <section className="pb-16">
-        <h2 className="mb-4 text-xl font-black tracking-[-0.01em] text-[var(--cream)]">How Gear Avail works</h2>
+        <h2 className="mb-4 font-display text-xl font-black tracking-[-0.01em] text-[var(--text)]">
+          How Gear Avail works
+        </h2>
         <div className="grid gap-4 sm:grid-cols-3">
           <HowItWorks
             icon={<SearchIcon className="h-5 w-5" aria-hidden="true" />}
@@ -249,13 +287,90 @@ export default async function HomePage() {
       </section>
 
       <section className="pb-16">
-        <h2 className="mb-4 text-xl font-black tracking-[-0.01em] text-[var(--cream)]">Get the weekly hunt</h2>
+        <h2 className="mb-4 font-display text-xl font-black tracking-[-0.01em] text-[var(--text)]">
+          Get the weekly hunt
+        </h2>
         <div className="max-w-2xl">
           <SubscribeForm source="home" />
         </div>
       </section>
 
       <InstagramStrip />
+    </div>
+  )
+}
+
+function SectionHead({
+  title,
+  href,
+  linkLabel,
+}: {
+  title: string
+  href: string
+  linkLabel: string
+}) {
+  return (
+    <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+      <h2 className="font-display text-xl font-black tracking-[-0.01em] text-[var(--text)]">
+        {title}
+      </h2>
+      <Link
+        href={href}
+        className="text-sm font-semibold text-[var(--accent-text)] underline-offset-4 hover:underline"
+      >
+        {linkLabel}
+      </Link>
+    </div>
+  )
+}
+
+function ToolCard({
+  hue,
+  icon,
+  eyebrow,
+  title,
+  body,
+  href,
+  cta,
+  children,
+}: {
+  hue: string
+  icon: React.ReactNode
+  eyebrow: string
+  title: string
+  body: string
+  href: string
+  cta: string
+  children?: React.ReactNode
+}) {
+  return (
+    <div className="panel flex flex-col" style={{ borderTopColor: hue, borderTopWidth: 3 }}>
+      <div className="flex items-start gap-4">
+        <span
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+          style={{ background: `${hue}22`, color: hue }}
+        >
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <p className="eyebrow">{eyebrow}</p>
+          <h2 className="mt-1 font-display text-xl font-black tracking-[-0.01em] text-[var(--text)]">
+            {title}
+          </h2>
+        </div>
+      </div>
+
+      <p className="mt-3 text-sm leading-relaxed text-[var(--muted-foreground)]">{body}</p>
+
+      {children}
+
+      <Link
+        href={href}
+        className="mt-4 inline-flex items-center gap-1.5 self-start text-sm font-semibold text-[var(--accent-text)] underline-offset-4 hover:underline"
+      >
+        {cta}
+        <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+      </Link>
     </div>
   )
 }
@@ -279,11 +394,11 @@ function HowItWorks({
   body: string
 }) {
   return (
-    <div className="panel p-5">
+    <div className="panel">
       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)]">
         {icon}
       </div>
-      <h3 className="mt-3 text-sm font-semibold text-[var(--cream)]">{title}</h3>
+      <h3 className="mt-3 font-display text-base font-black text-[var(--text)]">{title}</h3>
       <p className="mt-1.5 text-sm leading-relaxed text-[var(--muted-foreground)]">{body}</p>
     </div>
   )

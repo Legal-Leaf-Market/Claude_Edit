@@ -16,10 +16,26 @@ export function ListingImage({
   src,
   alt,
   className,
+  fallbackLabel,
+  fallbackHue,
 }: {
   src: string | null
   alt: string
   className?: string
+  /**
+   * What to draw instead of the broken-image glyph when there is no photo.
+   *
+   * The rig pages need this. A documented board is five pedals that nobody we
+   * track stocks, so it is five rows with no photo, and five broken-image
+   * icons in a column reads as a page that failed to load rather than as a
+   * page about gear we do not sell. A tinted tile carrying the effect type
+   * says the same true thing without looking broken.
+   *
+   * Strings rather than a ReactNode so this stays trivially passable from a
+   * server component.
+   */
+  fallbackLabel?: string
+  fallbackHue?: string
 }) {
   const [failed, setFailed] = useState(false)
 
@@ -41,6 +57,23 @@ export function ListingImage({
   }, [])
 
   if (!src || failed) {
+    if (fallbackLabel) {
+      return (
+        <div
+          className={cn("flex items-center justify-center overflow-hidden px-1 text-center", className)}
+          style={{
+            background: `color-mix(in srgb, ${fallbackHue ?? "var(--copper)"} 14%, var(--surface))`,
+            color: fallbackHue ?? "var(--copper)",
+          }}
+        >
+          <span className="text-[0.6rem] font-semibold uppercase leading-tight tracking-wide">
+            {fallbackLabel}
+          </span>
+          <span className="sr-only">No photo available</span>
+        </div>
+      )
+    }
+
     return (
       <div
         className={cn(

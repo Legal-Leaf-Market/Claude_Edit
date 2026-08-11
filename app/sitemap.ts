@@ -5,6 +5,7 @@ import { env } from "@/lib/env"
 import { indexableCategories } from "@/lib/categories"
 import { STORES } from "@/lib/stores"
 import { BOARDS } from "@/lib/boards"
+import { RIGS } from "@/lib/rigs"
 
 /**
  * Sitemap.
@@ -39,6 +40,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily" as const,
       priority: 0.6,
     })),
+    // Rig pages are listed unconditionally for the same reason the boards are.
+    // Their content is the curated write-up and the records, which is on the
+    // page whether or not a single pedal on it is currently in stock, so an
+    // empty catalogue makes them thinner rather than empty. They are also the
+    // only genuinely unique editorial content on the site, so they are worth
+    // more crawl budget than a category index.
+    { url: `${base}/rigs`, changeFrequency: "weekly" as const, priority: 0.8 },
+    ...RIGS.map((rig) => ({
+      url: `${base}/rigs/${rig.slug}`,
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    })),
+    { url: `${base}/pedalboard`, changeFrequency: "weekly" as const, priority: 0.7 },
   ]
 
   try {

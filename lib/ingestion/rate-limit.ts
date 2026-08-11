@@ -16,50 +16,101 @@ import { getRedis } from "@/lib/queue/redis"
 
 const memoryCounters = new Map<string, { count: number; resetAt: number }>()
 
-function utcDayKey(prefix: string, now = new Date()): string {
-  const stamp = now.toISOString().slice(0, 10)
-  return `gearavail:ratelimit:${prefix}:${stamp}`
-}
+/**
+ * A budget window: the counter key it accumulates into, and when it expires.
+ *
+ * Two windows exist because the two callers are budgeting different things.
+ * eBay's is a genuine daily quota imposed by eBay per keyset, so the window has
+ * to be their day. The assistant's is our own spend guard, where a calendar day
+ * is the wrong shape entirely: it locks out anyone who hits the cap early and
+ * hands a fresh allowance to anyone who starts at 23:59.
+ *
+ * Both are FIXED windows rather than rolling ones. A true rolling window needs
+ * a sorted set of timestamps per key, which is a real cost for a guard whose
+ * job is stopping a scraper rather than metering a customer. Everything that
+ * prints one of these says "fixed", so nobody configures against a rolling
+ * window that does not exist.
+ */
+type BudgetWindow = { key: string; expiresAt: number }
 
-function endOfUtcDay(now = new Date()): number {
+function utcDayWindow(prefix: string, now = new Date()): BudgetWindow {
   const end = new Date(now)
   end.setUTCHours(23, 59, 59, 999)
-  return end.getTime()
+  return {
+    key: `gearavail:ratelimit:${prefix}:${now.toISOString().slice(0, 10)}`,
+    expiresAt: end.getTime(),
+  }
+}
+
+function utcHourWindow(prefix: string, now = new Date()): BudgetWindow {
+  const end = new Date(now)
+  end.setUTCMinutes(59, 59, 999)
+  return {
+    // Includes the hour, so each clock hour accumulates into its own key.
+    key: `gearavail:ratelimit:${prefix}:${now.toISOString().slice(0, 13)}`,
+    expiresAt: end.getTime(),
+  }
 }
 
 export type BudgetResult = { allowed: boolean; used: number; limit: number }
 
-/** Consume one unit of the daily budget. Returns allowed=false once it is spent. */
-export async function consumeDailyBudget(
-  prefix: string,
+async function consumeWindow(
+  window: BudgetWindow,
   limit: number,
-  cost = 1,
+  cost: number,
 ): Promise<BudgetResult> {
-  const key = utcDayKey(prefix)
   const redis = getRedis()
 
   if (redis) {
-    const used = await redis.incrby(key, cost)
+    const used = await redis.incrby(window.key, cost)
     // Only set the expiry on first write; re-setting it every call would keep
     // pushing the reset forward and the budget would never roll over.
     if (used === cost) {
-      await redis.pexpireat(key, endOfUtcDay())
+      await redis.pexpireat(window.key, window.expiresAt)
     }
     return { allowed: used <= limit, used, limit }
   }
 
   const now = Date.now()
-  const entry = memoryCounters.get(key)
+  const entry = memoryCounters.get(window.key)
   if (!entry || entry.resetAt < now) {
-    memoryCounters.set(key, { count: cost, resetAt: endOfUtcDay() })
+    memoryCounters.set(window.key, { count: cost, resetAt: window.expiresAt })
     return { allowed: cost <= limit, used: cost, limit }
   }
   entry.count += cost
   return { allowed: entry.count <= limit, used: entry.count, limit }
 }
 
+/**
+ * Consume one unit of a per-UTC-calendar-day budget. Returns allowed=false once
+ * it is spent. This is eBay's window, matching the quota eBay actually enforces.
+ */
+export async function consumeDailyBudget(
+  prefix: string,
+  limit: number,
+  cost = 1,
+): Promise<BudgetResult> {
+  return consumeWindow(utcDayWindow(prefix), limit, cost)
+}
+
+/**
+ * Consume one unit of a per-clock-hour budget, resetting on the hour.
+ *
+ * Used by /api/ask. The assistant is unauthenticated by design (a shopper
+ * should be able to ask a question without making an account), so the ceiling
+ * on abuse is the Groq bill and an hour is the right amount of time to make a
+ * scraper wait and the wrong amount to punish a real shopper for.
+ */
+export async function consumeHourlyBudget(
+  prefix: string,
+  limit: number,
+  cost = 1,
+): Promise<BudgetResult> {
+  return consumeWindow(utcHourWindow(prefix), limit, cost)
+}
+
 export async function budgetRemaining(prefix: string, limit: number): Promise<number> {
-  const key = utcDayKey(prefix)
+  const { key } = utcDayWindow(prefix)
   const redis = getRedis()
   if (redis) {
     const raw = await redis.get(key)

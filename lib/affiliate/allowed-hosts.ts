@@ -20,6 +20,13 @@ export const ALLOWED_HOSTS = [
   // CJ Affiliate's own tracking domains, for the pre-built BUY_URL links
   // zZounds/Full Compass/Pineville Music feeds carry.
   /(^|\.)(anrdoezrs\.net|apmebf\.com|awltovhc\.com|dpbolvw\.net|ftjcfx\.com|jdoqocy\.com|kqzyfj\.com|tkqlhce\.com|qksrv\.net)$/i,
+  // Impact.com's vanity and platform tracking domains, plus Andertons' own
+  // storefront for the untracked fallback. Listed ahead of any Andertons
+  // ingestion existing, because the allowlist is defence in depth rather than
+  // a feature switch: a destination has to clear it before /go will follow it,
+  // and a host missing here fails closed. See lib/affiliate/impact.ts.
+  /(^|\.)(pxf\.io|sjv\.io|7eer\.net|evyy\.net|impactradius\.com)$/i,
+  /(^|\.)andertons\.co\.uk$/i,
   // Small independent Shopify sellers. GoAffPro-style referral links append a
   // query param to the merchant's own domain rather than redirecting through
   // a separate tracking host, so the raw and affiliate URLs share a host.
