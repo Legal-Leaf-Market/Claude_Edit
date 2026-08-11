@@ -16,9 +16,29 @@ import { canonicalGear, marketplaceListings } from "@/lib/db/schema"
  *   - Recently ended listings count. Restricting to active listings alone
  *     biases the sample towards overpriced gear, because the well priced items
  *     are precisely the ones that already sold.
+ *   - NEW AND USED ARE MEASURED SEPARATELY, and a listing is only ever judged
+ *     against the median of its own condition class. See below.
+ *
+ * WHY THE CONDITION SPLIT EXISTS. One blended median across every listing was
+ * fine while the catalogue was small independent sellers with mixed stock. It
+ * breaks the moment a large new-retail feed lands: Andertons is roughly 27,000
+ * products, and Gear4music, zZounds, Full Compass and Pineville Music all
+ * default an empty condition to "New". New retail prices sit well above used
+ * ones, so the blend rises, and then every ordinary used listing measures far
+ * below that inflated "market" and earns a below-market badge it has not
+ * earned. The failure is silent, sitewide, and in the worst possible direction:
+ * inventing bargains is the one error a price comparison site cannot afford.
  */
 
-/** Below this many observations we refuse to state a market price. */
+/**
+ * Below this many observations we refuse to state a market price.
+ *
+ * Applied PER CONDITION CLASS, not to the combined count. Gear with forty new
+ * listings and two used ones publishes a new median and no used one, and flags
+ * no deals on those two used listings. That is stricter than before and
+ * deliberately so: two used prices were never a used market, and the forty new
+ * ones are not evidence about what the used one is worth.
+ */
 export const MIN_SAMPLE_SIZE = 5
 
 /** A listing is a deal when it is at least this far under the rolling median. */
@@ -26,6 +46,81 @@ export const DEAL_THRESHOLD = 0.2
 
 /** How far back an ended listing still informs the market price. */
 export const PRICE_WINDOW_DAYS = 90
+
+/* -------------------------------------------------------------------------- */
+/*  Condition classes                                                         */
+/* -------------------------------------------------------------------------- */
+
+export type ConditionClass = "new" | "used"
+
+/**
+ * Which market a listing belongs to.
+ *
+ * Two classes rather than a faithful taxonomy of every condition string the
+ * feeds emit, because two is what the comparison needs: is this priced like
+ * new retail, or like second-hand?
+ *
+ * WHERE THE AMBIGUOUS ONES GO, and why. "Open box", "New other (see details)"
+ * and "Seller refurbished" are retail-channel goods that typically sell ten to
+ * twenty percent under new, where genuinely used gear sits thirty to fifty
+ * percent under. They are much nearer the new market than the used one, so they
+ * are classed new.
+ *
+ * The risk is asymmetric, which settles it independently of that estimate.
+ * Misfiling an open-box item as new nudges the new median down slightly and, at
+ * worst, correctly badges it as cheaper than new. Misfiling it as used drags
+ * the USED median up, and a lifted used median is what turns ordinary
+ * second-hand prices into bargains that do not exist. When unsure, err towards
+ * new: it is the direction that cannot invent a deal.
+ *
+ * A null condition is the one exception and stays used. The new-inventory feeds
+ * all set the field explicitly, so a blank one is overwhelmingly a private
+ * seller on a peer marketplace who did not fill it in.
+ *
+ * Kept in step with the SQL predicate below; the two must agree or the medians
+ * and the deal flags would be computed over different populations, and there is
+ * a test walking real condition strings through both.
+ */
+const NEW_CONDITION_JS = /(^\s*(brand\s+)?new\b)|(open[-\s]?box)|(refurb)/i
+
+export function conditionClass(condition: string | null | undefined): ConditionClass {
+  if (!condition) return "used"
+  return NEW_CONDITION_JS.test(condition) ? "new" : "used"
+}
+
+/**
+ * The SQL half of conditionClass(), as a POSIX regex.
+ *
+ * Must stay identical in meaning to the TypeScript above. The medians are
+ * computed in JS from a fetched sample while the deal flags are set by a single
+ * UPDATE in the database, so a divergence would flag listings against a median
+ * built from a different population. There is a test that walks a list of real
+ * condition strings through both and asserts they agree.
+ *
+ * `\M` is the end-of-word anchor in Postgres regexes, matching the `\b` in the
+ * JS version, so "New" and "New other" classify alike but "Newark" does not.
+ */
+export const IS_NEW_CONDITION_REGEX =
+  "(^[[:space:]]*(brand[[:space:]]+)?new\\M)|(open[-[:space:]]?box)|(refurb)"
+
+const IS_NEW_SQL = sql`(${marketplaceListings.condition} IS NOT NULL AND ${marketplaceListings.condition} ~* ${IS_NEW_CONDITION_REGEX})`
+
+/**
+ * The market median matching a listing's OWN condition class, for the search
+ * projections.
+ *
+ * This is what a card's struck-through "was" price is drawn from, so it has to
+ * be the same median the deal was judged against. Selecting avg_used_price_cents
+ * unconditionally (as both backends used to) would print the used median beside
+ * a new listing badged against the new one: a number that is not wrong so much
+ * as about a different thing entirely.
+ *
+ * ALIAS CONTRACT: assumes the listings table is aliased `l` and canonical_gear
+ * is aliased `g`, which both search backends do. It is a raw fragment rather
+ * than a drizzle column reference precisely so it can drop into those hand
+ * written projections.
+ */
+export const LISTING_MARKET_PRICE_SQL = sql`CASE WHEN l.condition ~* ${IS_NEW_CONDITION_REGEX} THEN g.avg_new_price_cents ELSE g.avg_used_price_cents END`
 
 /* -------------------------------------------------------------------------- */
 /*  Pure maths                                                                */
@@ -85,17 +180,40 @@ export function trimOutliers(values: number[], fraction = 0.1): number[] {
 /*  Database-backed recomputation                                             */
 /* -------------------------------------------------------------------------- */
 
-export type MarketPrice = {
-  gearId: string
+/** One condition class's measured market. */
+export type ClassMarket = {
   medianCents: number | null
   sampleSize: number
 }
 
-/** Prices that inform the market for one piece of gear. */
-async function priceSample(gearId: string): Promise<number[]> {
+export type MarketPrice = {
+  gearId: string
+  used: ClassMarket
+  new: ClassMarket
+}
+
+/**
+ * The market price a SHOPPER is shown for this gear when only one number fits.
+ *
+ * Used wins when it exists, because this is a used-and-vintage-first site and
+ * the used median is the number a visitor came for. New is the fallback, so
+ * gear that only new retailers stock still shows something real rather than
+ * "not enough data" beside forty live listings.
+ */
+export function headlineMarket(market: MarketPrice): ClassMarket & { basis: ConditionClass | null } {
+  if (market.used.medianCents != null) return { ...market.used, basis: "used" }
+  if (market.new.medianCents != null) return { ...market.new, basis: "new" }
+  return { medianCents: null, sampleSize: market.used.sampleSize, basis: null }
+}
+
+/** Prices that inform the market for one piece of gear, split by condition class. */
+async function priceSample(gearId: string): Promise<Record<ConditionClass, number[]>> {
   const cutoff = new Date(Date.now() - PRICE_WINDOW_DAYS * 86_400_000)
   const rows = await db
-    .select({ priceCents: marketplaceListings.priceCents })
+    .select({
+      priceCents: marketplaceListings.priceCents,
+      condition: marketplaceListings.condition,
+    })
     .from(marketplaceListings)
     .where(
       and(
@@ -109,27 +227,39 @@ async function priceSample(gearId: string): Promise<number[]> {
         sql`${marketplaceListings.priceCents} > 0`,
       ),
     )
-  return rows.map((r) => r.priceCents)
+
+  const sample: Record<ConditionClass, number[]> = { new: [], used: [] }
+  for (const row of rows) sample[conditionClass(row.condition)].push(row.priceCents)
+  return sample
 }
 
-/** Recompute and persist the market price for one piece of gear. */
+function measure(prices: number[]): ClassMarket {
+  const sampleSize = prices.length
+  return {
+    sampleSize,
+    medianCents: sampleSize >= MIN_SAMPLE_SIZE ? median(trimOutliers(prices)) : null,
+  }
+}
+
+/** Recompute and persist both market prices for one piece of gear. */
 export async function recomputeMarketPrice(gearId: string): Promise<MarketPrice> {
   const sample = await priceSample(gearId)
-  const sampleSize = sample.length
-  const trimmed = trimOutliers(sample)
-  const medianCents = sampleSize >= MIN_SAMPLE_SIZE ? median(trimmed) : null
+  const used = measure(sample.used)
+  const fresh = measure(sample.new)
 
   await db
     .update(canonicalGear)
     .set({
-      avgUsedPriceCents: medianCents,
-      priceSampleSize: sampleSize,
+      avgUsedPriceCents: used.medianCents,
+      priceSampleSize: used.sampleSize,
+      avgNewPriceCents: fresh.medianCents,
+      newPriceSampleSize: fresh.sampleSize,
       priceUpdatedAt: new Date(),
       updatedAt: new Date(),
     })
     .where(eq(canonicalGear.id, gearId))
 
-  return { gearId, medianCents, sampleSize }
+  return { gearId, used, new: fresh }
 }
 
 /**
@@ -138,10 +268,15 @@ export async function recomputeMarketPrice(gearId: string): Promise<MarketPrice>
  * round trips.
  */
 export async function reflagDeals(market: MarketPrice): Promise<number> {
-  const { gearId, medianCents, sampleSize } = market
+  const { gearId } = market
 
-  if (medianCents == null || sampleSize < MIN_SAMPLE_SIZE) {
-    // Not enough evidence: withdraw any deal badge we previously showed.
+  const usedMedian =
+    market.used.sampleSize >= MIN_SAMPLE_SIZE ? market.used.medianCents : null
+  const newMedian = market.new.sampleSize >= MIN_SAMPLE_SIZE ? market.new.medianCents : null
+
+  if (usedMedian == null && newMedian == null) {
+    // Not enough evidence in either class: withdraw any badge we previously
+    // showed rather than leaving a stale one standing.
     const cleared = await db
       .update(marketplaceListings)
       .set({ isDeal: false, dealMargin: null, updatedAt: new Date() })
@@ -150,12 +285,29 @@ export async function reflagDeals(market: MarketPrice): Promise<number> {
     return cleared.length
   }
 
+  /*
+   * One UPDATE, branching per row on the row's own condition class, so a
+   * popular model is still a single round trip rather than one per listing.
+   *
+   * A class with too small a sample yields NULL here rather than falling back
+   * to the other class's median. That fallback is exactly the bug this change
+   * removes: judging a used listing against a new-retail median is what
+   * manufactures bargains that do not exist.
+   */
+  const marginFor = (m: number | null) =>
+    m == null ? sql`NULL` : sql`(${m}::real - ${marketplaceListings.priceCents}::real) / ${m}::real`
+
+  const dealFor = (m: number | null) =>
+    m == null
+      ? sql`false`
+      : sql`(${marketplaceListings.priceCents} < ${Math.round(m * (1 - DEAL_THRESHOLD))}
+             AND ${marketplaceListings.listingStatus} = 'active')`
+
   const updated = await db
     .update(marketplaceListings)
     .set({
-      dealMargin: sql`(${medianCents}::real - ${marketplaceListings.priceCents}::real) / ${medianCents}::real`,
-      isDeal: sql`${marketplaceListings.priceCents} < ${Math.round(medianCents * (1 - DEAL_THRESHOLD))}
-                  AND ${marketplaceListings.listingStatus} = 'active'`,
+      dealMargin: sql`CASE WHEN ${IS_NEW_SQL} THEN ${marginFor(newMedian)} ELSE ${marginFor(usedMedian)} END`,
+      isDeal: sql`CASE WHEN ${IS_NEW_SQL} THEN ${dealFor(newMedian)} ELSE ${dealFor(usedMedian)} END`,
       updatedAt: new Date(),
     })
     .where(eq(marketplaceListings.canonicalGearId, gearId))
@@ -220,6 +372,8 @@ export async function marketPricesFor(gearIds: string[]): Promise<Map<string, Ma
       id: canonicalGear.id,
       avgUsedPriceCents: canonicalGear.avgUsedPriceCents,
       priceSampleSize: canonicalGear.priceSampleSize,
+      avgNewPriceCents: canonicalGear.avgNewPriceCents,
+      newPriceSampleSize: canonicalGear.newPriceSampleSize,
     })
     .from(canonicalGear)
     .where(inArray(canonicalGear.id, unique))
@@ -227,7 +381,11 @@ export async function marketPricesFor(gearIds: string[]): Promise<Map<string, Ma
   return new Map(
     rows.map((r) => [
       r.id,
-      { gearId: r.id, medianCents: r.avgUsedPriceCents, sampleSize: r.priceSampleSize },
+      {
+        gearId: r.id,
+        used: { medianCents: r.avgUsedPriceCents, sampleSize: r.priceSampleSize },
+        new: { medianCents: r.avgNewPriceCents, sampleSize: r.newPriceSampleSize },
+      },
     ]),
   )
 }

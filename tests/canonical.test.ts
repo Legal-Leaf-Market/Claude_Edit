@@ -324,8 +324,10 @@ describe("deal detection against real data", () => {
     }
 
     const market = await recomputeMarketPrice(gearId)
-    expect(market.sampleSize).toBe(7)
-    expect(market.medianCents).toBe(100_000)
+    // The fixture is condition "Used", so the whole sample lands in that class.
+    expect(market.used.sampleSize).toBe(7)
+    expect(market.used.medianCents).toBe(100_000)
+    expect(market.new.sampleSize).toBe(0)
 
     await reflagDeals(market)
 
@@ -358,13 +360,124 @@ describe("deal detection against real data", () => {
     }
 
     const market = await recomputeMarketPrice(gearId)
-    expect(market.medianCents).toBeNull()
+    expect(market.used.medianCents).toBeNull()
     await reflagDeals(market)
 
     const flagged = await db.select({ isDeal: marketplaceListings.isDeal }).from(marketplaceListings)
     expect(flagged.every((f) => !f.isDeal)).toBe(true)
     // And the pure predicate agrees.
     expect(isDeal(20_000, 95_000, 2)).toBe(false)
+  })
+
+  /**
+   * The regression this whole change exists to prevent.
+   *
+   * A pile of new retail stock must not drag the used market upward and turn
+   * ordinary used prices into manufactured bargains. Before the condition
+   * split, the blended median here would have been near the new prices and the
+   * $60 used listing would have been badged as far below market, which it is
+   * not: it sits right on the used median.
+   */
+  it("does not let new retail stock inflate the used market", async () => {
+    const gtin = "885978599999"
+    const rows = [
+      // Six new listings clustered at $200.
+      ...[19_000, 19_500, 20_000, 20_000, 20_500, 21_000].map((priceCents, i) =>
+        listing({
+          externalId: `new-${i}`,
+          priceCents,
+          gtin,
+          condition: "New",
+          title: "Boss DS-1 Distortion",
+        }),
+      ),
+      // Five used listings clustered at $60, one of them genuinely cheap.
+      ...[6_000, 6_000, 6_200, 5_800, 3_000].map((priceCents, i) =>
+        listing({
+          externalId: `used-${i}`,
+          priceCents,
+          gtin,
+          condition: "Used",
+          title: "Boss DS-1 Distortion",
+        }),
+      ),
+    ]
+
+    await upsertListings(rows)
+    const inserted = await db.select().from(marketplaceListings)
+    let gearId = ""
+    for (const row of inserted) {
+      const result = await resolveCanonicalGear(row)
+      gearId = result!.gearId
+      await db
+        .update(marketplaceListings)
+        .set({ canonicalGearId: result!.gearId })
+        .where(sql`${marketplaceListings.id} = ${row.id}`)
+    }
+
+    const market = await recomputeMarketPrice(gearId)
+
+    // Two separate markets, neither contaminated by the other.
+    expect(market.new.sampleSize).toBe(6)
+    expect(market.used.sampleSize).toBe(5)
+    expect(market.new.medianCents).toBeGreaterThan(15_000)
+    expect(market.used.medianCents).toBeLessThan(7_000)
+
+    await reflagDeals(market)
+
+    const flagged = await db
+      .select({
+        price: marketplaceListings.priceCents,
+        condition: marketplaceListings.condition,
+        isDeal: marketplaceListings.isDeal,
+      })
+      .from(marketplaceListings)
+
+    // Only the genuinely cheap used listing is a deal. An ordinary $60 used
+    // price is NOT, even though it is 70% below the new median.
+    const deals = flagged.filter((f) => f.isDeal).map((f) => f.price).sort((a, b) => a - b)
+    expect(deals).toEqual([3_000])
+    expect(flagged.find((f) => f.price === 6_200)?.isDeal).toBe(false)
+    // And no new listing is badged off the used median either.
+    expect(flagged.filter((f) => f.condition === "New").every((f) => !f.isDeal)).toBe(true)
+  })
+
+  /**
+   * Gear that only new retailers stock: forty new listings must not produce a
+   * used median, and the two stray used rows must not be flagged against one.
+   */
+  it("publishes a new median without inventing a used one", async () => {
+    const gtin = "885978577777"
+    const rows = [
+      ...Array.from({ length: 6 }, (_, i) =>
+        listing({ externalId: `only-new-${i}`, priceCents: 30_000 + i * 100, gtin, condition: "New" }),
+      ),
+      listing({ externalId: "stray-used", priceCents: 9_000, gtin, condition: "Used" }),
+    ]
+    await upsertListings(rows)
+
+    const inserted = await db.select().from(marketplaceListings)
+    let gearId = ""
+    for (const row of inserted) {
+      const result = await resolveCanonicalGear(row)
+      gearId = result!.gearId
+      await db
+        .update(marketplaceListings)
+        .set({ canonicalGearId: result!.gearId })
+        .where(sql`${marketplaceListings.id} = ${row.id}`)
+    }
+
+    const market = await recomputeMarketPrice(gearId)
+    expect(market.new.medianCents).not.toBeNull()
+    expect(market.used.medianCents).toBeNull()
+    expect(market.used.sampleSize).toBe(1)
+
+    await reflagDeals(market)
+    const stray = await db
+      .select({ isDeal: marketplaceListings.isDeal })
+      .from(marketplaceListings)
+      .where(sql`${marketplaceListings.externalId} = 'stray-used'`)
+    expect(stray[0].isDeal).toBe(false)
   })
 })
 

@@ -96,10 +96,29 @@ export const canonicalGear = pgTable(
     mpn: varchar("mpn", { length: 100 }),
 
     msrpCents: integer("msrp_cents"),
-    /** Rolling median of observed used prices. Null until the sample is big enough. */
+    /**
+     * Rolling median of observed USED prices. Null until the used sample alone
+     * is big enough; a pile of new listings never fills this in.
+     */
     avgUsedPriceCents: integer("avg_used_price_cents"),
-    /** How many listings fed the median above. Guards against a 1-listing "market". */
+    /**
+     * How many USED listings fed the median above, not how many listings the
+     * gear has. Guards against a 1-listing "market". Keeps its original name
+     * rather than becoming used_price_sample_size, so the existing read sites
+     * are untouched, but it counts one condition class now.
+     */
     priceSampleSize: integer("price_sample_size").notNull().default(0),
+    /**
+     * The same pair for NEW listings, measured and compared separately.
+     *
+     * A single blended median is what a large new-retail feed breaks: new
+     * prices sit above used ones, so the blend rises, and every ordinary used
+     * listing then measures far below "market" and earns a below-market badge
+     * it has not earned. A listing is only ever judged against the median of
+     * its own condition class. See lib/deals/pricing.ts.
+     */
+    avgNewPriceCents: integer("avg_new_price_cents"),
+    newPriceSampleSize: integer("new_price_sample_size").notNull().default(0),
     priceUpdatedAt: timestamp("price_updated_at", { withTimezone: true }),
 
     imageUrl: text("image_url"),
@@ -198,6 +217,9 @@ export const marketplaceListings = pgTable(
     index("idx_listings_canonical").on(t.canonicalGearId),
     index("idx_listings_deal").on(t.isDeal),
     index("idx_listings_updated").on(t.updatedAt),
+    // Market price and deal flagging both group by condition class per gear
+    // row now. Without this, a 27k-row feed turns each recompute into a scan.
+    index("idx_listings_gear_condition").on(t.canonicalGearId, t.condition),
     // Drives the Postgres search fallback when Typesense is not configured.
     index("idx_listings_title_trgm").using("gin", sql`${t.title} gin_trgm_ops`),
   ],

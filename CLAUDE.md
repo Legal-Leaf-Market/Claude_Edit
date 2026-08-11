@@ -378,6 +378,37 @@ Never fork the logic between them. Add work to the job function.
   exactly the ones that already sold.
 - The threshold is "more than 20% below", so exactly `0.8 * market` is not a
   deal. There is a test pinning that boundary.
+- **NEW AND USED ARE TWO MARKETS, measured separately, and a listing is only
+  ever judged against the median of its own class.** `canonical_gear` carries
+  `avg_used_price_cents` / `price_sample_size` and `avg_new_price_cents` /
+  `new_price_sample_size`, and `MIN_SAMPLE_SIZE` applies to each independently:
+  forty new listings and two used ones publish a new median, no used one, and
+  no deal badge on those two.
+  This is not tidiness. One blended median was fine while the catalogue was
+  small mixed-stock sellers, and breaks the moment a large new-retail feed
+  lands (Andertons alone is ~27k products, and Gear4music, zZounds, Full
+  Compass and Pineville Music all default an empty condition to "New"). New
+  retail sits well above used, so the blend rises, and then every ordinary
+  second-hand price measures far below "market" and earns a badge it has not
+  earned. Inventing bargains is the one error this site cannot afford, and the
+  failure is silent and sitewide.
+- **When a condition string is ambiguous, class it NEW.** Open box, "New other
+  (see details)" and refurbished all sell nearer new than used, but the
+  deciding argument is the asymmetry: filing one as new nudges the new median
+  down slightly, while filing it as used lifts the USED median, and a lifted
+  used median is precisely what manufactures deals that do not exist. A null
+  condition is the exception and stays used, since the retail feeds all set the
+  field explicitly.
+- **The classifier exists three times (JS, the deal-flagging UPDATE, and the
+  search projections) and they must agree.** A divergence throws nothing; it
+  just starts flagging listings against a median built from a population they
+  were not part of. `tests/condition-class.test.ts` runs real condition strings
+  through both the JS and the Postgres implementations and asserts they match.
+- **A card's struck-through "was" price must come from the same class the deal
+  was judged against.** Both search backends select the median matching each
+  listing's own condition (`LISTING_MARKET_PRICE_SQL`); selecting
+  `avg_used_price_cents` unconditionally would print the used median beside a
+  new listing badged against the new one.
 
 ---
 

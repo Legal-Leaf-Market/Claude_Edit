@@ -44,12 +44,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const result = await db.execute<{ slug: string; has_market: boolean; updated: string }>(sql`
       SELECT g.slug,
-             (g.avg_used_price_cents IS NOT NULL) AS has_market,
+             (g.avg_used_price_cents IS NOT NULL OR g.avg_new_price_cents IS NOT NULL) AS has_market,
              MAX(l.updated_at)::text AS updated
       FROM canonical_gear g
       JOIN marketplace_listings l
         ON l.canonical_gear_id = g.id AND l.listing_status = 'active'
-      GROUP BY g.slug, g.avg_used_price_cents
+      GROUP BY g.slug, g.avg_used_price_cents, g.avg_new_price_cents
       ORDER BY COUNT(l.id) DESC
       LIMIT 40000
     `)

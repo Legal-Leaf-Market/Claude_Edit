@@ -1,5 +1,6 @@
 import { sql, type SQL } from "drizzle-orm"
 import { db } from "@/lib/db"
+import { LISTING_MARKET_PRICE_SQL } from "@/lib/deals/pricing"
 import {
   DEFAULT_PER_PAGE,
   emptyFacets,
@@ -245,7 +246,8 @@ export async function searchPostgres(params: SearchParams): Promise<SearchResult
         l.is_shippable, l.is_deal, l.deal_margin, l.listing_status, l.listed_at,
         l.canonical_gear_id,
         g.slug AS gear_slug, g.brand AS gear_brand, g.model AS gear_model,
-        g.category AS gear_category, g.avg_used_price_cents AS market_price_cents
+        g.category AS gear_category,
+        ${LISTING_MARKET_PRICE_SQL} AS market_price_cents
       FROM marketplace_listings l
       LEFT JOIN canonical_gear g ON g.id = l.canonical_gear_id
       WHERE ${where}

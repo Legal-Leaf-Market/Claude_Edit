@@ -1,6 +1,7 @@
 import { Client } from "typesense"
 import { sql } from "drizzle-orm"
 import { db } from "@/lib/db"
+import { LISTING_MARKET_PRICE_SQL } from "@/lib/deals/pricing"
 import { env } from "@/lib/env"
 import {
   emptyFacets,
@@ -124,7 +125,8 @@ async function documentsToIndex(sinceIso: string | null, limit: number, offset: 
       l.listing_status, l.primary_image_url, l.canonical_gear_id, l.listed_at,
       l.brand AS listing_brand,
       g.slug AS gear_slug, g.brand AS gear_brand, g.model AS gear_model,
-      g.category AS gear_category, g.avg_used_price_cents AS market_price_cents
+      g.category AS gear_category,
+        ${LISTING_MARKET_PRICE_SQL} AS market_price_cents
     FROM marketplace_listings l
     LEFT JOIN canonical_gear g ON g.id = l.canonical_gear_id
     WHERE l.listing_status = 'active' ${filter}
