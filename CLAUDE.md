@@ -480,6 +480,9 @@ Never fork the logic between them. Add work to the job function.
 1. `npm run typecheck` and `npm test`. The suite includes integration tests
    against real Postgres; they need `DATABASE_URL` and they truncate tables, so
    never point them at production.
+   Note that `npm run build` now MIGRATES FIRST (`db:migrate:deploy`), so a
+   local build applies pending migrations to whatever `DATABASE_URL` points
+   at. It skips silently when that is unset.
 2. `npm run db:seed` then `npm run dev`, and actually look at the site. The
    seed deliberately includes cross-source duplicates and identifier-free rows
    so the resolver is exercised.
@@ -496,7 +499,7 @@ Never fork the logic between them. Add work to the job function.
 
 | Var | Gates |
 |---|---|
-| `DATABASE_URL` | Everything. The only hard requirement. |
+| `DATABASE_URL` | Everything. The only hard requirement, and it is needed AT BUILD TIME as well as at runtime, because the build migrates before it compiles. Unset at build time skips migrations rather than failing, so a preview deploy with no database still ships. |
 | `EBAY_FEED_BASE_URL` | Sandbox by default. Never change the default. |
 | `EBAY_OAUTH_TOKEN` | eBay ingestion. Unset means the jobs skip with a logged reason. |
 | `EBAY_AFFILIATE_CAMPAIGN_ID` | Populates `itemAffiliateWebUrl` in the feed AND builds fallback EPN links. Unset means eBay traffic is unmonetised. |
@@ -771,6 +774,9 @@ engine.
 - Do NOT unscope MPN or fuzzy matching from the brand.
 - Do NOT publish a market price below `MIN_SAMPLE_SIZE`.
 - Do NOT let the cron guard fail open.
+- Do NOT ship a migration and the code that reads its new columns without
+  checking the deploy applies it. `next build` does not migrate on its own,
+  which is why `build` runs `db:migrate:deploy` first (section 10).
 - Do NOT parse the feed TSV by column position.
 - Do NOT scrape Equipboard, or any other gear-attribution site, to fill
   `lib/rigs/data.ts`. It is hand-written for the same reason the Reverb API is
