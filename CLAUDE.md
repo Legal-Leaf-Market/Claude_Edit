@@ -148,6 +148,21 @@ built for that site's own frontend rather than published for this use.
   in hand, following the same shape as the CJ modules. Do not write it against
   a guessed schema; a silently mis-mapped column is the exact failure the
   header-name binding rule in section 3 exists to prevent.
+  **What IS wired already:** `lib/affiliate/impact.ts` recognises Impact's
+  tracking hosts (`pxf.io`, `sjv.io`, `7eer.net`, `evyy.net`,
+  `impactradius.com`), and those plus `andertons.co.uk` are on the `/go`
+  allowlist, so a tracked destination will be followable the moment a feed row
+  carries one. There is deliberately NO `buildImpactUrl()`: Impact deep links
+  need `/c/<publisherId>/<campaignId>/<adId>`, and a campaign and ad id are
+  not something a vanity short link carries. Awin is the one network we build
+  links for ourselves, and only because a publisher id plus a merchant id is
+  genuinely all it needs.
+  **The publisher vanity link is `andertonsmusiccompany.pxf.io/7XKanr`.** It is
+  a marketing asset (the "create your links" step in Andertons' own onboarding
+  mail), not site plumbing: it lands on their storefront rather than on a
+  listing, so it has no home on a site whose every outbound link points at a
+  specific listing we have actually seen in a feed. Putting it on a page would
+  be the first ad on this site, which is a product decision nobody has taken.
 
 **Facebook Marketplace is out of scope.** Not "later", not "behind a flag". It
 has no public API, scraping it violates Meta's terms, and it is the exact
