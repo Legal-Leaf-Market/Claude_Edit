@@ -113,9 +113,44 @@ describe("pedalBoardDetails", () => {
     const [entry] = await pedalBoardDetails(["split-pedal"])
 
     expect(entry.bySource).toEqual([
-      { source: "ebay", cheapestNewCents: null, cheapestUsedCents: 5000, count: 1 },
-      { source: "reverb", cheapestNewCents: 7000, cheapestUsedCents: null, count: 1 },
+      {
+        source: "ebay",
+        cheapestNewCents: null,
+        cheapestUsedCents: 5000,
+        count: 1,
+        cheapestListingId: expect.any(String),
+      },
+      {
+        source: "reverb",
+        cheapestNewCents: 7000,
+        cheapestUsedCents: null,
+        count: 1,
+        cheapestListingId: expect.any(String),
+      },
     ])
+  })
+
+  /**
+   * The cheapest listing's own id, which is what lets a board slot link
+   * straight through /go for the right row. Getting the ORDER BY wrong inside
+   * the ARRAY_AGG would silently attach an arbitrary listing's id to the
+   * cheapest price, so this pins that it is genuinely the cheapest one.
+   */
+  it("reports the id of the cheapest live listing at each store", async () => {
+    const [pedal] = await db.insert(canonicalGear).values(gear({ slug: "id-pedal" })).returning()
+
+    const inserted = await db
+      .insert(marketplaceListings)
+      .values([
+        listingFor(pedal.id, { source: "ebay", condition: "Used", priceCents: 9000 }),
+        listingFor(pedal.id, { source: "ebay", condition: "Used", priceCents: 3000 }),
+      ])
+      .returning()
+
+    const cheapest = inserted.find((l) => l.priceCents === 3000)
+    const [entry] = await pedalBoardDetails(["id-pedal"])
+
+    expect(entry.bySource[0].cheapestListingId).toBe(cheapest?.id)
   })
 
   it("excludes sold and expired listings from availability", async () => {
@@ -129,7 +164,13 @@ describe("pedalBoardDetails", () => {
     const [entry] = await pedalBoardDetails(["mixed-status"])
 
     expect(entry.bySource).toEqual([
-      { source: "ebay", cheapestNewCents: null, cheapestUsedCents: 6000, count: 1 },
+      {
+        source: "ebay",
+        cheapestNewCents: null,
+        cheapestUsedCents: 6000,
+        count: 1,
+        cheapestListingId: expect.any(String),
+      },
     ])
   })
 

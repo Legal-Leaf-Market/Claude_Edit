@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { CartProvider } from "@/lib/cart/context"
 import { env } from "@/lib/env"
+import { THEME_INIT_SCRIPT } from "@/lib/theme"
 import "./globals.css"
 
 /*
@@ -70,9 +71,14 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  colorScheme: "dark",
-  /* Matches --bg, so the phone chrome meets the masthead without a seam. */
-  themeColor: "#0d0b09",
+  /* Both, now that the light theme is real. Declaring only "dark" here made
+     the browser paint its own dark chrome around a light page for anyone whose
+     OS is set to light, which is the seam this is supposed to prevent. */
+  colorScheme: "dark light",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#100d0a" },
+    { media: "(prefers-color-scheme: light)", color: "#faf6f0" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -85,6 +91,15 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="stylesheet" href={HOUSE_FONTS_HREF} />
+        {/*
+          Theme, applied before first paint.
+          dangerouslySetInnerHTML rather than next/script because this has to
+          run synchronously in <head>, ahead of the body being painted at all.
+          Any strategy that defers it, including beforeInteractive, leaves a
+          frame of the wrong theme on screen. The content is a constant defined
+          in lib/theme.ts, never anything user-supplied.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="font-sans antialiased">
         {/*

@@ -238,6 +238,35 @@ export const env = {
     },
   },
 
+  /**
+   * Groq, powering the "Ask" assistant (lib/ai/).
+   *
+   * Same isConfigured shape as every other integration in this file: unset
+   * means /api/ask answers 503 with a plain reason and the Ask button never
+   * renders, rather than the page throwing. Nothing else on the site depends
+   * on it, so an unset key costs exactly one feature.
+   *
+   * The model default is openai/gpt-oss-120b because it is the model Groq's
+   * own deprecation notices point every retired model at (kimi-k2-instruct in
+   * March 2026, qwen3-32b and llama-4-scout in June 2026), and it supports the
+   * tool calling this depends on. It is overridable per environment precisely
+   * because that list keeps moving: when this one is retired in turn, set
+   * GROQ_MODEL rather than shipping a code change.
+   */
+  groq: {
+    apiKey: str("GROQ_API_KEY"),
+    model: str("GROQ_MODEL", "openai/gpt-oss-120b"),
+    baseUrl: str("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
+    /**
+     * Per-IP question budget per FIXED CLOCK HOUR, resetting on the hour, not a
+     * rolling window. Generous for a person, useless for a scraper.
+     */
+    hourlyLimitPerIp: int("GROQ_HOURLY_LIMIT_PER_IP", 30),
+    get isConfigured(): boolean {
+      return Boolean(env.groq.apiKey)
+    },
+  },
+
   typesense: {
     host: str("TYPESENSE_HOST"),
     port: int("TYPESENSE_PORT", 443),
@@ -341,6 +370,7 @@ export function describeConfig(): string {
     `pinevillemusic-feed=${env.cj.hasPinevilleMusicFeed ? "set" : "absent"}`,
     `andertons-feed=${env.impact.hasAndertonsFeed ? "set" : "absent"}`,
     `typesense=${env.typesense.isConfigured ? "set" : "postgres-fallback"}`,
+    `groq=${env.groq.isConfigured ? env.groq.model : "unconfigured"}`,
     `redis=${env.redisUrl ? "set" : "absent"}`,
     `leads-notify=${env.leads.canEmail ? "set" : "db-only"}`,
     `instagram=${env.social.hasInstagramPosts ? "embeds" : "follow-only"}`,

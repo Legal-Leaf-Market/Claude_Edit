@@ -2,7 +2,7 @@
 
 Read this fully before editing. Sister project to **Legal-Leaf Market**,
 **Herbal Leaf Market** and **Nicotia Market**, and it inherits their house
-rules (section 14). The difference: those sites scrape public storefront JSON
+rules (section 16). The difference: those sites scrape public storefront JSON
 from merchants who want the traffic. This one mostly consumes **gated partner
 feeds** whose terms say exactly what you may and may not do with their data.
 That constraint shapes most of the decisions below, and undoing one of them
@@ -116,9 +116,13 @@ built for that site's own frontend rather than published for this use.
   "Used Gear API" name floating around online is Guitar Center's own URL
   taxonomy, not a data API, and the community tools that exist scrape an
   undocumented frontend Algolia index. Do not build against it.
-- **Anderton's, via Impact.com. APPROVED, and INGESTED** by
+- **Anderton's, via Impact.com (formerly Impact Radius). APPROVED 11 Aug 2026**,
+  one day after the application went in, and INGESTED by
   `lib/ingestion/andertons-impact.ts`. Roughly 27,000 products, easily the
-  largest source here. Three things make it unlike every other feed:
+  largest source here. The site's Universal Tracking Tag (`app/layout.tsx`) was
+  already live sitewide for Impact's own site-verification step; that was always
+  independent of catalogue ingestion and is not what the approval turned on.
+  What makes it unlike every other feed here:
   **It arrives by FTP**, not an authenticated HTTPS URL: Impact drops
   catalogues on `products.impact.com`, one directory per advertiser. That is
   why the job runs on the BullMQ worker and NOT a cron route, since a
@@ -128,15 +132,39 @@ built for that site's own frontend rather than published for this use.
   three fields (item id, name, link URL) and lets brands name the rest;
   Anderton's catalogue is literally "Custom AMC Feed". So the parser binds by
   HEADER NAME through an alias table and, when a mandatory column cannot be
-  resolved, throws naming the headers it actually saw. Never bind by position,
-  for the same reason section 3 gives for the eBay feed.
-  **It is priced in GBP and ships UK ONLY.** See section 16 on regions: a
+  resolved, throws naming both what it needed and the headers it actually saw.
+  Never bind by position, for the same reason section 3 gives for the eBay feed.
+  **It is priced in GBP and ships UK ONLY.** See section 15 on regions: a
   Guildford price shown to a shopper in Ohio fails the same house rule a stale
   price does.
-  Commission is 1% to 4%, the 4% scoped to a named brand list, and that list is
-  deliberately invisible to the ingester: a commission-aware feed reader is one
-  refactor from filtering down to the paying brands, which is ranking by payout
-  performed at the row level.
+  **Commission is 1% to 4%, and the 4% is scoped to a NAMED BRAND LIST rather
+  than the catalogue.** As of the welcome mail: Victory, Ordo, Browne,
+  EastCoast, Landlord, Tone City, Alvarez, Sire, Valeton, Behringer, TC
+  Electronic, Divitone, Hils, Soloking, Music Man and Sterling by Music Man.
+  Andertons told us they expect to add more later, so treat the list as current
+  rather than final. **That list must never become an ingestion filter or a
+  ranking input.** Andertons stocks far more than those sixteen brands and we
+  earn nothing on the rest, which makes this the sharpest test yet of the
+  section 16 rule that commission never affects ranking and that payout is not
+  why a merchant is listed. The list is deliberately invisible to the ingester:
+  a commission-aware feed reader is one refactor from filtering down to the
+  paying brands, which is ranking by payout performed at the row level, and the
+  footer promises shoppers it does not happen. Ingest the whole feed, rank it
+  exactly like every other source, and earn on the subset.
+  **Links come from the feed, never from us.** `lib/affiliate/impact.ts`
+  recognises Impact's tracking hosts (`pxf.io`, `sjv.io`, `7eer.net`,
+  `evyy.net`, `impactradius.com`), and those plus `andertons.co.uk` are on the
+  `/go` allowlist. There is deliberately NO `buildImpactUrl()`: Impact deep
+  links need `/c/<publisherId>/<campaignId>/<adId>`, and a campaign and an ad id
+  are not something a vanity short link carries. Awin is the one network we
+  build links for ourselves, and only because a publisher id plus a merchant id
+  is genuinely all it needs.
+  **The publisher vanity link is `andertonsmusiccompany.pxf.io/7XKanr`.** It is
+  a marketing asset (the "create your links" step in Andertons' own onboarding
+  mail), not site plumbing: it lands on their storefront rather than on a
+  listing, so it has no home on a site whose every outbound link points at a
+  specific listing we have actually seen in a feed. Putting it on a page would
+  be the first ad on this site, which is a product decision nobody has taken.
 
 **Facebook Marketplace is out of scope.** Not "later", not "behind a flag". It
 has no public API, scraping it violates Meta's terms, and it is the exact
@@ -151,18 +179,28 @@ app/
   deals/[slug]/             Programmatic SEO, per model
   used/[category]/          Programmatic SEO, per category
   go/[listingId]/           THE outbound gateway (section 5)
+  rigs/                     Artist rigs, and the records each is documented on
+  pedalboard/               The rig builder (chain check, power, live pricing)
   alerts/, sign-in/, sign-up/
   api/
     health                  Freshness and config, read this first when confused
+    ask                     The Groq assistant. 503s when unconfigured
     alerts                  Saved alert CRUD
     auth/[...all]           Better Auth
     cron/*                  Ingest per source, refresh-deals, weekly-digest.
                             All fail closed on CRON_SECRET
 lib/
   env.ts                    Every integration exposes isConfigured; nothing throws
+  nav.ts                    THE nav tree. Header, mobile sheet and footer all read it
+  theme.ts                  Light/dark/system, and the no-flash init script
+  rigs/                     Curated artist rigs and the reverse index (section 13)
+  ai/                       Groq client + the allowlisted DB tools (section 14)
+  pedalboard/chain.ts       Signal-chain order rules and power estimates
+  regions.ts                Who can buy from which store (section 15)
   ingestion/ebay-feed.ts    Transport + TSV parsing (section 3)
   ingestion/ebay-ingest.ts  The three eBay jobs
   ingestion/reverb-awin.ts  Awin feed only. Never the Reverb API (section 2)
+  ingestion/andertons-impact.ts  Impact FTP drop, header-bound. Worker only
   ingestion/upsert.ts       Idempotent writes, price history, run bookkeeping
   canonical/resolve.ts      Four-tier entity resolution (section 4)
   canonical/model-parse.ts  Brand/model/category from keyword-soup titles
@@ -467,8 +505,9 @@ Never fork the logic between them. Add work to the job function.
 | `LINKCONNECTOR_SWEETWATER_FEED_URL` | Sweetwater catalogue. Unset is expected; the job no-ops. Never falls back to scraping. |
 | `AWIN_GEAR4MUSIC_MERCHANT_ID` / `AWIN_GEAR4MUSIC_FEED_URL` | Gear4music catalogue and deep links. Same shape as the Reverb pair, independent ids. |
 | `CJ_ZZOUNDS_FEED_URL` / `CJ_FULLCOMPASS_FEED_URL` / `CJ_PINEVILLEMUSIC_FEED_URL` | Three independent CJ Affiliate programmes. Each no-ops when unset. |
-| `IMPACT_ANDERTONS_FTP_*` | Anderton's via Impact.com. Impact delivers catalogues by FTP drop (`products.impact.com`, one directory per advertiser), NOT over an HTTPS feed URL like Awin/CJ/LinkConnector, so this is a host/user/password/path quartet. `hasAndertonsFeed` gates on the credential pair, since host and path have real defaults. The password is a real credential, unlike most values in this table. No ingestion module yet: Impact's schema is configured per advertiser, so the column headers must be read off the real file first. Note the job belongs on the BullMQ worker, not a cron route: a serverless function cannot hold an FTP control connection plus passive data ports open. |
+| `IMPACT_ANDERTONS_FTP_*` | Anderton's via Impact.com, ingested by `lib/ingestion/andertons-impact.ts`. Impact delivers catalogues by FTP drop (`products.impact.com`, one directory per advertiser), NOT over an HTTPS feed URL like Awin/CJ/LinkConnector, so this is a host/user/password/path quartet. `hasAndertonsFeed` gates on the credential pair, since host and path have real defaults. The password is a real credential, unlike most values in this table. Note the job belongs on the BullMQ worker, not a cron route: a serverless function cannot hold an FTP control connection plus passive data ports open. |
 | `GOAFFPRO_*_REF_PARAM` / `GOAFFPRO_*_REF_CODE` | One pair per small independent Shopify/WooCommerce seller (Folkcraft, Acoustic Guitar, Jamstik, Jackson Audio, Eminence Digital, Haze Guitar, EART Guitar, Play With Authority, Pures Music, Squaver, Eason Music Store, Go Kalimba). Catalogue ingestion needs no credential at all; an unset code just means a null `affiliate_url` until the referral is confirmed. |
+| `GROQ_API_KEY` / `GROQ_MODEL` | The Ask assistant (section 14). Unset means /api/ask 503s and the button never renders. The model default is overridable because Groq retires models often. |
 | `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
 | `REDIS_URL` | BullMQ queues and the shared rate-limit counter. Optional. |
 | `CRON_SECRET` | Every `/api/cron/*` route. Unset = 503, wrong = 401. Load bearing: these burn the eBay call budget and send mail to the whole subscriber list. |
@@ -519,7 +558,76 @@ legal-leafmarket.com, adapted to one site instead of four.
 
 ---
 
-## 13. Regional serviceability: only show what a shopper can buy
+## 13. Artist rigs: curated on purpose, and why
+
+`lib/rigs/data.ts` carries roughly two dozen documented artist pedalboards,
+each with the pedals on it, what each pedal was doing, and the albums and
+tracks the rig is documented on. `lib/rigs/index.ts` derives everything else,
+including the reverse index that lets a gear page say which records a pedal is
+on. This is the only genuinely unique content on the site and it powers
+`/rigs`, `/rigs/[slug]`, the "Heard on" block on `/gear/[slug]`, and the
+builder's rig loader.
+
+**It is hand-written because there is no legitimate feed for it**, and that
+follows the same rule as section 2 rather than being an exception to it.
+Equipboard has by far the best database of this and added album- and
+track-level attribution in February 2026, but they publish no API and scraping
+them is precisely the conduct forbidden for Guitar Center and the Reverb API.
+MusicBrainz would cover the records half legitimately and its core data is
+open, except its web service is free for NON-COMMERCIAL use only and this site
+runs on affiliate revenue, so wiring it up needs a commercial plan first. Both
+remain open later. Neither was a reason to ship nothing now.
+
+Two rules for editing the dataset:
+
+- **Scope every rig to a documented era, and say so on the page.** Rigs change
+  between tours and between takes. What is almost always known is that a pedal
+  was on the board during those sessions or that tour, not that it is audible
+  on a specific bar. The copy says "documented on" for exactly that reason.
+- **Never imply endorsement.** Every page built from this file carries the line
+  that nobody named is affiliated with Gear Avail. Monograms rather than
+  photographs, deliberately: no likeness rights to navigate.
+
+The reverse index (`creditsForGear`) matches on brand AND model, both loose,
+with a three-character floor. Widening it is tempting and wrong for the same
+reason `normalizeMpn()` rejects placeholders: a bad match prints a famous
+record under the wrong pedal, on a page somebody is about to spend money from.
+There are tests pinning the near misses ("Hamilton Beach Blender" must not
+match Kevin Shields, "Boss DD" must not match anything).
+
+---
+
+## 14. Ask: the assistant queries the database, it does not remember it
+
+`lib/ai/`, gated on `GROQ_API_KEY`, surfaced as the "Ask" button in the
+masthead. Unset is a fully supported state: `/api/ask` answers 503 with a plain
+reason and the button is never rendered, so an unconfigured deploy is missing
+one feature rather than showing a broken one.
+
+- **The model never writes SQL and never gets a connection.** It calls a fixed
+  set of typed, allowlisted tools in `lib/ai/tools.ts`, each of which validates
+  its arguments and calls the same functions the pages call. A general "run
+  this query" tool would be three lines and would hand anyone who can type into
+  a text box the ability to read the `user` table. Do not add one. If a
+  question cannot be answered, the fix is another narrow tool.
+- **Every tool is read-only.** Nothing writes a row, sends mail, or spends an
+  eBay call, so a prompt injection carried in a listing title is bounded at
+  "returns a wrong answer" rather than "mutates the site".
+- **The prompt is mostly about what not to say**, because on a price
+  comparison site an invented price is worse than no answer. It is instructed
+  to report the "sample too small, no market price published" result verbatim
+  rather than estimating around it, which is section 8's rule reaching through
+  this door too.
+- Answers carry the listings they came from AND a one-line trace of each lookup
+  actually run, so a shopper can check the answer rather than trust it.
+- `GROQ_MODEL` is overridable because Groq retires models often (kimi-k2 in
+  March 2026, qwen3-32b and llama-4-scout in June 2026). When the default is
+  retired in turn, set the env var rather than shipping a code change.
+
+
+---
+
+## 15. Regional serviceability: only show what a shopper can buy
 
 `lib/regions.ts`. Anderton's ships only within the UK, and it is the biggest
 catalogue on the site, so without this a shopper in Ohio searching for a
@@ -546,9 +654,10 @@ Victory preamp gets a page of prices they can never pay.
   particularly confusing bug. It is also kept OUT of `allExcept()`, so a store
   that cannot deliver never appears in the source facet at all.
 
+
 ---
 
-## 14. House rules inherited from the sister sites
+## 16. House rules inherited from the sister sites
 
 - **No em dashes anywhere in copy.** Use a comma, colon, or parentheses.
 - **Do not GET an Awin tracking link in testing** (section 5).
@@ -569,7 +678,7 @@ Victory preamp gets a page of prices they can never pay.
   never the money. The two cases look identical from outside, so write down
   which one it was.
 
-## 15. Hard "do not" list
+## 17. Hard "do not" list
 
 - Do NOT call the Reverb API for listings, or add a scraping fallback anywhere.
 - Do NOT write Facebook Marketplace ingestion.
@@ -588,10 +697,23 @@ Victory preamp gets a page of prices they can never pay.
 - Do NOT publish a market price below `MIN_SAMPLE_SIZE`.
 - Do NOT let the cron guard fail open.
 - Do NOT parse the feed TSV by column position.
+- Do NOT scrape Equipboard, or any other gear-attribution site, to fill
+  `lib/rigs/data.ts`. It is hand-written for the same reason the Reverb API is
+  off limits (section 13).
+- Do NOT call the MusicBrainz web service from this site without a commercial
+  plan. It is free for non-commercial use only and this site is commercial.
+- Do NOT give the assistant a tool that takes SQL, a table name, or any free
+  text that reaches a query builder uninterpreted (section 14).
+- Do NOT let the assistant state a price, a store or a stock level that no
+  tool in that conversation returned.
 - Do NOT show a listing from a store that cannot ship to the shopper without
-  saying so, and do NOT hide one without saying that either (section 13).
+  saying so, and do NOT hide one without saying that either (section 15).
 - Do NOT make the ingester aware of which brands pay commission. Filtering a
   feed down to the paying brands is ranking by payout at the row level.
 - Do NOT bind the Impact catalogue by column position. It is brand-configured
   and the order is not stable; bind by header name and fail loudly.
+- Do NOT define a colour only inside the light-theme block, or only outside it.
+  Both themes resolve from the same token set, and prices and accent-coloured
+  body text must use `--money` and `--accent-text` rather than `--sage` and
+  `--copper`, which fail contrast on paper.
 - Do NOT point the test suite at a database you care about; it truncates.

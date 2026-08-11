@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Search } from "lucide-react"
+import { Loader2, Plus, Search } from "lucide-react"
 import { ListingImage } from "@/components/listing-image"
+import { EFFECTS } from "@/lib/pedalboard/chain"
 import { formatPrice } from "@/lib/utils"
 import type { PedalSummary } from "@/lib/pedalboard/queries"
 
@@ -15,6 +16,8 @@ import type { PedalSummary } from "@/lib/pedalboard/queries"
  * pedals, passed in as `suggestions`), so there is never a dead-end blank
  * dropdown before a shopper has typed anything.
  */
+const DEBOUNCE_MS = 220
+
 export function PedalSearch({
   suggestions,
   onAdd,
@@ -34,62 +37,76 @@ export function PedalSearch({
     const trimmed = query.trim()
     if (!trimmed) {
       setResults(suggestions)
+      setLoading(false)
       return
     }
+
     setLoading(true)
-    const handle = setTimeout(() => {
-      fetch(`/api/pedalboard/search?q=${encodeURIComponent(trimmed)}`)
+    const controller = new AbortController()
+    const timer = setTimeout(() => {
+      fetch(`/api/pedalboard/search?q=${encodeURIComponent(trimmed)}`, {
+        signal: controller.signal,
+      })
         .then((res) => res.json())
-        .then((data) => setResults(data.pedals ?? []))
-        .catch(() => setResults([]))
+        .then((data: { pedals: PedalSummary[] }) => setResults(data.pedals ?? []))
+        .catch(() => {})
         .finally(() => setLoading(false))
-    }, 300)
-    return () => clearTimeout(handle)
+    }, DEBOUNCE_MS)
+
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
   }, [query, suggestions])
 
+  // Close on an outside click. Without this the dropdown stays open behind
+  // whatever the shopper clicked next, over the board they are trying to see.
   useEffect(() => {
-    function onClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false)
-      }
+    if (!open) return
+    function onPointerDown(event: PointerEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false)
     }
-    document.addEventListener("mousedown", onClickOutside)
-    return () => document.removeEventListener("mousedown", onClickOutside)
-  }, [])
+    document.addEventListener("pointerdown", onPointerDown)
+    return () => document.removeEventListener("pointerdown", onPointerDown)
+  }, [open])
 
   return (
     <div ref={containerRef} className="relative">
-      <div className="relative">
-        <Search
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)]"
-          aria-hidden="true"
-        />
+      <label htmlFor="pedal-search" className="sr-only">
+        Search pedals to add to the board
+      </label>
+      <div className="flex items-center gap-[9px] rounded-full border border-[var(--line)] bg-[var(--panel2)] px-4 py-[10px] transition-colors focus-within:border-[var(--sage)]">
+        <Search className="h-4 w-4 shrink-0 text-[var(--dim)]" aria-hidden="true" />
         <input
+          id="pedal-search"
           type="search"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(event) => setQuery(event.target.value)}
           onFocus={() => setOpen(true)}
-          placeholder="Tube Screamer, Big Muff, Deco..."
-          className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] pl-9 pr-3 text-sm text-[var(--cream)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setOpen(false)
+          }}
+          placeholder="Add a pedal by name..."
+          autoComplete="off"
+          className="w-full min-w-0 border-0 bg-transparent text-[0.95rem] text-[var(--text)] caret-[var(--sage)] placeholder:text-[var(--dim)] focus:outline-none"
         />
+        {loading && (
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[var(--dim)]" aria-hidden="true" />
+        )}
       </div>
 
       {open && (
-        <div className="panel absolute z-20 mt-1.5 max-h-96 w-full overflow-y-auto p-1.5 shadow-xl">
-          {!query.trim() && (
-            <p className="px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
-              Most listed pedals
+        <div className="absolute inset-x-0 top-full z-30 mt-2 max-h-80 overflow-y-auto rounded-[var(--radius)] border border-[var(--line)] bg-[var(--popover)] p-1.5 shadow-[var(--shadow)]">
+          {results.length === 0 ? (
+            <p className="px-2 py-3 text-sm text-[var(--muted-foreground)]">
+              {query.trim()
+                ? "No pedal in the catalogue matches that. The feeds live today carry small independent makers rather than the legacy brands, so try loading a documented rig instead: unstocked pedals still take a slot there."
+                : "Nothing in the pedal catalogue yet."}
             </p>
-          )}
-          {loading && <p className="px-2.5 py-2 text-sm text-[var(--muted-foreground)]">Searching...</p>}
-          {!loading && results.length === 0 && (
-            <p className="px-2.5 py-2 text-sm text-[var(--muted-foreground)]">
-              No pedals matched. Try a shorter name or just the brand.
-            </p>
-          )}
-          {!loading &&
+          ) : (
             results.map((pedal) => {
               const already = disabledSlugs.has(pedal.slug)
+              const meta = EFFECTS[pedal.type]
               return (
                 <button
                   key={pedal.slug}
@@ -102,27 +119,28 @@ export function PedalSearch({
                   }}
                   className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40 enabled:hover:bg-[var(--secondary)]"
                 >
-                  <ListingImage
-                    src={pedal.imageUrl}
-                    alt=""
-                    className="h-10 w-10 shrink-0 rounded-md"
-                  />
+                  <ListingImage src={pedal.imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-md" />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm text-[var(--cream)]">
+                    <span className="block truncate text-sm text-[var(--text)]">
                       {pedal.brand} {pedal.model}
                     </span>
                     <span className="block text-xs text-[var(--muted-foreground)]">
+                      <span style={{ color: meta.hue }}>{meta.label}</span>
+                      {" · "}
                       {pedal.marketPriceCents != null
                         ? `~${formatPrice(pedal.marketPriceCents)} market`
-                        : "Too few listings to price yet"}
+                        : "too few listings to price"}
                     </span>
                   </span>
-                  {already && (
-                    <span className="shrink-0 text-xs text-[var(--muted-foreground)]">On board</span>
+                  {already ? (
+                    <span className="shrink-0 text-xs text-[var(--dim)]">On board</span>
+                  ) : (
+                    <Plus className="h-4 w-4 shrink-0 text-[var(--dim)]" aria-hidden="true" />
                   )}
                 </button>
               )
-            })}
+            })
+          )}
         </div>
       )}
     </div>

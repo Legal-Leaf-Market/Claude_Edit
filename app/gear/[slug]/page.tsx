@@ -6,6 +6,7 @@ import { ExternalLink, MapPin, Truck } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ListingImage } from "@/components/listing-image"
 import { PriceHistoryChart } from "@/components/price-history-chart"
+import { GearCredits } from "@/components/rigs/gear-credits"
 import { db } from "@/lib/db"
 import { canonicalGear } from "@/lib/db/schema"
 import { listingsForGear, priceHistoryFor } from "@/lib/deals/history"
@@ -139,6 +140,11 @@ export default async function GearPage({ params }: PageProps) {
           )}
         </div>
       </header>
+
+      {/* Records first, listings second. Someone on this page already knows
+          what the pedal is; what they usually do not know is which records it
+          is on, and that is the thing that decides whether they want one. */}
+      <GearCredits brand={gear.brand} model={gear.model} />
 
       {history.length >= 2 && (
         <section className="panel mb-6 p-5">
