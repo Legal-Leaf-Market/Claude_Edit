@@ -7,6 +7,7 @@ import { search } from "@/lib/search"
 import type { SearchHit, SortOption } from "@/lib/search/types"
 import { STORES } from "@/lib/stores"
 import { formatPrice, sourceLabel } from "@/lib/utils"
+import { RIG_TOOL_SPECS, runRigTool } from "./rig-tools"
 
 /**
  * The tools the assistant is allowed to call, and nothing else.
@@ -209,7 +210,18 @@ export const TOOL_SPECS: ToolSpec[] = [
   },
 ]
 
-export const TOOL_NAMES = new Set(TOOL_SPECS.map((t) => t.function.name))
+/**
+ * The rig-building tools live in ./rig-tools.ts and are merged in here.
+ *
+ * Separate file because they are a different KIND of tool: these three read
+ * the in-repo spec catalogue and the pure layout, power and cable engines, and
+ * touch no database at all. The model picks gear and the engines do the
+ * geometry, which is the split that keeps an LLM from confidently inventing a
+ * pedal's dimensions.
+ */
+export const TOOL_SPECS_ALL: ToolSpec[] = [...TOOL_SPECS, ...RIG_TOOL_SPECS]
+
+export const TOOL_NAMES = new Set(TOOL_SPECS_ALL.map((t) => t.function.name))
 
 /* -------------------------------------------------------------------------- */
 /*  Implementations                                                           */
@@ -439,6 +451,10 @@ async function runCatalogueStats(): Promise<ToolResult> {
  */
 export async function runTool(name: string, args: Record<string, unknown>): Promise<ToolResult> {
   try {
+    // Rig tools first: they are synchronous and hit no database.
+    const rig = runRigTool(name, args)
+    if (rig) return rig
+
     switch (name) {
       case "search_listings":
         return await runSearchListings(args)

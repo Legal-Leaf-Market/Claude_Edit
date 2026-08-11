@@ -124,10 +124,20 @@ built for that site's own frontend rather than published for this use.
   independent of catalogue ingestion and is not what the approval turned on.
   What makes it unlike every other feed here:
   **It arrives by FTP**, not an authenticated HTTPS URL: Impact drops
-  catalogues on `products.impact.com`, one directory per advertiser. That is
-  why the job runs on the BullMQ worker and NOT a cron route, since a
-  serverless function cannot hold an FTP control connection plus passive data
-  ports open for a 27k-row download.
+  catalogues on `products.impact.com`, one directory per advertiser. It has no
+  Vercel cron entry, unlike every other feed here.
+
+  The reason given for that was "a serverless function cannot hold an FTP
+  control connection plus passive data ports open". That is WRONG as stated
+  and is corrected here: a Vercel Node function runs on Lambda, Lambda permits
+  arbitrary outbound TCP, and passive FTP is entirely outbound. The real
+  limits are the 300 second function ceiling and the memory to buffer a 27k-row
+  file, which are honest maybes rather than a flat no.
+
+  So `/api/admin/ingest-andertons` exists to settle it by trying: admin-gated,
+  POST only, `maxDuration = 300`. If it times out, the timeout is the answer
+  and the BullMQ worker is genuinely required. Until somebody runs it, do not
+  repeat either claim as settled.
   **The schema is the brand's, not the network's.** Impact mandates exactly
   three fields (item id, name, link URL) and lets brands name the rest;
   Anderton's catalogue is literally "Custom AMC Feed". So the parser binds by
