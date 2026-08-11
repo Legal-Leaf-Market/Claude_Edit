@@ -94,14 +94,35 @@ export default async function GearPage({ params }: PageProps) {
                 {cheapestCents != null ? formatPrice(cheapestCents) : "None listed"}
               </dd>
             </div>
+            {/*
+              Two markets, shown separately, because they are separate markets.
+              A single blended "market price" is what a large new-retail feed
+              breaks (see lib/deals/pricing.ts): the blend sits above the true
+              used median and makes ordinary used prices look like bargains.
+              Each is shown only when its own sample cleared the floor, so gear
+              stocked new by a retailer and never seen used shows one number
+              and says nothing it cannot support about the other.
+            */}
             <div>
               <dt className="text-[0.68rem] uppercase tracking-[0.14em] text-[var(--dim)]">
-                Market price
+                Used market
               </dt>
               <dd className="mt-0.5 font-display text-xl font-black tracking-[-0.02em] text-[var(--cream)]">
-                {gear.avgUsedPriceCents != null ? formatPrice(gear.avgUsedPriceCents) : "Not enough data"}
+                {gear.avgUsedPriceCents != null
+                  ? formatPrice(gear.avgUsedPriceCents)
+                  : "Not enough data"}
               </dd>
             </div>
+            {gear.avgNewPriceCents != null && (
+              <div>
+                <dt className="text-[0.68rem] uppercase tracking-[0.14em] text-[var(--dim)]">
+                  New market
+                </dt>
+                <dd className="mt-0.5 font-display text-xl font-black tracking-[-0.02em] text-[var(--cream)]">
+                  {formatPrice(gear.avgNewPriceCents)}
+                </dd>
+              </div>
+            )}
             <div>
               <dt className="text-[0.68rem] uppercase tracking-[0.14em] text-[var(--dim)]">
                 Live listings
@@ -112,8 +133,9 @@ export default async function GearPage({ params }: PageProps) {
 
           {gear.avgUsedPriceCents == null && (
             <p className="mt-3 text-xs leading-relaxed text-[var(--muted-foreground)]">
-              We publish a market price only once we have seen enough listings for the number to
-              mean something. Until then, compare the live prices below directly.
+              {gear.avgNewPriceCents != null
+                ? "We have seen enough new listings to publish a new price, but not enough used ones to say what this is worth second hand. A pile of new stock is not evidence about the used market, so we do not treat it as any."
+                : "We publish a market price only once we have seen enough listings for the number to mean something. Until then, compare the live prices below directly."}
             </p>
           )}
         </div>

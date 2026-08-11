@@ -1,9 +1,12 @@
 import type { Metadata } from "next"
+import { headers } from "next/headers"
 import { Suspense } from "react"
 import { FilterSidebar } from "@/components/filter-sidebar"
 import { ListingCard, ListingCardSkeleton } from "@/components/listing-card"
 import { Pagination } from "@/components/pagination"
 import { SortSelect } from "@/components/sort-select"
+import { RegionNotice } from "@/components/region-notice"
+import { excludedSourcesFor, regionFromHeaders } from "@/lib/regions"
 import { paramsFromQuery, queryFromParams, search } from "@/lib/search"
 
 type SearchPageProps = {
@@ -30,16 +33,53 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const query = await searchParams
   const params = paramsFromQuery(query)
 
+  /*
+   * Drop stores that will not ship to this shopper.
+   *
+   * Resolved here rather than inside search() so the region comes from the
+   * request rather than from ambient state, and so the page can tell the
+   * shopper what was removed. Section 15's rule is that prices shown must be
+   * prices the shopper can actually get, and a Guildford price shown in Ohio
+   * fails it exactly as a stale price would.
+   *
+   * `?ships=all` opts out, which is what the notice links to.
+   */
+  const region = params.shipsAll ? null : regionFromHeaders(await headers())
+  const excludeSources = excludedSourcesFor(region)
+
+  /*
+   * The opt-out link, built from the CURRENT params rather than as a bare
+   * "?ships=all". A query-only href replaces the whole query string, so the
+   * bare version threw away the shopper's search and every active filter,
+   * which is a strange reward for clicking "show me more". Page is dropped
+   * because unhiding a store changes how many results there are and page
+   * seven of the old set means nothing in the new one.
+   */
+  const showAllQuery = queryFromParams({ ...params, shipsAll: true, page: undefined })
+  const showAllHref = showAllQuery ? `/search?${showAllQuery}` : "/search?ships=all"
+
   return (
     <div className="shell py-6">
       <Suspense fallback={<ResultsSkeleton />}>
-        <Results params={params} />
+        <Results
+          params={{ ...params, excludeSources }}
+          region={region}
+          showAllHref={showAllHref}
+        />
       </Suspense>
     </div>
   )
 }
 
-async function Results({ params }: { params: ReturnType<typeof paramsFromQuery> }) {
+async function Results({
+  params,
+  region,
+  showAllHref,
+}: {
+  params: ReturnType<typeof paramsFromQuery>
+  region: string | null
+  showAllHref: string
+}) {
   const result = await search(params)
 
   const buildHref = (page: number) => {
@@ -65,6 +105,8 @@ async function Results({ params }: { params: ReturnType<typeof paramsFromQuery> 
           </div>
           <SortSelect />
         </header>
+
+        <RegionNotice region={region} showAllHref={showAllHref} className="mb-4" />
 
         {result.hits.length === 0 ? (
           <EmptyState query={params.q} />

@@ -1,5 +1,6 @@
 import { sql, type SQL } from "drizzle-orm"
 import { db } from "@/lib/db"
+import { LISTING_MARKET_PRICE_SQL } from "@/lib/deals/pricing"
 import {
   DEFAULT_PER_PAGE,
   emptyFacets,
@@ -34,6 +35,15 @@ const SIMILARITY_FLOOR = 0.15
 type Conditions = {
   text: SQL | null
   source: SQL | null
+  /**
+   * Region restriction: stores that will not ship to this shopper.
+   *
+   * Its own key rather than folded into `source` so that allExcept() keeps it
+   * applied while counting the SOURCE facet. It is a hard constraint, not a
+   * toggleable filter, and a store that cannot deliver must not appear in the
+   * facet list at all, let alone with a count beside it.
+   */
+  excludeSource: SQL | null
   brand: SQL | null
   category: SQL | null
   condition: SQL | null
@@ -59,6 +69,9 @@ function buildConditions(params: SearchParams): Conditions {
              OR g.model ILIKE ${"%" + q + "%"})`
       : null,
 
+    excludeSource: params.excludeSources?.length
+      ? sql`l.source NOT IN ${params.excludeSources}`
+      : null,
     source: params.sources?.length
       ? sql`l.source IN ${params.sources}`
       : null,
@@ -245,7 +258,8 @@ export async function searchPostgres(params: SearchParams): Promise<SearchResult
         l.is_shippable, l.is_deal, l.deal_margin, l.listing_status, l.listed_at,
         l.canonical_gear_id,
         g.slug AS gear_slug, g.brand AS gear_brand, g.model AS gear_model,
-        g.category AS gear_category, g.avg_used_price_cents AS market_price_cents
+        g.category AS gear_category,
+        ${LISTING_MARKET_PRICE_SQL} AS market_price_cents
       FROM marketplace_listings l
       LEFT JOIN canonical_gear g ON g.id = l.canonical_gear_id
       WHERE ${where}
