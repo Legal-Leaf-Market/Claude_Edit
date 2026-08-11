@@ -2,7 +2,7 @@
 
 Read this fully before editing. Sister project to **Legal-Leaf Market**,
 **Herbal Leaf Market** and **Nicotia Market**, and it inherits their house
-rules (section 15). The difference: those sites scrape public storefront JSON
+rules (section 16). The difference: those sites scrape public storefront JSON
 from merchants who want the traffic. This one mostly consumes **gated partner
 feeds** whose terms say exactly what you may and may not do with their data.
 That constraint shapes most of the decisions below, and undoing one of them
@@ -117,46 +117,48 @@ built for that site's own frontend rather than published for this use.
   taxonomy, not a data API, and the community tools that exist scrape an
   undocumented frontend Algolia index. Do not build against it.
 - **Anderton's, via Impact.com (formerly Impact Radius). APPROVED 11 Aug 2026**,
-  one day after the application went in. The site's Universal Tracking Tag
-  (`app/layout.tsx`) was already live sitewide for Impact's own site-verification
-  step; that was always independent of catalogue ingestion and is not what the
-  approval turned on.
-  **Commission is 4%, and it is scoped to a NAMED BRAND LIST, not the
-  catalogue.** As of the welcome mail: Victory, Ordo, Browne, EastCoast,
-  Landlord, Tone City, Alvarez, Sire, Valeton, Behringer, TC Electronic,
-  Divitone, Hils, Soloking, Music Man and Sterling by Music Man. Andertons
-  told us they expect to add more later, so treat the list as current rather
-  than final.
-  **That brand list must never become an ingestion filter or a ranking input.**
-  Andertons stocks far more than those sixteen brands and we earn nothing on
-  the rest, which makes this the sharpest test yet of the section 15 rule that
-  commission never affects ranking and that payout is not why a merchant is
-  listed. Ingest the whole feed, rank it exactly like every other source, and
-  earn on the subset. Filtering the feed down to the commissionable brands
-  would be ranking by payout performed at the row level, and the footer
-  promises shoppers it does not happen.
-  **Still blocked on the feed itself.** Unlike CJ or Awin, Impact has no fixed
-  product-feed schema: brands configure their own field names per catalogue
-  (confirmed against Impact's own "File Formats for Product Catalogs" docs).
-  The welcome mail carries the commission terms and no catalogue details, so
-  `IMPACT_ANDERTONS_FEED_URL` (`lib/env.ts`) stays a reserved placeholder and
-  no ingestion module exists yet. What is needed before one can be written:
-  the feed URL, the exact column headers, and whether the feed exposes an
-  untracked merchant URL alongside Impact's tracking link (CJ exposes only a
-  pre-built `BUY_URL`, which is why `isCjTrackingUrl` exists). Build
-  `lib/ingestion/andertons-impact.ts` against the real schema when those are
-  in hand, following the same shape as the CJ modules. Do not write it against
-  a guessed schema; a silently mis-mapped column is the exact failure the
-  header-name binding rule in section 3 exists to prevent.
-  **What IS wired already:** `lib/affiliate/impact.ts` recognises Impact's
-  tracking hosts (`pxf.io`, `sjv.io`, `7eer.net`, `evyy.net`,
-  `impactradius.com`), and those plus `andertons.co.uk` are on the `/go`
-  allowlist, so a tracked destination will be followable the moment a feed row
-  carries one. There is deliberately NO `buildImpactUrl()`: Impact deep links
-  need `/c/<publisherId>/<campaignId>/<adId>`, and a campaign and ad id are
-  not something a vanity short link carries. Awin is the one network we build
-  links for ourselves, and only because a publisher id plus a merchant id is
-  genuinely all it needs.
+  one day after the application went in, and INGESTED by
+  `lib/ingestion/andertons-impact.ts`. Roughly 27,000 products, easily the
+  largest source here. The site's Universal Tracking Tag (`app/layout.tsx`) was
+  already live sitewide for Impact's own site-verification step; that was always
+  independent of catalogue ingestion and is not what the approval turned on.
+  What makes it unlike every other feed here:
+  **It arrives by FTP**, not an authenticated HTTPS URL: Impact drops
+  catalogues on `products.impact.com`, one directory per advertiser. That is
+  why the job runs on the BullMQ worker and NOT a cron route, since a
+  serverless function cannot hold an FTP control connection plus passive data
+  ports open for a 27k-row download.
+  **The schema is the brand's, not the network's.** Impact mandates exactly
+  three fields (item id, name, link URL) and lets brands name the rest;
+  Anderton's catalogue is literally "Custom AMC Feed". So the parser binds by
+  HEADER NAME through an alias table and, when a mandatory column cannot be
+  resolved, throws naming both what it needed and the headers it actually saw.
+  Never bind by position, for the same reason section 3 gives for the eBay feed.
+  **It is priced in GBP and ships UK ONLY.** See section 15 on regions: a
+  Guildford price shown to a shopper in Ohio fails the same house rule a stale
+  price does.
+  **Commission is 1% to 4%, and the 4% is scoped to a NAMED BRAND LIST rather
+  than the catalogue.** As of the welcome mail: Victory, Ordo, Browne,
+  EastCoast, Landlord, Tone City, Alvarez, Sire, Valeton, Behringer, TC
+  Electronic, Divitone, Hils, Soloking, Music Man and Sterling by Music Man.
+  Andertons told us they expect to add more later, so treat the list as current
+  rather than final. **That list must never become an ingestion filter or a
+  ranking input.** Andertons stocks far more than those sixteen brands and we
+  earn nothing on the rest, which makes this the sharpest test yet of the
+  section 16 rule that commission never affects ranking and that payout is not
+  why a merchant is listed. The list is deliberately invisible to the ingester:
+  a commission-aware feed reader is one refactor from filtering down to the
+  paying brands, which is ranking by payout performed at the row level, and the
+  footer promises shoppers it does not happen. Ingest the whole feed, rank it
+  exactly like every other source, and earn on the subset.
+  **Links come from the feed, never from us.** `lib/affiliate/impact.ts`
+  recognises Impact's tracking hosts (`pxf.io`, `sjv.io`, `7eer.net`,
+  `evyy.net`, `impactradius.com`), and those plus `andertons.co.uk` are on the
+  `/go` allowlist. There is deliberately NO `buildImpactUrl()`: Impact deep
+  links need `/c/<publisherId>/<campaignId>/<adId>`, and a campaign and an ad id
+  are not something a vanity short link carries. Awin is the one network we
+  build links for ourselves, and only because a publisher id plus a merchant id
+  is genuinely all it needs.
   **The publisher vanity link is `andertonsmusiccompany.pxf.io/7XKanr`.** It is
   a marketing asset (the "create your links" step in Andertons' own onboarding
   mail), not site plumbing: it lands on their storefront rather than on a
@@ -194,9 +196,11 @@ lib/
   rigs/                     Curated artist rigs and the reverse index (section 13)
   ai/                       Groq client + the allowlisted DB tools (section 14)
   pedalboard/chain.ts       Signal-chain order rules and power estimates
+  regions.ts                Who can buy from which store (section 15)
   ingestion/ebay-feed.ts    Transport + TSV parsing (section 3)
   ingestion/ebay-ingest.ts  The three eBay jobs
   ingestion/reverb-awin.ts  Awin feed only. Never the Reverb API (section 2)
+  ingestion/andertons-impact.ts  Impact FTP drop, header-bound. Worker only
   ingestion/upsert.ts       Idempotent writes, price history, run bookkeeping
   canonical/resolve.ts      Four-tier entity resolution (section 4)
   canonical/model-parse.ts  Brand/model/category from keyword-soup titles
@@ -420,6 +424,37 @@ Never fork the logic between them. Add work to the job function.
   exactly the ones that already sold.
 - The threshold is "more than 20% below", so exactly `0.8 * market` is not a
   deal. There is a test pinning that boundary.
+- **NEW AND USED ARE TWO MARKETS, measured separately, and a listing is only
+  ever judged against the median of its own class.** `canonical_gear` carries
+  `avg_used_price_cents` / `price_sample_size` and `avg_new_price_cents` /
+  `new_price_sample_size`, and `MIN_SAMPLE_SIZE` applies to each independently:
+  forty new listings and two used ones publish a new median, no used one, and
+  no deal badge on those two.
+  This is not tidiness. One blended median was fine while the catalogue was
+  small mixed-stock sellers, and breaks the moment a large new-retail feed
+  lands (Andertons alone is ~27k products, and Gear4music, zZounds, Full
+  Compass and Pineville Music all default an empty condition to "New"). New
+  retail sits well above used, so the blend rises, and then every ordinary
+  second-hand price measures far below "market" and earns a badge it has not
+  earned. Inventing bargains is the one error this site cannot afford, and the
+  failure is silent and sitewide.
+- **When a condition string is ambiguous, class it NEW.** Open box, "New other
+  (see details)" and refurbished all sell nearer new than used, but the
+  deciding argument is the asymmetry: filing one as new nudges the new median
+  down slightly, while filing it as used lifts the USED median, and a lifted
+  used median is precisely what manufactures deals that do not exist. A null
+  condition is the exception and stays used, since the retail feeds all set the
+  field explicitly.
+- **The classifier exists three times (JS, the deal-flagging UPDATE, and the
+  search projections) and they must agree.** A divergence throws nothing; it
+  just starts flagging listings against a median built from a population they
+  were not part of. `tests/condition-class.test.ts` runs real condition strings
+  through both the JS and the Postgres implementations and asserts they match.
+- **A card's struck-through "was" price must come from the same class the deal
+  was judged against.** Both search backends select the median matching each
+  listing's own condition (`LISTING_MARKET_PRICE_SQL`); selecting
+  `avg_used_price_cents` unconditionally would print the used median beside a
+  new listing badged against the new one.
 
 ---
 
@@ -470,7 +505,7 @@ Never fork the logic between them. Add work to the job function.
 | `LINKCONNECTOR_SWEETWATER_FEED_URL` | Sweetwater catalogue. Unset is expected; the job no-ops. Never falls back to scraping. |
 | `AWIN_GEAR4MUSIC_MERCHANT_ID` / `AWIN_GEAR4MUSIC_FEED_URL` | Gear4music catalogue and deep links. Same shape as the Reverb pair, independent ids. |
 | `CJ_ZZOUNDS_FEED_URL` / `CJ_FULLCOMPASS_FEED_URL` / `CJ_PINEVILLEMUSIC_FEED_URL` | Three independent CJ Affiliate programmes. Each no-ops when unset. |
-| `IMPACT_ANDERTONS_FEED_URL` | Anderton's via Impact.com. Programme APPROVED 11 Aug 2026 (4%, on a named brand list), but the feed URL and column names are not in hand yet and Impact's schema is brand-configured rather than fixed, so no ingestion module exists. Unset is still the expected state. |
+| `IMPACT_ANDERTONS_FTP_*` | Anderton's via Impact.com, ingested by `lib/ingestion/andertons-impact.ts`. Impact delivers catalogues by FTP drop (`products.impact.com`, one directory per advertiser), NOT over an HTTPS feed URL like Awin/CJ/LinkConnector, so this is a host/user/password/path quartet. `hasAndertonsFeed` gates on the credential pair, since host and path have real defaults. The password is a real credential, unlike most values in this table. Note the job belongs on the BullMQ worker, not a cron route: a serverless function cannot hold an FTP control connection plus passive data ports open. |
 | `GOAFFPRO_*_REF_PARAM` / `GOAFFPRO_*_REF_CODE` | One pair per small independent Shopify/WooCommerce seller (Folkcraft, Acoustic Guitar, Jamstik, Jackson Audio, Eminence Digital, Haze Guitar, EART Guitar, Play With Authority, Pures Music, Squaver, Eason Music Store, Go Kalimba). Catalogue ingestion needs no credential at all; an unset code just means a null `affiliate_url` until the referral is confirmed. |
 | `GROQ_API_KEY` / `GROQ_MODEL` | The Ask assistant (section 14). Unset means /api/ask 503s and the button never renders. The model default is overridable because Groq retires models often. |
 | `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
@@ -520,8 +555,6 @@ legal-leafmarket.com, adapted to one site instead of four.
   Nothing downstream of the assumptions panel is hard-coded, so entering
   real Vercel Analytics sessions and real earned commission in the monthly
   tables is what makes the projection reflect reality instead of a guess.
-
----
 
 ---
 
@@ -591,9 +624,40 @@ one feature rather than showing a broken one.
   March 2026, qwen3-32b and llama-4-scout in June 2026). When the default is
   retired in turn, set the env var rather than shipping a code change.
 
+
 ---
 
-## 15. House rules inherited from the sister sites
+## 15. Regional serviceability: only show what a shopper can buy
+
+`lib/regions.ts`. Anderton's ships only within the UK, and it is the biggest
+catalogue on the site, so without this a shopper in Ohio searching for a
+Victory preamp gets a page of prices they can never pay.
+
+- **A store declares its own restriction**, as `shipsTo` on its `StoreProfile`.
+  Absent means unrestricted, which is the honest default: most stores here ship
+  broadly and we have no evidence otherwise, so we do not invent a limit.
+- **Restricted stores are HIDDEN, not badged**, for shoppers they cannot reach.
+  A badge on every fourth card still means someone scans, compares, gets
+  interested and then loses.
+- **But never silently.** The count and the store name are always stated, and
+  `?ships=all` is always one click away. Hiding inventory without saying so on
+  a site whose promise is showing everything is its own dishonesty.
+- **An UNKNOWN region shows everything.** Geo-IP is a guess (VPNs, carrier
+  routing, no header in development), and hiding the largest catalogue from a
+  British shopper whose VPN exited in Amsterdam is worse than showing a clearly
+  labelled listing they cannot order.
+- **An explicit cookie choice beats the geo guess.** The expat and the VPN user
+  are exactly who a geo lookup gets wrong.
+- **Both search backends must filter identically.** `excludeSources` is applied
+  in the Postgres WHERE clause and in the Typesense `filter_by`; a shopper
+  seeing UK-only stock only when Typesense happens to be down would be a
+  particularly confusing bug. It is also kept OUT of `allExcept()`, so a store
+  that cannot deliver never appears in the source facet at all.
+
+
+---
+
+## 16. House rules inherited from the sister sites
 
 - **No em dashes anywhere in copy.** Use a comma, colon, or parentheses.
 - **Do not GET an Awin tracking link in testing** (section 5).
@@ -614,7 +678,7 @@ one feature rather than showing a broken one.
   never the money. The two cases look identical from outside, so write down
   which one it was.
 
-## 16. Hard "do not" list
+## 17. Hard "do not" list
 
 - Do NOT call the Reverb API for listings, or add a scraping fallback anywhere.
 - Do NOT write Facebook Marketplace ingestion.
@@ -642,6 +706,12 @@ one feature rather than showing a broken one.
   text that reaches a query builder uninterpreted (section 14).
 - Do NOT let the assistant state a price, a store or a stock level that no
   tool in that conversation returned.
+- Do NOT show a listing from a store that cannot ship to the shopper without
+  saying so, and do NOT hide one without saying that either (section 15).
+- Do NOT make the ingester aware of which brands pay commission. Filtering a
+  feed down to the paying brands is ranking by payout at the row level.
+- Do NOT bind the Impact catalogue by column position. It is brand-configured
+  and the order is not stable; bind by header name and fail loudly.
 - Do NOT define a colour only inside the light-theme block, or only outside it.
   Both themes resolve from the same token set, and prices and accent-coloured
   body text must use `--money` and `--accent-text` rather than `--sage` and

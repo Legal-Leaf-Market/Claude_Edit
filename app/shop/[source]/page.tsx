@@ -3,6 +3,8 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { FilterSidebar } from "@/components/filter-sidebar"
 import { StoreMark } from "@/components/store-mark"
+import { ShipsToBadge } from "@/components/region-notice"
+import { shipsToLabel } from "@/lib/regions"
 import { ListingCard } from "@/components/listing-card"
 import { Pagination } from "@/components/pagination"
 import { SortSelect } from "@/components/sort-select"
@@ -94,6 +96,14 @@ export default async function StorePage({ params, searchParams }: PageProps) {
           <h1 className="text-3xl font-black tracking-tight text-[var(--cream)]">{store.name}</h1>
         </div>
         <p className="mt-2 text-base font-medium text-[var(--muted-foreground)]">{store.tagline}</p>
+
+        {/* Stated up front, before a shopper gets attached to a price. A
+            restriction discovered at checkout is worse than one stated here. */}
+        {store.shipsTo?.length ? (
+          <p className="mt-3">
+            <ShipsToBadge label={shipsToLabel(store.source)} />
+          </p>
+        ) : null}
         <p className="mt-3 text-base leading-relaxed text-[var(--muted-foreground)]">{store.blurb}</p>
       </header>
 

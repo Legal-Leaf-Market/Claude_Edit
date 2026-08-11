@@ -42,7 +42,9 @@ export async function searchPedals(q: string, limit = 8): Promise<PedalSummary[]
     avg_used_price_cents: number | null
     price_sample_size: number
   }>(sql`
-    SELECT slug, brand, model, image_url, avg_used_price_cents, price_sample_size
+    SELECT slug, brand, model, image_url,
+           COALESCE(avg_used_price_cents, avg_new_price_cents) AS avg_used_price_cents,
+           price_sample_size
     FROM canonical_gear
     WHERE category = ${PEDAL_CATEGORY}
       ${trimmed ? sql`AND (brand ILIKE ${pattern} OR model ILIKE ${pattern} OR (brand || ' ' || model) ILIKE ${pattern})` : sql``}
@@ -111,7 +113,9 @@ export async function pedalBoardDetails(slugs: string[]): Promise<PedalBoardEntr
     count: number
   }>(sql`
     SELECT
-      g.slug, g.brand, g.model, g.image_url, g.avg_used_price_cents, g.price_sample_size,
+      g.slug, g.brand, g.model, g.image_url,
+      COALESCE(g.avg_used_price_cents, g.avg_new_price_cents) AS avg_used_price_cents,
+      g.price_sample_size,
       l.source,
       MIN(l.price_cents) FILTER (WHERE l.condition ILIKE 'new') AS cheapest_new_cents,
       MIN(l.price_cents) FILTER (WHERE l.condition IS NULL OR l.condition NOT ILIKE 'new') AS cheapest_used_cents,
@@ -123,7 +127,7 @@ export async function pedalBoardDetails(slugs: string[]): Promise<PedalBoardEntr
     LEFT JOIN marketplace_listings l
       ON l.canonical_gear_id = g.id AND l.listing_status = 'active'
     WHERE g.slug IN ${slugs} AND g.category = ${PEDAL_CATEGORY}
-    GROUP BY g.slug, g.brand, g.model, g.image_url, g.avg_used_price_cents, g.price_sample_size, l.source
+    GROUP BY g.slug, g.brand, g.model, g.image_url, g.avg_used_price_cents, g.avg_new_price_cents, g.price_sample_size, l.source
   `)
 
   const bySlug = new Map<string, PedalBoardEntry>()

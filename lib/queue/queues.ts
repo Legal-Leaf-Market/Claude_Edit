@@ -29,6 +29,7 @@ export type IngestionJob =
   | { kind: "sweetwater-feed" }
   | { kind: "gear4music-feed" }
   | { kind: "zzounds-feed" }
+  | { kind: "andertons-catalogue" }
   | { kind: "fullcompass-feed" }
   | { kind: "pinevillemusic-feed" }
   | { kind: "folkcraft-feed" }
@@ -152,6 +153,19 @@ export async function registerRepeatableJobs(): Promise<string[]> {
       { name: "gear4music-feed", data: { kind: "gear4music-feed" } },
     )
     registered.push("gear4music-feed @ every 6h")
+  }
+
+  // Anderton's, on the WORKER only and never a cron route: FTP needs a control
+  // connection plus passive data ports, which a serverless function cannot
+  // hold open for a 27k-row download. Offset to 30 past so the largest feed
+  // does not start alongside the others.
+  if (env.impact.hasAndertonsFeed) {
+    await ingestion.upsertJobScheduler(
+      "andertons-catalogue",
+      { pattern: "30 */6 * * *" },
+      { name: "andertons-catalogue", data: { kind: "andertons-catalogue" } },
+    )
+    registered.push("andertons-catalogue @ every 6h")
   }
 
   if (env.cj.hasZzoundsFeed) {

@@ -17,6 +17,7 @@
     "ingest:reverb": "tsx scripts/run-ingest.ts reverb",
     "ingest:sweetwater": "tsx scripts/run-ingest.ts sweetwater",
     "ingest:gear4music": "tsx scripts/run-ingest.ts gear4music",
+    "ingest:andertons": "tsx scripts/run-ingest.ts andertons",
     "ingest:zzounds": "tsx scripts/run-ingest.ts zzounds",
     "ingest:fullcompass": "tsx scripts/run-ingest.ts fullcompass",
     "ingest:pinevillemusic": "tsx scripts/run-ingest.ts pinevillemusic",
@@ -36,6 +37,7 @@
   },
   "dependencies": {
     "@vercel/analytics": "1.6.1",
+    "basic-ftp": "^6.2.0",
     "better-auth": "^1.6.26",
     "bullmq": "^6.0.9",
     "class-variance-authority": "^0.7.1",

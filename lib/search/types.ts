@@ -20,6 +20,24 @@ export type SearchParams = {
   categories?: string[]
   conditions?: string[]
   sources?: Source[]
+  /**
+   * Sources to EXCLUDE, on top of any include list. Carries the region filter:
+   * a store that will not ship to the shopper's country is removed here rather
+   * than shown and then apologised for. See lib/regions.ts.
+   */
+  excludeSources?: Source[]
+  /**
+   * The shopper has explicitly asked to see stores that will not ship to them
+   * (`?ships=all`).
+   *
+   * A first-class param rather than something the page reads off the query
+   * string directly, because EVERY url this site builds goes through
+   * queryFromParams. Handling it outside that meant pagination silently
+   * dropped the opt-out and reverted a shopper to geo filtering on page two,
+   * and the "show anyway" link itself discarded the active search and filters.
+   * Both were real, and both came from the same omission.
+   */
+  shipsAll?: boolean
   minPriceCents?: number
   maxPriceCents?: number
   dealsOnly?: boolean

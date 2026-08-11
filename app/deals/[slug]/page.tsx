@@ -29,7 +29,7 @@ export async function generateStaticParams() {
       FROM canonical_gear g
       JOIN marketplace_listings l
         ON l.canonical_gear_id = g.id AND l.listing_status = 'active'
-      WHERE g.avg_used_price_cents IS NOT NULL
+      WHERE (g.avg_used_price_cents IS NOT NULL OR g.avg_new_price_cents IS NOT NULL)
       GROUP BY g.slug
       HAVING COUNT(l.id) >= 3
       ORDER BY COUNT(l.id) DESC
@@ -68,8 +68,12 @@ export default async function DealsPage({ params }: PageProps) {
   const gear = await gearBySlug(slug)
   if (!gear) notFound()
 
-  // No market price means no honest way to call anything a deal.
-  if (gear.avgUsedPriceCents == null) notFound()
+  // No market price in EITHER class means no honest way to call anything a
+  // deal. Used is preferred when both exist, since this is a used-first site
+  // and it is the number a visitor came for; new is the fallback so gear only
+  // retailers stock still gets a page rather than a 404.
+  const market = gear.avgUsedPriceCents ?? gear.avgNewPriceCents
+  if (market == null) notFound()
 
   const results = await search({
     canonicalGearId: gear.id,
@@ -80,7 +84,6 @@ export default async function DealsPage({ params }: PageProps) {
   if (results.hits.length === 0) notFound()
 
   const name = `${gear.brand} ${gear.model}`
-  const market = gear.avgUsedPriceCents
   const cheapest = results.hits[0].priceCents
   const saving = market - cheapest
 

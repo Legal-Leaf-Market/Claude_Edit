@@ -133,23 +133,47 @@ export const env = {
 
   impact: {
     /**
-     * Impact.com (formerly Impact Radius). Anderton's affiliate application
-     * was submitted through it; the site's Universal Tracking Tag is already
-     * live sitewide (app/layout.tsx) for that application's own site
-     * verification step, independent of catalogue ingestion.
+     * Impact.com (formerly Impact Radius), carrying the Anderton's programme,
+     * APPROVED 11 Aug 2026. The site's Universal Tracking Tag is live sitewide
+     * (app/layout.tsx) for Impact's own site-verification step, which was
+     * always independent of catalogue ingestion.
      *
-     * Unlike CJ or Awin, Impact has no fixed product-feed schema: brands
-     * configure their own field names per catalogue (confirmed against
-     * Impact's own "File Formats for Product Catalogs" help docs), so there
-     * is nothing here to write a row-normaliser against yet. This var is a
-     * placeholder for once the application is actually approved and
-     * Anderton's specific feed URL and column names are in hand; unset is
-     * the fully expected state until then, same as every other unconfirmed
-     * source in this file.
+     * FTP, NOT AN HTTPS FEED URL. This started life as
+     * `IMPACT_ANDERTONS_FEED_URL` on the assumption that Impact delivered
+     * catalogues the way Awin, CJ and LinkConnector do, over an authenticated
+     * HTTPS URL. It does not: Impact drops catalogues on an FTP server
+     * (products.impact.com, one directory per advertiser) and the publisher
+     * pulls them from there. The shape below matches how the feed is actually
+     * delivered rather than how the other four networks deliver theirs.
+     *
+     * Two consequences worth knowing before the ingestion module gets written:
+     *
+     *   1. It cannot run from a Vercel cron route. FTP needs a control
+     *      connection plus passive data ports, which a serverless function
+     *      cannot hold open, so this job belongs on the BullMQ worker (the
+     *      second trigger in section 7 of CLAUDE.md) rather than beside the
+     *      other `/api/cron/ingest-*` routes.
+     *   2. The password is a real credential, unlike every other value in
+     *      this block. It is read from the environment and never written to
+     *      a file, and .env.example carries the key with no value.
+     *
+     * Still no row-normaliser: Impact has no fixed product-feed schema (brands
+     * configure their own field names per catalogue, confirmed against
+     * Impact's own "File Formats for Product Catalogs" docs), so the column
+     * headers have to be read off the real file first. Unset is the expected
+     * state until then, same as every other unconfirmed source in this file.
      */
-    andertonsFeedUrl: str("IMPACT_ANDERTONS_FEED_URL"),
+    andertonsFtpHost: str("IMPACT_ANDERTONS_FTP_HOST", "products.impact.com"),
+    andertonsFtpUser: str("IMPACT_ANDERTONS_FTP_USER"),
+    andertonsFtpPassword: str("IMPACT_ANDERTONS_FTP_PASSWORD"),
+    andertonsFtpPath: str("IMPACT_ANDERTONS_FTP_PATH", "/Andertons-Music-Company/"),
+    /**
+     * Gated on the credential pair rather than the host or path, since those
+     * two have real defaults and would otherwise report a feed as configured
+     * when nothing can actually authenticate to it.
+     */
     get hasAndertonsFeed(): boolean {
-      return Boolean(env.impact.andertonsFeedUrl)
+      return Boolean(env.impact.andertonsFtpUser && env.impact.andertonsFtpPassword)
     },
   },
 

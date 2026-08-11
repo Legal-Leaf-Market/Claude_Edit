@@ -89,6 +89,7 @@ export function paramsFromQuery(
     minPriceCents: dollarsToCents(first(query.min)),
     maxPriceCents: dollarsToCents(first(query.max)),
     dealsOnly: first(query.deals) === "1",
+    shipsAll: first(query.ships) === "all",
     shipping: shipping && SHIPPING.includes(shipping) ? shipping : "any",
     sort: sort && SORTS.includes(sort) ? sort : undefined,
     seed,
@@ -107,6 +108,7 @@ export function queryFromParams(params: SearchParams): string {
   if (params.minPriceCents != null) search.set("min", String(params.minPriceCents / 100))
   if (params.maxPriceCents != null) search.set("max", String(params.maxPriceCents / 100))
   if (params.dealsOnly) search.set("deals", "1")
+  if (params.shipsAll) search.set("ships", "all")
   if (params.shipping && params.shipping !== "any") search.set("shipping", params.shipping)
   if (params.sort) search.set("sort", params.sort)
   // Only carried for shuffle: on any other sort it would just make otherwise
