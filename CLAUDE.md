@@ -527,7 +527,7 @@ process, and the accident is far likelier.
 | `LINKCONNECTOR_SWEETWATER_FEED_URL` | Sweetwater catalogue. Unset is expected; the job no-ops. Never falls back to scraping. |
 | `AWIN_GEAR4MUSIC_MERCHANT_ID` / `AWIN_GEAR4MUSIC_FEED_URL` | Gear4music catalogue and deep links. Same shape as the Reverb pair, independent ids. |
 | `CJ_ZZOUNDS_FEED_URL` / `CJ_FULLCOMPASS_FEED_URL` / `CJ_PINEVILLEMUSIC_FEED_URL` | Three independent CJ Affiliate programmes. Each no-ops when unset. |
-| `IMPACT_ANDERTONS_FTP_*` | Anderton's via Impact.com, ingested by `lib/ingestion/andertons-impact.ts`. Impact delivers catalogues by FTP drop (`products.impact.com`, one directory per advertiser), NOT over an HTTPS feed URL like Awin/CJ/LinkConnector, so this is a host/user/password/path quartet. `hasAndertonsFeed` gates on the credential pair, since host and path have real defaults. The password is a real credential, unlike most values in this table. Note the job belongs on the BullMQ worker, not a cron route: a serverless function cannot hold an FTP control connection plus passive data ports open. |
+| `IMPACT_ANDERTONS_FTP_*` | Anderton's via Impact.com, ingested by `lib/ingestion/andertons-impact.ts`. Impact delivers catalogues by FTP drop, NOT over an HTTPS feed URL like Awin/CJ/LinkConnector, so this is a host/user/password/path quartet. `hasAndertonsFeed` gates on the credential pair, since host and path have defaults. **The credentials are a dedicated pair Impact mails on request** ("Email Product Catalog FTP Username and Password", needs Technical Settings permission), not the Impact account login, and **the host comes from the platform's own "Download via FTP" panel** rather than from this file: `products.impact.com` is the default here but is documented on the brand UPLOAD side, so treat it as a starting guess. See the FTP note below the table. |
 | `GOAFFPRO_*_REF_PARAM` / `GOAFFPRO_*_REF_CODE` | One pair per small independent Shopify/WooCommerce seller (Folkcraft, Acoustic Guitar, Jamstik, Jackson Audio, Eminence Digital, Haze Guitar, EART Guitar, Play With Authority, Pures Music, Squaver, Eason Music Store, Go Kalimba). Catalogue ingestion needs no credential at all; an unset code just means a null `affiliate_url` until the referral is confirmed. |
 | `GROQ_API_KEY` / `GROQ_MODEL` | The Ask assistant (section 14). Unset means /api/ask 503s and the button never renders. The model default is overridable because Groq retires models often. |
 | `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
@@ -539,6 +539,23 @@ process, and the accident is far likelier.
 | `INSTAGRAM_HANDLE` / `INSTAGRAM_POST_URLS` | Homepage and footer follow strip. Handle defaults to `stompbox.world`; unset post URLs render a plain follow callout instead of embeds. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | "Continue with Google" on sign-in/sign-up. Unset means email and password only. |
 | `YOUTUBE_API_KEY` | Anderton's TV metadata and comments, via the YouTube Data API v3 (section 19). Unset means the reader no-ops. |
+
+**Debugging the Anderton's FTP pull.** Two admin buttons, both behind
+`ADMIN_PASSCODE`. "Pull the Anderton's catalogue" does the work; "Diagnose the
+Anderton's connection" (`/api/admin/probe-ftp`) opens a socket to ports 21, 990
+and 22, records what the server says about itself, and quits **without sending
+a username or password on any of them**. An SSH banner on 22 would mean the
+drop is SFTP and `basic-ftp` is the wrong library outright, rather than the
+right library with a wrong option.
+
+`explainFtpFailure()` in `lib/ingestion/ftp-probe.ts` routes a failure to the
+thing worth changing, and the reply CODE is what it reads rather than the
+prose: Impact's "431 Service is unavailable" reads like an outage while 431 is
+RFC 2228's security range, returned to `AUTH TLS` before any credential is
+sent. **Never add a silent fallback to plaintext FTP** when TLS is refused.
+That puts a real credential in clear on the public internet, and it is a
+decision to take deliberately if at all, not one to bury in a `catch` block.
+The same instinct as the Reverb API having no fallback path (section 2).
 
 ---
 

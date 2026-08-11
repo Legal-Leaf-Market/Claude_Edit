@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { isAdmin } from "@/lib/admin/gate"
 import { env } from "@/lib/env"
 import { ingestAndertonsFeed } from "@/lib/ingestion/andertons-impact"
+import { explainFtpFailure } from "@/lib/ingestion/ftp-probe"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 300
@@ -115,10 +116,8 @@ export async function POST(request: Request) {
           passwordSet: Boolean(env.impact.andertonsFtpPassword),
         },
         hint: looksMalformed
-          ? `IMPACT_ANDERTONS_FTP_HOST is "${usedHost}", which is not a bare hostname. It must be exactly "products.impact.com": no ftp:// prefix, no slashes, no path, no trailing space. Delete the variable entirely to use that default.`
-          : /ENOTFOUND|EAI_AGAIN/.test(message)
-            ? "The hostname did not resolve from Vercel, though it does resolve publicly. Check the variable for stray whitespace, then consider Impact's HTTPS catalogue API instead of FTP."
-            : "If this ran for close to 300 seconds it timed out. If it failed fast it is the credentials or the feed's shape, and the message above says which.",
+          ? `IMPACT_ANDERTONS_FTP_HOST is "${usedHost}", which is not a bare hostname. It wants a host and nothing else: no ftp:// prefix, no slashes, no path, no credentials. Delete the variable entirely to fall back to "products.impact.com".`
+          : explainFtpFailure(message, usedHost),
       },
       { status: 500 },
     )

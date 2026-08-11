@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { interpret, type PortProbe } from "@/lib/ingestion/ftp-probe"
+import { explainFtpFailure, interpret, type PortProbe } from "@/lib/ingestion/ftp-probe"
 
 /**
  * The probe's reading of an FTP server's replies.
@@ -85,5 +85,67 @@ describe("interpret", () => {
     ])
     expect(reading).toMatch(/blocked/)
     expect(reading).toMatch(/host is wrong/)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * What an FTP failure tells somebody to go and do next.
+ *
+ * These assert on the ACTION each message points at, not on its prose, because
+ * the prose will get rewritten and the routing is the part that can be wrong.
+ * The cost of a wrong routing is a person changing the wrong setting and
+ * redeploying to find out, which is the whole thing this is here to stop.
+ */
+describe("explainFtpFailure", () => {
+  /**
+   * The live symptom. The prose says "Service is unavailable", which reads as
+   * an outage and would send somebody off to wait; the code says the server
+   * declined the security negotiation before a password was ever sent.
+   */
+  it("does not let 431 be mistaken for an outage or a bad password", () => {
+    const hint = explainFtpFailure("431 Service is unavailable.", "products.impact.com")
+    expect(hint).toMatch(/before any login|before the password is sent/)
+    expect(hint).toMatch(/not a bad password/i)
+    // The two things actually worth checking, both inside the Impact platform.
+    expect(hint).toMatch(/Download via FTP/)
+    expect(hint).toMatch(/Email Product Catalog FTP Username and Password/)
+  })
+
+  /** A real login rejection routes to the credentials and nothing else. */
+  it("sends a 530 to the credentials rather than the hostname", () => {
+    const hint = explainFtpFailure("530 Login incorrect.", "products.impact.com")
+    expect(hint).toMatch(/rejected the login/)
+    expect(hint).toMatch(/not the Impact account login/)
+    expect(hint).not.toMatch(/did not resolve/)
+  })
+
+  /**
+   * The trim shipped, so whitespace is no longer a live theory and repeating
+   * it would send somebody to re-check a thing that cannot be wrong.
+   */
+  it("stops blaming whitespace for ENOTFOUND now that values are trimmed", () => {
+    const hint = explainFtpFailure("getaddrinfo ENOTFOUND products.impact.com", "products.impact.com")
+    expect(hint).toMatch(/trimmed on read/)
+    expect(hint).toMatch(/no longer the cause/)
+  })
+
+  it("routes a dead connection to the probe, which can tell a blocked runtime from a wrong host", () => {
+    for (const code of ["ETIMEDOUT", "ECONNREFUSED", "ECONNRESET"]) {
+      expect(explainFtpFailure(`connect ${code} 35.245.108.230:21`, "products.impact.com")).toMatch(
+        /Ask the server/,
+      )
+    }
+  })
+
+  /** Logged in fine, wrong directory: a path problem, not a connection one. */
+  it("separates an empty directory from a connection failure", () => {
+    const hint = explainFtpFailure("No catalogue file in /Andertons-Music-Company/. Saw: (empty directory)", "h")
+    expect(hint).toMatch(/path rather than the connection/)
+  })
+
+  it("falls back to the timeout reading when it recognises nothing", () => {
+    expect(explainFtpFailure("something nobody has seen before", "h")).toMatch(/300 seconds/)
   })
 })

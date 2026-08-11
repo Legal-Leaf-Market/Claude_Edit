@@ -159,6 +159,57 @@ export function interpret(ports: PortProbe[]): string {
 }
 
 /**
+ * Turn an FTP failure into the next thing to actually do.
+ *
+ * Kept as a pure function on a string so it is testable, and separate from the
+ * route so the wording can be fixed without touching the request handling.
+ *
+ * The reply codes matter more than the text here. FTP servers write whatever
+ * prose they like beside a code, and Impact's "431 Service is unavailable"
+ * reads like an outage while the code says something much more specific.
+ */
+export function explainFtpFailure(message: string, host: string): string {
+  /*
+   * RFC 2228's security range. 431 in particular is the reply to AUTH TLS, so
+   * it is reached BEFORE any credential is sent and cannot be a login problem
+   * however much the prose sounds like one.
+   *
+   * The likeliest cause is not a client option at all. Impact's own partner
+   * documentation says the catalogue download host is shown in the platform's
+   * "Download via FTP" panel, and that the credentials are a dedicated pair
+   * mailed on request rather than the Impact login. products.impact.com is
+   * where BRANDS push catalogues up. Talking to the upload host with download
+   * credentials would produce exactly this: a real FTP server that answers,
+   * and then declines to do business with us.
+   */
+  if (/\b(431|534|533|522)\b/.test(message)) {
+    return [
+      `${host} answered, so the hostname and the network are fine, but it refused the TLS negotiation before any login was attempted. That is not a bad password: the reply comes back before the password is sent.`,
+      `Two things to check in the Impact platform, in this order. First, the Host in the "Download via FTP" panel of the product catalogue page, which is the partner download server and is not necessarily ${host}. Second, whether these credentials came from "Email Product Catalog FTP Username and Password" (Technical Settings permission required), which is a dedicated pair rather than the Impact account login.`,
+      `Press "Ask the server" below for what it says it supports.`,
+    ].join(" ")
+  }
+
+  if (/\b(530|332)\b/.test(message)) {
+    return `${host} accepted the connection and rejected the login. These need to be the catalogue FTP credentials from "Email Product Catalog FTP Username and Password" in the Impact platform, not the Impact account login.`
+  }
+
+  if (/ENOTFOUND|EAI_AGAIN/.test(message)) {
+    return `${host} did not resolve. Environment values are trimmed on read now, so a stray space is no longer the cause; check the hostname itself against the "Download via FTP" panel in the Impact platform.`
+  }
+
+  if (/ETIMEDOUT|ECONNREFUSED|ECONNRESET|EHOSTUNREACH/.test(message)) {
+    return `The connection to ${host} did not complete. Press "Ask the server" below: it tries the three ports this drop could be on and will say whether anything answers at all, which separates a blocked runtime from a wrong host.`
+  }
+
+  if (/No catalogue file/.test(message)) {
+    return "The login worked and the directory is readable, so this is the path rather than the connection. The message above lists what was actually in it."
+  }
+
+  return "If this ran for close to 300 seconds it timed out and the work belongs on the worker. If it failed fast, the message above is the whole story."
+}
+
+/**
  * Probe the three ports that could plausibly be carrying this drop.
  *
  * 21 is explicit FTPS, what the client currently tries. 990 is implicit FTPS,

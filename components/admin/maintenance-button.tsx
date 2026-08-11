@@ -86,6 +86,29 @@ function ProbeButton() {
         no username or password on any of them, writes nothing, and reaches no database.
       </p>
 
+      {/*
+        Both of these are settings that live in Impact's platform rather than
+        in Vercel, which is why they are worth naming here: somebody debugging
+        this will otherwise spend the round trip re-checking environment
+        variables that are already correct.
+      */}
+      <ul className="mb-3 max-w-prose list-disc space-y-1 pl-5 text-sm leading-relaxed text-[var(--muted-foreground)]">
+        <li>
+          The username and password are a dedicated pair Impact mails on request, from{" "}
+          <strong className="text-[var(--text)]">
+            Email Product Catalog FTP Username and Password
+          </strong>{" "}
+          in the platform. They are not the Impact account login, and requesting them needs the
+          Technical Settings permission.
+        </li>
+        <li>
+          The host belongs to the <strong className="text-[var(--text)]">Download via FTP</strong>{" "}
+          panel on the product catalogue page. <code>products.impact.com</code> is what this
+          defaults to, but that name is documented on the side brands upload to, so treat it as a
+          starting guess rather than a fact.
+        </li>
+      </ul>
+
       <button type="button" onClick={run} disabled={state === "running"} className="stomp stomp-ghost">
         <Stethoscope
           className={`h-3.5 w-3.5 ${state === "running" ? "animate-pulse" : ""}`}
