@@ -2,7 +2,7 @@
 
 Read this fully before editing. Sister project to **Legal-Leaf Market**,
 **Herbal Leaf Market** and **Nicotia Market**, and it inherits their house
-rules (section 13). The difference: those sites scrape public storefront JSON
+rules (section 15). The difference: those sites scrape public storefront JSON
 from merchants who want the traffic. This one mostly consumes **gated partner
 feeds** whose terms say exactly what you may and may not do with their data.
 That constraint shapes most of the decisions below, and undoing one of them
@@ -143,15 +143,23 @@ app/
   deals/[slug]/             Programmatic SEO, per model
   used/[category]/          Programmatic SEO, per category
   go/[listingId]/           THE outbound gateway (section 5)
+  rigs/                     Artist rigs, and the records each is documented on
+  pedalboard/               The rig builder (chain check, power, live pricing)
   alerts/, sign-in/, sign-up/
   api/
     health                  Freshness and config, read this first when confused
+    ask                     The Groq assistant. 503s when unconfigured
     alerts                  Saved alert CRUD
     auth/[...all]           Better Auth
     cron/*                  Ingest per source, refresh-deals, weekly-digest.
                             All fail closed on CRON_SECRET
 lib/
   env.ts                    Every integration exposes isConfigured; nothing throws
+  nav.ts                    THE nav tree. Header, mobile sheet and footer all read it
+  theme.ts                  Light/dark/system, and the no-flash init script
+  rigs/                     Curated artist rigs and the reverse index (section 13)
+  ai/                       Groq client + the allowlisted DB tools (section 14)
+  pedalboard/chain.ts       Signal-chain order rules and power estimates
   ingestion/ebay-feed.ts    Transport + TSV parsing (section 3)
   ingestion/ebay-ingest.ts  The three eBay jobs
   ingestion/reverb-awin.ts  Awin feed only. Never the Reverb API (section 2)
@@ -430,6 +438,7 @@ Never fork the logic between them. Add work to the job function.
 | `CJ_ZZOUNDS_FEED_URL` / `CJ_FULLCOMPASS_FEED_URL` / `CJ_PINEVILLEMUSIC_FEED_URL` | Three independent CJ Affiliate programmes. Each no-ops when unset. |
 | `IMPACT_ANDERTONS_FEED_URL` | Reserved for Anderton's via Impact.com; application pending, no ingestion module exists yet since Impact's product-feed schema is brand-configured, not fixed. Unset is expected. |
 | `GOAFFPRO_*_REF_PARAM` / `GOAFFPRO_*_REF_CODE` | One pair per small independent Shopify/WooCommerce seller (Folkcraft, Acoustic Guitar, Jamstik, Jackson Audio, Eminence Digital, Haze Guitar, EART Guitar, Play With Authority, Pures Music, Squaver, Eason Music Store, Go Kalimba). Catalogue ingestion needs no credential at all; an unset code just means a null `affiliate_url` until the referral is confirmed. |
+| `GROQ_API_KEY` / `GROQ_MODEL` | The Ask assistant (section 14). Unset means /api/ask 503s and the button never renders. The model default is overridable because Groq retires models often. |
 | `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
 | `REDIS_URL` | BullMQ queues and the shared rate-limit counter. Optional. |
 | `CRON_SECRET` | Every `/api/cron/*` route. Unset = 503, wrong = 401. Load bearing: these burn the eBay call budget and send mail to the whole subscriber list. |
@@ -480,7 +489,77 @@ legal-leafmarket.com, adapted to one site instead of four.
 
 ---
 
-## 13. House rules inherited from the sister sites
+---
+
+## 13. Artist rigs: curated on purpose, and why
+
+`lib/rigs/data.ts` carries roughly two dozen documented artist pedalboards,
+each with the pedals on it, what each pedal was doing, and the albums and
+tracks the rig is documented on. `lib/rigs/index.ts` derives everything else,
+including the reverse index that lets a gear page say which records a pedal is
+on. This is the only genuinely unique content on the site and it powers
+`/rigs`, `/rigs/[slug]`, the "Heard on" block on `/gear/[slug]`, and the
+builder's rig loader.
+
+**It is hand-written because there is no legitimate feed for it**, and that
+follows the same rule as section 2 rather than being an exception to it.
+Equipboard has by far the best database of this and added album- and
+track-level attribution in February 2026, but they publish no API and scraping
+them is precisely the conduct forbidden for Guitar Center and the Reverb API.
+MusicBrainz would cover the records half legitimately and its core data is
+open, except its web service is free for NON-COMMERCIAL use only and this site
+runs on affiliate revenue, so wiring it up needs a commercial plan first. Both
+remain open later. Neither was a reason to ship nothing now.
+
+Two rules for editing the dataset:
+
+- **Scope every rig to a documented era, and say so on the page.** Rigs change
+  between tours and between takes. What is almost always known is that a pedal
+  was on the board during those sessions or that tour, not that it is audible
+  on a specific bar. The copy says "documented on" for exactly that reason.
+- **Never imply endorsement.** Every page built from this file carries the line
+  that nobody named is affiliated with Gear Avail. Monograms rather than
+  photographs, deliberately: no likeness rights to navigate.
+
+The reverse index (`creditsForGear`) matches on brand AND model, both loose,
+with a three-character floor. Widening it is tempting and wrong for the same
+reason `normalizeMpn()` rejects placeholders: a bad match prints a famous
+record under the wrong pedal, on a page somebody is about to spend money from.
+There are tests pinning the near misses ("Hamilton Beach Blender" must not
+match Kevin Shields, "Boss DD" must not match anything).
+
+---
+
+## 14. Ask: the assistant queries the database, it does not remember it
+
+`lib/ai/`, gated on `GROQ_API_KEY`, surfaced as the "Ask" button in the
+masthead. Unset is a fully supported state: `/api/ask` answers 503 with a plain
+reason and the button is never rendered, so an unconfigured deploy is missing
+one feature rather than showing a broken one.
+
+- **The model never writes SQL and never gets a connection.** It calls a fixed
+  set of typed, allowlisted tools in `lib/ai/tools.ts`, each of which validates
+  its arguments and calls the same functions the pages call. A general "run
+  this query" tool would be three lines and would hand anyone who can type into
+  a text box the ability to read the `user` table. Do not add one. If a
+  question cannot be answered, the fix is another narrow tool.
+- **Every tool is read-only.** Nothing writes a row, sends mail, or spends an
+  eBay call, so a prompt injection carried in a listing title is bounded at
+  "returns a wrong answer" rather than "mutates the site".
+- **The prompt is mostly about what not to say**, because on a price
+  comparison site an invented price is worse than no answer. It is instructed
+  to report the "sample too small, no market price published" result verbatim
+  rather than estimating around it, which is section 8's rule reaching through
+  this door too.
+- Answers carry the listings they came from AND a one-line trace of each lookup
+  actually run, so a shopper can check the answer rather than trust it.
+- `GROQ_MODEL` is overridable because Groq retires models often (kimi-k2 in
+  March 2026, qwen3-32b and llama-4-scout in June 2026). When the default is
+  retired in turn, set the env var rather than shipping a code change.
+
+---
+
+## 15. House rules inherited from the sister sites
 
 - **No em dashes anywhere in copy.** Use a comma, colon, or parentheses.
 - **Do not GET an Awin tracking link in testing** (section 5).
@@ -501,7 +580,7 @@ legal-leafmarket.com, adapted to one site instead of four.
   never the money. The two cases look identical from outside, so write down
   which one it was.
 
-## 14. Hard "do not" list
+## 16. Hard "do not" list
 
 - Do NOT call the Reverb API for listings, or add a scraping fallback anywhere.
 - Do NOT write Facebook Marketplace ingestion.
@@ -520,4 +599,17 @@ legal-leafmarket.com, adapted to one site instead of four.
 - Do NOT publish a market price below `MIN_SAMPLE_SIZE`.
 - Do NOT let the cron guard fail open.
 - Do NOT parse the feed TSV by column position.
+- Do NOT scrape Equipboard, or any other gear-attribution site, to fill
+  `lib/rigs/data.ts`. It is hand-written for the same reason the Reverb API is
+  off limits (section 13).
+- Do NOT call the MusicBrainz web service from this site without a commercial
+  plan. It is free for non-commercial use only and this site is commercial.
+- Do NOT give the assistant a tool that takes SQL, a table name, or any free
+  text that reaches a query builder uninterpreted (section 14).
+- Do NOT let the assistant state a price, a store or a stock level that no
+  tool in that conversation returned.
+- Do NOT define a colour only inside the light-theme block, or only outside it.
+  Both themes resolve from the same token set, and prices and accent-coloured
+  body text must use `--money` and `--accent-text` rather than `--sage` and
+  `--copper`, which fail contrast on paper.
 - Do NOT point the test suite at a database you care about; it truncates.

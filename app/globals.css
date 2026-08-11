@@ -1,8 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
   /* Three house faces, same roles as the sister sites: Fraunces carries
      display, Cormorant Garamond carries italic accents, Jost carries UI.
@@ -23,6 +21,7 @@
   --color-line: var(--line);
   --color-chip: var(--chip);
   --color-dim: var(--dim);
+  --color-money: var(--money);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -76,11 +75,30 @@
      nicotiamarket.com      --ember, tobacco amber
      gearavail (here)       --copper, valve amber
 
-   Ours is copper rather than the amber this site used before, because
-   the old #f0a830 sat within a hair of the shared --gold #f0b93c. That
-   left Gear Avail the one sister with no accent to call its own, and
-   gold-on-gold gave the header nothing to separate itself from a
-   heading. Copper keeps the valve-amp warmth and clears the gold.
+   TWO THEMES, ONE PALETTE
+   -----------------------
+   The hues above are the family's identity and they do NOT change
+   between light and dark. What changes is only the neutral scale
+   underneath them, which is why the light theme below redefines --bg,
+   --surface, --line, --text and --dim and nothing else structural.
+   That keeps this site recognisably part of the family in either mode
+   and means a future palette change still happens in one place.
+
+   Two hues DO get a per-theme value, and both for contrast reasons
+   rather than taste. --money (the price colour) is #4ade80 on dark and
+   a much darker green on white, because the light sage fails contrast
+   on paper. --accent-text is the copper used for body-sized text, and
+   it darkens on light for the same reason. Any component printing a
+   price or an accent-coloured sentence must use those two rather than
+   reaching for --sage / --copper directly, or it will read fine in one
+   theme and be unreadable in the other.
+
+   Dark is the default. The surfaces here are deliberately a step
+   lighter than the first version of this file: product photography
+   arrives from the feeds on white and near-white backgrounds, and on a
+   near-black plate it either blends into the page or rings with a hard
+   edge. A real tonal step between page, panel and card plate is what
+   separates a photo from its surroundings.
    ============================================================ */
 
 :root {
@@ -97,17 +115,26 @@
   --copper: #d2703a;
   --copper-dk: #b4551f;
 
-  /* --- warm neutral scale, same structure as Nicotia's green-tinted one --- */
-  --bg: #0d0b09;
-  --bg2: #14100c;
-  --panel: rgba(24, 18, 14, 0.72);
-  --panel2: rgba(13, 11, 9, 0.9);
-  --glass: rgba(22, 17, 13, 0.42);
-  --glass-line: rgba(210, 112, 58, 0.2);
-  --line: #2a231c;
-  --chip: #1a1410;
+  /* --- warm neutral scale, dark theme --- */
+  --bg: #100d0a;
+  --bg2: #17130e;
+  /* Three real surface steps. Anything sitting on the page uses --surface,
+     anything sitting on a surface uses --surface-2. */
+  --surface: #1c1712;
+  --surface-2: #241d17;
+  --panel: rgba(28, 23, 18, 0.78);
+  --panel2: rgba(16, 13, 10, 0.9);
+  --glass: rgba(28, 23, 18, 0.55);
+  --glass-line: rgba(210, 112, 58, 0.22);
+  --line: #322a21;
+  --line-strong: #443a2e;
+  --chip: #1f1811;
   --text: #f4ece0;
-  --dim: #8e8377;
+  --dim: #9b8f81;
+
+  /* Contrast-critical hues, per theme. See the header note above. */
+  --money: var(--sage);
+  --accent-text: #e8a06e;
 
   /* --- type: the three house faces --- */
   --display: 'Fraunces', Georgia, serif;
@@ -118,35 +145,95 @@
   --shell: min(1500px, 94vw);
   --radius: 16px;
   --shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.45);
+  /* Height of the two masthead rows, so sticky offsets elsewhere (the filter
+     rail, in-page anchors) stay in step with the header instead of guessing. */
+  --header-h: 118px;
+
+  /* --- page wash, per theme --- */
+  --wash-1: rgba(210, 112, 58, 0.1);
+  --wash-2: rgba(74, 222, 128, 0.06);
+  --texture-light: rgba(255, 255, 255, 0.014);
+  --texture-dark: rgba(0, 0, 0, 0.05);
 
   /* --- legacy aliases, so ~300 existing var() call sites keep working --- */
   --tweed: var(--bg2);
   --tweed-deep: var(--bg);
   --amber: var(--copper);
-  --amber-soft: #e8a06e;
+  --amber-soft: var(--accent-text);
   --cream: var(--text);
   --steel: var(--dim);
-  --deal: var(--sage);
+  --deal: var(--money);
 
   --background: var(--bg);
   --foreground: var(--text);
   --card: var(--glass);
   --card-foreground: var(--text);
-  --popover: #17120e;
+  --popover: #1c1712;
   --popover-foreground: var(--text);
   --primary: var(--copper);
   --primary-foreground: #17100a;
   --secondary: rgba(255, 255, 255, 0.07);
   --secondary-foreground: var(--text);
   --muted: rgba(255, 255, 255, 0.05);
-  --muted-foreground: #9c9082;
+  --muted-foreground: #a89b8c;
   --accent: rgba(210, 112, 58, 0.16);
-  --accent-foreground: var(--amber-soft);
-  /* Aligned to the shared --red; this was #f87171, a quiet drift off house. */
+  --accent-foreground: var(--accent-text);
   --destructive: var(--red);
-  --border: var(--glass-line);
+  --border: var(--line);
   --input: rgba(255, 255, 255, 0.09);
   --ring: rgba(240, 185, 60, 0.45);
+}
+
+/*
+ * Light theme.
+ *
+ * Warm paper rather than pure white: #faf6f0 keeps the valve-amp warmth the
+ * family reads for, and a true #fff next to copper and gold looks clinical.
+ * Product photos, which nearly all arrive cut out on white, sit on --surface
+ * (pure white) so they separate from the paper page behind them. That is the
+ * inverse of the dark theme's problem and it wants the same fix: a real tonal
+ * step between page and plate.
+ */
+[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #faf6f0;
+  --bg2: #f3ece2;
+  --surface: #ffffff;
+  --surface-2: #f6f1e9;
+  --panel: rgba(255, 255, 255, 0.86);
+  --panel2: #ffffff;
+  --glass: rgba(255, 255, 255, 0.78);
+  --glass-line: rgba(180, 85, 31, 0.22);
+  --line: #e2d7c7;
+  --line-strong: #cbbba4;
+  --chip: #f1e9dd;
+  --text: #221a13;
+  --dim: #756654;
+
+  /* Both darkened for contrast on paper. --sage at #4ade80 is roughly 1.7:1
+     on white, nowhere near the 4.5:1 a price needs to be legible. */
+  --money: #15803d;
+  --accent-text: #9a4715;
+
+  --shadow: 0 10px 34px rgba(60, 40, 20, 0.1);
+  --shadow-sm: 0 1px 3px rgba(60, 40, 20, 0.12);
+
+  --wash-1: rgba(210, 112, 58, 0.07);
+  --wash-2: rgba(34, 197, 94, 0.05);
+  --texture-light: rgba(255, 255, 255, 0.5);
+  --texture-dark: rgba(120, 90, 60, 0.028);
+
+  --popover: #ffffff;
+  --primary: var(--copper-dk);
+  --primary-foreground: #fff8f2;
+  --secondary: rgba(34, 26, 19, 0.05);
+  --muted: rgba(34, 26, 19, 0.04);
+  --muted-foreground: #6b5c4a;
+  --accent: rgba(210, 112, 58, 0.12);
+  --input: rgba(34, 26, 19, 0.09);
+  --ring: rgba(180, 85, 31, 0.45);
 }
 
 @layer base {
@@ -161,8 +248,8 @@
     color: var(--foreground);
     background-color: var(--bg);
     background-image:
-      radial-gradient(circle at 12% 4%, rgba(210, 112, 58, 0.09), transparent 42%),
-      radial-gradient(circle at 88% 12%, rgba(74, 222, 128, 0.055), transparent 44%);
+      radial-gradient(circle at 12% 4%, var(--wash-1), transparent 42%),
+      radial-gradient(circle at 88% 12%, var(--wash-2), transparent 44%);
     background-attachment: fixed;
     min-height: 100vh;
     font-size: 16px;
@@ -190,8 +277,8 @@
     pointer-events: none;
     opacity: 0.5;
     background-image:
-      repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.014) 0 1px, transparent 1px 4px),
-      repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 4px);
+      repeating-linear-gradient(45deg, var(--texture-light) 0 1px, transparent 1px 4px),
+      repeating-linear-gradient(-45deg, var(--texture-dark) 0 1px, transparent 1px 4px);
   }
 
   body > * {
@@ -200,16 +287,25 @@
   }
 
   /* Gold, not the site accent: the focus ring is a family-wide affordance
-     and reads the same on all four sites. */
+     and reads the same on all four sites. On paper the gold alone is too
+     pale to see, so light mode swaps in the darker gold. */
   :focus-visible {
     outline: 2px solid var(--gold);
     outline-offset: 2px;
     border-radius: 4px;
   }
+  [data-theme='light'] :focus-visible {
+    outline-color: var(--gold-dk);
+  }
 
   ::selection {
     background: rgba(210, 112, 58, 0.3);
     color: var(--text);
+  }
+
+  /* Anchors land below the sticky masthead instead of underneath it. */
+  [id] {
+    scroll-margin-top: calc(var(--header-h) + 16px);
   }
 }
 
@@ -222,10 +318,15 @@
     margin-inline: auto;
   }
 
+  /* Narrower measure for pages that are mostly prose or a single tool, so a
+     1500px shell does not stretch a paragraph to 200 characters. */
+  .shell-narrow {
+    width: min(1120px, 94vw);
+    margin-inline: auto;
+  }
+
   /* The family's glass panel, lifted from Nicotia's app.css, which lifted it
-     from Legal-Leaf. Real shadow and a 22px radius: the old version was a
-     hairline border over a 4% white wash, so panels never read as surfaces
-     sitting on the page. */
+     from Legal-Leaf. Real shadow and a 22px radius. */
   .panel {
     background: var(--glass);
     border: 1px solid var(--glass-line);
@@ -233,6 +334,16 @@
     padding: 20px 22px;
     backdrop-filter: blur(10px);
     box-shadow: var(--shadow);
+  }
+
+  /* A solid, non-translucent surface. Panels are glass and that is right for
+     most of the site, but anything holding a product photo or a dense table
+     wants an opaque plate underneath it, in both themes. */
+  .surface {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
   }
 
   /* Thin accent rule used under section headings. */
@@ -243,14 +354,14 @@
 
   /* Pill. The single most recognisable piece of house geometry: nav buttons,
      the search field, filter chips and footer buttons are all 999px on the
-     sister sites, against the 12px rounded rectangles used here before. */
+     sister sites. */
   .pill {
     display: inline-flex;
     align-items: center;
     gap: 7px;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--line-strong);
+    background: var(--secondary);
     padding: 9px 15px;
     font-size: 13px;
     font-weight: 600;
@@ -259,13 +370,13 @@
     transition: all 0.16s;
   }
   .pill:hover {
-    background: rgba(255, 255, 255, 0.13);
+    background: var(--muted);
     border-color: var(--glass-line);
   }
   .pill[data-active='true'] {
     border-color: var(--copper);
-    background: rgba(210, 112, 58, 0.14);
-    color: var(--amber-soft);
+    background: var(--accent);
+    color: var(--accent-text);
   }
   .pill .count {
     min-width: 20px;
@@ -279,7 +390,7 @@
     color: #04140a;
   }
   .pill .count.zero {
-    background: rgba(255, 255, 255, 0.12);
+    background: var(--muted);
     color: var(--dim);
   }
 
@@ -298,7 +409,7 @@
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--sage);
+    color: var(--money);
     white-space: nowrap;
     animation: livePulse 2s infinite;
   }
@@ -306,8 +417,8 @@
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: var(--sage);
-    box-shadow: 0 0 8px var(--sage);
+    background: var(--money);
+    box-shadow: 0 0 8px var(--money);
   }
   @keyframes livePulse {
     0%,
@@ -340,6 +451,11 @@
     -webkit-text-fill-color: transparent;
     color: var(--gold);
   }
+  /* On paper the mid-gradient gold washes out to near-invisible, so light
+     mode runs the same sweep through the darker gold and copper instead. */
+  [data-theme='light'] .h-display {
+    background-image: linear-gradient(96deg, var(--text) 0%, var(--gold-dk) 46%, var(--copper-dk) 88%);
+  }
   .h-lead {
     display: block;
     margin-bottom: -0.1em;
@@ -348,8 +464,8 @@
     font-weight: 600;
     font-size: clamp(1.2rem, 3.2vw, 1.95rem);
     line-height: 1;
-    color: var(--copper);
-    -webkit-text-fill-color: var(--copper);
+    color: var(--accent-text);
+    -webkit-text-fill-color: var(--accent-text);
   }
 
   /* The family hero: centred, with a soft wash of the section's own hue
@@ -378,6 +494,9 @@
   }
   .hero .h-display {
     background-image: linear-gradient(96deg, var(--text) 0%, var(--gold) 46%, var(--hero-hue) 88%);
+  }
+  [data-theme='light'] .hero .h-display {
+    background-image: linear-gradient(96deg, var(--text) 0%, var(--gold-dk) 46%, var(--hero-hue) 88%);
   }
   .hero .h-lead {
     color: var(--hero-hue);
@@ -415,8 +534,7 @@
     color: var(--dim);
   }
   /* On a phone the hero was costing most of the first screen before a single
-     listing. Keep the promise, drop the throat-clearing: the same trim the
-     sister sites make at 480px. */
+     listing. Keep the promise, drop the throat-clearing. */
   @media (max-width: 480px) {
     .hero {
       padding: 16px 0 12px;
@@ -434,23 +552,27 @@
     }
   }
 
-  /* Listing card plate, ported from Nicotia's .front. Its own comment records
-     why: the card has to read as a surface sitting ON the page, and when the
-     plate is only ~6% lighter than the background the border does all the
-     work. A real tonal step plus a drop shadow lifts it. Cards here were
-     using .panel, so they inherited a translucent wash and no shadow. */
+  /* Listing card plate. The card has to read as a surface sitting ON the
+     page: when the plate is only a few percent off the background, the
+     border does all the work. Both themes now get a real tonal step plus a
+     drop shadow, which is also what keeps a cut-out product photo from
+     dissolving into the page. */
   .card-face {
     border-radius: var(--radius);
-    border: 1px solid #2f261e;
-    background: linear-gradient(180deg, #1b1510, #120e0a);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
     transition:
       border-color 0.18s,
-      box-shadow 0.18s;
+      box-shadow 0.18s,
+      transform 0.18s;
   }
   .flip-card:hover .card-face-front {
     border-color: var(--sage-dk);
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  }
+  [data-theme='light'] .flip-card:hover .card-face-front {
+    box-shadow: 0 12px 28px rgba(60, 40, 20, 0.16);
   }
   /* The gold ring means "cheapest of this instrument", the same promise the
      gold unit badge makes on the sister sites. */
@@ -462,8 +584,8 @@
   }
   /* Espresso back, so a turned card reads instantly against the grid. */
   .card-face-back {
-    border-color: rgba(210, 112, 58, 0.3);
-    background: linear-gradient(158deg, #1c1410 0%, #120d09 60%, #0a0706 100%);
+    border-color: var(--glass-line);
+    background: var(--surface-2);
   }
 
   .card-title {
@@ -474,63 +596,20 @@
     letter-spacing: -0.01em;
   }
 
-  /* Price in Fraunces 900 and in sage. Green on the number is the family's
-     money signal and it is what makes a grid of cards scannable by price. */
+  /* Price in Fraunces 900 and in the money green. Green on the number is the
+     family's money signal and it is what makes a grid of cards scannable by
+     price. --money rather than --sage because the light sage is illegible on
+     paper; see the palette note at the top of this file. */
   .card-price {
     font-family: var(--display);
     font-weight: 900;
     font-size: 20px;
     letter-spacing: -0.02em;
-    color: var(--sage);
-  }
-
-  /* The pedalboard builder's base plate: a dotted velcro-strip texture on a
-     raised dark surface, so the pedal slots read as mounted to something
-     rather than floating on the page background. */
-  .pedalboard-surface {
-    background:
-      radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.06) 1px, transparent 1.6px) 0 0 /
-        16px 16px,
-      linear-gradient(180deg, #1c1712, #14100c);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-  }
-
-  /* "Iconic Rigs" character-select badge. Deliberately a stylised monogram
-     rather than a photo: no likeness rights to navigate, and it matches the
-     abstract-icon language already used for categories and stores. The
-     hover/selected states borrow a video-game character-select feel (pop,
-     glow, ring) without pulling in any actual game engine for it. */
-  .icon-badge {
-    aspect-ratio: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    background: color-mix(in srgb, var(--icon-hue) 18%, var(--card));
-    color: var(--icon-hue);
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    transition:
-      transform 0.15s ease,
-      box-shadow 0.15s ease,
-      border-color 0.15s ease;
-  }
-  .icon-badge:hover {
-    transform: translateY(-2px) scale(1.05);
-    border-color: var(--icon-hue);
-  }
-  .icon-badge[data-selected="true"] {
-    border-color: var(--icon-hue);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--icon-hue) 45%, transparent);
-    transform: translateY(-2px) scale(1.05);
+    color: var(--money);
   }
 
   /* Herbal-Leaf's eyebrow, which the whole family uses. The wide 0.38em
-     track on a muted weight is what makes it read as considered; the loud
-     bold amber at 0.12em used here before read as a status label. */
+     track on a muted weight is what makes it read as considered. */
   .eyebrow {
     display: inline-block;
     font-family: var(--sans);
@@ -540,6 +619,370 @@
     letter-spacing: 0.38em;
     color: var(--dim);
   }
+
+  /* ----------------------------------------------------------------
+     Masthead and navigation
+     ---------------------------------------------------------------- */
+
+  /* The masthead: sticky, saturated blur, and a 2px accent underline carrying
+     the site's own hue. The underline plus its warm glow is what makes the
+     header read as a masthead rather than as content that happens to be
+     pinned, and all four sites share the construction. */
+  .masthead {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    border-bottom: 2px solid var(--copper);
+    background: color-mix(in srgb, var(--bg) 94%, transparent);
+    backdrop-filter: blur(16px) saturate(1.5);
+    -webkit-backdrop-filter: blur(16px) saturate(1.5);
+    box-shadow: 0 2px 24px rgba(210, 112, 58, 0.18);
+  }
+
+  /* The second masthead row. Separated from the brand row by a hairline so
+     the two tiers read as distinct bands rather than one tall header. */
+  .masthead-nav-row {
+    border-top: 1px solid var(--line);
+  }
+
+  /* A top-level nav item. Underline grows from the centre on hover and stays
+     put when the section is the current one, which is the cheapest way to
+     tell a shopper where they are without a second colour. */
+  .navlink {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 2px 11px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    white-space: nowrap;
+    transition: color 0.16s;
+  }
+  .navlink::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--copper);
+    transform: scaleX(0);
+    transition: transform 0.18s ease;
+  }
+  .navlink:hover,
+  .navlink[data-open='true'] {
+    color: var(--text);
+  }
+  .navlink:hover::after,
+  .navlink[data-open='true']::after {
+    transform: scaleX(1);
+  }
+  .navlink[data-current='true'] {
+    color: var(--text);
+    font-weight: 600;
+  }
+  .navlink[data-current='true']::after {
+    transform: scaleX(1);
+    background: var(--gold);
+  }
+
+  /* The mega-menu panel. Anchored to the nav row rather than to the link, so
+     every panel opens at the same y and the eye does not have to re-find the
+     top edge when moving between sections.
+
+     The background is FULLY OPAQUE, and that is a correction rather than a
+     preference. It was a 97% color-mix over a blur, on the theory that the
+     masthead's own glass treatment should carry through. It does not: a mega
+     menu opens directly over the hero, and the hero is 4rem of high-contrast
+     display type, which read straight through the panel and made the menu
+     genuinely hard to use in both themes. Glass works on a masthead because
+     what passes under it is body copy moving; it fails here because what sits
+     under it is the loudest type on the page, holding still. */
+  .megamenu {
+    position: absolute;
+    inset-inline: 0;
+    top: 100%;
+    z-index: 60;
+    border-top: 1px solid var(--line);
+    border-bottom: 2px solid var(--copper);
+    background: var(--bg2);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    animation: megaIn 0.14s ease-out;
+  }
+  [data-theme='light'] .megamenu {
+    box-shadow: 0 18px 40px rgba(60, 40, 20, 0.16);
+  }
+  @keyframes megaIn {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .megamenu {
+      animation: none;
+    }
+  }
+
+  /* One column heading inside a mega menu. */
+  .mega-col-title {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  /* A link row inside a mega menu: icon slot, label, one line of context. */
+  .mega-link {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    margin-inline: -10px;
+    transition: background 0.14s;
+  }
+  .mega-link:hover {
+    background: var(--secondary);
+  }
+  .mega-link .label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.35;
+  }
+  .mega-link .hint {
+    display: block;
+    margin-top: 1px;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--muted-foreground);
+  }
+
+  /* ----------------------------------------------------------------
+     The rig builder
+     ---------------------------------------------------------------- */
+
+  /* The board's base plate: a dotted velcro-strip texture on a raised
+     surface, so the pedal slots read as mounted to something rather than
+     floating on the page background. */
+  .pedalboard-surface {
+    background:
+      radial-gradient(circle at 1px 1px, var(--velcro-dot) 1px, transparent 1.6px) 0 0 / 16px 16px,
+      linear-gradient(180deg, var(--surface), var(--bg2));
+    --velcro-dot: rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+  }
+  [data-theme='light'] .pedalboard-surface {
+    --velcro-dot: rgba(90, 68, 46, 0.13);
+  }
+
+  /* One pedal enclosure on the board. The top-edge highlight and the colour
+     band across the bottom are what make a slot read as a physical stompbox
+     rather than as a product card that happens to be square. The band is
+     tinted by the pedal's own effect type, so a board's shape is readable at
+     a glance: greens and blues at the front, reds through the middle, purples
+     and teals at the end. */
+  .pedal-slot {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius);
+    border: 1px solid var(--line-strong);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--slot-hue) 9%, var(--surface)), var(--surface));
+    box-shadow: var(--shadow-sm);
+    transition:
+      border-color 0.16s,
+      box-shadow 0.16s,
+      transform 0.16s;
+  }
+  .pedal-slot::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 3px;
+    background: var(--slot-hue);
+  }
+  .pedal-slot:hover {
+    border-color: var(--slot-hue);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+  /* The slot being dragged. Lifted and faded so the gap it leaves is
+     obviously the thing that moves, not a deleted card. */
+  .pedal-slot[data-dragging='true'] {
+    opacity: 0.4;
+    transform: scale(0.97);
+  }
+  /* The slot the pointer is currently over. A leading rule, not a full
+     border, so it reads as "it lands here" rather than "this is selected". */
+  .pedal-slot[data-droptarget='true'] {
+    box-shadow:
+      -3px 0 0 0 var(--gold),
+      var(--shadow);
+  }
+
+  /* The arrow between two slots in the chain. */
+  .chain-arrow {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    color: var(--dim);
+  }
+
+  /* A chain-order warning. Amber for "this is unusual", not red: an out of
+     order chain is a taste call, not an error, and plenty of records were
+     made by ignoring it. */
+  .chain-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--glass-line);
+    background: var(--accent);
+    padding: 9px 12px;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  /* "Iconic Rigs" character-select badge. Deliberately a stylised monogram
+     rather than a photo: no likeness rights to navigate, and it matches the
+     abstract-icon language already used for categories and stores. */
+  .icon-badge {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--icon-hue) 18%, var(--surface));
+    /* Lifted towards white rather than using the raw hue. The hues are spread
+       evenly around the wheel at a fixed 56% lightness, which means the blues
+       and violets land near 3:1 on this plate while the yellows are fine. A
+       consistent lift is what keeps the monograms legible all the way round
+       the roster instead of only across half of it. */
+    color: color-mix(in srgb, var(--icon-hue) 72%, #ffffff);
+    font-family: var(--display);
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease,
+      border-color 0.15s ease;
+  }
+  /* Mirror image of the dark rule: on paper the same 56%-lightness hues are
+     too pale, so they get pulled towards near-black rather than towards
+     white. 58% is where the palest of them (the yellows) clears 4.5:1. */
+  [data-theme='light'] .icon-badge {
+    background: color-mix(in srgb, var(--icon-hue) 12%, var(--surface));
+    color: color-mix(in srgb, var(--icon-hue) 58%, #1a1208);
+  }
+  .icon-badge:hover {
+    transform: translateY(-2px) scale(1.05);
+    border-color: var(--icon-hue);
+  }
+  .icon-badge[data-selected='true'] {
+    border-color: var(--icon-hue);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--icon-hue) 45%, transparent);
+    transform: translateY(-2px) scale(1.05);
+  }
+
+  /* ----------------------------------------------------------------
+     Ask (the Groq-backed assistant)
+     ---------------------------------------------------------------- */
+
+  .ask-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(3px);
+    animation: fadeIn 0.15s ease-out;
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+  }
+
+  .ask-panel {
+    width: min(720px, 94vw);
+    max-height: min(78vh, 760px);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--glass-line);
+    background: var(--bg2);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  }
+
+  /* The assistant's own turn. Deliberately plain: the value is in the
+     listing cards underneath it, not in the prose. */
+  .ask-bubble {
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 12px 14px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+  .ask-bubble[data-role='user'] {
+    border-color: var(--glass-line);
+    background: var(--accent);
+  }
+
+  /* The "here is what I actually looked at" strip. An answer that cites the
+     query it ran is checkable; one that does not is a claim. */
+  .ask-trace {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--chip);
+    padding: 3px 9px;
+    font-size: 0.7rem;
+    color: var(--dim);
+  }
+
+  /* Three dots while a turn is in flight. */
+  .ask-typing span {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    margin-right: 3px;
+    border-radius: 50%;
+    background: var(--dim);
+    animation: askBlink 1.2s infinite;
+  }
+  .ask-typing span:nth-child(2) {
+    animation-delay: 0.18s;
+  }
+  .ask-typing span:nth-child(3) {
+    animation-delay: 0.36s;
+  }
+  @keyframes askBlink {
+    0%,
+    60%,
+    100% {
+      opacity: 0.25;
+    }
+    30% {
+      opacity: 1;
+    }
+  }
+
+  /* ----------------------------------------------------------------
+     Admin tables (unchanged behaviour, re-pointed at the new tokens)
+     ---------------------------------------------------------------- */
 
   .admin-section {
     padding-top: 2.5rem;
@@ -631,7 +1074,7 @@
     transform-style: preserve-3d;
     transition: transform 0.55s cubic-bezier(0.22, 0.72, 0.24, 1);
   }
-  .flip-card[data-flipped="true"] .flip-card-inner {
+  .flip-card[data-flipped='true'] .flip-card-inner {
     transform: rotateY(180deg);
   }
   .flip-face {
@@ -651,7 +1094,7 @@
     .flip-card-inner {
       transition: none;
     }
-    .flip-card[data-flipped="true"] .flip-card-inner {
+    .flip-card[data-flipped='true'] .flip-card-inner {
       transform: none;
     }
     .flip-face {
@@ -662,11 +1105,11 @@
       opacity: 0;
       pointer-events: none;
     }
-    .flip-card[data-flipped="true"] .flip-face-front {
+    .flip-card[data-flipped='true'] .flip-face-front {
       opacity: 0;
       pointer-events: none;
     }
-    .flip-card[data-flipped="true"] .flip-face-back {
+    .flip-card[data-flipped='true'] .flip-face-back {
       opacity: 1;
       pointer-events: auto;
     }
