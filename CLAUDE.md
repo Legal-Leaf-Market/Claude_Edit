@@ -587,10 +587,41 @@ follows the same rule as section 2 rather than being an exception to it.
 Equipboard has by far the best database of this and added album- and
 track-level attribution in February 2026, but they publish no API and scraping
 them is precisely the conduct forbidden for Guitar Center and the Reverb API.
-MusicBrainz would cover the records half legitimately and its core data is
-open, except its web service is free for NON-COMMERCIAL use only and this site
-runs on affiliate revenue, so wiring it up needs a commercial plan first. Both
-remain open later. Neither was a reason to ship nothing now.
+
+**The MusicBrainz position was stated too broadly and is corrected here.** Its
+WEB SERVICE is free for non-commercial use only, and this site is commercial,
+so that service must never sit on the runtime path. Its DATA is a different
+thing: MusicBrainz core data, release-group identifiers included, is CC0. So
+`scripts/fetch-album-covers.ts` resolves those identifiers ONCE, offline, at
+one request a second with a real user agent, and commits them; the site then
+serves covers from coverartarchive.org, which the Internet Archive hosts and
+which carries no such restriction. Nothing queries MusicBrainz at runtime. At
+any real scale the answer is the CC0 database dumps or a commercial plan, not
+a faster loop.
+
+IMAGERY, and what each source does and does not permit:
+
+- **Artist photographs: Wikimedia Commons only** (`lib/rigs/photos.ts`).
+  Everything hosted there is freely licensed and the licence is machine
+  readable, which is what makes it usable commercially without asking anybody.
+  Press and agency photographs are not, which is why monograms were chosen
+  first and remain the fallback. Two rules are enforced in code rather than by
+  convention: NO ATTRIBUTION, NO IMAGE (`isRenderable` gates it, and the
+  component falls back to the monogram), and NonCommercial and NoDerivatives
+  licences are rejected however free they look, because this site earns
+  affiliate revenue.
+- **Album covers: the Cover Art Archive** (`lib/rigs/covers.ts`), at the 250px
+  thumbnail. The Archive grants no rights in the artwork and the covers remain
+  their rights holders'; a thumbnail beside editorial writing about which
+  pedals made that record is ordinary music-publication practice and a fair
+  dealing argument, not a settled fact. So covers stay small, always captioned
+  with the record they depict, and are never used decoratively away from
+  writing about that record.
+- **Both datasets are MACHINE-COPIED, never typed.** Every credit comes out of
+  Commons' own `extmetadata` and every MBID out of MusicBrainz, written by the
+  scripts. Hand-editing an attribution is how a wrong credit gets published,
+  and a hand-typed MBID is 36 characters nobody can check by eye that silently
+  shows a different album's artwork.
 
 Two rules for editing the dataset:
 
