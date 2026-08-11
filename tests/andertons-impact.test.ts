@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import {
   bindColumns,
@@ -5,7 +6,9 @@ import {
   normalizeAndertonsRow,
   parseAndertonsFeed,
   toCents,
+  UNBOUND_BY_POLICY,
 } from "@/lib/ingestion/andertons-impact"
+import { detectDelimiter } from "@/lib/ingestion/csv"
 import { isAllowedDestination } from "@/lib/affiliate/allowed-hosts"
 
 /**
@@ -40,6 +43,93 @@ const CANONICAL_ROW =
 function feed(header: string, ...rows: string[]): string {
   return [header, ...rows].join("\n")
 }
+
+/**
+ * The header row off the real catalogue, saved verbatim on 11 Aug 2026.
+ *
+ * Everything above this line tests the design in the abstract. This tests it
+ * against the actual file, which is the only thing that settles whether the
+ * alias table is right. It is the header row only: no product rows, no prices,
+ * and nothing resembling a credential.
+ */
+const REAL_HEADER = readFileSync(
+  new URL("./fixtures/andertons-impact-headers.tsv", import.meta.url),
+  "utf8",
+).split(/\r?\n/)[0]
+
+describe("the real Anderton's header row", () => {
+  const headers = REAL_HEADER.split("\t")
+
+  it("is tab separated, and the delimiter sniffer says so", () => {
+    // Impact's docs call these "CSV" catalogues. This one is not comma
+    // separated at all, which is precisely why the delimiter is detected
+    // rather than assumed.
+    expect(detectDelimiter(REAL_HEADER)).toBe("\t")
+    expect(headers).toHaveLength(40)
+  })
+
+  it("resolves every mandatory column, so the parser runs at all", () => {
+    const bound = bindColumns(headers)
+    expect(bound.itemId).toBe("Sku")
+    expect(bound.name).toBe("Name")
+    expect(bound.url).toBe("Url")
+  })
+
+  /**
+   * The one miss the real header row caught. "Manufacturer Name" is not
+   * "Manufacturer", and before this alias existed all 27,052 rows would have
+   * ingested with a null brand, which silently disables the brand scoping that
+   * tiers 1c and 2 of the resolver depend on.
+   */
+  it("binds the brand column, which is spelled Manufacturer Name", () => {
+    expect(bindColumns(headers).manufacturer).toBe("Manufacturer Name")
+  })
+
+  it("binds Anderton's own untracked product URL beside Impact's tracked one", () => {
+    const bound = bindColumns(headers)
+    expect(bound.originalUrl).toBe("Original Url")
+    expect(bound.url).toBe("Url")
+    expect(bound.url).not.toBe(bound.originalUrl)
+  })
+
+  it("prefers the category path over the leaf name, since both are present", () => {
+    expect(headers).toContain("Category Path")
+    expect(headers).toContain("Category Name")
+    expect(bindColumns(headers).category).toBe("Category Path")
+  })
+
+  /**
+   * Not a gap in the alias table: this catalogue genuinely has no MPN column.
+   * Pinned so that a future feed which adds one is a visible test failure
+   * rather than an unnoticed improvement, and so nobody "fixes" the null by
+   * pointing mpn at Sku, which is a retailer stock number and not a part
+   * number that names a product across merchants.
+   */
+  it("has no MPN column, so that field binds to null rather than to Sku", () => {
+    expect(headers.some((h) => /^mpn$|part number/i.test(h))).toBe(false)
+    expect(bindColumns(headers).mpn).toBeNull()
+  })
+
+  /**
+   * The sharpest rule in CLAUDE.md, made testable.
+   *
+   * This feed states the commission on every single row. The ingester must not
+   * know: a parser aware of per-row payout is one .filter() from dropping the
+   * 1% rows, which is ranking by commission performed at the row level.
+   */
+  it("carries per-row commission columns, and binds none of them", () => {
+    for (const column of UNBOUND_BY_POLICY) {
+      expect(headers).toContain(column)
+    }
+
+    const bound = bindColumns(headers)
+    const boundHeaders = Object.values(bound).filter((h): h is string => h !== null)
+    for (const forbidden of UNBOUND_BY_POLICY) {
+      expect(boundHeaders).not.toContain(forbidden)
+    }
+    expect(boundHeaders.some((h) => /commission/i.test(h))).toBe(false)
+  })
+})
 
 describe("bindColumns", () => {
   it("binds Impact's own documented spellings", () => {

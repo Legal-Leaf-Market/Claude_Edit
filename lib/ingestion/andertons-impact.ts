@@ -58,39 +58,100 @@ import type { NewMarketplaceListing } from "@/lib/db/schema"
 /**
  * Header aliases, most specific first.
  *
- * Impact's own documented catalogue fields come first in each list, then the
- * spellings its exporters and other networks commonly emit. This table WILL
- * need tuning once the real header row is in hand; the point of the design is
- * that tuning it is a one-line change and that a miss is loud rather than
- * silent.
+ * TUNED AGAINST THE REAL HEADER ROW (40 columns, tab separated, 11 Aug 2026).
+ * It is preserved verbatim as tests/fixtures/andertons-impact-headers.tsv and
+ * `tests/andertons-impact.test.ts` binds against it, so a future feed change
+ * that drops or renames a column fails in CI rather than in production.
+ *
+ * The real row confirmed the design and caught exactly one miss: the brand
+ * column is "Manufacturer Name", not "Manufacturer", so every one of the 27,052
+ * rows would have come through with a null brand. That is not cosmetic. Brand
+ * is what scopes MPN matching and fuzzy matching in the resolver (CLAUDE.md
+ * section 4), and an unscoped fallback to parsing the brand back out of the
+ * title is exactly the guesswork tier 1c exists to avoid.
+ *
+ * Impact's own documented field names are kept in each list ahead of the
+ * Anderton's spelling. They cost nothing, and Impact catalogues are configured
+ * per advertiser, so the next Impact merchant will very likely name things
+ * differently again.
  */
 const FIELD_ALIASES = {
-  /** Mandatory in Impact's spec. */
+  /** Mandatory in Impact's spec. Anderton's: "Sku". */
   itemId: ["Catalog Item Id", "CatalogItemId", "catalog_item_id", "Item Id", "SKU", "Sku", "Id", "Product Id", "product_id"],
-  /** Mandatory in Impact's spec. */
+  /** Mandatory in Impact's spec. Anderton's: "Name". */
   name: ["Name", "Product Name", "product_name", "Title", "title"],
-  /** Mandatory in Impact's spec. This is the tracked destination. */
+  /** Mandatory in Impact's spec. This is the tracked destination. Anderton's: "Url". */
   url: ["Url", "URL", "Link URL", "Link Url", "link_url", "Product Url", "product_url", "Tracking Url", "Buy Url"],
 
   description: ["Description", "description", "Long Description", "Short Description"],
   currentPrice: ["Current Price", "CurrentPrice", "current_price", "Price", "price", "Sale Price", "sale_price"],
   originalPrice: ["Original Price", "OriginalPrice", "original_price", "Retail Price", "List Price", "Was Price"],
   currency: ["Currency", "currency", "Currency Code", "currency_code"],
-  manufacturer: ["Manufacturer", "manufacturer", "Brand", "brand", "Vendor"],
+  /**
+   * "Manufacturer Name" is Anderton's spelling and the one that actually binds.
+   * The bare "Manufacturer" ahead of it is Impact's documented name.
+   */
+  manufacturer: ["Manufacturer", "Manufacturer Name", "manufacturer_name", "manufacturer", "Brand", "brand", "Vendor"],
   imageUrl: ["Image Url", "Image URL", "ImageUrl", "image_url", "Image", "Main Image"],
-  category: ["Category", "category", "Product Category", "Google Category", "Category Path"],
+  /**
+   * The feed carries BOTH "Category Path" and "Category Name". The path wins:
+   * it is the full hierarchy ("Guitars > Electric Guitars > ...") and
+   * `normalizeCategory` has more to match against, where the leaf name alone
+   * loses the context that tells a "Standard" apart from a "Standard".
+   */
+  category: ["Category Path", "Category", "category", "Category Name", "Product Category", "Google Category"],
   gtin: ["Gtin", "GTIN", "gtin", "Ean", "EAN", "Upc", "UPC", "Barcode"],
-  mpn: ["Mpn", "MPN", "mpn", "Manufacturer Part Number", "Model", "model", "Part Number"],
+  /**
+   * NOT PRESENT in Anderton's catalogue, and that is a fact about the feed
+   * rather than a gap in this table. It resolves to null, tier 1c (brand + MPN)
+   * simply never fires for these rows, and Gtin carries the hard identity
+   * instead. Do not "fix" this by pointing it at Sku: a retailer's own stock
+   * number is not a manufacturer part number, and feeding one into a key that
+   * claims to name a product across merchants would merge unrelated gear.
+   */
+  mpn: ["Mpn", "MPN", "mpn", "Manufacturer Part Number", "Part Number"],
   stock: ["Stock Availability", "StockAvailability", "stock_availability", "Availability", "In Stock", "Stock", "Stock Status"],
   /**
-   * Impact catalogues sometimes carry the merchant's own untracked URL beside
-   * the tracked one. When present it becomes rawUrl and the tracked column
-   * becomes affiliateUrl, which is strictly better than the CJ situation where
-   * only a pre-built BUY_URL exists.
+   * CONFIRMED PRESENT as "Original Url". This is the good case: the feed
+   * carries Anderton's own untracked product page beside Impact's tracked
+   * link, so rawUrl is the real page and affiliateUrl is the tracked one.
+   * Better than the CJ situation, where only a pre-built BUY_URL exists.
    */
   originalUrl: ["Original Url", "Original URL", "original_url", "Merchant Url", "Landing Page", "Product Page"],
   condition: ["Condition", "condition", "Item Condition"],
 } as const
+
+/**
+ * COLUMNS THIS PARSER DELIBERATELY DOES NOT BIND.
+ *
+ * The real header row carries "Min Commission Percentage", "Max Commission
+ * Percentage" and "Commission Currency", per product. That is the 1%-to-4%
+ * split, and it means the feed itself will tell this module, row by row, which
+ * products pay us the most.
+ *
+ * Binding those columns is forbidden (CLAUDE.md section 1 and the hard "do not"
+ * list). It is not a slippery-slope worry, it is one `.filter()` away: a parser
+ * that knows the commission on each row is a parser that can drop the 1% rows,
+ * and dropping them is ranking by payout performed at the row level, on a site
+ * whose footer promises shoppers that commission never affects what they see.
+ * Ingest all 27,052 rows, rank them exactly like every other source, earn on
+ * whichever subset happens to pay.
+ *
+ * If a commission figure is ever genuinely needed (a finance report, say), it
+ * belongs in a separate module that reads the feed for that purpose and has no
+ * path into `marketplace_listings`. Do not add it here.
+ *
+ * Also unbound, for the ordinary reason that nothing consumes them yet:
+ * Program Id, Program Names, Catalog Id, Catalog Name, Language Locale, Last
+ * Updated, Bullets, Labels, Additional ImageUrls, Discount Percentage,
+ * Promotions, Product Launch Date, Expiration Date, and the brand's ten
+ * free-form Text/Numeric/Money slots.
+ */
+export const UNBOUND_BY_POLICY = [
+  "Min Commission Percentage",
+  "Max Commission Percentage",
+  "Commission Currency",
+] as const
 
 /** Impact mandates these three. Without them a row cannot become a listing at all. */
 const MANDATORY: (keyof typeof FIELD_ALIASES)[] = ["itemId", "name", "url"]
