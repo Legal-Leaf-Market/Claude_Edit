@@ -1,8 +1,12 @@
 import { readFileSync } from "node:fs"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   bindColumns,
   sliceRows,
+  explainImpactStatus,
+  fetchAndertonsApiPage,
+  fetchAndertonsApiRange,
+  IMPACT_PAGING_CEILING,
   ImpactSchemaError,
   normalizeAndertonsRow,
   normalizeRecords,
@@ -588,5 +592,137 @@ describe("normalizeRecords, shared by both transports", () => {
     for (const header of Object.values(columns)) {
       expect(String(header ?? "")).not.toMatch(/commission/i)
     }
+  })
+})
+
+/**
+ * The HTTPS transport's failure behaviour.
+ *
+ * These exist because a live 400 could not be diagnosed from what the code
+ * reported. The status was named and the response body, which is the only
+ * thing that says WHICH parameter Impact objected to, was deliberately
+ * discarded. Everything here pins the properties that make the next failure
+ * self-explaining rather than a guessing game.
+ */
+describe("the Impact API transport", () => {
+  const CONFIG = { accountSid: "SID", authToken: "TOKEN", catalogId: "30480" }
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function stubFetch(handler: (url: URL, init: RequestInit) => Response) {
+    const calls: URL[] = []
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: URL | string, init: RequestInit = {}) => {
+        const url = input instanceof URL ? input : new URL(String(input))
+        calls.push(url)
+        return handler(url, init)
+      }),
+    )
+    return calls
+  }
+
+  function page(records: unknown[], extra: Record<string, unknown> = {}) {
+    return new Response(JSON.stringify({ "@page": "1", Items: records, ...extra }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    })
+  }
+
+  it("names an explicit API version on every request", async () => {
+    const calls = stubFetch(() => page([{ CatalogItemId: "1" }]))
+    await fetchAndertonsApiPage(CONFIG, 1, 100)
+    expect(calls[0].searchParams.get("IrVersion")).toBeTruthy()
+  })
+
+  it("keeps credentials out of the URL, since the URL gets echoed to an admin", async () => {
+    const calls = stubFetch(() => page([{ CatalogItemId: "1" }]))
+    await fetchAndertonsApiPage(CONFIG, 1, 100)
+    expect(calls[0].toString()).not.toContain("TOKEN")
+    expect(calls[0].search).not.toContain("TOKEN")
+  })
+
+  /*
+   * The whole point. A 400 that says only "400 Bad Request" is what stalled
+   * this, so the server's own explanation has to reach the person reading it.
+   */
+  it("puts Impact's own words in the error, not just the status", async () => {
+    stubFetch(() => new Response(JSON.stringify({ Message: "PageSize exceeds the maximum" }), { status: 400 }))
+    await expect(fetchAndertonsApiPage(CONFIG, 1, 1000)).rejects.toThrow(/PageSize exceeds the maximum/)
+  })
+
+  it("flattens an HTML error body rather than refusing to show it", async () => {
+    stubFetch(
+      () =>
+        new Response("<html><body><h1>Bad Request</h1><p>Unknown parameter</p></body></html>", {
+          status: 400,
+          headers: { "content-type": "text/html" },
+        }),
+    )
+    const error = await fetchAndertonsApiPage(CONFIG, 1, 100).catch((e: Error) => e)
+    expect(String(error)).toContain("Unknown parameter")
+    expect(String(error)).not.toContain("<h1>")
+  })
+
+  it("explains a 400 by naming the candidate causes, not just the number", () => {
+    const explained = explainImpactStatus(400, "30480")
+    expect(explained).toMatch(/PageSize/i)
+    expect(explained).toMatch(/20,000/)
+  })
+
+  it("distinguishes a rejected credential from an unreadable catalogue", () => {
+    expect(explainImpactStatus(401, "30480")).toMatch(/AccountSid|AuthToken/)
+    expect(explainImpactStatus(401, "30480")).toMatch(/not the FTP pair/i)
+    expect(explainImpactStatus(404, "30480")).toContain("30480")
+  })
+
+  /*
+   * Impact answers a request past the ceiling with a 400, so asking is a
+   * wasted round trip that reports the wrong cause. Refusing locally names
+   * the real limit instead.
+   */
+  it("refuses to request a page that starts past the paging ceiling", async () => {
+    const calls = stubFetch(() => page([]))
+    const firstUnreachable = Math.floor(IMPACT_PAGING_CEILING / 100) + 1
+    await expect(fetchAndertonsApiPage(CONFIG, firstUnreachable, 100)).rejects.toThrow(/ceiling/i)
+    expect(calls).toHaveLength(0)
+  })
+
+  it("still allows the last page that fits under the ceiling", async () => {
+    const calls = stubFetch(() => page([{ CatalogItemId: "1" }]))
+    await fetchAndertonsApiPage(CONFIG, IMPACT_PAGING_CEILING / 100, 100)
+    expect(calls).toHaveLength(1)
+  })
+
+  /*
+   * The dangerous one. A walk that stops at the ceiling has NOT seen the whole
+   * catalogue, and `done` alone is what expiry keys off. Reporting a ceiling
+   * stop as an ordinary end would expire every row past 20,000: on a 27,052
+   * product catalogue that silently retires around 7,000 live listings.
+   */
+  it("reports a ceiling stop distinctly from reaching the end of the catalogue", async () => {
+    // A catalogue bigger than the ceiling: 271 pages of 100, which is
+    // Anderton's 27,052 products. The stub echoes the page it was asked for,
+    // because a walk that cannot advance cannot reach the limit under test.
+    stubFetch((url) =>
+      page(
+        Array.from({ length: 100 }, (_, i) => ({ CatalogItemId: String(i) })),
+        { "@page": url.searchParams.get("Page") ?? "1", "@numpages": "271" },
+      ),
+    )
+
+    const walk = await fetchAndertonsApiRange(CONFIG, IMPACT_PAGING_CEILING / 100, 5, 100)
+
+    expect(walk.ceilingReached).toBe(true)
+    expect(walk.nextPage).toBeNull()
+  })
+
+  it("does not claim a ceiling stop on an ordinary short read", async () => {
+    stubFetch(() => page([{ CatalogItemId: "1" }], { "@numpages": "1" }))
+    const walk = await fetchAndertonsApiRange(CONFIG, 1, 5, 100)
+    expect(walk.ceilingReached).toBeUndefined()
+    expect(walk.nextPage).toBeNull()
   })
 })

@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server"
 import { isAdmin } from "@/lib/admin/gate"
 import { env } from "@/lib/env"
-import { ingestAndertonsViaApi, peekAndertonsApi, type ImpactApiConfig } from "@/lib/ingestion/andertons-impact"
+import {
+  diagnoseAndertonsApi,
+  ingestAndertonsViaApi,
+  peekAndertonsApi,
+  type ImpactApiConfig,
+} from "@/lib/ingestion/andertons-impact"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 300
@@ -52,7 +57,7 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => ({}))) as {
-    mode?: "peek" | "pull"
+    mode?: "peek" | "pull" | "diagnose"
     startPage?: number
     pages?: number
     pageSize?: number
@@ -68,6 +73,20 @@ export async function POST(request: Request) {
   const seconds = () => Math.round((Date.now() - startedAt) / 100) / 10
 
   try {
+    /*
+     * Diagnose before peek in the branch order, because it is the one that
+     * works when peek does not. A 400 has several candidate causes and the
+     * status alone tells them apart from none of the others.
+     */
+    if (body.mode === "diagnose") {
+      return NextResponse.json({
+        mode: "diagnose",
+        seconds: seconds(),
+        catalogId: config.catalogId,
+        ...(await diagnoseAndertonsApi(config)),
+      })
+    }
+
     if (body.mode === "peek") {
       return NextResponse.json({ mode: "peek", seconds: seconds(), ...(await peekAndertonsApi(config)) })
     }

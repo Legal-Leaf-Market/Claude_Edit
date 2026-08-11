@@ -460,8 +460,154 @@ export async function fetchAndertonsCatalogue(config: FtpConfig): Promise<string
  */
 const IMPACT_API_BASE = "https://api.impact.com"
 
+/**
+ * The API version, sent explicitly on every request.
+ *
+ * Impact deprecated v11 and older in March 2022 and requires a version to be
+ * named, either per request or as an account-level default. Relying on the
+ * account default is the trap: it is set in a UI nobody here can see, so the
+ * same code answers differently for two accounts and the difference is
+ * invisible from the logs. `IrVersion` as a query parameter and `IR-Version`
+ * as a header are the two documented ways to say it; we send the parameter.
+ *
+ * Overridable because Impact retires versions on a schedule, the same reason
+ * GROQ_MODEL is overridable rather than compiled in.
+ */
+const IMPACT_API_VERSION = env.impact.apiVersion
+
+/**
+ * Impact's own default page size, used as ours.
+ *
+ * This module previously asked for 1000 on the strength of nothing, which is
+ * exactly the kind of guess CLAUDE.md forbids when binding columns and which
+ * is no more defensible here. 100 is the documented default, so it is the one
+ * size the endpoint is certain to accept.
+ */
+const IMPACT_DEFAULT_PAGE_SIZE = 100
+
+/**
+ * THE CEILING, and why it is a fact about the product rather than a tunable.
+ *
+ * Impact's catalogue Items endpoint cannot page beyond 20,000 records: a
+ * request for anything past it answers 400, not an empty page. Anderton's
+ * catalogue is 27,052 products, so PLAIN PAGING CANNOT REACH ALL OF IT. That
+ * is not a bug to route around, it is the documented reason the FTP drop
+ * exists for large catalogues, and it is why this module keeps both transports
+ * rather than replacing one with the other.
+ *
+ * The honest behaviour at the boundary is to stop and say so. Walking into it
+ * would turn a known limit into an opaque 400 three hundred pages deep, which
+ * is the same failure mode as a silently null column: nothing throws where the
+ * mistake was made.
+ */
+export const IMPACT_PAGING_CEILING = 20_000
+
 function impactAuthHeader(sid: string, token: string): string {
   return `Basic ${Buffer.from(`${sid}:${token}`).toString("base64")}`
+}
+
+/**
+ * Strip markup and clip, so an error body can be shown without burying it.
+ *
+ * Impact answers some failures with an HTML page and some with JSON. The
+ * original code refused to show the body at all for that reason, which is
+ * backwards: for a 400 the body is the ONLY thing that says which parameter
+ * was wrong. Status alone is what left a live 400 undiagnosable.
+ */
+function readableBody(text: string, limit = 500): string {
+  const flattened = text
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+  return flattened.length > limit ? `${flattened.slice(0, limit)}...` : flattened
+}
+
+export type ImpactResponse = {
+  ok: boolean
+  status: number
+  statusText: string
+  /** Parsed when the body was JSON, null otherwise. */
+  json: Record<string, unknown> | null
+  /** Always present, flattened and clipped, so a failure can be shown as-is. */
+  body: string
+  /** The URL actually requested, credentials never being in it. */
+  url: string
+}
+
+/**
+ * One request to Impact, with the response body kept whether or not it failed.
+ *
+ * Credentials travel in the Authorization header and never in the URL, so the
+ * echoed `url` is safe to put in an admin panel or a log line.
+ */
+async function impactApiGet(
+  config: ImpactApiConfig,
+  path: string,
+  params: Record<string, string> = {},
+  options: { omitVersion?: boolean } = {},
+): Promise<ImpactResponse> {
+  const url = new URL(path.startsWith("http") ? path : `${IMPACT_API_BASE}${path}`)
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value)
+  // A URL carried over from @nextpageuri may already name a version; setting
+  // it unconditionally would silently upgrade a cursor mid-walk.
+  if (!options.omitVersion && !url.searchParams.has("IrVersion")) {
+    url.searchParams.set("IrVersion", IMPACT_API_VERSION)
+  }
+
+  const response = await fetch(url, {
+    headers: {
+      authorization: impactAuthHeader(config.accountSid, config.authToken),
+      accept: "application/json",
+    },
+  })
+
+  const text = await response.text()
+  let json: Record<string, unknown> | null = null
+  try {
+    json = JSON.parse(text) as Record<string, unknown>
+  } catch {
+    json = null
+  }
+
+  return {
+    ok: response.ok,
+    status: response.status,
+    statusText: response.statusText,
+    json,
+    body: readableBody(text),
+    url: url.toString(),
+  }
+}
+
+/**
+ * Turn a status into the setting worth changing, the way explainFtpFailure does.
+ *
+ * The 400 is the one that needed this most. It is the status Impact returns
+ * for a bad parameter AND for paging past the 20,000 ceiling, so naming both
+ * candidates beside the server's own words is what makes it actionable.
+ */
+export function explainImpactStatus(status: number, catalogId: string): string {
+  switch (status) {
+    case 400:
+      return (
+        "Impact rejected the request itself rather than the credentials. The usual causes, in order: " +
+        `a PageSize the endpoint will not accept (its documented default is ${IMPACT_DEFAULT_PAGE_SIZE}), ` +
+        `paging past the ${IMPACT_PAGING_CEILING.toLocaleString()}-record ceiling on catalogue items, ` +
+        "or an API version this account cannot serve. The server's own words are below."
+      )
+    case 401:
+      return "The AccountSid or AuthToken was rejected. Both come from the Impact platform's API settings, and they are not the FTP pair."
+    case 403:
+      return "Authenticated, but this account may not read that catalogue. Check the catalogue belongs to a programme this partner account has joined."
+    case 404:
+      return `No catalogue ${catalogId} for this account. List the catalogues to see which ids this account can actually read.`
+    case 429:
+      return "Rate limited. Impact throttles per account, so a second pull running elsewhere will do this."
+    default:
+      return ""
+  }
 }
 
 export type ImpactApiConfig = {
@@ -535,48 +681,47 @@ function toInt(value: unknown): number | null {
  * response, because following the server's own cursor is more reliable than
  * reconstructing it, and Impact returns one when it has one.
  */
+export function itemsPath(config: ImpactApiConfig): string {
+  return `/Mediapartners/${encodeURIComponent(config.accountSid)}/Catalogs/${encodeURIComponent(config.catalogId)}/Items`
+}
+
 export async function fetchAndertonsApiPage(
   config: ImpactApiConfig,
   pathOrPage: number | string = 1,
-  pageSize = 1000,
+  pageSize = IMPACT_DEFAULT_PAGE_SIZE,
 ): Promise<ImpactPage> {
-  const url =
-    typeof pathOrPage === "string"
-      ? new URL(pathOrPage.startsWith("http") ? pathOrPage : `${IMPACT_API_BASE}${pathOrPage}`)
-      : new URL(
-          `${IMPACT_API_BASE}/Mediapartners/${encodeURIComponent(config.accountSid)}/Catalogs/${encodeURIComponent(config.catalogId)}/Items`,
-        )
-
-  if (typeof pathOrPage === "number") {
-    url.searchParams.set("Page", String(pathOrPage))
-    url.searchParams.set("PageSize", String(pageSize))
+  /*
+   * Refuse to ask for a page that cannot exist, rather than letting Impact
+   * answer 400 for it. The caller gets the limit named, which is the whole
+   * difference between "this catalogue is bigger than this transport" and an
+   * unexplained failure partway through a walk.
+   */
+  if (typeof pathOrPage === "number" && (pathOrPage - 1) * pageSize >= IMPACT_PAGING_CEILING) {
+    throw new Error(
+      `Page ${pathOrPage} at ${pageSize} per page starts past Impact's ${IMPACT_PAGING_CEILING.toLocaleString()}-record ` +
+        "ceiling on catalogue items, which the API answers with a 400. The catalogue beyond that point is reachable " +
+        "over the FTP drop, which is what that transport is for.",
+    )
   }
 
-  const response = await fetch(url, {
-    headers: {
-      authorization: impactAuthHeader(config.accountSid, config.authToken),
-      accept: "application/json",
-    },
-  })
+  const response =
+    typeof pathOrPage === "string"
+      ? await impactApiGet(config, pathOrPage)
+      : await impactApiGet(config, itemsPath(config), {
+          Page: String(pathOrPage),
+          PageSize: String(pageSize),
+        })
 
   if (!response.ok) {
-    /*
-     * Name the status rather than the body. Impact answers an auth failure
-     * with an HTML page in some deployments, and dumping that into an admin
-     * panel buries the one useful fact in markup.
-     */
-    const detail =
-      response.status === 401
-        ? "The AccountSid or AuthToken was rejected. Both come from the Impact platform's API settings."
-        : response.status === 403
-          ? "Authenticated, but this account is not permitted to read that catalogue. Check the catalogue id belongs to a programme this partner account has joined."
-          : response.status === 404
-            ? `No catalogue ${config.catalogId} for this account. The id is on the product catalogue page in the Impact platform.`
-            : ""
-    throw new Error(`Impact API returned ${response.status} ${response.statusText}. ${detail}`.trim())
+    const detail = explainImpactStatus(response.status, config.catalogId)
+    throw new Error(
+      `Impact API returned ${response.status} ${response.statusText}. ${detail}`.trim() +
+        (response.body ? `\n\nImpact said: ${response.body}` : "") +
+        `\n\nRequested: ${response.url}`,
+    )
   }
 
-  const body = (await response.json()) as Record<string, unknown>
+  const body = response.json ?? {}
   const found = findItemsArray(body)
 
   const envelopeKeys = Object.keys(body).filter((k) => !Array.isArray(body[k]))
@@ -590,6 +735,156 @@ export async function fetchAndertonsApiPage(
     envelopeKeys,
     itemsKey: found?.key ?? null,
   }
+}
+
+/**
+ * Every catalogue this account can actually read.
+ *
+ * The single most useful call when something is wrong, because it separates
+ * three failures a 400 or a 404 cannot: whether the credentials work at all,
+ * whether this partner account has joined the programme, and whether the
+ * catalogue id we hold is one of the ids it is allowed to name. A default of
+ * 30480 is a guess written down, and this is how it stops being a guess.
+ */
+export async function listImpactCatalogs(
+  config: ImpactApiConfig,
+): Promise<{ ok: boolean; status: number; catalogs: Record<string, string>[]; body: string }> {
+  const response = await impactApiGet(config, `/Mediapartners/${encodeURIComponent(config.accountSid)}/Catalogs`)
+  const found = response.json ? findItemsArray(response.json) : null
+
+  return {
+    ok: response.ok,
+    status: response.status,
+    catalogs: (found?.items ?? []).map((c) => stringifyValues(c as Record<string, unknown>)),
+    body: response.ok ? "" : response.body,
+  }
+}
+
+export type ImpactProbe = {
+  label: string
+  /** What this probe varies, so a reader can tell why it is in the list. */
+  varies: string
+  status: number
+  ok: boolean
+  records: number | null
+  note: string
+}
+
+/**
+ * Press once, learn which of the candidate causes is the real one.
+ *
+ * The FTP side already earned this pattern: probe-ftp opens the ports and
+ * reports what the server says rather than leaving somebody to guess between
+ * a wrong host, a wrong port and a wrong library. A 400 from this endpoint has
+ * the same problem, several plausible causes and no way to tell them apart
+ * from the status alone, so it gets the same treatment.
+ *
+ * Each probe changes exactly ONE thing against the call this module makes, so
+ * a green row is a direct answer rather than a hint. They run in sequence
+ * rather than at once because Impact rate limits per account, and a 429
+ * storming in halfway through would answer a question nobody asked.
+ *
+ * It writes nothing, and credentials stay in the Authorization header.
+ */
+export async function diagnoseAndertonsApi(config: ImpactApiConfig): Promise<{
+  probes: ImpactProbe[]
+  catalogs: Record<string, string>[]
+  verdict: string
+}> {
+  const probes: ImpactProbe[] = []
+
+  const run = async (
+    label: string,
+    varies: string,
+    params: Record<string, string>,
+    options: { omitVersion?: boolean } = {},
+  ) => {
+    try {
+      const response = await impactApiGet(config, itemsPath(config), params, options)
+      const found = response.json ? findItemsArray(response.json) : null
+      probes.push({
+        label,
+        varies,
+        status: response.status,
+        ok: response.ok,
+        records: found ? found.items.length : null,
+        note: response.ok ? "" : response.body,
+      })
+    } catch (error) {
+      probes.push({
+        label,
+        varies,
+        status: 0,
+        ok: false,
+        records: null,
+        note: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  const catalogList = await listImpactCatalogs(config)
+  probes.push({
+    label: "List this account's catalogues",
+    varies: "no catalogue id at all, so it tests the credentials alone",
+    status: catalogList.status,
+    ok: catalogList.ok,
+    records: catalogList.ok ? catalogList.catalogs.length : null,
+    note: catalogList.body,
+  })
+
+  await run("Items, documented defaults", `Page=1, PageSize=${IMPACT_DEFAULT_PAGE_SIZE}`, {
+    Page: "1",
+    PageSize: String(IMPACT_DEFAULT_PAGE_SIZE),
+  })
+  await run("Items, no paging parameters", "neither Page nor PageSize, so Impact picks", {})
+  await run("Items, the old PageSize", "PageSize=1000, the value that was failing", { Page: "1", PageSize: "1000" })
+  await run("Items, no API version", `IrVersion omitted rather than ${IMPACT_API_VERSION}`, {
+    Page: "1",
+    PageSize: String(IMPACT_DEFAULT_PAGE_SIZE),
+  }, { omitVersion: true })
+
+  return { probes, catalogs: catalogList.catalogs, verdict: verdictFor(probes, catalogList, config) }
+}
+
+/**
+ * Say what the probes mean in one sentence, ordered by what to fix first.
+ *
+ * Deliberately conservative: it reports what the rows actually show and says
+ * so when they disagree, rather than picking a story. A confident wrong
+ * diagnosis costs more than no diagnosis, which is the same reason the deal
+ * engine publishes no market price below MIN_SAMPLE_SIZE.
+ */
+function verdictFor(
+  probes: ImpactProbe[],
+  catalogList: { ok: boolean; status: number; catalogs: Record<string, string>[] },
+  config: ImpactApiConfig,
+): string {
+  const items = probes.filter((p) => p.label.startsWith("Items"))
+  const working = items.filter((p) => p.ok)
+
+  if (!catalogList.ok && catalogList.status === 401) {
+    return "The credentials themselves are being rejected, so nothing else in this list matters yet. IMPACT_ACCOUNT_SID and IMPACT_AUTH_TOKEN come from Impact's API settings page and are NOT the FTP pair."
+  }
+
+  if (catalogList.ok) {
+    const ids = catalogList.catalogs
+      .map((c) => c.Id ?? c.CatalogId ?? c.id)
+      .filter(Boolean)
+      .map(String)
+    if (ids.length > 0 && !ids.includes(String(config.catalogId))) {
+      return `The credentials work, but catalogue ${config.catalogId} is not one this account can read. It can read: ${ids.join(", ")}. Set IMPACT_ANDERTONS_CATALOG_ID to the right one.`
+    }
+  }
+
+  if (working.length === items.length && items.length > 0) {
+    return "Every variation succeeded, so whatever produced the 400 is not in this list. The likeliest remaining cause is paging past the 20,000-record ceiling on a later page rather than anything about page one."
+  }
+
+  if (working.length === 0) {
+    return "No variation of the items call succeeded. Read the note on each row: Impact's own words are the fastest route from here, and the catalogue listing above says whether the credentials are the problem."
+  }
+
+  return `${working.length} of ${items.length} variations worked: ${working.map((p) => p.varies).join("; ")}. The failing rows name what they changed, so the difference between them is the cause.`
 }
 
 /**
@@ -655,8 +950,15 @@ export async function fetchAndertonsApiRange(
   config: ImpactApiConfig,
   startPage = 1,
   pages = 5,
-  pageSize = 1000,
-): Promise<{ records: Record<string, string>[]; nextPage: number | null; total: number | null; totalPages: number | null }> {
+  pageSize = IMPACT_DEFAULT_PAGE_SIZE,
+): Promise<{
+  records: Record<string, string>[]
+  nextPage: number | null
+  total: number | null
+  totalPages: number | null
+  /** Set when the walk stopped at Impact's ceiling rather than at the end. */
+  ceilingReached?: boolean
+}> {
   const records: Record<string, string>[] = []
   let cursor: number | string = startPage
   let pageNumber = startPage
@@ -664,6 +966,16 @@ export async function fetchAndertonsApiRange(
   let totalPages: number | null = null
 
   for (let i = 0; i < pages; i++) {
+    /*
+     * Stop AT the ceiling rather than one page past it. Impact answers a
+     * request beyond 20,000 records with a 400, so walking into it would turn
+     * a known limit into a failed run that had already written most of a
+     * catalogue, and the status would say nothing about why.
+     */
+    if ((pageNumber - 1) * pageSize >= IMPACT_PAGING_CEILING) {
+      return { records, nextPage: null, total, totalPages, ceilingReached: true }
+    }
+
     const page = await fetchAndertonsApiPage(config, cursor, pageSize)
     records.push(...page.records)
     total = page.total ?? total
@@ -700,6 +1012,12 @@ export type AndertonsIngestOutcome = {
   wrote?: number
   /** False when there is more catalogue left to fetch. */
   done?: boolean
+  /**
+   * True when the API walk stopped at Impact's 20,000-record paging ceiling
+   * rather than at the end of the catalogue. Distinct from `done` because it
+   * is the one ending that must NOT expire missing rows.
+   */
+  ceilingReached?: boolean
 }
 
 function emptyStats(): UpsertStats {
@@ -839,11 +1157,11 @@ export async function ingestAndertonsViaApi(
   const run = await startRun("andertons", "andertons-catalogue-api")
 
   try {
-    const { records, nextPage, total, totalPages } = await fetchAndertonsApiRange(
+    const { records, nextPage, total, totalPages, ceilingReached } = await fetchAndertonsApiRange(
       config,
       startPage,
-      window.pages ?? 5,
-      window.pageSize ?? 1000,
+      window.pages ?? 20,
+      window.pageSize ?? IMPACT_DEFAULT_PAGE_SIZE,
     )
 
     /*
@@ -865,7 +1183,21 @@ export async function ingestAndertonsViaApi(
 
     const { resolved } = await resolveAndReprice(stats)
     const done = nextPage == null
-    if (done) await expirePastEndDate("andertons")
+
+    /*
+     * NEVER EXPIRE AFTER A CEILING STOP, and this is the sharp edge of the
+     * 20,000 limit rather than the limit itself.
+     *
+     * `done` means "the walk ended", and expiry reads it as "every row the
+     * catalogue still lists has now been written". Those are the same
+     * statement only when the walk ended because the catalogue ran out. When
+     * it ended at Impact's ceiling they are opposite: Anderton's publishes
+     * 27,052 products, so a ceiling stop has seen at most 20,000 of them and
+     * expiring here would retire the ~7,000 it never got to. They are live
+     * listings that would vanish from the site, and nothing would throw.
+     */
+    const complete = done && !ceilingReached
+    if (complete) await expirePastEndDate("andertons")
 
     await finishRun(run, {
       status: "ok",
@@ -873,7 +1205,17 @@ export async function ingestAndertonsViaApi(
       rowsUpserted: stats.inserted + stats.updated,
       rowsSkipped: stats.skipped,
       bytesDownloaded: 0,
-      detail: { resolved, priceChanges: stats.priceChanges, columns, startPage, nextPage, totalPages, done },
+      detail: {
+        resolved,
+        priceChanges: stats.priceChanges,
+        columns,
+        startPage,
+        nextPage,
+        totalPages,
+        done,
+        ceilingReached: Boolean(ceilingReached),
+        expired: complete,
+      },
     })
 
     return {
@@ -885,6 +1227,7 @@ export async function ingestAndertonsViaApi(
       wrote: rows.length,
       done,
       nextPage,
+      ceilingReached: Boolean(ceilingReached),
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

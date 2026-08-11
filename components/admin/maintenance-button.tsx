@@ -48,7 +48,7 @@ export function MaintenanceButton() {
  * thinks it binds.
  */
 function AndertonsApiButton() {
-  const [state, setState] = useState<"idle" | "peeking" | "running" | "done" | "error">("idle")
+  const [state, setState] = useState<"idle" | "peeking" | "diagnosing" | "running" | "done" | "error">("idle")
   const [message, setMessage] = useState<string | null>(null)
   const [detail, setDetail] = useState<string | null>(null)
   const [progress, setProgress] = useState<{ wrote: number; total: number } | null>(null)
@@ -102,7 +102,58 @@ function AndertonsApiButton() {
   }
 
   /**
-   * Page through the whole catalogue, five pages per request.
+   * Which of the candidate causes of a 400 is the real one.
+   *
+   * A 400 from this endpoint means a bad parameter OR paging past Impact's
+   * 20,000-record ceiling OR an API version this account cannot serve, and the
+   * status alone separates none of them. This varies one thing at a time and
+   * shows what came back, the same job "Diagnose the Anderton's connection"
+   * does for the FTP side.
+   */
+  async function diagnose() {
+    setState("diagnosing")
+    setMessage(null)
+    setDetail(null)
+    try {
+      const body = await call({ mode: "diagnose" })
+      const probes: {
+        label: string
+        varies: string
+        status: number
+        ok: boolean
+        records: number | null
+        note: string
+      }[] = body.probes ?? []
+      const catalogs: Record<string, string>[] = body.catalogs ?? []
+
+      setMessage(body.verdict ?? "No verdict returned.")
+      setDetail(
+        [
+          ...probes.flatMap((p) => [
+            `${p.ok ? "OK  " : "FAIL"} ${String(p.status).padEnd(4)} ${p.label}`,
+            `          varies: ${p.varies}`,
+            ...(p.records != null ? [`          records: ${p.records}`] : []),
+            ...(p.note ? [`          said: ${p.note}`] : []),
+            "",
+          ]),
+          catalogs.length ? `catalogues this account can read (${catalogs.length}):` : "",
+          ...catalogs.map(
+            (c) =>
+              `  ${c.Id ?? c.CatalogId ?? "?"}  ${c.Name ?? c.CatalogName ?? ""}  ${c.NumberOfItems ?? c.ItemCount ?? ""}`,
+          ),
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      )
+      setState("done")
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Something went wrong.")
+      setState("error")
+    }
+  }
+
+  /**
+   * Page through the whole catalogue.
    *
    * The loop lives here for the same reason the FTP one does: a function stops
    * at 300 seconds and the browser does not. Each call reports the page to
@@ -119,16 +170,21 @@ function AndertonsApiButton() {
     let written = 0
     let inserted = 0
     let updated = 0
+    let ceiling = false
 
     try {
+      // Page size and pages-per-call are the server's to choose: they follow
+      // Impact's documented default and its paging ceiling, neither of which
+      // is a thing a button should be asserting an opinion about.
       for (let guard = 0; guard < 60; guard++) {
-        const body = await call({ mode: "pull", startPage, pages: 5, pageSize: 1000 })
+        const body = await call({ mode: "pull", startPage })
         if (body.status === "failed") throw new Error(body.error ?? "The pull failed.")
         if (body.status === "skipped") throw new Error(body.reason ?? "Skipped.")
 
         written += body.wrote ?? 0
         inserted += body.stats?.inserted ?? 0
         updated += body.stats?.updated ?? 0
+        ceiling = ceiling || Boolean(body.ceilingReached)
         setProgress({ wrote: written, total: body.totalRows ?? 0 })
 
         if (body.done || body.nextPage == null) break
@@ -136,7 +192,11 @@ function AndertonsApiButton() {
       }
 
       setMessage(
-        `Wrote ${written.toLocaleString()} rows: ${inserted.toLocaleString()} new, ${updated.toLocaleString()} updated. Now run the rebuild at the bottom so they get priced.`,
+        `Wrote ${written.toLocaleString()} rows: ${inserted.toLocaleString()} new, ${updated.toLocaleString()} updated. ` +
+          (ceiling
+            ? "This stopped at Impact's 20,000-record paging ceiling rather than at the end of the catalogue, so the rest of it needs the FTP pull below. Nothing was expired, because the rows past the ceiling were never looked at. "
+            : "") +
+          "Now run the rebuild at the bottom so they get priced.",
       )
       setState("done")
     } catch (caught) {
@@ -145,7 +205,7 @@ function AndertonsApiButton() {
     }
   }
 
-  const busy = state === "running" || state === "peeking"
+  const busy = state === "running" || state === "peeking" || state === "diagnosing"
 
   return (
     <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
@@ -171,6 +231,13 @@ function AndertonsApiButton() {
             aria-hidden="true"
           />
           {state === "peeking" ? "Reading..." : "Check the schema"}
+        </button>
+        <button type="button" onClick={diagnose} disabled={busy} className="stomp stomp-ghost">
+          <Stethoscope
+            className={`h-3.5 w-3.5 ${state === "diagnosing" ? "animate-pulse" : ""}`}
+            aria-hidden="true"
+          />
+          {state === "diagnosing" ? "Probing..." : "Diagnose a failure"}
         </button>
         <button type="button" onClick={pull} disabled={busy} className="stomp">
           <Download

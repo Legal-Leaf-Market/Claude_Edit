@@ -555,6 +555,50 @@ with our own account credentials, serving the catalogue Anderton's publishes to
 partners for this purpose. That is a different thing entirely from the frontend
 Algolia index rejected for Guitar Center (section 2).
 
+**THE API CANNOT REACH THE WHOLE CATALOGUE, and this is why both transports
+stay.** Impact's catalogue Items endpoint refuses to page beyond 20,000
+records: a request past it answers 400 rather than an empty page. Anderton's
+publishes 27,052 products, so plain paging reaches at most about three
+quarters of it. That is not a bug to route around, it is the documented reason
+the FTP drop exists for large catalogues, and it settles the question of which
+transport is "the" one: neither. Two consequences are load bearing:
+
+- `fetchAndertonsApiRange` stops AT the ceiling and says so, rather than
+  walking into a 400 three hundred pages deep where the status would explain
+  nothing.
+- **A ceiling stop must never expire missing rows.** `done` means the walk
+  ended, and expiry reads it as "everything the catalogue lists has been
+  written". Those agree only when the walk ended because the catalogue ran
+  out. End at the ceiling and they are opposite, and expiring there retires
+  the ~7,000 products past it: live listings, gone from the site, nothing
+  thrown. `ceilingReached` exists solely to keep those two ideas apart.
+
+**Every request names its API version** (`IrVersion`, default 13, overridable
+via `IMPACT_API_VERSION`). Impact deprecated v11 and older in March 2022 and
+otherwise falls back to an account-level default set in a UI this repo cannot
+see, which is how identical code answers differently for two accounts with no
+visible cause.
+
+**Page size is Impact's documented default of 100, not a guess.** This module
+originally asked for 1000 on the strength of nothing, which is the same
+unearned assumption the alias table exists to prevent.
+
+**A failed request shows Impact's own words.** The first version named the
+status and deliberately threw the body away, on the grounds that an HTML error
+page buries the useful fact in markup. That reasoning is right about 401 and
+backwards about 400, which is the status Impact uses for every bad parameter:
+the body is the only thing that says WHICH one. Bodies are now flattened and
+clipped rather than discarded. A live 400 that could not be diagnosed from the
+error text is what paid for this.
+
+**`{"mode":"diagnose"}` is the 400's counterpart to `/api/admin/probe-ftp`.**
+A 400 has several plausible causes and the status separates none of them, so
+the diagnose mode varies exactly one thing per probe (documented defaults, no
+paging parameters, the old PageSize, no version) and lists the catalogues the
+account can actually read. That last one is what tells a wrong credential from
+a wrong catalogue id, and turns the 30480 default from a guess into a checked
+value. It writes nothing and keeps credentials in the Authorization header.
+
 **Check the schema before the first pull.** `{"mode":"peek"}` on
 `/api/admin/andertons-api`, surfaced as a button, reads one page, writes
 nothing, and lists every field name found beside the ones the alias table

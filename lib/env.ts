@@ -224,6 +224,17 @@ export const env = {
      * constant because the next Impact merchant will have a different one.
      */
     andertonsCatalogId: str("IMPACT_ANDERTONS_CATALOG_ID", "30480"),
+    /**
+     * Which API version to name on every request.
+     *
+     * Impact deprecated v11 and older in March 2022 and expects a version
+     * either per request or as an account-level default. Sending it per
+     * request is what stops two accounts with different UI defaults getting
+     * different answers from identical code. Overridable rather than compiled
+     * in for the same reason as GROQ_MODEL: versions get retired on a
+     * schedule, and the fix should be a setting rather than a deploy.
+     */
+    apiVersion: str("IMPACT_API_VERSION", "13"),
     get hasAndertonsApi(): boolean {
       return Boolean(env.impact.accountSid && env.impact.authToken && env.impact.andertonsCatalogId)
     },
