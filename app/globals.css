@@ -120,10 +120,13 @@
   --brand-led-dk: #12b45e;
 
   /* Enclosure metal, for anything that should feel like a machined object.
-     Deliberately dark in BOTH themes: a pedal is a dark thing on any stage. */
-  --metal-hi: #3a4045;
-  --metal: #23272b;
-  --metal-lo: #15181a;
+     Deliberately dark in BOTH themes, and deliberately darker than --surface
+     in this one: a pedal is a dark thing standing on a lighter board. The
+     gradient runs from above --surface at the top to well below it at the
+     bottom, which is what gives a button its dimension. */
+  --metal-hi: #3d454c;
+  --metal: #232a2f;
+  --metal-lo: #171c20;
 
   --gold: var(--brand-gold);
   --gold-dk: var(--brand-gold-dk);
@@ -137,21 +140,28 @@
   --copper-dk: var(--brand-gold-dk);
 
   /* --- graphite scale, dark theme ---
-     Six real steps. Product photos arrive cut out on white, and a neutral
-     grey plate separates them far better than a brown one did. */
-  --bg: #0d0f10;
-  --bg2: #141719;
-  --surface: #1a1e21;
-  --surface-2: #23282c;
-  --panel: rgba(26, 30, 33, 0.8);
-  --panel2: rgba(13, 15, 16, 0.92);
-  --glass: rgba(26, 30, 33, 0.58);
-  --glass-line: rgba(255, 194, 51, 0.2);
-  --line: #2b3136;
-  --line-strong: #3c444a;
-  --chip: #191d20;
-  --text: #eef1f4;
-  --dim: #8b949e;
+     A ROOM, NOT A VOID. The first version of this scale ran to #0d0f10, which
+     is near enough black that the page had no colour of its own and the gold
+     was doing all the work of making the site look like anything. These are
+     real greys: the tone of a studio seamless or a powder-coated rack, lit
+     rather than switched off.
+
+     Lifting the page also lifts the buttons. The metal tokens stay DARKER
+     than --surface on purpose, so a stompbox reads as a dark object sitting
+     on a lighter board, which is what a pedal actually looks like. */
+  --bg: #2a3136;
+  --bg2: #222930;
+  --surface: #333b41;
+  --surface-2: #3e474e;
+  --panel: rgba(51, 59, 65, 0.84);
+  --panel2: rgba(34, 41, 48, 0.92);
+  --glass: rgba(51, 59, 65, 0.62);
+  --glass-line: rgba(255, 194, 51, 0.24);
+  --line: #4b555d;
+  --line-strong: #636e77;
+  --chip: #2e353b;
+  --text: #f2f5f7;
+  --dim: #aab4bd;
 
   /* Contrast-critical hues, per theme. See the header note above. */
   --money: var(--sage);
@@ -172,10 +182,10 @@
   --header-h: 118px;
 
   /* --- page wash, per theme --- */
-  --wash-1: rgba(210, 112, 58, 0.1);
-  --wash-2: rgba(74, 222, 128, 0.06);
-  --texture-light: rgba(255, 255, 255, 0.014);
-  --texture-dark: rgba(0, 0, 0, 0.05);
+  --wash-1: rgba(255, 194, 51, 0.055);
+  --wash-2: rgba(36, 224, 122, 0.035);
+  --texture-light: rgba(255, 255, 255, 0.02);
+  --texture-dark: rgba(0, 0, 0, 0.06);
 
   /* --- legacy aliases, so ~300 existing var() call sites keep working --- */
   --tweed: var(--bg2);
@@ -190,7 +200,7 @@
   --foreground: var(--text);
   --card: var(--glass);
   --card-foreground: var(--text);
-  --popover: #1c1712;
+  --popover: #333b41;
   --popover-foreground: var(--text);
   --primary: var(--copper);
   --primary-foreground: #17100a;
@@ -1711,4 +1721,19 @@
 [data-theme='light'] .readout {
   background: #fff;
   box-shadow: inset 0 1px 2px rgba(20, 30, 40, 0.06);
+}
+
+/* A destructive enclosure. Red face, red LED, and it keeps its own colour
+   rather than inheriting the brass edge: a delete button that looks like
+   every other button is a bug waiting to happen. */
+.stomp-destructive {
+  --stomp-edge: color-mix(in srgb, var(--red) 62%, var(--line-strong));
+  --stomp-face-hi: #6b2b28;
+  --stomp-face: #4d1e1c;
+  --stomp-face-lo: #331312;
+  --stomp-ink: #ffe6e4;
+  --stomp-led: var(--red);
+}
+.stomp-destructive:hover {
+  border-color: var(--red);
 }

@@ -3,52 +3,80 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 /*
- * Two shapes, matching the sister sites rather than one radius for everything.
+ * The shared button, now speaking the site's own control language.
  *
- * The money action is a SAGE gradient, not the site accent. Green is the
- * family's "go" colour (Nicotia's .addcart, Legal-Leaf's before it), and
- * keeping the buy button green everywhere means the one button that spends
- * money looks the same on all four sites. The site accent stays on identity
- * and navigation, so the two never compete.
+ * This used to carry the family's shapes: a sage gradient for the money
+ * action, full pills for navigation, a copper accent variant. Those matched
+ * the sister sites, which is exactly the resemblance the redesign set out to
+ * break, and this file is the highest-leverage place to break it: every page
+ * that renders <Button> converts at once.
  *
- * Navigation-shaped variants (outline, ghost) are full pills; the commerce
- * variants keep a 10px radius so a wide CTA does not turn into a lozenge.
+ * So the variants map onto the stompbox classes in globals.css rather than
+ * redefining a parallel set of styles here. globals.css stays the single
+ * source of truth, because plenty of buttons on this site are server-rendered
+ * anchors or third-party components that can only opt in with a class name.
+ *
+ * WHAT MAPS TO WHAT, and the reasoning is the same as components/ui/stomp.tsx:
+ *
+ *   default      the green enclosure. ONE per view: it is the thing you
+ *                actually want pressed, and two of them means neither reads
+ *                as primary
+ *   accent       a dark enclosure with a brass edge, for real actions that
+ *                are not THE action
+ *   outline      the same, without an LED, for rows of sibling controls where
+ *                six lit LEDs would be a runway
+ *   ghost        no enclosure at all, for things that would be text links if
+ *                they did not need a hit target
+ *   subtle       ghost with a filled rest state
+ *   destructive  keeps its own red, because a delete button that looks like
+ *                every other button is a bug waiting to happen
+ *
+ * Sizes map to the stomp size classes, so padding and type scale stay in one
+ * place. `icon` is the exception: a square icon button is a KNOB, not a
+ * stompbox, and it gets the knurled treatment instead.
  */
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:pointer-events-none disabled:opacity-50",
-  {
-    variants: {
-      variant: {
-        default:
-          "rounded-[10px] bg-gradient-to-r from-[var(--sage-dk)] to-[var(--sage)] text-[#04140a] shadow-[0_4px_14px_rgba(34,197,94,.2)] hover:brightness-110 hover:shadow-[0_6px_20px_rgba(34,197,94,.35)]",
-        accent:
-          "rounded-[10px] bg-[var(--copper)] text-[var(--primary-foreground)] hover:bg-[var(--amber-soft)]",
-        outline:
-          "rounded-full border border-[var(--line)] bg-[var(--chip)] text-[var(--foreground)] hover:border-[var(--gold)] hover:text-[var(--gold)]",
-        ghost: "rounded-full bg-transparent text-[var(--foreground)] hover:bg-[var(--secondary)]",
-        subtle:
-          "rounded-full bg-[var(--secondary)] text-[var(--foreground)] hover:bg-[var(--accent)]",
-        destructive: "rounded-[10px] bg-[var(--destructive)] text-[#2a0d0d] hover:opacity-90",
-      },
-      size: {
-        sm: "h-8 px-3 text-xs",
-        default: "h-10 px-4 text-[13px] tracking-[0.02em]",
-        lg: "h-12 px-6 text-sm tracking-[0.03em]",
-        icon: "h-9 w-9",
-      },
+const buttonVariants = cva("", {
+  variants: {
+    variant: {
+      default: "stomp stomp-go",
+      accent: "stomp",
+      outline: "stomp stomp-plain",
+      ghost: "stomp stomp-ghost",
+      subtle: "stomp stomp-ghost bg-[var(--secondary)]",
+      destructive: "stomp stomp-destructive",
     },
-    defaultVariants: { variant: "default", size: "default" },
+    size: {
+      sm: "stomp-sm",
+      default: "",
+      lg: "stomp-lg",
+      icon: "",
+    },
   },
-)
+  compoundVariants: [
+    /*
+     * An icon-sized button is a knob, whatever variant was asked for. The
+     * stomp classes are dropped entirely rather than layered under .knob,
+     * since a round knurled control has no use for an enclosure's border,
+     * silkscreen line or LED.
+     */
+    { size: "icon", class: "!rounded-full" },
+  ],
+  defaultVariants: { variant: "default", size: "default" },
+})
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {}
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => (
-    <button ref={ref} className={cn(buttonVariants({ variant, size }), className)} {...props} />
-  ),
+  ({ className, variant, size, ...props }, ref) => {
+    // Square icon buttons become knobs. Handled here rather than in cva so the
+    // stomp classes are genuinely absent rather than overridden.
+    if (size === "icon") {
+      return <button ref={ref} className={cn("knob", className)} {...props} />
+    }
+    return <button ref={ref} className={cn(buttonVariants({ variant, size }), className)} {...props} />
+  },
 )
 Button.displayName = "Button"
 

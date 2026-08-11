@@ -38,10 +38,76 @@ type MarkProps = {
 }
 
 /**
- * The enclosure mark on its own: favicon, app icon, avatar, the tight corner
- * of a mobile masthead.
+ * THE MARK: a tuning fork in a ring.
+ *
+ * This is the site's identity and the thing in the favicon. It was the
+ * original mark, it was replaced during the redesign by a pedal enclosure
+ * containing a guitar, and it was put back because it was simply better.
+ *
+ * Worth writing down WHY, because the enclosure mark was the more elaborate
+ * drawing and elaborate is easy to mistake for better:
+ *
+ *   IT SURVIVES 16 PIXELS. Two tines, a stem and a ring. The enclosure mark
+ *   had a guitar inside a box inside a border, and at favicon size all three
+ *   collapsed into a smudge with a green dot on it.
+ *
+ *   IT COVERS THE WHOLE CATALOGUE. A tuning fork means pitch, and pitch is
+ *   every instrument here. A guitar in a stompbox means guitar pedals, which
+ *   is one shelf of a shop that also sells drums, mics, keys and PA.
+ *
+ *   IT IS NOT A PICTURE OF THE PRODUCT. Marks that draw the product date
+ *   badly and compete with the photography they sit next to.
+ *
+ * The pedal-enclosure drawing is kept below as `GearAvailEnclosureMark`. It is
+ * genuinely good at large sizes and belongs to the builder rather than to the
+ * brand.
  */
-export function GearAvailMark({ size = 40, className, flat = false }: MarkProps) {
+export function GearAvailMark({ size = 40, className }: MarkProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      className={className}
+      role="img"
+      aria-label="Gear Avail"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle
+        cx="16"
+        cy="16"
+        r="14"
+        stroke="var(--brand-gold, #ffc233)"
+        strokeWidth="1.6"
+        opacity="0.55"
+      />
+      {/* Two tines rising from a stem through the centre. */}
+      <path
+        d="M11.5 9v7.5a4.5 4.5 0 0 0 9 0V9"
+        stroke="var(--brand-gold, #ffc233)"
+        strokeWidth="2.1"
+        strokeLinecap="round"
+      />
+      <path
+        d="M16 21v5.5"
+        stroke="var(--brand-gold, #ffc233)"
+        strokeWidth="2.1"
+        strokeLinecap="round"
+      />
+      <circle cx="16" cy="16" r="1.4" fill="var(--brand-gold, #ffc233)" />
+    </svg>
+  )
+}
+
+/**
+ * The pedal enclosure with a guitar on its face.
+ *
+ * No longer the brand mark (see `GearAvailMark`), kept because it is the right
+ * illustration for the board builder, where the subject genuinely is a
+ * stompbox and there is room to render it at a size that reads.
+ */
+export function GearAvailEnclosureMark({ size = 40, className, flat = false }: MarkProps) {
   const glowId = "ga-led-glow"
   const faceId = "ga-face"
 

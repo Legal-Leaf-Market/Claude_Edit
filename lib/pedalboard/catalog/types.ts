@@ -197,7 +197,11 @@ export type BoardRail = {
  */
 export type SupplyOutput = {
   count: number
-  /** Every voltage this output can be set to. A fixed output has one entry. */
+  /**
+   * Every voltage this output can be set to, so more than one entry IS the
+   * switchable flag. A separate boolean would be a second source of truth for
+   * the same fact and would eventually disagree with this array.
+   */
   volts: number[]
   /** Maximum current per output at the nominal voltage. */
   ma: number
@@ -212,6 +216,13 @@ export type SupplySpec = {
   brand: string
   model: string
   outputs: SupplyOutput[]
+  /**
+   * How much to trust the output table above. Supplies vary the per-output
+   * current far more than pedals vary their draw, and a plan built on a
+   * guessed output map is worse than no plan, so the planner says which
+   * supplies it is confident about.
+   */
+  source: SpecSource
   /**
    * True when every output is transformer or converter isolated from every
    * other. This is the whole reason to buy a brick rather than a daisy chain,
