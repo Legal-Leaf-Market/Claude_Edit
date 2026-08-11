@@ -149,3 +149,67 @@ describe("explainFtpFailure", () => {
     expect(explainFtpFailure("something nobody has seen before", "h")).toMatch(/300 seconds/)
   })
 })
+
+/**
+ * SSH failures, which this explainer could not read at all until the drop
+ * turned out to be SFTP.
+ *
+ * Every branch here was originally written against FTP reply codes, so the
+ * first real SFTP failure fell through to the generic ending. That ending
+ * said "if it failed fast, the message above is the whole story", which reads
+ * like a verdict and was actually a shrug. These pin the four SSH failures
+ * worth telling apart, and all four are distinguished by what they imply
+ * about the CREDENTIAL: two of them mean it worked.
+ */
+describe("explainFtpFailure on the SFTP transport", () => {
+  const HOST = "products.impact.com"
+
+  it("separates a rejected SSH login from a network problem", () => {
+    const explained = explainFtpFailure("All configured authentication methods failed", HOST)
+    expect(explained).toMatch(/rejected the login/i)
+    expect(explained).toMatch(/Email Product Catalog FTP Username and Password/)
+  })
+
+  /*
+   * The one that would otherwise take longest to guess: ssh2 authenticates by
+   * password here, and a key-based account fails identically to a wrong
+   * password with nothing in the message saying so.
+   */
+  it("raises the possibility of a key rather than a password", () => {
+    expect(explainFtpFailure("All configured authentication methods failed", HOST)).toMatch(/key/i)
+  })
+
+  /*
+   * The most misleading fast failure available: it happens AFTER a successful
+   * login, so blaming the credential sends the reader at the wrong thing.
+   */
+  it("says the login worked when the directory is the thing missing", () => {
+    const explained = explainFtpFailure("No such file /Andertons-Music-Company/", HOST)
+    expect(explained).toMatch(/SUCCEEDED|succeeded/)
+    expect(explained).toMatch(/IMPACT_ANDERTONS_FTP_PATH/)
+  })
+
+  it("says the login worked when the directory is unreadable", () => {
+    expect(explainFtpFailure("Permission denied", HOST)).toMatch(/succeeded/i)
+  })
+
+  it("names an algorithm mismatch as configuration rather than credentials", () => {
+    expect(explainFtpFailure("Handshake failed: no matching key exchange algorithm", HOST)).toMatch(
+      /mismatch|configuration/i,
+    )
+  })
+
+  /*
+   * The FTP branches still have to work: the probe reads raw banners and can
+   * still surface a 431 from port 21.
+   */
+  it("still routes the FTP reply codes it was written for", () => {
+    expect(explainFtpFailure("431 Service is unavailable", HOST)).toMatch(/before any login/i)
+    expect(explainFtpFailure("530 Access denied", HOST)).toMatch(/rejected the login/i)
+  })
+
+  it("admits when it does not recognise a failure, rather than implying it is obvious", () => {
+    const explained = explainFtpFailure("something nobody has seen before", HOST)
+    expect(explained).toMatch(/not one this explainer recognises/i)
+  })
+})

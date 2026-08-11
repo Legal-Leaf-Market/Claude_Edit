@@ -170,6 +170,45 @@ export function interpret(ports: PortProbe[]): string {
  */
 export function explainFtpFailure(message: string, host: string): string {
   /*
+   * SSH FIRST, because the transport is SFTP now and these branches were all
+   * written for FTP reply codes.
+   *
+   * This function fell through to its generic ending on the first real SFTP
+   * failure, which is the same staleness it exists to prevent: an explainer
+   * that silently stops explaining is worse than no explainer, because the
+   * fallback text ("if it failed fast, the message above is the whole story")
+   * reads like a considered verdict rather than a shrug.
+   */
+  if (/All configured authentication methods failed/i.test(message)) {
+    return [
+      `${host} accepted the SSH connection and rejected the login, so the host, the port and the network are all fine and this is the credential alone.`,
+      `Two things to check, in this order. First, that the pair came from "Email Product Catalog FTP Username and Password" in the Impact platform (Technical Settings permission required) rather than being the Impact account login: they are different credentials and only the mailed pair works here.`,
+      `Second, whether Impact issued a KEY rather than a password for this account. This client currently authenticates by password only, and a key would fail in exactly this way with nothing in the message to say so.`,
+    ].join(" ")
+  }
+
+  if (/no matching (key exchange|host key|cipher|MAC)/i.test(message)) {
+    return `${host} is running Apache SSHD and could not agree an algorithm with this client. That is a configuration mismatch rather than a credential problem: the fix is naming the algorithms the server offers, and the message above says which family failed.`
+  }
+
+  if (/Timed out while waiting for handshake/i.test(message)) {
+    return `The TCP connection to ${host} opened but no SSH handshake followed, which usually means the port is right for something that is not SSH. Press "Ask the server" below: it reads the banner on 21, 990 and 22 without sending a credential.`
+  }
+
+  /*
+   * An SFTP list of a directory that is not there throws ENOENT rather than
+   * anything resembling an FTP path error, and it happens after a SUCCESSFUL
+   * login, which makes it one of the more misleading fast failures available.
+   */
+  if (/No such file|ENOENT/i.test(message)) {
+    return `The SSH login SUCCEEDED and the path is what failed: ${host} has no such directory. IMPACT_ANDERTONS_FTP_PATH is the thing to change, and the "Download via FTP" panel in the Impact platform names the real one. Press "List the drop" after changing it.`
+  }
+
+  if (/Permission denied/i.test(message)) {
+    return `The SSH login succeeded but this account may not read that directory. That is a permissions question for Impact rather than a setting here: the credential works, so ask which path it is entitled to.`
+  }
+
+  /*
    * RFC 2228's security range. 431 in particular is the reply to AUTH TLS, so
    * it is reached BEFORE any credential is sent and cannot be a login problem
    * however much the prose sounds like one.
@@ -206,7 +245,13 @@ export function explainFtpFailure(message: string, host: string): string {
     return "The login worked and the directory is readable, so this is the path rather than the connection. The message above lists what was actually in it."
   }
 
-  return "If this ran for close to 300 seconds it timed out and the work belongs on the worker. If it failed fast, the message above is the whole story."
+  /*
+   * The honest ending: this function did not recognise the failure. Say that,
+   * rather than implying the message was self-explanatory. An unrecognised
+   * SSH error landing here is a prompt to add a branch above, which is exactly
+   * what the first real SFTP failure turned out to need.
+   */
+  return "This failure is not one this explainer recognises, which on the SFTP transport usually means a new branch is needed above rather than that the message is self-explanatory. If it ran for close to 300 seconds it timed out and the work belongs on the worker; if it failed fast, quote the message verbatim and it can be routed properly."
 }
 
 /**
