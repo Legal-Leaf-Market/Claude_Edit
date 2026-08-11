@@ -4,26 +4,36 @@ import { useEffect, useState } from "react"
 import { Monitor, Moon, Sun } from "lucide-react"
 import { applyTheme, readStoredChoice, resolveTheme, type ThemeChoice } from "@/lib/theme"
 
-const ORDER: ThemeChoice[] = ["system", "light", "dark"]
+/**
+ * A three-way pickup selector, for the three theme states.
+ *
+ * The old control was a circular icon button that cycled system, light, dark.
+ * It worked and it was the same widget every website has. A guitarist already
+ * owns a three-position selector: it is the switch on a Les Paul, and it does
+ * exactly this job, which is choosing one of three states with the position of
+ * a lever telling you which.
+ *
+ * So the lever slides. Left is dark, right is light, and the middle detent is
+ * "follow my machine", which is the correct place for it because it sits
+ * between the two things it might resolve to.
+ *
+ * ACCESSIBILITY: three real buttons in a group rather than one button that
+ * cycles. A cycling button forces a screen reader user to press up to three
+ * times and listen to the label change to reach a known state; three buttons
+ * let anyone jump straight to the one they want. The lever is decorative and
+ * `aria-hidden`, since the pressed state is already on the buttons.
+ */
+
+const ORDER = ["dark", "system", "light"] as const
 
 const META: Record<ThemeChoice, { label: string; icon: typeof Sun }> = {
-  system: { label: "Match system", icon: Monitor },
-  light: { label: "Light", icon: Sun },
   dark: { label: "Dark", icon: Moon },
+  system: { label: "Match my system", icon: Monitor },
+  light: { label: "Light", icon: Sun },
 }
 
-/**
- * Cycles system -> light -> dark. A three-way cycle rather than a switch
- * because "system" is a real state here (see lib/theme.ts) and a two-position
- * switch has nowhere to put it.
- *
- * Renders a fixed-size placeholder until mounted. The server has no idea which
- * theme the inline script picked, so rendering the real icon on the server
- * would either mismatch on hydration or force the whole masthead dynamic; an
- * empty box of the same size avoids both without the layout shifting.
- */
 export function ThemeToggle({ className = "" }: { className?: string }) {
-  const [choice, setChoice] = useState<ThemeChoice>("system")
+  const [choice, setChoice] = useState<ThemeChoice>("dark")
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -31,9 +41,9 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     setMounted(true)
   }, [])
 
-  // Follow the OS while the choice is "system". Without this a visitor who
-  // switches their laptop to dark at sunset keeps the light theme until they
-  // reload, which reads as the toggle being broken.
+  // Follow the OS while the choice is "system". Without this, someone whose
+  // laptop flips to dark at sunset keeps the light theme until they reload,
+  // which reads as the switch being broken.
   useEffect(() => {
     if (choice !== "system" || typeof window === "undefined") return
     const query = window.matchMedia("(prefers-color-scheme: light)")
@@ -42,27 +52,52 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     return () => query.removeEventListener("change", onChange)
   }, [choice])
 
-  const { label, icon: Icon } = META[choice]
-
-  function cycle() {
-    const next = ORDER[(ORDER.indexOf(choice) + 1) % ORDER.length]
+  function select(next: ThemeChoice) {
     setChoice(next)
     applyTheme(next)
   }
 
+  /*
+   * A same-size placeholder until mounted. The server cannot know which theme
+   * the inline script picked, so rendering the real lever position on the
+   * server would either mismatch on hydration or force the masthead dynamic.
+   */
   if (!mounted) {
-    return <div className={`h-9 w-9 ${className}`} aria-hidden="true" />
+    return <div className={`h-[30px] w-[86px] ${className}`} aria-hidden="true" />
   }
 
+  const index = ORDER.indexOf(choice as (typeof ORDER)[number])
+
   return (
-    <button
-      type="button"
-      onClick={cycle}
-      title={`Theme: ${label}${choice === "system" ? ` (${resolveTheme("system")})` : ""}. Click to change.`}
-      aria-label={`Change theme. Currently: ${label}`}
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--copper)] hover:text-[var(--text)] ${className}`}
+    <div
+      role="group"
+      aria-label="Theme"
+      className={`pickup ${className}`}
+      data-position={index < 0 ? 0 : index}
     >
-      <Icon className="h-4 w-4" aria-hidden="true" />
-    </button>
+      {/* The lever. Decorative: the pressed state below is the real signal. */}
+      <span className="pickup-lever" aria-hidden="true" />
+      {ORDER.map((value) => {
+        const { label, icon: Icon } = META[value]
+        const active = value === choice
+        return (
+          <button
+            key={value}
+            type="button"
+            onClick={() => select(value)}
+            aria-pressed={active}
+            title={
+              value === "system"
+                ? `Match my system (currently ${resolveTheme("system")})`
+                : label
+            }
+            aria-label={label}
+            className="pickup-seg"
+          >
+            <Icon className="h-[13px] w-[13px]" aria-hidden="true" />
+          </button>
+        )
+      })}
+    </div>
   )
 }
