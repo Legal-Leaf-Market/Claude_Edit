@@ -213,6 +213,53 @@ export const NAV_SECTIONS: NavSection[] = [
       },
     ],
   },
+
+  /*
+   * ONE MERCHANT WITH ITS OWN SECTION, and why that is not the ranking by
+   * payout this site promises never to do.
+   *
+   * The test is what would happen if Anderton's paid nothing: this section
+   * would still be here, because both facts behind it would still hold. It is
+   * far and away the largest catalogue on the site, and it ships to the UK
+   * ONLY, which means every other surface here HIDES it from most visitors
+   * under section 15. Regional hiding is honest but lossy, and the visitor it
+   * costs most is the UK shopper, who is exactly the person it was never
+   * meant to affect. This section is that repair.
+   *
+   * Nothing under it reads the sixteen brands Anderton's pays 4% on. Rig
+   * ordering is stock coverage and the channel panel is counted from what got
+   * talked about.
+   */
+  {
+    id: "uk",
+    label: "UK",
+    href: "/uk",
+    match: ["/uk"],
+    columns: [
+      {
+        title: "Anderton's",
+        links: [
+          { href: "/uk", label: "The UK section", hint: "Why this exists, and what is in it" },
+          { href: "/shop/andertons", label: "The whole catalogue", hint: "Around 27,000 products, priced in pounds" },
+          { href: "/uk/rigs", label: "Rigs you can build here", hint: "Documented boards, crossed against live stock" },
+        ],
+        more: { href: "/shop", label: "Every store" },
+      },
+      {
+        title: "Build a board",
+        links: [
+          { href: "/pedalboard", label: "The planner", hint: "Chain order, power draw and cable count" },
+          { href: "/rigs", label: "Every artist rig", hint: "All stores, not only the UK" },
+        ],
+      },
+    ],
+    feature: {
+      title: "Ships to the UK only",
+      body: "Anderton's deliver within the United Kingdom, so search hides them from everyone else by default. Nothing here is hidden from you.",
+      href: "/uk",
+      cta: "Open the section",
+    },
+  },
 ]
 
 /**

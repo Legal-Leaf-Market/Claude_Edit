@@ -37,6 +37,11 @@ const STATIC_ROUTES = new Set([
   "/list-your-shop",
   "/flip-match",
   "/unsubscribe",
+  // The Anderton's UK section. Listed here for the same reason as every other
+  // static route: nav.ts may only point at pages that exist, and this set is
+  // what enforces it.
+  "/uk",
+  "/uk/rigs",
 ])
 
 function isKnownRoute(href: string): boolean {

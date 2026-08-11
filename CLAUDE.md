@@ -950,3 +950,66 @@ engine.
   indexable, keep `/go` in the DOM, share the TypeScript engines with the
   server, and be reachable by a screen reader (section 16).
 - Do NOT point the test suite at a database you care about; it truncates.
+- Do NOT render a YouTube comment's text or its author's name anywhere. The
+  reader aggregates; counts and matched gear names are all that may leave it
+  (section 19).
+- Do NOT call the YouTube API from a request-scoped path. The quota is 10,000
+  units a day for the whole project and comment reads cost a unit per video,
+  so it belongs behind a long `revalidate` (section 19).
+- Do NOT drop an out-of-stock slot from a store rig page. Showing only what
+  the store happens to have redraws somebody's signal chain into the
+  inventory, which is section 15's dishonesty performed on the rig instead of
+  the listing (section 19).
+
+---
+
+## 19. Anderton's TV, and the UK section
+
+`lib/ingestion/andertons-youtube.ts` reads the channel; `lib/andertons/`
+turns it and the catalogue into pages under `/uk`.
+
+**Why one merchant has a section at all**, when section 17 says commission
+never affects ranking and payout is not why a merchant is listed. The test is
+what would happen if Anderton's paid nothing, and the answer is that this
+section would still be here, because both facts behind it would still hold:
+
+1. It is by far the largest catalogue on the site, around 27,000 products.
+2. It ships to the UK ONLY, so under section 15 every other surface here HIDES
+   it from most visitors.
+
+The second is the real reason. Regional hiding is honest but lossy, and the
+person it costs most is the UK shopper, who is exactly who it was never meant
+to affect. `/uk` is that repair. **Nothing under it reads the sixteen brands
+Anderton's pays 4% on**: rig ordering is stock coverage, and the channel panel
+is counted from what got talked about.
+
+**The store rig page shows the gaps.** `/uk/rigs/[slug]` lists every slot on a
+documented board in signal-chain order whether or not Anderton's stocks it,
+and says which ones they do not. Dropping the misses would quietly redraw a
+signal chain into whatever happened to be in stock. The subtotal covers the
+stocked slots ONLY and the copy says so in the same breath, for the same
+reason section 8 publishes no market price below `MIN_SAMPLE_SIZE`: a number
+that reads like the price of the board while silently omitting three pedals is
+a guess dressed up as a measurement.
+
+**The quota is the design constraint on the channel panel.** 10,000 units a
+day for the entire project, and comment threads cost a unit per video, so
+reading 25 videos with their comments is ~26 units. Once a day that is
+nothing; per request it is fatal, and the failure lands on every other
+YouTube-backed thing on the site rather than on the page that caused it. So it
+sits behind an hour-long `revalidate` and caps its fan-out, and an unset
+`YOUTUBE_API_KEY` renders no panel rather than a broken one, the same
+supported state as an unset `GROQ_API_KEY`.
+
+**Comments are counted, never quoted.** No comment text, no author name, no
+attribution of an opinion to a person. What leaves the reader is gear names
+and integers. `audienceFavourites` is the output worth having and the only
+reason to read comments at all: gear the audience raises more often than the
+channel does is a signal no product feed and no view count contains.
+
+**Adding any static route means three files move together**, and the nav test
+enforces it: `lib/nav.ts`, `app/sitemap.ts`, and the `STATIC_ROUTES` set in
+`tests/nav.test.ts`. `/uk` and `/uk/rigs` are in the sitemap unconditionally
+because they carry their own copy; `/uk/rigs/[slug]` is deliberately absent,
+since one of those with no stock is exactly the empty inventory page the
+per-store gate exists to keep out.
