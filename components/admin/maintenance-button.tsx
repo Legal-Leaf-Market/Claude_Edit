@@ -26,9 +26,188 @@ type Result = {
 export function MaintenanceButton() {
   return (
     <div className="space-y-3">
+      <AndertonsApiButton />
       <AndertonsButton />
       <ProbeButton />
       <RebuildButton />
+    </div>
+  )
+}
+
+/**
+ * The Anderton's catalogue over Impact's REST API.
+ *
+ * Placed ABOVE the FTP pull because it is the one to try first: it needs two
+ * values from Impact's API settings page rather than a mailed-out FTP pair and
+ * a host that is only visible inside their platform, and it is plain HTTPS
+ * from a serverless function rather than a control connection plus passive
+ * data ports.
+ *
+ * Peek before pull, deliberately. Reading the field names off one real page
+ * costs a second and is the only way to know the normaliser binds what it
+ * thinks it binds.
+ */
+function AndertonsApiButton() {
+  const [state, setState] = useState<"idle" | "peeking" | "running" | "done" | "error">("idle")
+  const [message, setMessage] = useState<string | null>(null)
+  const [detail, setDetail] = useState<string | null>(null)
+  const [progress, setProgress] = useState<{ wrote: number; total: number } | null>(null)
+
+  async function call(payload: Record<string, unknown>) {
+    const response = await fetch("/api/admin/andertons-api", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+    const body = await response.json()
+    if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`)
+    return body
+  }
+
+  async function peek() {
+    setState("peeking")
+    setMessage(null)
+    setDetail(null)
+    try {
+      const body = await call({ mode: "peek" })
+      const unbound: string[] = body.unboundFields ?? []
+      const boundPairs = Object.entries(body.bound ?? {}) as [string, string | null][]
+      const missing = boundPairs.filter(([, header]) => !header).map(([field]) => field)
+
+      setMessage(
+        `Reached the catalogue: ${body.total?.toLocaleString() ?? "an unknown number of"} items` +
+          `${body.totalPages ? ` across ${body.totalPages} pages` : ""}, ` +
+          `${body.sampleSize} read as a sample. ` +
+          (missing.length
+            ? `${missing.length} field(s) this parser wants are NOT in the response: ${missing.join(", ")}.`
+            : "Every field the parser wants is present."),
+      )
+      setDetail(
+        [
+          `items live under: ${body.itemsKey ?? "(not found)"}`,
+          `envelope keys: ${(body.envelopeKeys ?? []).join(", ") || "(none)"}`,
+          "",
+          "bound:",
+          ...boundPairs.map(([field, header]) => `  ${field.padEnd(16)} ${header ?? "-- NOT FOUND --"}`),
+          "",
+          `present but unused (${unbound.length}):`,
+          ...unbound.map((f) => `  ${f}`),
+        ].join("\n"),
+      )
+      setState("done")
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Something went wrong.")
+      setState("error")
+    }
+  }
+
+  /**
+   * Page through the whole catalogue, five pages per request.
+   *
+   * The loop lives here for the same reason the FTP one does: a function stops
+   * at 300 seconds and the browser does not. Each call reports the page to
+   * resume from, and every write is keyed, so a refresh mid-run costs time and
+   * nothing else.
+   */
+  async function pull() {
+    setState("running")
+    setMessage(null)
+    setDetail(null)
+    setProgress(null)
+
+    let startPage = 1
+    let written = 0
+    let inserted = 0
+    let updated = 0
+
+    try {
+      for (let guard = 0; guard < 60; guard++) {
+        const body = await call({ mode: "pull", startPage, pages: 5, pageSize: 1000 })
+        if (body.status === "failed") throw new Error(body.error ?? "The pull failed.")
+        if (body.status === "skipped") throw new Error(body.reason ?? "Skipped.")
+
+        written += body.wrote ?? 0
+        inserted += body.stats?.inserted ?? 0
+        updated += body.stats?.updated ?? 0
+        setProgress({ wrote: written, total: body.totalRows ?? 0 })
+
+        if (body.done || body.nextPage == null) break
+        startPage = body.nextPage
+      }
+
+      setMessage(
+        `Wrote ${written.toLocaleString()} rows: ${inserted.toLocaleString()} new, ${updated.toLocaleString()} updated. Now run the rebuild at the bottom so they get priced.`,
+      )
+      setState("done")
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Something went wrong.")
+      setState("error")
+    }
+  }
+
+  const busy = state === "running" || state === "peeking"
+
+  return (
+    <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
+      <h2 className="font-display text-base font-black text-[var(--text)]">
+        Pull the Anderton&apos;s catalogue (API)
+      </h2>
+      <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+        Impact&apos;s partner REST API, which needs only an <code>IMPACT_ACCOUNT_SID</code> and an{" "}
+        <code>IMPACT_AUTH_TOKEN</code> from their API settings page. Try this before the FTP pull
+        below: it is ordinary HTTPS, so none of the FTP plumbing applies, and it pages rather than
+        re-downloading the whole file per chunk.
+      </p>
+      <p className="mb-3 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+        <strong className="text-[var(--text)]">Check the schema first.</strong> It reads one page,
+        writes nothing, and lists which fields the parser bound. A field that is present but unbound
+        is the one worth knowing about: that is how a column silently arrives null on every row.
+      </p>
+
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={peek} disabled={busy} className="stomp stomp-ghost">
+          <Stethoscope
+            className={`h-3.5 w-3.5 ${state === "peeking" ? "animate-pulse" : ""}`}
+            aria-hidden="true"
+          />
+          {state === "peeking" ? "Reading..." : "Check the schema"}
+        </button>
+        <button type="button" onClick={pull} disabled={busy} className="stomp">
+          <Download
+            className={`h-3.5 w-3.5 ${state === "running" ? "animate-pulse" : ""}`}
+            aria-hidden="true"
+          />
+          {state === "running" ? "Pulling..." : "Pull it now"}
+        </button>
+      </div>
+
+      {state === "running" && progress && (
+        <p className="mt-3 text-sm tabular-nums text-[var(--accent-text)]">
+          {progress.wrote.toLocaleString()}
+          {progress.total ? ` of ${progress.total.toLocaleString()}` : ""} rows written
+        </p>
+      )}
+
+      {message && (state === "done" || state === "error") && (
+        <p
+          className={`mt-3 flex items-start gap-2 text-sm ${
+            state === "error" ? "text-[var(--red)]" : "text-[var(--money)]"
+          }`}
+        >
+          {state === "error" ? (
+            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          ) : (
+            <Check className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          )}
+          <span>{message}</span>
+        </p>
+      )}
+
+      {detail && (
+        <pre className="readout mt-3 max-h-80 overflow-auto whitespace-pre-wrap p-3 text-[0.7rem] leading-relaxed">
+          {detail}
+        </pre>
+      )}
     </div>
   )
 }

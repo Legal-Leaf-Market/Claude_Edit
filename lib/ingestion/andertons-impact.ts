@@ -83,9 +83,9 @@ const FIELD_ALIASES = {
   /** Mandatory in Impact's spec. This is the tracked destination. Anderton's: "Url". */
   url: ["Url", "URL", "Link URL", "Link Url", "link_url", "Product Url", "product_url", "Tracking Url", "Buy Url"],
 
-  description: ["Description", "description", "Long Description", "Short Description"],
-  currentPrice: ["Current Price", "CurrentPrice", "current_price", "Price", "price", "Sale Price", "sale_price"],
-  originalPrice: ["Original Price", "OriginalPrice", "original_price", "Retail Price", "List Price", "Was Price"],
+  description: ["Description", "description", "Long Description", "LongDescription", "Short Description", "ShortDescription"],
+  currentPrice: ["Current Price", "CurrentPrice", "current_price", "Price", "price", "Sale Price", "SalePrice", "sale_price"],
+  originalPrice: ["Original Price", "OriginalPrice", "original_price", "Retail Price", "RetailPrice", "List Price", "ListPrice", "Was Price"],
   currency: ["Currency", "currency", "Currency Code", "currency_code"],
   /**
    * "Manufacturer Name" is Anderton's spelling and the one that actually binds.
@@ -99,7 +99,7 @@ const FIELD_ALIASES = {
    * `normalizeCategory` has more to match against, where the leaf name alone
    * loses the context that tells a "Standard" apart from a "Standard".
    */
-  category: ["Category Path", "Category", "category", "Category Name", "Product Category", "Google Category"],
+  category: ["Category Path", "CategoryPath", "Category", "category", "Category Name", "CategoryName", "Product Category", "ProductCategory", "Google Category"],
   gtin: ["Gtin", "GTIN", "gtin", "Ean", "EAN", "Upc", "UPC", "Barcode"],
   /**
    * NOT PRESENT in Anderton's catalogue, and that is a fact about the feed
@@ -109,16 +109,39 @@ const FIELD_ALIASES = {
    * number is not a manufacturer part number, and feeding one into a key that
    * claims to name a product across merchants would merge unrelated gear.
    */
-  mpn: ["Mpn", "MPN", "mpn", "Manufacturer Part Number", "Part Number"],
-  stock: ["Stock Availability", "StockAvailability", "stock_availability", "Availability", "In Stock", "Stock", "Stock Status"],
+  mpn: ["Mpn", "MPN", "mpn", "Manufacturer Part Number", "ManufacturerPartNumber", "Part Number", "PartNumber"],
+  stock: ["Stock Availability", "StockAvailability", "stock_availability", "Availability", "In Stock", "InStock", "Stock", "Stock Status", "StockStatus"],
   /**
    * CONFIRMED PRESENT as "Original Url". This is the good case: the feed
    * carries Anderton's own untracked product page beside Impact's tracked
    * link, so rawUrl is the real page and affiliateUrl is the tracked one.
    * Better than the CJ situation, where only a pre-built BUY_URL exists.
+   *
+   * THE CAMELCASE SPELLINGS ARE NOT DECORATION. Header matching collapses
+   * spaces and underscores but cannot split "OriginalUrl" into two words, so
+   * "Original Url" and "OriginalUrl" are genuinely different keys to the
+   * binder. The FTP feed uses the spaced form and Impact's API uses CamelCase
+   * throughout ("CatalogItemId", "CurrentPrice", "StockAvailability"), and
+   * this field having only the spaced spelling was a real bug caught by the
+   * API tests: it binds to nothing, `rawUrl` silently falls back to the
+   * TRACKED url, and every listing on the site then points a shopper at an
+   * affiliate link where the untracked page belongs. Nothing throws, no row is
+   * skipped, and the only symptom is /go handing out links it should have
+   * built itself.
    */
-  originalUrl: ["Original Url", "Original URL", "original_url", "Merchant Url", "Landing Page", "Product Page"],
-  condition: ["Condition", "condition", "Item Condition"],
+  originalUrl: [
+    "Original Url",
+    "OriginalUrl",
+    "Original URL",
+    "original_url",
+    "Merchant Url",
+    "MerchantUrl",
+    "Landing Page",
+    "LandingPage",
+    "Product Page",
+    "ProductPage",
+  ],
+  condition: ["Condition", "condition", "Item Condition", "ItemCondition"],
 } as const
 
 /**
@@ -284,21 +307,42 @@ export function normalizeAndertonsRow(
   }
 }
 
-/** Parse a whole catalogue document. Exposed separately so tests run off a fixture. */
-export function parseAndertonsFeed(text: string): {
+export type ParsedCatalogue = {
   rows: NewMarketplaceListing[]
   seen: number
   skipped: number
   columns: Record<keyof typeof FIELD_ALIASES, string | null>
-} {
-  const delimiter = detectDelimiter(text)
-  const records = parseCsv(text, { delimiter })
+}
 
+/**
+ * Bind and normalise a set of already-parsed records.
+ *
+ * Shared by both transports on purpose. The FTP drop arrives as delimited text
+ * and the REST API arrives as JSON objects, but from here down they are the
+ * same thing: a list of string-keyed records whose field names are the brand's
+ * choice rather than the network's. Binding by name through one alias table
+ * means the two paths cannot drift into disagreeing about what a row means,
+ * which is section 7's "never fork the logic" applied to transports rather
+ * than to triggers.
+ */
+export function normalizeRecords(records: Record<string, string>[]): ParsedCatalogue {
   if (records.length === 0) {
-    throw new ImpactSchemaError("Anderton's Impact feed parsed to zero rows. Empty or truncated file.")
+    throw new ImpactSchemaError("Anderton's Impact catalogue parsed to zero rows. Empty or truncated.")
   }
 
-  const columns = bindColumns(Object.keys(records[0]))
+  /*
+   * Bind against the union of keys across a sample rather than the first
+   * record alone. JSON differs from CSV here in a way that matters: a CSV
+   * header row names every column whether or not a given row fills it, while a
+   * JSON API commonly omits null fields per item. Taking the first item's keys
+   * would then miss a field simply because item one happened not to have it.
+   */
+  const keys = new Set<string>()
+  for (const record of records.slice(0, 50)) {
+    for (const key of Object.keys(record)) keys.add(key)
+  }
+
+  const columns = bindColumns([...keys])
 
   const rows: NewMarketplaceListing[] = []
   let skipped = 0
@@ -309,6 +353,18 @@ export function parseAndertonsFeed(text: string): {
   }
 
   return { rows, seen: records.length, skipped, columns }
+}
+
+/** Parse a whole catalogue document. Exposed separately so tests run off a fixture. */
+export function parseAndertonsFeed(text: string): ParsedCatalogue {
+  const delimiter = detectDelimiter(text)
+  const records = parseCsv(text, { delimiter })
+
+  if (records.length === 0) {
+    throw new ImpactSchemaError("Anderton's Impact feed parsed to zero rows. Empty or truncated file.")
+  }
+
+  return normalizeRecords(records)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -383,6 +439,247 @@ export async function fetchAndertonsCatalogue(config: FtpConfig): Promise<string
   } finally {
     client.close()
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  HTTPS transport: Impact's partner catalogue API                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Impact's REST API is a legitimate partner channel, not a workaround.
+ *
+ * Worth saying explicitly given section 2 and the hard "do not" list. This is
+ * not a frontend endpoint or an undocumented index of the kind rejected for
+ * Guitar Center and Sweetwater: it is Impact's own published Mediapartners API,
+ * authenticated with our account credentials, serving the catalogue Anderton's
+ * publishes to partners for exactly this purpose. It is the same relationship
+ * as the FTP drop with a different transport.
+ *
+ * Reference: GET /Mediapartners/{AccountSid}/Catalogs/{CatalogId}/Items,
+ * HTTP Basic (SID as username, token as password), Accept: application/json.
+ */
+const IMPACT_API_BASE = "https://api.impact.com"
+
+function impactAuthHeader(sid: string, token: string): string {
+  return `Basic ${Buffer.from(`${sid}:${token}`).toString("base64")}`
+}
+
+export type ImpactApiConfig = {
+  accountSid: string
+  authToken: string
+  catalogId: string
+}
+
+/**
+ * One page of catalogue items, plus whatever the envelope said about paging.
+ *
+ * `raw` carries the envelope's own non-array keys so a caller can show them.
+ * That is what makes the peek route useful: Impact's paging attributes are
+ * documented inconsistently across their API versions, and reading them off a
+ * real response beats picking one and hoping.
+ */
+export type ImpactPage = {
+  records: Record<string, string>[]
+  page: number
+  totalPages: number | null
+  total: number | null
+  nextPageUri: string | null
+  envelopeKeys: string[]
+  itemsKey: string | null
+}
+
+/**
+ * Find the item array in the envelope without hard-coding its name.
+ *
+ * Impact wraps collections in a key named after the resource, and the exact
+ * spelling ("Items", "Catalogs", "CatalogItems") varies by endpoint and API
+ * version. Rather than guess one and fail opaquely when it is another, take
+ * the first array-of-objects property. If the envelope ever carries two, the
+ * peek route shows every key so the ambiguity is visible rather than silently
+ * resolved.
+ *
+ * This is deliberately NOT the same latitude the column binder gets. Field
+ * names decide what a price MEANS and so are bound explicitly through an alias
+ * table; the collection key only decides where the list lives, and getting it
+ * wrong yields no rows rather than wrong rows.
+ */
+function findItemsArray(envelope: Record<string, unknown>): { key: string; items: unknown[] } | null {
+  for (const [key, value] of Object.entries(envelope)) {
+    if (Array.isArray(value) && value.every((v) => v && typeof v === "object" && !Array.isArray(v))) {
+      return { key, items: value }
+    }
+  }
+  return null
+}
+
+/** Impact returns every scalar as a string already; this only flattens shape. */
+function stringifyValues(item: Record<string, unknown>): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [key, value] of Object.entries(item)) {
+    if (value == null) continue
+    if (typeof value === "object") continue
+    out[key] = String(value)
+  }
+  return out
+}
+
+function toInt(value: unknown): number | null {
+  const n = Number.parseInt(String(value ?? ""), 10)
+  return Number.isFinite(n) ? n : null
+}
+
+/**
+ * Fetch one page of the catalogue.
+ *
+ * `pathOrPage` takes either a page number or the `@nextpageuri` from a previous
+ * response, because following the server's own cursor is more reliable than
+ * reconstructing it, and Impact returns one when it has one.
+ */
+export async function fetchAndertonsApiPage(
+  config: ImpactApiConfig,
+  pathOrPage: number | string = 1,
+  pageSize = 1000,
+): Promise<ImpactPage> {
+  const url =
+    typeof pathOrPage === "string"
+      ? new URL(pathOrPage.startsWith("http") ? pathOrPage : `${IMPACT_API_BASE}${pathOrPage}`)
+      : new URL(
+          `${IMPACT_API_BASE}/Mediapartners/${encodeURIComponent(config.accountSid)}/Catalogs/${encodeURIComponent(config.catalogId)}/Items`,
+        )
+
+  if (typeof pathOrPage === "number") {
+    url.searchParams.set("Page", String(pathOrPage))
+    url.searchParams.set("PageSize", String(pageSize))
+  }
+
+  const response = await fetch(url, {
+    headers: {
+      authorization: impactAuthHeader(config.accountSid, config.authToken),
+      accept: "application/json",
+    },
+  })
+
+  if (!response.ok) {
+    /*
+     * Name the status rather than the body. Impact answers an auth failure
+     * with an HTML page in some deployments, and dumping that into an admin
+     * panel buries the one useful fact in markup.
+     */
+    const detail =
+      response.status === 401
+        ? "The AccountSid or AuthToken was rejected. Both come from the Impact platform's API settings."
+        : response.status === 403
+          ? "Authenticated, but this account is not permitted to read that catalogue. Check the catalogue id belongs to a programme this partner account has joined."
+          : response.status === 404
+            ? `No catalogue ${config.catalogId} for this account. The id is on the product catalogue page in the Impact platform.`
+            : ""
+    throw new Error(`Impact API returned ${response.status} ${response.statusText}. ${detail}`.trim())
+  }
+
+  const body = (await response.json()) as Record<string, unknown>
+  const found = findItemsArray(body)
+
+  const envelopeKeys = Object.keys(body).filter((k) => !Array.isArray(body[k]))
+
+  return {
+    records: (found?.items ?? []).map((item) => stringifyValues(item as Record<string, unknown>)),
+    page: toInt(body["@page"] ?? body.Page) ?? (typeof pathOrPage === "number" ? pathOrPage : 1),
+    totalPages: toInt(body["@numpages"] ?? body.NumPages),
+    total: toInt(body["@total"] ?? body.Total),
+    nextPageUri: (body["@nextpageuri"] as string) || (body.NextPageUri as string) || null,
+    envelopeKeys,
+    itemsKey: found?.key ?? null,
+  }
+}
+
+/**
+ * Read ONE page and report what came back, writing nothing.
+ *
+ * This is the header row discipline made self-service. CLAUDE.md's rule is not
+ * to write a normaliser against a guessed schema, and the FTP feed satisfied
+ * it by someone pasting the real header row into the conversation. The API
+ * deserves the same treatment, and can do it itself: peek shows the envelope's
+ * paging keys, the collection key, and every field name on a real item,
+ * alongside which of them this module's alias table actually bound.
+ *
+ * An unbound-but-present field name is the interesting output. It is exactly
+ * what would otherwise become a silently null column across 27,052 rows, the
+ * way "Manufacturer Name" nearly did.
+ */
+export async function peekAndertonsApi(config: ImpactApiConfig): Promise<{
+  reached: boolean
+  itemsKey: string | null
+  envelopeKeys: string[]
+  total: number | null
+  totalPages: number | null
+  sampleSize: number
+  fieldNames: string[]
+  bound: Record<string, string | null>
+  unboundFields: string[]
+  sample: Record<string, string> | null
+}> {
+  const page = await fetchAndertonsApiPage(config, 1, 25)
+
+  const fieldNames = [...new Set(page.records.flatMap((r) => Object.keys(r)))].sort()
+  const bound = page.records.length > 0 ? bindColumns(fieldNames) : ({} as Record<string, string | null>)
+  const claimed = new Set(Object.values(bound).filter(Boolean) as string[])
+
+  return {
+    reached: true,
+    itemsKey: page.itemsKey,
+    envelopeKeys: page.envelopeKeys,
+    total: page.total,
+    totalPages: page.totalPages,
+    sampleSize: page.records.length,
+    fieldNames,
+    bound,
+    unboundFields: fieldNames.filter((f) => !claimed.has(f)),
+    sample: page.records[0] ?? null,
+  }
+}
+
+/**
+ * Walk the catalogue, a page at a time, up to a cap.
+ *
+ * The cap is not paranoia about Impact: it is the same 300 second function
+ * ceiling the FTP path slices around. `pages` is how many to take in one call
+ * and `startPage` is where to resume, so the browser loop that already drives
+ * the FTP pull drives this one unchanged.
+ *
+ * Paging is strictly better than the FTP chunking it replaces. That path
+ * re-downloads the entire file per chunk because a slice is an offset into an
+ * already-parsed document; here a slice is genuinely just the pages it asks
+ * for.
+ */
+export async function fetchAndertonsApiRange(
+  config: ImpactApiConfig,
+  startPage = 1,
+  pages = 5,
+  pageSize = 1000,
+): Promise<{ records: Record<string, string>[]; nextPage: number | null; total: number | null; totalPages: number | null }> {
+  const records: Record<string, string>[] = []
+  let cursor: number | string = startPage
+  let pageNumber = startPage
+  let total: number | null = null
+  let totalPages: number | null = null
+
+  for (let i = 0; i < pages; i++) {
+    const page = await fetchAndertonsApiPage(config, cursor, pageSize)
+    records.push(...page.records)
+    total = page.total ?? total
+    totalPages = page.totalPages ?? totalPages
+    pageNumber = page.page
+
+    const noMore =
+      page.records.length === 0 || (totalPages != null && pageNumber >= totalPages) || (!page.nextPageUri && totalPages == null && page.records.length < pageSize)
+
+    if (noMore) return { records, nextPage: null, total, totalPages }
+
+    cursor = page.nextPageUri ?? pageNumber + 1
+    pageNumber = pageNumber + 1
+  }
+
+  return { records, nextPage: pageNumber, total, totalPages }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -504,6 +801,94 @@ export async function ingestAndertonsFeed(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     console.error(`[andertons] failed: ${message}`)
+    await finishRun(run, { status: "failed", error: message })
+    return { status: "failed", stats: emptyStats(), resolved: 0, error: message }
+  }
+}
+
+/**
+ * Ingest the Anderton's catalogue over Impact's REST API instead of FTP.
+ *
+ * Same normaliser, same upsert, same expiry rule, different transport. The
+ * only genuinely different piece is what a "slice" means: over FTP it is an
+ * offset into a document that has to be re-downloaded each time, and here it
+ * is a range of pages, which is both cheaper and the API's own unit of work.
+ *
+ * `done` still governs expiry, and it still matters for the same reason:
+ * retiring rows after a partial pass would expire everything the catalogue
+ * still lists but this call had not reached.
+ */
+export async function ingestAndertonsViaApi(
+  window: { startPage?: number; pages?: number; pageSize?: number } = {},
+): Promise<AndertonsIngestOutcome & { nextPage?: number | null }> {
+  if (!env.impact.hasAndertonsApi) {
+    const reason =
+      "IMPACT_ACCOUNT_SID / IMPACT_AUTH_TOKEN are not set. The Anderton's API pull is skipped. " +
+      "Both come from the Impact platform's API settings; the catalogue id defaults to 30480."
+    console.warn(`[andertons-api] ${reason}`)
+    return { status: "skipped", reason, stats: emptyStats(), resolved: 0 }
+  }
+
+  const config: ImpactApiConfig = {
+    accountSid: env.impact.accountSid,
+    authToken: env.impact.authToken,
+    catalogId: env.impact.andertonsCatalogId,
+  }
+
+  const startPage = Math.max(1, window.startPage ?? 1)
+  const run = await startRun("andertons", "andertons-catalogue-api")
+
+  try {
+    const { records, nextPage, total, totalPages } = await fetchAndertonsApiRange(
+      config,
+      startPage,
+      window.pages ?? 5,
+      window.pageSize ?? 1000,
+    )
+
+    /*
+     * An empty first page is a real failure, not an empty catalogue. It means
+     * the collection key was not found or the catalogue is not readable by
+     * this account, and treating it as "nothing to do" would report success
+     * while writing nothing. A later page coming back empty is just the end.
+     */
+    if (records.length === 0 && startPage === 1) {
+      throw new ImpactSchemaError(
+        "The Impact API answered but no catalogue items were found in the response. Use the schema peek to see what it actually returned.",
+      )
+    }
+
+    const { rows, seen, skipped, columns } = normalizeRecords(records)
+    const stats = await upsertListings(rows)
+    stats.seen = seen
+    stats.skipped += skipped
+
+    const { resolved } = await resolveAndReprice(stats)
+    const done = nextPage == null
+    if (done) await expirePastEndDate("andertons")
+
+    await finishRun(run, {
+      status: "ok",
+      rowsSeen: seen,
+      rowsUpserted: stats.inserted + stats.updated,
+      rowsSkipped: stats.skipped,
+      bytesDownloaded: 0,
+      detail: { resolved, priceChanges: stats.priceChanges, columns, startPage, nextPage, totalPages, done },
+    })
+
+    return {
+      status: "ok",
+      stats,
+      resolved,
+      totalRows: total ?? undefined,
+      offset: startPage,
+      wrote: rows.length,
+      done,
+      nextPage,
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`[andertons-api] failed: ${message}`)
     await finishRun(run, { status: "failed", error: message })
     return { status: "failed", stats: emptyStats(), resolved: 0, error: message }
   }

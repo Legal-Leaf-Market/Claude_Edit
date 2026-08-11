@@ -5,6 +5,7 @@ import {
   sliceRows,
   ImpactSchemaError,
   normalizeAndertonsRow,
+  normalizeRecords,
   parseAndertonsFeed,
   toCents,
   UNBOUND_BY_POLICY,
@@ -468,5 +469,124 @@ describe("slicing the catalogue", () => {
       offset += slice.length
     }
     expect(seen).toEqual(rows)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/*  The REST API transport                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Impact's partner catalogue API, the second way into the same normaliser.
+ *
+ * The point of these is that the API path must not become a second, subtly
+ * different parser. Everything below the transport is shared, so what is worth
+ * pinning is the seam: that JSON items reach the SAME bindings as feed rows,
+ * and that the things which are genuinely different about JSON (omitted null
+ * fields, an envelope around the collection) are handled rather than assumed
+ * away.
+ */
+describe("normalizeRecords, shared by both transports", () => {
+  /**
+   * Impact's own documented field names, which are what the API returns and
+   * are NOT the names Anderton's chose for their FTP columns. Both are in the
+   * alias table, and this is what proves the API half of it is real.
+   */
+  const API_ITEM = {
+    CatalogItemId: "SKU-993",
+    Name: "Strymon BigSky Reverb",
+    Url: "https://andertonsmusiccompany.pxf.io/c/1/2/3?u=x",
+    CurrentPrice: "429.00",
+    Currency: "GBP",
+    Manufacturer: "Strymon",
+    Gtin: "0687180012345",
+    Category: "Guitars > Pedals > Reverb",
+    StockAvailability: "InStock",
+    ImageUrl: "https://cdn.example/bigsky.jpg",
+    OriginalUrl: "https://www.andertons.co.uk/strymon-bigsky",
+  }
+
+  it("binds Impact's API field names, not just Anderton's feed column names", () => {
+    const { rows, skipped } = normalizeRecords([API_ITEM])
+    expect(skipped).toBe(0)
+    expect(rows[0]).toMatchObject({
+      source: "andertons",
+      externalId: "SKU-993",
+      title: "Strymon BigSky Reverb",
+      brand: "Strymon",
+      gtin: "0687180012345",
+      currency: "GBP",
+      priceCents: 42900,
+      listingStatus: "active",
+    })
+  })
+
+  /**
+   * The URL split has to behave identically on this path. An Impact tracking
+   * host is the affiliate link and the merchant's own page is the raw URL;
+   * getting this wrong on one transport only would make the same product
+   * monetised or not depending on how it was ingested.
+   */
+  it("keeps the tracked and untracked URLs on the right fields", () => {
+    const { rows } = normalizeRecords([API_ITEM])
+    expect(rows[0].rawUrl).toBe("https://www.andertons.co.uk/strymon-bigsky")
+    expect(rows[0].affiliateUrl).toBe(API_ITEM.Url)
+  })
+
+  /**
+   * The difference that actually bites. A CSV header row names every column
+   * whether or not a row fills it; a JSON API commonly omits null fields per
+   * item. Binding off item one alone would lose a field just because the first
+   * product happened not to carry it.
+   */
+  it("binds across a sample, so a field missing from the first item is still found", () => {
+    const { rows } = normalizeRecords([
+      { CatalogItemId: "a", Name: "No brand here", Url: "https://x.test/a", CurrentPrice: "10.00" },
+      { ...API_ITEM, CatalogItemId: "b" },
+    ])
+    expect(rows).toHaveLength(2)
+    // Item one genuinely has no Manufacturer; item two's binding still worked.
+    expect(rows[0].brand).toBeNull()
+    expect(rows[1].brand).toBe("Strymon")
+  })
+
+  /**
+   * Same loud failure as the feed parser. A response whose mandatory fields
+   * cannot be bound must name what it saw rather than yield zero rows, because
+   * "no products found" and "the schema moved" look identical otherwise.
+   */
+  it("fails loudly, naming the fields it saw, when a mandatory one is missing", () => {
+    expect(() => normalizeRecords([{ ProductRef: "x", Heading: "y", DeepLink: "z" }])).toThrow(
+      ImpactSchemaError,
+    )
+    try {
+      normalizeRecords([{ ProductRef: "x", Heading: "y", DeepLink: "z" }])
+    } catch (error) {
+      expect((error as Error).message).toMatch(/ProductRef|Heading|DeepLink/)
+    }
+  })
+
+  it("refuses an empty response rather than reporting an empty catalogue", () => {
+    expect(() => normalizeRecords([])).toThrow(ImpactSchemaError)
+  })
+
+  /**
+   * Section 1 and the hard "do not" list, enforced on this path too. The FTP
+   * feed carries per-row commission columns and the API may well carry the
+   * same; binding them is one .filter() away from dropping the 1% rows, which
+   * is ranking by payout performed at the row level.
+   */
+  it("never binds a commission field, whatever the transport calls it", () => {
+    const { columns } = normalizeRecords([
+      {
+        ...API_ITEM,
+        MinCommissionPercentage: "1",
+        MaxCommissionPercentage: "4",
+        CommissionCurrency: "GBP",
+      },
+    ])
+    for (const header of Object.values(columns)) {
+      expect(String(header ?? "")).not.toMatch(/commission/i)
+    }
   })
 })

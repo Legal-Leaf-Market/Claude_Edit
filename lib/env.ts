@@ -196,6 +196,37 @@ export const env = {
     get hasAndertonsFeed(): boolean {
       return Boolean(env.impact.andertonsFtpUser && env.impact.andertonsFtpPassword)
     },
+
+    /**
+     * THE SECOND WAY IN, and the better one for this site.
+     *
+     * Impact publishes a partner REST API alongside the FTP drop:
+     * api.impact.com/Mediapartners/{AccountSid}/Catalogs/{id}/Items, HTTP Basic
+     * with the SID as username and the token as password, JSON, paginated.
+     *
+     * It is preferable here for reasons that have nothing to do with the FTP
+     * server misbehaving. It is plain HTTPS, so it needs no control connection
+     * and no passive data ports and runs from a serverless function without
+     * the caveats the FTP path carries. It pages, so a slice is a page rather
+     * than a re-download of the whole file per chunk. And it authenticates
+     * with account-level credentials that are visible in Impact's own API
+     * settings, rather than a separate FTP pair that has to be mailed out.
+     *
+     * The FTP path is kept rather than replaced: it is the documented channel
+     * for catalogues too large to serve any other way, and having two
+     * transports onto one normaliser costs almost nothing.
+     */
+    accountSid: str("IMPACT_ACCOUNT_SID"),
+    authToken: str("IMPACT_AUTH_TOKEN"),
+    /**
+     * Anderton's catalogue id, confirmed from the Impact platform: catalogue
+     * 30480 under campaign 43829, 27,052 products. A default rather than a
+     * constant because the next Impact merchant will have a different one.
+     */
+    andertonsCatalogId: str("IMPACT_ANDERTONS_CATALOG_ID", "30480"),
+    get hasAndertonsApi(): boolean {
+      return Boolean(env.impact.accountSid && env.impact.authToken && env.impact.andertonsCatalogId)
+    },
   },
 
   /**
