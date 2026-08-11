@@ -428,10 +428,19 @@ function AndertonsButton() {
       if (!response.ok) throw new Error(body?.hint || body?.error || `HTTP ${response.status}`)
 
       const files: { name: string; sizeBytes: number; modified: string | null }[] = body.files ?? []
+
+      /*
+       * Three outcomes, and the middle one is the easiest to misread. A
+       * missing configured path means the LOGIN WORKED, so the listing below
+       * is from somewhere else and is a menu of what to set rather than the
+       * drop itself.
+       */
       setMessage(
-        body.chosen
-          ? `Connected over SSH and found ${files.length} entries in ${body.path}. A pull would take ${body.chosen}.`
-          : `Connected over SSH, but nothing in ${body.path} looks like a catalogue file. What is actually there is listed below.`,
+        body.configuredPathMissing
+          ? `The SSH login worked, but ${body.configuredPath} does not exist on the server. Listed below is ${body.path} instead, which is what this account can actually see. Set IMPACT_ANDERTONS_FTP_PATH to the right directory from that list and press this again.`
+          : body.chosen
+            ? `Connected over SSH and found ${files.length} entries in ${body.path}. A pull would take ${body.chosen}.`
+            : `Connected over SSH, but nothing in ${body.path} looks like a catalogue file. What is actually there is listed below.`,
       )
       setDetail(
         files

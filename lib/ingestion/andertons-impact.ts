@@ -428,10 +428,30 @@ export type SftpConfig = {
  */
 export type DropListing = {
   connected: boolean
+  /** The directory these entries actually came from. */
   path: string
+  /** What was configured, when that turned out not to exist. */
+  configuredPath?: string
+  /** True when the configured path was missing and this is a fallback. */
+  configuredPathMissing?: boolean
   files: { name: string; sizeBytes: number; modified: string | null }[]
   /** The file a pull would actually take, by the same rule the pull uses. */
   chosen: string | null
+}
+
+/**
+ * Where to look when the configured directory is not there.
+ *
+ * The home directory first, because an SFTP account serving one publisher is
+ * usually chrooted or dropped straight into its own directory, and "." is
+ * whatever the server considers that. Root second, for the case where it is
+ * not.
+ */
+const FALLBACK_PATHS = [".", "/"]
+
+function isMissingDirectory(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return /No such file|ENOENT/i.test(message)
 }
 
 /**
@@ -466,7 +486,43 @@ export async function listAndertonsDrop(config: SftpConfig): Promise<DropListing
       readyTimeout: 30_000,
     })
 
-    const listing = await client.list(config.path)
+    /*
+     * WHEN THE CONFIGURED PATH IS NOT THERE, SHOW WHAT IS.
+     *
+     * IMPACT_ANDERTONS_FTP_PATH defaults to a guessed directory name, and a
+     * guess that is wrong throws ENOENT after a SUCCESSFUL login. Reporting
+     * only "no such directory" would leave the next step as another guess and
+     * another deploy, which is how this source has already burned several
+     * round trips. Listing the home directory instead turns the failure into
+     * the answer: the real path is almost always one of the names in it.
+     *
+     * Only a missing directory falls back. A permission error is a different
+     * problem with a different fix and must not be papered over by quietly
+     * listing somewhere else.
+     */
+    let listing: Awaited<ReturnType<typeof client.list>> | null = null
+    let listedPath = config.path
+    let missing = false
+
+    try {
+      listing = await client.list(config.path)
+    } catch (error) {
+      if (!isMissingDirectory(error)) throw error
+      missing = true
+
+      for (const candidate of FALLBACK_PATHS) {
+        try {
+          listing = await client.list(candidate)
+          listedPath = candidate
+          break
+        } catch (fallbackError) {
+          if (!isMissingDirectory(fallbackError)) throw fallbackError
+        }
+      }
+
+      if (!listing) throw error
+    }
+
     const files = listing
       .filter((f) => f.type === "-")
       .map((f) => ({
@@ -477,11 +533,15 @@ export async function listAndertonsDrop(config: SftpConfig): Promise<DropListing
 
     return {
       connected: true,
-      path: config.path,
+      path: listedPath,
+      ...(missing ? { configuredPath: config.path, configuredPathMissing: true } : {}),
       // Directories included by name only, since a drop that turns out to be
       // one directory per date is a path problem rather than an empty one.
       files: [...files, ...listing.filter((f) => f.type === "d").map((f) => ({ name: `${f.name}/`, sizeBytes: 0, modified: null }))],
-      chosen: pickCatalogueFile(files.map((f) => f.name)),
+      // Never claim a pull target from a fallback directory: the file a pull
+      // would take is the one under the CONFIGURED path, and that path does
+      // not exist yet.
+      chosen: missing ? null : pickCatalogueFile(files.map((f) => f.name)),
     }
   } finally {
     await client.end().catch(() => {})

@@ -192,3 +192,69 @@ describe("listing the Anderton's drop", () => {
     expect(end).toHaveBeenCalled()
   })
 })
+
+/**
+ * A configured path that is not there.
+ *
+ * IMPACT_ANDERTONS_FTP_PATH defaults to a guessed directory name, and the
+ * guess was wrong: the live drop answered "No such file or directory
+ * /Andertons-Music-Company/" AFTER a successful login. Reporting only that
+ * would make the next step another guess and another deploy, which is how
+ * this source has already cost several round trips.
+ */
+describe("when the configured path does not exist", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    connect.mockResolvedValue(undefined)
+    end.mockResolvedValue(undefined)
+  })
+
+  it("lists the home directory instead, so the real path is visible", async () => {
+    list.mockImplementation(async (path: string) => {
+      if (path === "/Andertons-Music-Company/") throw new Error("No such file or directory /Andertons-Music-Company/")
+      return [entry("Andertons_Music_Company", "d"), entry("readme.txt")]
+    })
+
+    const listing = await listAndertonsDrop(CONFIG)
+
+    expect(listing.connected).toBe(true)
+    expect(listing.configuredPathMissing).toBe(true)
+    expect(listing.configuredPath).toBe("/Andertons-Music-Company/")
+    expect(listing.path).toBe(".")
+    expect(listing.files.map((f) => f.name)).toContain("Andertons_Music_Company/")
+  })
+
+  /*
+   * A file found in a FALLBACK directory is not the pull target: the pull
+   * reads the configured path, and that path does not exist. Naming one would
+   * promise a download that cannot happen.
+   */
+  it("claims no pull target from a fallback directory", async () => {
+    list.mockImplementation(async (path: string) => {
+      if (path === "/Andertons-Music-Company/") throw new Error("No such file")
+      return [entry("some-other-catalogue.csv")]
+    })
+
+    const listing = await listAndertonsDrop(CONFIG)
+
+    expect(listing.chosen).toBeNull()
+  })
+
+  /*
+   * A permissions failure is a different problem with a different fix, and
+   * quietly listing somewhere else would hide it behind a directory listing
+   * that looks like progress.
+   */
+  it("does not fall back when the directory exists but is unreadable", async () => {
+    list.mockRejectedValue(new Error("Permission denied"))
+
+    await expect(listAndertonsDrop(CONFIG)).rejects.toThrow(/Permission denied/)
+    expect(list).toHaveBeenCalledTimes(1)
+  })
+
+  it("reports the original error when nothing at all can be listed", async () => {
+    list.mockRejectedValue(new Error("No such file or directory /Andertons-Music-Company/"))
+
+    await expect(listAndertonsDrop(CONFIG)).rejects.toThrow(/Andertons-Music-Company/)
+  })
+})
