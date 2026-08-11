@@ -12,7 +12,7 @@ import type { EffectType } from "@/lib/pedalboard/chain"
  * WHY IT IS HAND-WRITTEN RATHER THAN INGESTED. There is no legitimate feed for
  * this. Equipboard has by far the best database of it and added album- and
  * track-level attribution in February 2026, but they have no public API and
- * scraping them is exactly the conduct CLAUDE.md section 17 forbids for
+ * scraping them is exactly the conduct CLAUDE.md section 18 forbids for
  * Guitar Center and the Reverb API. MusicBrainz would cover the records half
  * legitimately, except its web service is free for non-commercial use only and
  * this site runs on affiliate revenue, so using it would need a commercial

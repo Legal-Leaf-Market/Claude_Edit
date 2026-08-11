@@ -7,7 +7,7 @@ import { STORES } from "@/lib/stores"
  * WHY THIS EXISTS. Anderton's ships only within the UK. Their catalogue is by
  * far the largest here (27,052 products), so without this a shopper in Ohio
  * searching for a Victory preamp gets a page full of Guildford prices they can
- * never pay. That is the same failure as showing a stale price, and section 16
+ * never pay. That is the same failure as showing a stale price, and section 17
  * is explicit about it: prices shown must be prices the shopper can actually
  * get.
  *

@@ -1,11 +1,19 @@
 /**
  * Theme selection, shared between the inline no-flash script and the toggle.
  *
- * Three states, not two. "system" is the default and it is a real state
- * rather than a synonym for dark: a visitor who has their OS in light mode
- * gets the light theme without ever finding the toggle, and one who flips the
- * OS later gets followed. Storing an explicit "dark" only when someone
- * actually chooses it is what makes that possible.
+ * Three states, and DARK IS THE DEFAULT.
+ *
+ * That is a product decision rather than a technical one. This site's palette
+ * is built for dark: cut-out product photography separates on graphite, and
+ * the brass edge and LED green only carry against a dark plate. A visitor
+ * whose laptop happens to be in light mode should still see the site the way
+ * it was designed, so an absent preference means dark rather than "ask the
+ * OS".
+ *
+ * "system" survives as a real state you can choose, for people who genuinely
+ * want their machine to decide. It just is not what you get by default any
+ * more, which means it now has to be STORED: absence means dark, so "system"
+ * cannot be represented by clearing the key the way it used to be.
  */
 
 export const THEME_STORAGE_KEY = "gearavail-theme"
@@ -26,14 +34,15 @@ export function isThemeChoice(value: unknown): value is ThemeChoice {
  * modes, and a theme preference is never worth a blank page.
  *
  * Only the light theme gets an attribute. Dark is the value of bare :root, so
- * the no-JS and storage-throws paths both land on it for free.
+ * the no-JS path, the storage-throws path and the no-preference path all land
+ * on the default for free, without this script having to run at all.
  */
 export const THEME_INIT_SCRIPT = `
 (function(){
   try {
     var stored = localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
     var light = stored === "light" ||
-      (stored !== "dark" && window.matchMedia("(prefers-color-scheme: light)").matches);
+      (stored === "system" && window.matchMedia("(prefers-color-scheme: light)").matches);
     if (light) document.documentElement.setAttribute("data-theme", "light");
   } catch (e) {}
 })();
@@ -54,8 +63,10 @@ export function applyTheme(choice: ThemeChoice): void {
   else document.documentElement.removeAttribute("data-theme")
 
   try {
-    if (choice === "system") localStorage.removeItem(THEME_STORAGE_KEY)
-    else localStorage.setItem(THEME_STORAGE_KEY, choice)
+    // Every choice is stored, "system" included. Clearing the key would now
+    // mean dark rather than system, so the old removeItem shortcut would have
+    // silently turned "follow my OS" into "dark".
+    localStorage.setItem(THEME_STORAGE_KEY, choice)
   } catch {
     // Private browsing can refuse writes. The theme still applied above, it
     // just will not survive a reload, which is the right way to degrade.
@@ -63,11 +74,13 @@ export function applyTheme(choice: ThemeChoice): void {
 }
 
 export function readStoredChoice(): ThemeChoice {
-  if (typeof window === "undefined") return "system"
+  if (typeof window === "undefined") return "dark"
   try {
     const stored = localStorage.getItem(THEME_STORAGE_KEY)
-    return isThemeChoice(stored) ? stored : "system"
+    return isThemeChoice(stored) ? stored : "dark"
   } catch {
-    return "system"
+    // Storage refused, so there is no preference to read. Same answer as no
+    // preference at all: dark.
+    return "dark"
   }
 }

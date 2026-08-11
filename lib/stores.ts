@@ -53,7 +53,7 @@ export type StoreProfile = {
    * outside a region, and the site then keeps those listings away from
    * shoppers who cannot buy them.
    *
-   * This exists because of the house rule in section 16: prices shown must be
+   * This exists because of the house rule in section 17: prices shown must be
    * prices the shopper can actually get. Anderton's is UK only, so showing a
    * shopper in Ohio a Guildford price they can never pay is the same failure
    * as showing a stale one.

@@ -102,7 +102,7 @@ describe("RIGS", () => {
   })
 
   /**
-   * The house rule from CLAUDE.md section 16, enforced where it is easiest to
+   * The house rule from CLAUDE.md section 17, enforced where it is easiest to
    * break: a couple of thousand words of hand-written prose.
    */
   it("uses no em dashes anywhere in the copy", () => {

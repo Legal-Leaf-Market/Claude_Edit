@@ -2,7 +2,7 @@
 
 Read this fully before editing. Sister project to **Legal-Leaf Market**,
 **Herbal Leaf Market** and **Nicotia Market**, and it inherits their house
-rules (section 16). The difference: those sites scrape public storefront JSON
+rules (section 17). The difference: those sites scrape public storefront JSON
 from merchants who want the traffic. This one mostly consumes **gated partner
 feeds** whose terms say exactly what you may and may not do with their data.
 That constraint shapes most of the decisions below, and undoing one of them
@@ -145,7 +145,7 @@ built for that site's own frontend rather than published for this use.
   rather than final. **That list must never become an ingestion filter or a
   ranking input.** Andertons stocks far more than those sixteen brands and we
   earn nothing on the rest, which makes this the sharpest test yet of the
-  section 16 rule that commission never affects ranking and that payout is not
+  section 17 rule that commission never affects ranking and that payout is not
   why a merchant is listed. The list is deliberately invisible to the ingester:
   a commission-aware feed reader is one refactor from filtering down to the
   paying brands, which is ranking by payout performed at the row level, and the
@@ -657,7 +657,82 @@ Victory preamp gets a page of prices they can never pay.
 
 ---
 
-## 16. House rules inherited from the sister sites
+## 16. The design system: a rack of gear, not a family site
+
+`app/globals.css`, `components/brand/logo.tsx`, `components/ui/stomp.tsx`.
+
+**This site has left the Leaf Market family palette, deliberately.** globals.css
+began as a port of nicotiamarket.com's tokens, sharing `--gold`, `--sage`,
+`--red` and the three faces with the sister sites, with valve-amber copper as
+Gear Avail's one accent of its own. It made the site look like a hemp
+marketplace that had swapped its product photos. Diverging was an explicit
+product decision, so "it should match the sister sites" is no longer a reason
+to change any of this back. The names `--gold`, `--sage` and `--red` survive
+because roughly 300 call sites use them; they resolve to this site's values now.
+
+**What replaced it.** A guitarist's visual world is grey: anodised aluminium,
+powder-coated steel, amp chassis, flight cases. The warm metal in it is brass,
+and the only saturated colour is the LED that says a pedal is engaged. So:
+
+- a genuinely neutral graphite scale, six steps
+- saturated gold (`--brand-gold`), used as an EDGE and almost never as a fill
+- one bright green (`--brand-led`), reserved for things that are lit
+
+**Dark is the default, and that is a product decision rather than a technical
+one.** Cut-out product photography separates on graphite, and the brass edge
+and LED green only carry against a dark plate. Someone whose laptop is in light
+mode still gets the site as designed. "system" survives as a state you can
+choose, which means it has to be STORED: absence now means dark, so clearing
+the key would silently turn "follow my OS" into "dark".
+
+**The metal tokens do not change between themes.** A pedal enclosure is a dark
+object whatever it is standing on, and controls that keep their material across
+themes are what stop the interface feeling like two interfaces. Surfaces flip;
+buttons do not.
+
+**Every control is a piece of gear.** Buttons are stompbox faces (`.stomp`),
+icon buttons are knurled knobs (`.knob`), and the theme switch is a three-way
+pickup selector (`.pickup`). The rules that keep that off the cheese, and they
+are load bearing rather than taste:
+
+- metal stays dark and is never tinted; real enclosures are drab, and the
+  drabness is what lets the gold edge and the LED read at all
+- gold is an edge, never a fill: one hairline border and one silkscreen line
+  inside it, exactly as a pedal is printed
+- the LED is the only saturated colour and means the same thing everywhere
+- travel is 2px, so it reads as a switch bottoming out
+- nothing spins, bounces or glows at idle. A rack of gear at rest is still
+- gold is MUTED at rest and earned by `:hover` and by the one primary action
+  per view. A toolbar of eight buttons must not be eight gold rings
+
+**The mark is drawn, not typeset.** A pedal enclosure with a brass silkscreen
+edge, a status LED and a single-cutaway guitar on the face. The letterforms are
+stroked polylines with mitred joins on a 100-unit cap height, so the wordmark
+needs no font, renders identically everywhere and survives being inlined into a
+favicon. Two drafts were thrown away and both failures are worth remembering:
+chamfering the enclosure into an octagon read as a road sign at tab size, and
+cutting two deep notches either side of the neck for a double cutaway produced,
+unmistakably, a cat. A guitar's shoulders sit HIGH and the cutaway is a shallow
+scoop, not a V.
+
+**Two tokens are contrast-critical and are not interchangeable with the brand
+hues.** Bright gold is about 1.8:1 on white and bright green about 1.9:1, both
+far under the 4.5:1 a price or a sentence needs. Anything printing a price or
+accent-coloured body text uses `--money` and `--accent-text`, never
+`--brand-gold` or `--sage`, or it reads in one theme and vanishes in the other.
+
+**Godot is on the table for one thing only.** A separate 3D "rig room" (cables
+that hang, footswitches you stomp, knobs you hear) is a legitimate toy and a
+shareable. The planner itself stays in the DOM: it is indexable, and
+programmatic SEO is this site's growth model; the outbound money path is
+`/go/[listingId]` in the DOM; the layout, power and cable engines are
+TypeScript shared with the server so the assistant can build a rig; and a
+canvas has no DOM, so no screen reader. Do not port the planner into a game
+engine.
+
+---
+
+## 17. House rules inherited from the sister sites
 
 - **No em dashes anywhere in copy.** Use a comma, colon, or parentheses.
 - **Do not GET an Awin tracking link in testing** (section 5).
@@ -678,7 +753,7 @@ Victory preamp gets a page of prices they can never pay.
   never the money. The two cases look identical from outside, so write down
   which one it was.
 
-## 17. Hard "do not" list
+## 18. Hard "do not" list
 
 - Do NOT call the Reverb API for listings, or add a scraping fallback anywhere.
 - Do NOT write Facebook Marketplace ingestion.
@@ -712,8 +787,18 @@ Victory preamp gets a page of prices they can never pay.
   feed down to the paying brands is ranking by payout at the row level.
 - Do NOT bind the Impact catalogue by column position. It is brand-configured
   and the order is not stable; bind by header name and fail loudly.
-- Do NOT define a colour only inside the light-theme block, or only outside it.
-  Both themes resolve from the same token set, and prices and accent-coloured
-  body text must use `--money` and `--accent-text` rather than `--sage` and
-  `--copper`, which fail contrast on paper.
+- Do NOT define a colour only inside the light-theme block, or only outside
+  it. Both themes resolve from the same token set, and prices and
+  accent-coloured body text must use `--money` and `--accent-text` rather than
+  `--brand-gold` and `--sage`, which fail contrast on paper (section 16).
+- Do NOT restore the sister sites' warm palette, or re-point `--gold` /
+  `--sage` / `--red` at the family values. Diverging was a product decision,
+  not drift (section 16).
+- Do NOT tint the metal tokens, or redefine them per theme. A pedal enclosure
+  is a dark object whatever it is standing on.
+- Do NOT fill anything with `--brand-gold`. It is an edge colour, and at rest
+  it is muted; full brass is earned by hover and by the one primary action.
+- Do NOT port the pedalboard planner into a game engine. It has to stay
+  indexable, keep `/go` in the DOM, share the TypeScript engines with the
+  server, and be reachable by a screen reader (section 16).
 - Do NOT point the test suite at a database you care about; it truncates.

@@ -13,6 +13,7 @@ import { db } from "@/lib/db"
 import { EFFECTS } from "@/lib/pedalboard/chain"
 import { FEATURED_RIG_SLUGS, hueFor, initialsFor, rigStats, RIG_BY_SLUG, signaturePedal } from "@/lib/rigs"
 import { search } from "@/lib/search"
+import { StompLink } from "@/components/ui/stomp"
 
 export const revalidate = 300
 
@@ -57,58 +58,54 @@ export default async function HomePage() {
   return (
     <div className="shell">
       {/*
-        The family hero: eyebrow, a Cormorant italic lead line, the Fraunces
-        gradient headline, one sentence of subtitle, then the stat row. The
-        live pill sits above it because freshness is the whole claim an
-        aggregator makes, and section 10 of CLAUDE.md makes the point that a
-        stale feed looks exactly like a quiet market.
+        The rack panel. It replaced the family hero (centred eyebrow, Cormorant
+        italic lead, Fraunces gradient headline, script pull quote), which was
+        a good hero belonging to the hemp sites and read here as a borrowed
+        suit. See THE RACK PANEL in globals.css.
+
+        The status LED stays at the top because freshness is the whole claim an
+        aggregator makes: section 10 of CLAUDE.md notes that a stale feed looks
+        exactly like a quiet market, and the only thing that tells them apart
+        is a number that says when the stock was last counted.
       */}
-      <section className="hero">
-        <div className="hero-inner">
+      <section className="rack mt-4">
+        <div className="rack-inner">
           {stats.listings > 0 && (
-            <p className="mb-4">
-              <span className="live-pill">
-                <span className="dot" aria-hidden="true" />
-                {stats.listings.toLocaleString()} listings live now
-              </span>
+            <p className="rack-status mb-5">
+              <span className="led" aria-hidden="true" />
+              {stats.listings.toLocaleString()} listings live now
             </p>
           )}
-          <p className="eyebrow">Used, vintage and new</p>
-          <h1 className="h-display mt-3">
-            <span className="h-lead">Real gear, straight from the makers,</span>
-            on one page
+
+          <h1 className="rack-title">
+            Every shop&apos;s stock.
+            <br />
+            <em>One page.</em>
           </h1>
-          <p className="hsub">
-            Gear Avail pulls real-time inventory from independent instrument makers and retailers,
-            so you can browse everything in one place instead of hunting down each store. Sorted by
-            price, with the genuinely underpriced gear marked.
-          </p>
-          <p className="mx-auto mt-3 max-w-[56ch] font-script text-lg italic text-[var(--accent-text)]">
-            No fees. No sellout. Built by a musician who&apos;s flipped over a thousand pedals, not
-            a pitch deck.
+
+          <p className="rack-sub">
+            Gear Avail pulls live inventory from independent makers and retailers, so you can
+            compare everything in one place instead of opening eleven tabs. Sorted by price, with
+            the genuinely underpriced gear marked, and a market price only where there are enough
+            listings to actually mean one.
           </p>
 
-          <div className="mt-7 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/search"
-              className="inline-flex h-11 items-center gap-2 rounded-[10px] bg-gradient-to-r from-[var(--sage-dk)] to-[var(--sage)] px-6 text-[13px] font-bold tracking-[0.03em] text-[#04140a] shadow-[0_4px_14px_rgba(34,197,94,.2)] transition-all hover:brightness-110 hover:shadow-[0_6px_20px_rgba(34,197,94,.35)]"
-            >
+          <div className="mt-7 flex flex-wrap gap-3">
+            <StompLink href="/search" variant="go" size="lg">
               Browse all gear
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
-            <Link
-              href="/rigs"
-              className="inline-flex h-11 items-center gap-2 rounded-full border border-[var(--line-strong)] bg-[var(--chip)] px-6 text-[13px] font-bold tracking-[0.03em] text-[var(--text)] transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]"
-            >
-              See the boards behind the records
-            </Link>
+            </StompLink>
+            <StompLink href="/rigs" size="lg">
+              The boards behind the records
+            </StompLink>
           </div>
 
           {stats.listings > 0 && (
-            <dl className="hstats">
-              <Stat label="Live listings" value={stats.listings.toLocaleString()} />
-              <Stat label="Instruments tracked" value={stats.gear.toLocaleString()} />
-              <Stat label="Below market now" value={stats.deals.toLocaleString()} />
+            <dl className="readouts mt-9">
+              <Readout label="Live listings" value={stats.listings.toLocaleString()} />
+              <Readout label="Instruments tracked" value={stats.gear.toLocaleString()} />
+              <Readout label="Below market now" value={stats.deals.toLocaleString()} />
+              <Readout label="Documented rigs" value={rigs.rigs.toLocaleString()} />
             </dl>
           )}
         </div>
@@ -375,9 +372,14 @@ function ToolCard({
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+/**
+ * One readout on the rack panel. A <div> inside the <dl> rather than a bare
+ * dt/dd pair, because the panel lays these out as boxes and a dl's children
+ * cannot be flex items individually.
+ */
+function Readout({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="readout">
       <dt>{label}</dt>
       <dd>{value}</dd>
     </div>
