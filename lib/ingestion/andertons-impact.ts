@@ -474,6 +474,21 @@ export function isIncrementalDrop(path: string): boolean {
   return /incremental|delta|changes?\b/i.test(path)
 }
 
+/**
+ * Is this listing entry something a catalogue could be?
+ *
+ * SFTP reports "-" for a plain file, "d" for a directory and "l" for a
+ * SYMLINK, and the first version of this module dropped symlinks from both
+ * buckets. That is not a cosmetic gap: a drop that publishes
+ * "latest.csv -> 2026-08-11.csv", which is a completely ordinary way to run
+ * one, would have listed as EMPTY and been reported as the merchant delivering
+ * nothing. Blaming a third party for a filter of ours is the worst failure
+ * available here, so symlinks count as files and an empty listing means empty.
+ */
+function isFileLike(type: string): boolean {
+  return type === "-" || type === "l"
+}
+
 function isMissingDirectory(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
   return /No such file|ENOENT/i.test(message)
@@ -549,7 +564,7 @@ export async function listAndertonsDrop(config: SftpConfig): Promise<DropListing
     }
 
     const files = listing
-      .filter((f) => f.type === "-")
+      .filter((f) => isFileLike(f.type))
       .map((f) => ({
         name: f.name,
         sizeBytes: f.size,
@@ -581,7 +596,7 @@ export async function listAndertonsDrop(config: SftpConfig): Promise<DropListing
           for (const f of inner.slice(0, 40)) {
             children.push({
               name: `${dir}/${f.name}${f.type === "d" ? "/" : ""}`,
-              sizeBytes: f.type === "-" ? f.size : 0,
+              sizeBytes: isFileLike(f.type) ? f.size : 0,
               modified: f.modifyTime ? new Date(f.modifyTime).toISOString() : null,
             })
           }
@@ -627,7 +642,7 @@ export async function fetchAndertonsCatalogue(config: SftpConfig): Promise<strin
 
     const listing = await client.list(config.path)
     // ssh2-sftp-client marks a plain file with "-", the same convention as ls.
-    const chosen = pickCatalogueFile(listing.filter((f) => f.type === "-").map((f) => f.name))
+    const chosen = pickCatalogueFile(listing.filter((f) => isFileLike(f.type)).map((f) => f.name))
     if (!chosen) {
       throw new Error(
         `No catalogue file in ${config.path}. Saw: ${listing.map((f) => f.name).join(", ") || "(empty directory)"}`,

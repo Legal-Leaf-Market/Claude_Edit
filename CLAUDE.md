@@ -648,6 +648,35 @@ That puts a real credential in clear on the public internet, and it is a
 decision to take deliberately if at all, not one to bury in a `catch` block.
 The same instinct as the Reverb API having no fallback path (section 2).
 
+**AS OF 11 AUG 2026, NEITHER CHANNEL DELIVERS ANYTHING, AND BOTH REASONS ARE
+ON IMPACT'S SIDE.** This is written down so nobody re-debugs code that is not
+broken. The transport work is finished and proven as far as it can be proven
+from here:
+
+| Step | Result |
+|---|---|
+| SSH login on port 22 | works |
+| Home directory | one entry, `INCREMENTAL/` |
+| `INCREMENTAL/` | **empty** |
+| Catalogue Items API | 400, "not been made available via API by the Advertiser" |
+| Listing catalogues via API | 200, **zero** catalogues |
+
+So the credentials are right, the transport is right, the path is right, and
+there is no file to fetch and no API to call. **The next move is a request to
+Impact or Anderton's, not a code change.** Two things to ask for: API access
+enabled for catalogue 30480, and a FULL catalogue delivery provisioned to the
+SFTP drop rather than an empty incremental directory. An incremental feed
+cannot build the catalogue from cold in any case, since it carries changes to
+rows that are supposed to already exist.
+
+**Before ever reporting a merchant as delivering nothing, check our own
+filters.** The listing code dropped SFTP symlinks (`type === "l"`) from both
+the file and directory buckets, so a drop publishing `latest.csv ->
+2026-08-11.csv`, an ordinary way to run one, would have rendered as an empty
+directory and been blamed on the merchant. Symlinks now count as files, and
+`tests/andertons-sftp.test.ts` pins it. The empty listing above was confirmed
+after that fix.
+
 **THE DROP SERVES AN INCREMENTAL FEED, AND THAT MUST NEVER EXPIRE.** Listing
 the account's home directory found exactly one entry, `INCREMENTAL/`. An
 incremental feed carries what CHANGED rather than what exists, and everything

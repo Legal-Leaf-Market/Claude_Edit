@@ -43,7 +43,7 @@ const CONFIG = {
 }
 
 /** An SFTP listing entry. "-" is a plain file, "d" a directory, as with ls. */
-function entry(name: string, type: "-" | "d" = "-") {
+function entry(name: string, type: "-" | "d" | "l" = "-") {
   return { type, name, size: 10, modifyTime: 0, accessTime: 0, rights: {}, owner: 0, group: 0 }
 }
 
@@ -346,5 +346,50 @@ describe("descending while discovering", () => {
     await listAndertonsDrop(CONFIG)
 
     expect(list).toHaveBeenCalledTimes(1)
+  })
+})
+
+/**
+ * Symlinks are files.
+ *
+ * SFTP reports "-" for a plain file, "d" for a directory and "l" for a
+ * symlink, and this module originally dropped "l" from both buckets. A drop
+ * publishing "latest.csv -> 2026-08-11.csv", which is a completely ordinary
+ * way to run one, would then have listed as EMPTY. That would have been
+ * reported as the merchant delivering nothing, when the cause was a filter of
+ * ours. Blaming a third party for our own bug is the worst outcome available
+ * here, so an empty listing has to genuinely mean empty.
+ */
+describe("symlinked catalogue files", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    connect.mockResolvedValue(undefined)
+    end.mockResolvedValue(undefined)
+  })
+
+  it("lists a symlink rather than hiding it", async () => {
+    list.mockResolvedValue([entry("latest.csv", "l")])
+
+    const listing = await listAndertonsDrop(CONFIG)
+
+    expect(listing.files.map((f) => f.name)).toContain("latest.csv")
+  })
+
+  it("will pull from a symlinked catalogue", async () => {
+    list.mockResolvedValue([entry("latest.csv", "l")])
+    get.mockResolvedValue(Buffer.from("Sku\tName\tUrl\n"))
+
+    await fetchAndertonsCatalogue(CONFIG)
+
+    expect(get).toHaveBeenCalledWith("/Andertons-Music-Company/latest.csv")
+  })
+
+  it("still reports an empty directory as empty", async () => {
+    list.mockResolvedValue([])
+
+    const listing = await listAndertonsDrop(CONFIG)
+
+    expect(listing.files).toHaveLength(0)
+    expect(listing.chosen).toBeNull()
   })
 })
