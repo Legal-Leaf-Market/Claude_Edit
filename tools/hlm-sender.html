@@ -416,6 +416,7 @@
         </span>
       </div>
       <div class="row-controls" style="gap: 14px">
+        <label class="inline">settle <input type="number" id="autoSettle" min="1" max="30"> s after each page loads</label>
         <label class="inline">count down <input type="number" id="autoCountdown" min="2" max="60"> s first</label>
         <label class="inline">leave <input type="number" id="autoBetween" min="3" max="600"> s between tabs</label>
         <label class="inline">stop after <input type="number" id="autoCap" min="1" max="99"> per sitting</label>
@@ -553,6 +554,7 @@
   var COUNTDOWN_MS = Math.max(2000, Number(BAKED && BAKED.countdownMs) || 5000);
   var BETWEEN_MS = Math.max(3000, Number(BAKED && BAKED.betweenTabsMs) || 8000);
   var SITTING_CAP = Math.max(1, Number(BAKED && BAKED.capPerSitting) || 12);
+  var SETTLE_MS = Math.max(250, Number(BAKED && BAKED.settleMs) || 2000);
   var HOME_ORIGIN = (BAKED && typeof BAKED.homeOrigin === 'string') ? BAKED.homeOrigin : '';
 
   /* Reporting back to the sender page is what lets the loop continue: the page
@@ -762,6 +764,25 @@
 
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
+  /* A refusal that is about ONE account rather than about the run. The loop moves
+     on from these and stops on everything else. */
+  function skipError(msg) {
+    var e = new Error(msg);
+    e.skip = true;
+    return e;
+  }
+
+  /* Instagram renders after the script arms, so nothing should touch the DOM
+     until the document has stopped loading and then had a moment on top. This is
+     the settle the whole sequence was missing. */
+  async function pageSettled() {
+    if (document.readyState !== 'complete') {
+      try { await waitFor(function () { return document.readyState === 'complete'; }, 15000); }
+      catch (e) {}
+    }
+    await sleep(SETTLE_MS);
+  }
+
   function waitFor(test, ms) {
     return new Promise(function (resolve, reject) {
       var t0 = Date.now();
@@ -906,20 +927,64 @@
     }
     var who = here || want;
 
-    var btn = messageButton();
+    /* WAIT for the button, never scan once. Instagram renders the profile header
+       after the script arms, so a single look finds nothing on a tab that has
+       just been navigated, and reports it as a private account when it is
+       nothing of the sort.
+
+       Two outcomes have to be told apart here, because they deserve opposite
+       treatment. A profile whose header HAS rendered and offers only Follow or
+       Requested cannot be messaged at all: that is this one account's answer, and
+       the run should move to the next. A profile where nothing rendered is a
+       broken or signed-out page, which is the whole run's problem and stops it.
+       Guessing either way is how a loop either dies on a private account or
+       marches through fifty of them learning nothing. */
+    log('Looking for the Message button on @' + who + '...');
+    var btn = null, headerAt = 0, gaveUp = false;
+    try {
+      await waitFor(function () {
+        btn = messageButton();
+        if (btn) return true;
+        if (!headerAt && labelledButton(['requested', 'follow', 'following', 'follow back'])) {
+          headerAt = Date.now();
+        }
+        /* Header up and still no Message button after a grace: this account is
+           simply not messageable, so stop waiting the full twenty seconds for it. */
+        if (headerAt && Date.now() - headerAt > 6000) { gaveUp = true; return true; }
+        return false;
+      }, 20000);
+    } catch (e) { /* fell through with nothing at all, handled just below */ }
+
     if (!btn) {
-      throw new Error('no Message button on @' + who + ', so no dialog could be opened. ' +
-        'A private account you do not follow, or the button is behind the ... menu');
+      if (gaveUp || headerAt) {
+        throw skipError('@' + who + ' has no Message button, only Follow or Requested, ' +
+          'so this one was passed over');
+      }
+      throw new Error('nothing rendered on @' + who + ' after 20s, so either the page ' +
+        'never loaded or this browser is signed out of Instagram');
     }
 
+    /* Two clicks, because the first can land before the button has its handler
+       attached: the node is in the DOM a moment before it does anything. A click
+       that does nothing is silent, so the retry is what tells them apart. */
     log('Opening the message dialog with @' + who + '...');
     btn.click();
     try {
-      await waitFor(function () { return !!findComposer(); }, 12000);
+      await waitFor(function () { return !!findComposer(); }, 7000);
     } catch (e) {
-      throw new Error('clicked Message on @' + who + ' but no message box appeared. ' +
-        'If the tab reloaded, click the bookmark again on the thread');
+      log('No box yet, clicking Message once more...');
+      var again = messageButton();
+      if (again) again.click();
+      try {
+        await waitFor(function () { return !!findComposer(); }, 12000);
+      } catch (e2) {
+        throw new Error('clicked Message on @' + who + ' but no message box appeared. ' +
+          'If the tab reloaded, the panel needs arming again on the thread');
+      }
     }
+    /* A composer on screen is not yet a composer that will take text, so settle
+       before the first keystroke rather than racing its own editor. */
+    await sleep(SETTLE_MS);
     log('Dialog open with @' + who + '.');
   }
 
@@ -1193,6 +1258,7 @@
     busy = true; setBusy(true);
     var sent = 0;
     var failed = null;
+    var skipped = false;
     try {
       await ensureThread(log);
       for (var i = 0; i < texts.length; i++) {
@@ -1207,13 +1273,14 @@
       log(sent + (sent === 1 ? ' message' : ' messages') + ' sent. Move to the next tab.');
     } catch (e) {
       failed = e.message;
-      log('Stopped after ' + sent + ' sent: ' + e.message, true);
+      skipped = !!e.skip;
+      log((skipped ? 'Passed over: ' : 'Stopped after ' + sent + ' sent: ') + e.message, true);
     }
     busy = false; setBusy(false);
     /* A partial run counts as a failure: two of three messages delivered is not
        a finished conversation, and the loop must stop rather than march on. */
     if (!failed && sent < texts.length) failed = 'only ' + sent + ' of ' + texts.length + ' went';
-    return { sent: sent, error: failed };
+    return { sent: sent, error: failed, skip: skipped };
   }
 
   async function openDialog() {
@@ -1382,6 +1449,13 @@
       return;
     }
 
+    /* STEP ONE, always: let the page finish arriving. Everything that used to go
+       wrong here went wrong because the script started work on a half rendered
+       page and read "not there yet" as "not there". */
+    showAuto('Waiting for @' + who + "'s page to settle.", false);
+    await pageSettled();
+    if (cancelled) return;
+
     if (AUTO_RUN === 'dialog') {
       showAuto('Opening the message dialog with @' + who + '.', false);
       var opened = await openDialog();
@@ -1413,6 +1487,12 @@
       }
       showAuto('Sending to @' + who + '.', true);
       var res = await run('welcome', [0, 1, 2]);
+      if (res.skip) {
+        /* This account, not this run. The loop carries on to the next one. */
+        showAuto('Passed over: ' + res.error, false);
+        reportHome('unreachable', who, res.error);
+        return;
+      }
       if (res.error) {
         showAuto('Stopped: ' + res.error, true);
         reportHome('failed', who, res.error);
@@ -1593,7 +1673,7 @@ const SAMPLES = {
    that a mis-queued tab can be caught before it sends. */
 const DEFAULTS = {
   self: "herbal_leaf_market", gapMs: 1800,
-  autoRun: "off", autoClose: true, countdown: 5, betweenTabs: 6, cap: 12
+  autoRun: "off", autoClose: true, settle: 2, countdown: 5, betweenTabs: 6, cap: 12
 };
 const AUTO_MODES = ["off", "dialog", "send"];
 
@@ -1623,6 +1703,7 @@ function shapeSaved(raw, wasStored) {
     /* Absent means on, since it only matters in the send mode and closing the
        tab is what makes that mode a loop rather than a pile of tabs. */
     autoClose: o.autoClose === undefined ? DEFAULTS.autoClose : !!o.autoClose,
+    settle: asNum(o.settle, DEFAULTS.settle, 1, 30),
     countdown: asNum(o.countdown, DEFAULTS.countdown, 2, 60),
     betweenTabs: asNum(o.betweenTabs, DEFAULTS.betweenTabs, 3, 600),
     cap: asNum(o.cap, DEFAULTS.cap, 1, 99),
@@ -2028,7 +2109,11 @@ const loopArmed = () => saved.autoRun === "send";
  * countdown, the three messages, and enough slack for the dialog to open and for
  * Instagram to be slow. */
 function stallMs() {
-  return (saved.countdown + 3 * (saved.gapMs / 1000) + 60) * 1000;
+  /* Settle before the page is touched, up to 20s waiting for the Message button,
+     settle again once the composer is up, the countdown, three messages, and a
+     minute of slack for Instagram being slow. Generous on purpose: a watchdog
+     that fires while a tab is still working would stop a healthy run. */
+  return (2 * saved.settle + 20 + saved.countdown + 3 * (saved.gapMs / 1000) + 60) * 1000;
 }
 let stallTimer = null;
 function armStall(who) {
@@ -2140,6 +2225,15 @@ window.addEventListener("message", (e) => {
   if (d.kind === "skipped") {
     loop.skipped++;
     loopSay("skipped   @" + who + (why ? "  (" + why + ")" : ""), "meh");
+    return loopAdvance();
+  }
+  /* Cannot be messaged at all: private, or only Follow and Requested on offer.
+     The loop moves on, and the stamp put on at navigation time is REMOVED, since
+     nothing was said to them and they should come back round if that changes. */
+  if (d.kind === "unreachable") {
+    loop.skipped++;
+    loopSay("no dialog  @" + who + (why ? "  (" + why + ")" : "") + ", moved on", "meh");
+    if (who) { delete ledger[who]; saveLedger(ledger); renderList(); refreshCadence(); }
     return loopAdvance();
   }
   if (d.kind === "capped") {
@@ -2264,6 +2358,7 @@ const pickUrl = document.getElementById("pickUrl");
 const pickWeek = document.getElementById("pickWeek");
 const autoRunEl = document.getElementById("autoRun");
 const autoCloseEl = document.getElementById("autoClose");
+const autoSettleEl = document.getElementById("autoSettle");
 const autoCountdownEl = document.getElementById("autoCountdown");
 const autoBetweenEl = document.getElementById("autoBetween");
 const autoCapEl = document.getElementById("autoCap");
@@ -2279,6 +2374,7 @@ function applySaved() {
   pickWeek.value = saved.pick.week;
   autoRunEl.value = saved.autoRun;
   autoCloseEl.checked = saved.autoClose;
+  autoSettleEl.value = String(saved.settle);
   autoCountdownEl.value = String(saved.countdown);
   autoBetweenEl.value = String(saved.betweenTabs);
   autoCapEl.value = String(saved.cap);
@@ -2297,6 +2393,7 @@ function draft() {
     gapMs: gapMsEl.value,
     autoRun: autoRunEl.value,
     autoClose: autoCloseEl.checked,
+    settle: autoSettleEl.value,
     countdown: autoCountdownEl.value,
     betweenTabs: autoBetweenEl.value,
     cap: autoCapEl.value,
@@ -2307,7 +2404,7 @@ function draft() {
 /* rev and stored are bookkeeping, not content, so they stay out of this. */
 function contentOf(s) {
   return JSON.stringify([s.welcome, s.newsletter, s.pick, s.self, s.gapMs,
-    s.autoRun, s.autoClose, s.countdown, s.betweenTabs, s.cap]);
+    s.autoRun, s.autoClose, s.settle, s.countdown, s.betweenTabs, s.cap]);
 }
 const isDirty = () => contentOf(draft()) !== contentOf(saved);
 
@@ -2369,12 +2466,14 @@ function refreshAutoWarn() {
     msg = "A queued tab will open the message dialog by itself and then stop. Nothing " +
       "sends without a keypress.";
   } else {
-    msg = "A queued tab will send all three messages on its own, after a " + d.countdown +
-      " second countdown you can cancel with the button in the panel or with Esc. " +
-      "One Instagram tab, pointed at each account in turn, " + d.betweenTabs +
-      " seconds apart, stopping after " + d.cap + " in a sitting. It stops on the first " +
-      "failure, and on a tab that goes quiet, rather than working through the list. " +
-      "Scripted sending is against Instagram's terms and unattended sending is the version " +
+    msg = "Per account: point the tab at the profile, wait " + d.settle +
+      "s for it to render, wait for the Message button and click it, settle again, then " +
+      "send the three messages and confirm each one left before the next. A " + d.countdown +
+      " second countdown you can cancel comes first. One Instagram tab, " + d.betweenTabs +
+      "s between accounts, stopping after " + d.cap + " in a sitting. An account with no " +
+      "Message button, private or only offering Follow or Requested, is passed over and " +
+      "the run carries on; a page that does not render at all stops it. " +
+      "Scripted sending is against Instagram\u0027s terms and unattended sending is the version " +
       "of it their heuristics are looking for, so keep the cap low and read the transcript.";
   }
   el.textContent = msg;
@@ -2461,6 +2560,7 @@ function buildSource(auto) {
     /* autoClose is deliberately NOT in here. The tab never closes itself now:
        this page owns it and navigates it, so closing is a page-side decision at
        the end of the run. */
+    settleMs: saved.settle * 1000,
     countdownMs: saved.countdown * 1000,
     betweenTabsMs: saved.betweenTabs * 1000,
     capPerSitting: saved.cap,
@@ -2506,7 +2606,7 @@ function refreshBookmarklet() {
 
 /* Every editable control reports in, so the unsaved warning is never stale. */
 [].concat(welcomeBoxes, [newsBox, gapMsEl, selfEl, pickName, pickPrice, pickUrl, pickWeek,
-  autoRunEl, autoCloseEl, autoCountdownEl, autoBetweenEl, autoCapEl])
+  autoRunEl, autoCloseEl, autoSettleEl, autoCountdownEl, autoBetweenEl, autoCapEl])
   .forEach(el => {
     el.addEventListener("input", () => refreshSaveState());
     el.addEventListener("change", () => refreshSaveState());
