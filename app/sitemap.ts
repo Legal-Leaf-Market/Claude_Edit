@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { env } from "@/lib/env"
 import { indexableCategories } from "@/lib/categories"
+import { PARTNERS } from "@/lib/partners"
 import { STORES } from "@/lib/stores"
 import { BOARDS } from "@/lib/boards"
 import { RIGS } from "@/lib/rigs"
@@ -53,6 +54,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     })),
     { url: `${base}/pedalboard`, changeFrequency: "weekly" as const, priority: 0.7 },
+    // The partner pages are listed unconditionally, like the rigs and the
+    // boards and unlike anything inventory-backed. Their content is the
+    // hand-written write-up, which is on the page whether or not a feed ran, so
+    // there is no risk of advertising a soft 404 the way an empty store page
+    // would. Priority sits below the editorial pages: these are two pages that
+    // exist because of an affiliate relationship, and they should not out-rank
+    // the catalogue in our own sitemap.
+    { url: `${base}/partners`, changeFrequency: "monthly" as const, priority: 0.4 },
+    ...PARTNERS.map((partner) => ({
+      url: `${base}/partners/${partner.slug}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.4,
+    })),
   ]
 
   try {
