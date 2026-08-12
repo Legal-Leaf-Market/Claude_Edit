@@ -405,13 +405,14 @@
       <div class="field" style="margin-bottom: 6px">
         <label class="inline" style="display: inline-flex; align-items: center; gap: 7px; font-weight: 600; color: var(--text)">
           <input type="checkbox" id="autoClose" style="width: auto; margin: 0">
-          close each tab when it is done, and open the next one
+          close the Instagram tab when the whole loop finishes
         </label>
         <span class="hint" style="margin-top: 4px">
-          This is what makes it a loop. One Instagram tab open at a time, this page
-          driving it, and "Run the loop over N" in section 3 walks N accounts without
-          another click. It needs pop-ups allowed for this page, since only the first
-          tab rides your actual click.
+          The loop uses ONE Instagram tab and points it at each account in turn, so
+          only the very first one is a pop-up and the rest are ordinary navigations.
+          That is deliberate: reopening a tab per account needs pop-up permission
+          that Chrome often will not keep for a page opened from a file, and this
+          way it needs none. Untick this to be left on the last thread instead.
         </span>
       </div>
       <div class="row-controls" style="gap: 14px">
@@ -552,7 +553,6 @@
   var COUNTDOWN_MS = Math.max(2000, Number(BAKED && BAKED.countdownMs) || 5000);
   var BETWEEN_MS = Math.max(3000, Number(BAKED && BAKED.betweenTabsMs) || 8000);
   var SITTING_CAP = Math.max(1, Number(BAKED && BAKED.capPerSitting) || 12);
-  var AUTO_CLOSE = !!(BAKED && BAKED.autoClose);
   var HOME_ORIGIN = (BAKED && typeof BAKED.homeOrigin === 'string') ? BAKED.homeOrigin : '';
 
   /* Reporting back to the sender page is what lets the loop continue: the page
@@ -1117,7 +1117,9 @@
   }
   function isDirty() {
     var v = editorValues();
-    return v.welcome.join(' ') !== msgs.welcome.join(' ') ||
+    /* JSON rather than a joined string: no separator to collide with, and no
+       invisible character in the file. */
+    return JSON.stringify(v.welcome) !== JSON.stringify(msgs.welcome) ||
       v.newsletter !== msgs.newsletter;
   }
   function refreshEdit() {
@@ -1377,7 +1379,6 @@
     if (done.welcome) {
       showAuto('Already sent on this thread, so nothing was sent again.', false);
       reportHome('skipped', who, 'already sent on this thread');
-      if (AUTO_CLOSE && AUTO_RUN === 'send') { await sleep(1200); try { window.close(); } catch (e) {} }
       return;
     }
 
@@ -1420,17 +1421,11 @@
       var n = countSend();
       writeJson(LAST_KEY, { at: Date.now() });
       reportHome('sent', who);
-      if (AUTO_CLOSE) {
-        showAuto(n + ' of ' + SITTING_CAP + ' this sitting. Sent, closing this tab.', false);
-        /* A beat so the report lands and so a person watching sees what happened.
-           window.close() works because the sender page opened this tab; a tab you
-           opened yourself ignores it, which is why the text says it too. */
-        await sleep(1400);
-        try { window.close(); } catch (e) {}
-        showAuto('Sent. This tab can be closed.', false);
-      } else {
-        showAuto(n + ' of ' + SITTING_CAP + ' sent in this sitting. This tab is done.', false);
-      }
+      /* This tab does NOT close itself. The sender page owns it and navigates it
+         to the next account, because reopening a tab per account needs pop-up
+         permission and navigating one you already have does not. Closing here
+         would hand that problem straight back. */
+      showAuto(n + ' of ' + SITTING_CAP + ' this sitting. Sent. Waiting for the next one.', false);
     } finally {
       clearInterval(beat);
       releaseLock();
@@ -1942,12 +1937,31 @@ function refreshQueueUI(extra) {
   statusEl.textContent = extra ? msg + " " + extra : msg;
 }
 
-/* Returns false when Chrome blocked the tab, leaving the item queued. */
-function openOne() {
+/* The one Instagram tab the loop drives. Held so it can be NAVIGATED rather than
+ * reopened, which is the whole trick: only the first tab is a pop-up, and every
+ * one after it is an ordinary navigation of a window this page already owns.
+ * Setting another window's location is allowed across origins even though
+ * reading it is not, so this needs no pop-up permission and no gesture. */
+let loopWin = null;
+
+/* Returns false when the tab could not be opened, leaving the item queued. */
+function openOne(reuse) {
   const item = queue[0];
   if (!item) return false;
-  const win = window.open(item.url, "_blank");
-  if (!win) return false;
+
+  let ok = false;
+  if (reuse && loopWin && !loopWin.closed) {
+    try { loopWin.location.href = item.url; ok = true; } catch (e) { ok = false; }
+    if (ok) { try { loopWin.focus(); } catch (e) {} }
+  }
+  if (!ok) {
+    /* A named target reuses a window of that name where one survives, and only
+       falls back to a genuinely new tab when it does not. */
+    const win = window.open(item.url, reuse ? "hlmSenderTab" : "_blank");
+    if (!win) return false;
+    if (reuse) loopWin = win;
+  }
+
   queue.shift();
   opened++;
   const f = FOLLOWERS[item.index];
@@ -2007,7 +2021,27 @@ const loopLogEl = document.getElementById("loopLog");
 const loopStopBtn = document.getElementById("loopStop");
 
 /* True when the built sender will actually drive itself and hand the tab back. */
-const loopArmed = () => saved.autoRun === "send" && saved.autoClose;
+const loopArmed = () => saved.autoRun === "send";
+
+/* If a tab neither reports nor fails, the loop would sit there looking busy for
+ * ever. This is how long to give one account before calling it stalled: the
+ * countdown, the three messages, and enough slack for the dialog to open and for
+ * Instagram to be slow. */
+function stallMs() {
+  return (saved.countdown + 3 * (saved.gapMs / 1000) + 60) * 1000;
+}
+let stallTimer = null;
+function armStall(who) {
+  clearTimeout(stallTimer);
+  stallTimer = setTimeout(() => {
+    if (!loop.on) return;
+    loopSay("no word back from @" + who + " after " + Math.round(stallMs() / 1000) +
+      "s, so the loop stopped there rather than guess.", "bad");
+    loopEnd("Loop stopped on a silent tab. Look at the Instagram tab: if the messages " +
+      "did go, the tab could not report back to this page, so tell me and I will " +
+      "switch it to a timed advance.");
+  }, stallMs());
+}
 
 function loopSay(text, cls) {
   loopLogEl.hidden = false;
@@ -2019,11 +2053,18 @@ function loopSay(text, cls) {
   loopLogEl.scrollTop = loopLogEl.scrollHeight;
 }
 
-function loopEnd(why) {
+/* clean is true only when the run reached its own end. Anything else leaves the
+   tab open on purpose: it is sitting on the account that went wrong, and that is
+   the only evidence of why. */
+function loopEnd(why, clean) {
   const was = loop.on;
   loop = { on: false, target: 0, sent: 0, skipped: 0 };
   loopStopBtn.hidden = true;
+  clearTimeout(stallTimer);
   if (was) loopSay(why, "meh");
+  if (was && clean && saved.autoClose && loopWin && !loopWin.closed) {
+    try { loopWin.close(); } catch (e) {}
+  }
   refreshQueueUI();
 }
 
@@ -2033,13 +2074,15 @@ function startLoop() {
   loopLogEl.textContent = "";
   loopSay("Loop started over " + loop.target +
     (loop.target === 1 ? " account" : " accounts") + ", one tab at a time.", "meh");
-  /* This click is the one real gesture available, so it buys the first tab. */
+  /* This click is the one real gesture available, and it is the ONLY pop-up the
+     whole run needs: the same tab is navigated from here on. */
   const nxt = nextUp();
-  if (!openOne()) {
+  if (!openOne(true)) {
     loopSay("Chrome blocked the very first tab, so nothing ran.", "bad");
     loopEnd("Loop stopped.");
     return refreshQueueUI(BLOCKED_HELP);
   }
+  if (nxt) armStall(nxt.handle);
   renderList();
   refreshCadence();
   refreshQueueUI("Loop running. Opened @" + (nxt ? nxt.handle : "") + ".");
@@ -2049,21 +2092,25 @@ function startLoop() {
  * itself with, so the tab arrives to a lock that is already free. */
 function loopAdvance() {
   if (!loop.on) return;
+  clearTimeout(stallTimer);
   if (loop.sent + loop.skipped >= loop.target) return loopEnd("Loop finished: " +
-    loop.sent + " sent, " + loop.skipped + " skipped.");
+    loop.sent + " sent, " + loop.skipped + " skipped.", true);
   if (!queue.length) return loopEnd("Loop finished, the queue is empty: " +
-    loop.sent + " sent, " + loop.skipped + " skipped.");
+    loop.sent + " sent, " + loop.skipped + " skipped.", true);
 
   const wait = Math.max(3, saved.betweenTabs) * 1000;
-  refreshQueueUI("Next tab in " + Math.round(wait / 1000) + "s.");
+  refreshQueueUI("Next account in " + Math.round(wait / 1000) + "s.");
   setTimeout(() => {
     if (!loop.on) return;
     const nxt = nextUp();
-    if (!openOne()) {
-      loopSay("Chrome blocked the next tab, so the loop stopped here. Nothing was lost.", "bad");
+    /* Reuse: this navigates the tab already open rather than asking for another. */
+    if (!openOne(true)) {
+      loopSay("Could not point the tab at the next account, so the loop stopped here. " +
+        "Nothing was lost.", "bad");
       loopEnd("Loop stopped.");
-      return refreshQueueUI(BLOCKED_HELP + " The loop in particular cannot run without it.");
+      return refreshQueueUI(BLOCKED_HELP);
     }
+    if (nxt) armStall(nxt.handle);
     renderList();
     refreshCadence();
     refreshQueueUI("Loop running, on @" + (nxt ? nxt.handle : "") + ".");
@@ -2324,8 +2371,9 @@ function refreshAutoWarn() {
   } else {
     msg = "A queued tab will send all three messages on its own, after a " + d.countdown +
       " second countdown you can cancel with the button in the panel or with Esc. " +
-      "One tab at a time, " + d.betweenTabs + " seconds apart, stopping after " + d.cap +
-      " in a sitting. It stops on the first failure rather than working through the list. " +
+      "One Instagram tab, pointed at each account in turn, " + d.betweenTabs +
+      " seconds apart, stopping after " + d.cap + " in a sitting. It stops on the first " +
+      "failure, and on a tab that goes quiet, rather than working through the list. " +
       "Scripted sending is against Instagram's terms and unattended sending is the version " +
       "of it their heuristics are looking for, so keep the cap low and read the transcript.";
   }
@@ -2410,7 +2458,9 @@ function buildSource(auto) {
     welcome: saved.welcome.slice(),
     newsletter: renderNewsletter(saved.newsletter, saved.pick),
     autoRun: saved.autoRun,
-    autoClose: saved.autoClose,
+    /* autoClose is deliberately NOT in here. The tab never closes itself now:
+       this page owns it and navigates it, so closing is a page-side decision at
+       the end of the run. */
     countdownMs: saved.countdown * 1000,
     betweenTabsMs: saved.betweenTabs * 1000,
     capPerSitting: saved.cap,
