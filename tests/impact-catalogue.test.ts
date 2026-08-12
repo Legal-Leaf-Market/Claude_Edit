@@ -95,6 +95,35 @@ describe("the merchant registry", () => {
     }
   })
 
+  /**
+   * THE TRAP THIS FILE EXISTS TO PREVENT.
+   *
+   * The Impact marketplace export lists a number beside every brand, and it is
+   * tempting to read it as the catalogue id. It is not: it identifies the
+   * PROGRAMME, the thing a publisher applies to. Anderton's is the proof and it
+   * is already in the repo, catalogue 30480 against campaign 43829.
+   *
+   * Getting this wrong is the worst failure mode in the whole integration,
+   * because it does not fail. /Catalogs/<programme>/Items either 404s, which is
+   * merely annoying, or returns whichever advertiser genuinely owns a catalogue
+   * with that number, filing their products under this merchant's name and
+   * poisoning every median built from them. So the two ids are separate fields
+   * and no merchant may have them equal.
+   */
+  it("never lets a programme id double as a catalogue id", () => {
+    for (const merchant of IMPACT_MERCHANTS) {
+      if (!merchant.programId || !merchant.catalogId) continue
+      expect(merchant.catalogId).not.toBe(merchant.programId)
+    }
+  })
+
+  it("keeps Anderton's two ids as the documented pair, not one number", () => {
+    // The only merchant here whose real catalogue id is known, and the evidence
+    // that the two numbering schemes are unrelated.
+    expect(ANDERTONS.programId).toBe("43829")
+    expect(ANDERTONS.catalogId).toBe("30480")
+  })
+
   it("looks a merchant up by key, case-insensitively, and refuses an unknown one", () => {
     expect(impactMerchant("fender")?.label).toBe("Fender")
     expect(impactMerchant("FENDER")?.label).toBe("Fender")

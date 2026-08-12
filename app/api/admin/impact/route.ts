@@ -79,24 +79,52 @@ export async function POST(request: Request) {
     if (body.mode === "list") {
       const catalogs = await listImpactCatalogs(env.impact.accountSid, env.impact.authToken)
       /*
-       * Say which ids are already wired up. With eight merchants the useful
-       * question is not "what catalogues exist" but "which of these is not yet
-       * in an env var", and answering it here beats cross-referencing two lists
-       * by eye.
+       * Say which ids are already wired up, and which merchant each unwired
+       * catalogue probably belongs to. With eight merchants the useful question
+       * is not "what catalogues exist" but "which of these is not yet in an env
+       * var, and which variable does it go in", and answering both here beats
+       * cross-referencing two lists of brand names by eye.
+       *
+       * `belongsTo` is a SUGGESTION, matched on the programme id the registry
+       * holds from the marketplace export. It never sets anything: a human
+       * still reads the catalogue id and pastes it into Vercel, which is the
+       * point, because a programme id and a catalogue id are different numbers
+       * and only the platform knows the second one.
        */
       const configured = new Map(
         IMPACT_MERCHANTS.filter((m) => m.catalogId).map((m) => [m.catalogId, m.key]),
       )
+      const byProgram = new Map(
+        IMPACT_MERCHANTS.filter((m) => m.programId).map((m) => [m.programId as string, m]),
+      )
+
+      const rows = catalogs.map((c) => {
+        const guess = c.programId ? byProgram.get(c.programId) : undefined
+        return {
+          ...c,
+          wiredTo: configured.get(c.id) ?? null,
+          belongsTo: guess ? { key: guess.key, label: guess.label, envVar: guess.envVar } : null,
+          /* Spelled out so a human can act on one line without scrolling up. */
+          action:
+            configured.get(c.id)
+              ? `Already wired to ${configured.get(c.id)}.`
+              : guess
+                ? `Looks like ${guess.label}. Set ${guess.envVar}=${c.id} in Vercel and redeploy.`
+                : "No merchant in the registry matches this programme. Check the name before wiring it to anything.",
+        }
+      })
+
       return NextResponse.json({
         mode: "list",
         seconds: seconds(),
         count: catalogs.length,
-        catalogs: catalogs.map((c) => ({ ...c, wiredTo: configured.get(c.id) ?? null })),
+        catalogs: rows,
         merchants: IMPACT_MERCHANTS.map((m) => ({
           key: m.key,
           label: m.label,
           catalogId: m.catalogId || null,
           envVar: m.envVar,
+          programId: m.programId ?? null,
         })),
       })
     }
