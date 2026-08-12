@@ -906,12 +906,14 @@
     return null;
   }
 
-  /* The pencil. Its label is on an svg inside the button often enough that the
-     ancestor walk matters. */
+  /* The pencil, and this is the element I am least sure of, so it is looked for
+     several ways. The label often sits on an svg inside the button, hence the
+     ancestor walk, and the exact wording has varied. */
   function newMessageButton() {
     var sels = [
       'div[role="button"][aria-label="New message"]',
       'a[href="/direct/new/"]',
+      'a[href^="/direct/new"]',
       '[aria-label="New message"]',
       '[aria-label="New Message"]'
     ];
@@ -921,8 +923,43 @@
         if (visible(els[j])) return clickableAncestor(els[j]);
       }
     }
-    /* An inbox with no threads in it offers this instead of a pencil. */
-    return labelledButton(['send message', 'new message']);
+    /* Any labelled thing that says it, wherever the label lives. */
+    var labelled = document.querySelectorAll('[aria-label]');
+    for (var k = 0; k < labelled.length; k++) {
+      var lab = (labelled[k].getAttribute('aria-label') || '').trim().toLowerCase();
+      if ((lab === 'new message' || lab === 'new chat') && visible(labelled[k])) {
+        return clickableAncestor(labelled[k]);
+      }
+    }
+    /* An inbox with no threads in it offers a plain button instead of a pencil. */
+    return labelledButton(['send message', 'new message', 'new chat']);
+  }
+
+  /* Last resort when the pencil cannot be found at all: load /direct/new/, which
+     opens the recipient box on its own. This is a navigation, which the whole
+     design otherwise avoids, and it is only safe BECAUSE the remaining list lives
+     in sessionStorage: the tab comes back and picks up where it left off, retrying
+     the account it was on. Capped, so a page that never yields a dialog cannot
+     turn into a reload loop. */
+  var RELOADS_KEY = 'hlmSender.reloads.v1';
+
+  function reloadsSoFar() {
+    try { return Number(sessionStorage.getItem(RELOADS_KEY)) || 0; } catch (e) { return 0; }
+  }
+  function recoverViaDirectNew(log) {
+    var n = reloadsSoFar();
+    if (n >= 2) {
+      throw new Error('no New message button on this page, and reloading /direct/new/ ' +
+        'twice did not produce one. Check that this is the Instagram Direct page and ' +
+        'that you are signed in');
+    }
+    try { sessionStorage.setItem(RELOADS_KEY, String(n + 1)); } catch (e) {}
+    log('No New message button, so reloading the composer. The list is kept.');
+    /* Hand the lock back before going, rather than relying on pagehide firing. */
+    releaseLock();
+    location.href = 'https://www.instagram.com/direct/new/';
+    /* Nothing after this runs: the document is going away. */
+    return new Promise(function () {});
   }
 
   /* React owns this input's value, so assigning .value directly is ignored. The
@@ -1082,10 +1119,7 @@
     var box = recipientBox();
     if (!box) {
       var pencil = newMessageButton();
-      if (!pencil) {
-        throw new Error('no New message button on this page, so no draft could be started. ' +
-          'This needs to be an Instagram Direct page');
-      }
+      if (!pencil) return recoverViaDirectNew(log);
       log('Starting a new draft...');
       pencil.click();
       try {
@@ -1485,6 +1519,13 @@
     if (cur && cur.tab === TAB_ID) { try { localStorage.removeItem(LOCK_KEY); } catch (e) {} }
   }
 
+  /* A tab that goes away mid-run must not leave the lock held. Without this the
+     recovery reload came back to "another tab is running a list", which was itself
+     ninety seconds ago: the lock was its own, from before the navigation. Closing
+     the tab by hand had the same effect on the next one. */
+  window.addEventListener('pagehide', releaseLock);
+  window.addEventListener('beforeunload', releaseLock);
+
   function sitting() {
     var c = readJson(COUNT_KEY);
     if (!c || (Date.now() - (c.at || 0)) > SITTING_GAP) return { n: 0, at: Date.now() };
@@ -1562,6 +1603,58 @@
   var listRunning = false;
   var batchSeen = null;
 
+  /* THE LIST ARRIVES IN THE URL FRAGMENT, and postMessage is only a second way in.
+     The fragment is the channel already proven on this setup: it is how a single
+     handle has always reached the panel. postMessage needs window.opener to have
+     survived, needs the panel to be listening by the time the page posts, and
+     fails silently when either is not true, which is a lot of ways for a list to
+     go missing before anything visible happens.
+
+     It is kept in sessionStorage as it is worked through, which is per tab and so
+     is exactly one run. That makes a reload a recovery rather than the end of the
+     run: whatever is left is still there afterwards. */
+  var LIST_KEY = 'hlmSender.list.v1';
+
+  function cleanHandles(list) {
+    return (list || []).map(function (h) {
+      return String(h || '').trim().replace(/^@/, '').toLowerCase();
+    }).filter(function (h) { return /^[a-z0-9._]{1,30}$/.test(h); });
+  }
+
+  function readList() {
+    var m = /[#&]hlmlist=([^&]*)/.exec(location.hash || '');
+    if (m && m[1]) {
+      var fromHash = cleanHandles(decodeURIComponent(m[1]).split(','));
+      if (fromHash.length) {
+        var fresh = { handles: fromHash, done: 0, total: fromHash.length };
+        saveList(fresh);
+        return fresh;
+      }
+    }
+    try {
+      var st = JSON.parse(sessionStorage.getItem(LIST_KEY));
+      if (st && Array.isArray(st.handles)) {
+        return {
+          handles: cleanHandles(st.handles),
+          done: Number(st.done) || 0,
+          total: Number(st.total) || cleanHandles(st.handles).length
+        };
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function saveList(st) {
+    try {
+      if (!st || !st.handles.length) sessionStorage.removeItem(LIST_KEY);
+      else sessionStorage.setItem(LIST_KEY, JSON.stringify(st));
+    } catch (e) {}
+  }
+
+  function persistProgress() {
+    saveList(runQueue.length ? { handles: runQueue, done: runDone, total: runTotal } : null);
+  }
+
   function refreshRunBtn() {
     if (!runQueue.length) { runListBtn.style.display = 'none'; return; }
     runListBtn.style.display = '';
@@ -1571,17 +1664,17 @@
     runListBtn.disabled = listRunning;
   }
 
-  function acceptQueue(handles, batch) {
+  function acceptQueue(handles, batch, done, total) {
     if (batch && batch === batchSeen) return;        // the page re-posts until acked
+    if (listRunning) return;                         // a run in progress owns the list
     batchSeen = batch || null;
-    runQueue = handles.filter(function (h) {
-      return typeof h === 'string' && /^[a-z0-9._]{1,30}$/i.test(h);
-    });
-    runTotal = runQueue.length;
-    runDone = 0;
+    runQueue = cleanHandles(handles);
+    runTotal = Number(total) || runQueue.length;
+    runDone = Number(done) || 0;
+    persistProgress();
     refreshRunBtn();
-    reportHome('queued', '', String(runTotal));
-    log('List received: ' + runTotal + (runTotal === 1 ? ' account.' : ' accounts.'));
+    reportHome('queued', '', String(runQueue.length));
+    log('List: ' + runQueue.length + (runQueue.length === 1 ? ' account' : ' accounts') + ' to go.');
     if (AUTO_RUN === 'send' && runQueue.length) runList();
   }
 
@@ -1656,6 +1749,7 @@
           showAuto('Passed over @' + who + '.', false);
           reportHome('unreachable', who, problem);
           runQueue.shift(); runDone++;
+          persistProgress();
           refreshRunBtn();
           if (runQueue.length && !(await waitCancellable(BETWEEN_MS))) break;
           continue;
@@ -1684,6 +1778,7 @@
         }
 
         runQueue.shift(); runDone++;
+        persistProgress();
         refreshRunBtn();
         if (runQueue.length && !cancelled) {
           showAuto(runDone + ' of ' + runTotal + ' done. Next in ' +
@@ -1699,6 +1794,8 @@
     }
 
     if (!runQueue.length) {
+      saveList(null);
+      try { sessionStorage.removeItem(RELOADS_KEY); } catch (e) {}
       showAuto('List finished, ' + runDone + ' of ' + runTotal + ' worked through.', false);
     }
     reportHome('done', '', runDone + ' of ' + runTotal);
@@ -1847,11 +1944,28 @@
     show: function () { host.style.display = ''; log('Ready.'); },
     run: run
   };
+  /* The list, if this tab was given one. Read at arm time from the fragment, or
+     recovered from sessionStorage after a reload. The panel says which of those
+     happened, and says so loudly when there is no list at all, because "nothing
+     happened" with no explanation is the worst thing this can do. */
+  var startList = readList();
+  if (startList && startList.handles.length) {
+    acceptQueue(startList.handles, 'boot', startList.done, startList.total);
+  }
+
   var armedFor = armedHandle();
-  log((armedFor ? 'Armed for @' + armedFor + '. ' : 'Armed on this tab. ') +
-    (onProfile()
-      ? 'On their profile, so a send opens the dialog by clicking Message first.'
-      : 'Hotkeys are live.'));
+  var where;
+  if (startList && startList.handles.length) {
+    where = 'Got a list of ' + startList.handles.length + '. ' +
+      (AUTO_RUN === 'send' ? 'Starting.' : 'Press Run the list.');
+  } else if (onProfile()) {
+    where = 'On their profile, so a send opens the dialog by clicking Message first.';
+  } else if (onDirect()) {
+    where = 'On the messages page, with no list. Start one from the sender page.';
+  } else {
+    where = 'Hotkeys are live.';
+  }
+  log((armedFor ? 'Armed for @' + armedFor + '. ' : 'Armed. ') + where);
 
   /* Deliberately not awaited: arming must finish and the panel must be usable
      even if the unattended run is sitting in a queue behind another tab. */
@@ -2408,6 +2522,7 @@ function loopEnd(why, clean) {
   loop = { on: false, target: 0, sent: 0, skipped: 0 };
   loopStopBtn.hidden = true;
   clearTimeout(stallTimer);
+  clearTimeout(ackTimer);
   stopPosting();
   if (was) loopSay(why, "meh");
   if (was && clean && saved.autoClose && loopWin && !loopWin.closed) {
@@ -2430,6 +2545,8 @@ function loopEnd(why, clean) {
  * know when that happened.
  */
 let loopPost = null;
+let ackTimer = null;
+let loopAcked = false;
 
 function stopPosting() {
   if (loopPost) { clearInterval(loopPost); loopPost = null; }
@@ -2444,6 +2561,7 @@ function postToTab(msg) {
 }
 
 function startLoop() {
+  loopAcked = false;
   const take = Math.min(batchSize(), queue.length);
   const handles = queue.slice(0, take).map(it => FOLLOWERS[it.index].handle);
   if (!handles.length) return refreshQueueUI("Nothing queued, so nothing to run.");
@@ -2454,12 +2572,21 @@ function startLoop() {
   loopSay("Handing " + handles.length + (handles.length === 1 ? " account" : " accounts") +
     " to one Instagram tab. Nothing navigates from here on.", "meh");
 
-  /* The one pop-up of the whole run, and it rides this click. /direct/new/ opens
-     with the recipient box already up, which is exactly where drafting starts. */
+  /* THE LIST GOES IN THE URL, which is the channel that cannot silently fail.
+     postMessage below is a second route, kept because it lets a tab that is
+     already open pick up a new list, but the fragment is what the run relies on:
+     it is present before the tab has even loaded, it survives the panel arming
+     late, and it does not care whether window.opener lived.
+     /direct/new/ also opens with the recipient box already up, which is exactly
+     where drafting starts. */
+  const target = "https://www.instagram.com/direct/new/#hlmlist=" +
+    encodeURIComponent(handles.join(","));
+
+  /* The one pop-up of the whole run, and it rides this click. */
   if (!loopWin || loopWin.closed) {
-    loopWin = window.open("https://www.instagram.com/direct/new/", "hlmSenderTab");
+    loopWin = window.open(target, "hlmSenderTab");
   } else {
-    try { loopWin.location.href = "https://www.instagram.com/direct/new/"; } catch (e) {}
+    try { loopWin.location.href = target; } catch (e) {}
     try { loopWin.focus(); } catch (e) {}
   }
   if (!loopWin) {
@@ -2483,6 +2610,19 @@ function startLoop() {
     postToTab({ kind: "queue", batch: batch, handles: handles });
   }, 700);
   postToTab({ kind: "queue", batch: batch, handles: handles });
+
+  /* A short, specific check BEFORE the long stall watchdog. Silence here almost
+     always means the userscript is not installed, is disabled, or is an older
+     copy that does not know about lists, and saying that beats a vague timeout
+     ninety seconds later. */
+  clearTimeout(ackTimer);
+  ackTimer = setTimeout(() => {
+    if (!loop.on || loopAcked) return;
+    loopSay("The Instagram tab has not acknowledged the list after 15s.", "bad");
+    loopSay("Check: is the userscript installed AND enabled, and is it the copy " +
+      "downloaded from this page since the loop was added? An older copy ignores " +
+      "lists entirely. The tab should say \"Got a list of N\" in its panel.", "bad");
+  }, 15000);
 
   armStall(handles[0]);
   refreshQueueUI("Waiting for the Instagram tab to take the list.");
@@ -2515,6 +2655,8 @@ window.addEventListener("message", (e) => {
   const why = typeof d.why === "string" ? d.why.slice(0, 200) : "";
 
   if (d.kind === "queued") {
+    loopAcked = true;
+    clearTimeout(ackTimer);
     stopPosting();
     loopSay("The tab has the list (" + (why || "?") + " accounts) and is working through it.", "meh");
     armStall("the first account");
