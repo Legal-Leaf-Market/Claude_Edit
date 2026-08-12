@@ -893,9 +893,34 @@
     return null;
   }
 
-  /* The recipient field. queryBox is Instagram's own name for it and exists only
-     while that dialog is open, which makes it both the most specific selector and
-     a reliable "is the dialog up" test. */
+  /* Every visible text input on the page, used to tell the recipient field from
+     the inbox search WITHOUT depending on either one's attributes: the recipient
+     field is the input that APPEARS when the pencil is clicked, and the inbox
+     search was already there. That is true whatever Instagram decides to call
+     them, which is worth more here than any selector, because guessing at these
+     names is what has failed repeatedly. */
+  function visibleInputs() {
+    var out = [];
+    var ins = document.querySelectorAll('input');
+    for (var i = 0; i < ins.length; i++) {
+      var t = (ins[i].getAttribute('type') || 'text').toLowerCase();
+      if (t !== 'text' && t !== 'search' && t !== '') continue;
+      if (visible(ins[i])) out.push(ins[i]);
+    }
+    return out;
+  }
+
+  function newInputSince(before) {
+    var now = visibleInputs();
+    for (var i = 0; i < now.length; i++) {
+      if (before.indexOf(now[i]) < 0) return now[i];
+    }
+    return null;
+  }
+
+  /* The strict, fast path: queryBox is Instagram's own name for the recipient
+     field, and an input inside a live dialog is the next best thing. Returns null
+     rather than guessing, and draftTo falls back to the appeared-since test. */
   function recipientBox() {
     var q = document.querySelector('input[name="queryBox"]');
     if (q && visible(q)) return q;
@@ -906,29 +931,42 @@
     return null;
   }
 
-  /* The pencil, and this is the element I am least sure of, so it is looked for
-     several ways. The label often sits on an svg inside the button, hence the
-     ancestor walk, and the exact wording has varied. */
+  /* The pencil. Read off the live page rather than guessed at:
+       <svg aria-label="New message" role="img" 24x24><title>New message</title>...
+     Its class names are generated, so the accessibility label is the only stable
+     hook, and the clickable body is the DIV WRAPPING IT rather than a
+     role="button" ancestor. That last part is what broke the first attempt: the
+     ancestor walk found no button, fell back to the svg, and an svg has no
+     click() method at all. */
   function newMessageButton() {
-    var sels = [
-      'div[role="button"][aria-label="New message"]',
-      'a[href="/direct/new/"]',
-      'a[href^="/direct/new"]',
-      '[aria-label="New message"]',
-      '[aria-label="New Message"]'
-    ];
-    for (var i = 0; i < sels.length; i++) {
-      var els = document.querySelectorAll(sels[i]);
-      for (var j = 0; j < els.length; j++) {
-        if (visible(els[j])) return clickableAncestor(els[j]);
+    var svg = document.querySelector('svg[aria-label="New message"], svg[aria-label="New Message"]');
+
+    if (!svg) {
+      /* The same label also sits in a <title> inside the svg, which is a second
+         hook for when the attribute is not where it was. */
+      var titles = document.querySelectorAll('svg title');
+      for (var i = 0; i < titles.length; i++) {
+        var t = (titles[i].textContent || '').trim().toLowerCase();
+        if (t === 'new message' || t === 'new chat') { svg = titles[i].parentElement; break; }
       }
     }
-    /* Any labelled thing that says it, wherever the label lives. */
-    var labelled = document.querySelectorAll('[aria-label]');
-    for (var k = 0; k < labelled.length; k++) {
-      var lab = (labelled[k].getAttribute('aria-label') || '').trim().toLowerCase();
-      if ((lab === 'new message' || lab === 'new chat') && visible(labelled[k])) {
-        return clickableAncestor(labelled[k]);
+
+    if (svg) {
+      /* A role="button" ancestor if there is one, since that is the real control.
+         Otherwise the wrapping div, which is where the handler lives when there is
+         no role, and which also gives the larger hit area. */
+      var byRole = clickableAncestor(svg);
+      if (byRole && byRole !== svg) return byRole;
+      return svg.parentElement || svg;
+    }
+
+    /* Older and alternative shapes, kept as fallbacks. */
+    var sels = ['div[role="button"][aria-label="New message"]', 'a[href^="/direct/new"]',
+                '[aria-label="New message"]', '[aria-label="New Message"]'];
+    for (var j = 0; j < sels.length; j++) {
+      var els = document.querySelectorAll(sels[j]);
+      for (var k = 0; k < els.length; k++) {
+        if (visible(els[k])) return clickableAncestor(els[k]);
       }
     }
     /* An inbox with no threads in it offers a plain button instead of a pencil. */
@@ -969,6 +1007,24 @@
     el.focus();
     setter.call(el, text);
     el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  /* A real click is a SEQUENCE, not a method call. React binds through delegated
+     listeners at the document root and some controls only respond once they have
+     seen the pointer and mouse events that precede a click. el.click() sends the
+     click alone, which is why a control can look clicked and do nothing.
+     Also: click() is an HTMLElement method and the pencil is an svg, so calling it
+     there is a TypeError rather than a click. */
+  function realClick(el) {
+    if (!el) return false;
+    var opts = { bubbles: true, cancelable: true, view: window, buttons: 1 };
+    var types = ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'];
+    for (var i = 0; i < types.length; i++) {
+      var isPointer = types[i].indexOf('pointer') === 0;
+      var Ctor = (isPointer && window.PointerEvent) ? window.PointerEvent : window.MouseEvent;
+      try { el.dispatchEvent(new Ctor(types[i], opts)); } catch (e) {}
+    }
+    return true;
   }
 
   function clickableAncestor(el) {
@@ -1075,13 +1131,13 @@
        attached: the node is in the DOM a moment before it does anything. A click
        that does nothing is silent, so the retry is what tells them apart. */
     log('Opening the message dialog with @' + who + '...');
-    btn.click();
+    realClick(btn);
     try {
       await waitFor(function () { return !!findComposer(); }, 7000);
     } catch (e) {
       log('No box yet, clicking Message once more...');
       var again = messageButton();
-      if (again) again.click();
+      if (again) realClick(again);
       try {
         await waitFor(function () { return !!findComposer(); }, 12000);
       } catch (e2) {
@@ -1118,14 +1174,21 @@
   async function draftTo(handle, log) {
     var box = recipientBox();
     if (!box) {
+      /* Snapshot first: whatever input turns up after the click is the recipient
+         field, and the inbox search cannot be it because it was already here. */
+      var before = visibleInputs();
       var pencil = newMessageButton();
       if (!pencil) return recoverViaDirectNew(log);
       log('Starting a new draft...');
-      pencil.click();
+      realClick(pencil);
       try {
-        await waitFor(function () { return (box = recipientBox()); }, 12000);
+        await waitFor(function () {
+          box = recipientBox() || newInputSince(before);
+          return !!box;
+        }, 12000);
       } catch (e) {
-        throw new Error('clicked New message but the recipient box never appeared');
+        throw new Error('clicked New message but no recipient field appeared. Press ' +
+          '"What can you see?" in this panel and send me what it copies');
       }
     }
     await sleep(SETTLE_MS);
@@ -1142,13 +1205,13 @@
         'A changed handle, a deleted account, or one that cannot be messaged');
     }
 
-    row.click();
+    realClick(row);
     await sleep(400);
 
     /* The tick or Chat button. Its absence is fine on layouts that open the
        thread the moment a recipient is picked. */
     var go = labelledButton(['chat', 'next', 'done']);
-    if (go) { go.click(); }
+    if (go) { realClick(go); }
 
     try {
       await waitFor(function () { return !!findComposer(); }, 12000);
@@ -1173,7 +1236,7 @@
       throw new Error('the message box would not take the text, so nothing was sent');
     }
 
-    if (btn) btn.click(); else pressEnter(el);
+    if (btn) realClick(btn); else pressEnter(el);
     try {
       await waitFor(function () { return composerEmpty(el); }, 3000);
       return;
@@ -1181,7 +1244,7 @@
 
     /* One retry down the other route before giving up. */
     var again = sendControl();
-    if (again) again.click(); else pressEnter(el);
+    if (again) realClick(again); else pressEnter(el);
     await waitFor(function () { return composerEmpty(el); }, 3000);
   }
 
@@ -1248,6 +1311,7 @@
     '      <button id="autostop">Cancel</button>',
     '    </div>',
     '    <button class="act" id="runlist" style="display:none">Run the list</button>',
+    '    <button class="act alt" id="probe">What can you see?</button>',
     '    <button class="act alt" id="dialog">Open the message dialog</button>',
     '    <button class="act" id="welcome">Send welcome (3)</button>',
     '    <button class="act alt" id="news">Send newsletter (1)</button>',
@@ -1802,6 +1866,61 @@
   }
 
   runListBtn.addEventListener('click', function () { runList(); });
+
+  /* Reports what the sender can actually find on this page. Every failure so far
+     has come from guessing at Instagram's markup from the outside, and this turns
+     the next one into a fact: it names the pencil it found, every visible input
+     with its name and placeholder, whether anything is a dialog, and whether a
+     composer is on screen. Copied to the clipboard and logged in full. */
+  function probeDom() {
+    var out = { url: location.href, onDirect: onDirect(), onProfile: onProfile() };
+
+    var dlgs = document.querySelectorAll('div[role="dialog"]');
+    out.visibleDialogs = 0;
+    for (var i = 0; i < dlgs.length; i++) if (visible(dlgs[i])) out.visibleDialogs++;
+
+    out.pencilSvgFound = !!document.querySelector('svg[aria-label="New message"], svg[aria-label="New Message"]');
+    var btn = newMessageButton();
+    out.pencilClickTarget = btn
+      ? (btn.tagName + (btn.getAttribute && btn.getAttribute('role') ? '[role=' + btn.getAttribute('role') + ']' : '') +
+         ' class="' + String(btn.className || '').slice(0, 60) + '"')
+      : 'NOT FOUND';
+
+    out.inputs = [];
+    var ins = document.querySelectorAll('input, textarea');
+    for (var j = 0; j < ins.length; j++) {
+      if (!visible(ins[j])) continue;
+      out.inputs.push({
+        tag: ins[j].tagName,
+        type: ins[j].getAttribute('type') || '',
+        name: ins[j].getAttribute('name') || '',
+        placeholder: ins[j].getAttribute('placeholder') || '',
+        aria: ins[j].getAttribute('aria-label') || '',
+        inDialog: !!(ins[j].closest && ins[j].closest('div[role="dialog"]'))
+      });
+    }
+
+    out.recipientBoxFound = !!recipientBox();
+    var c = findComposer();
+    out.composer = c ? (c.tagName + (c.getAttribute('role') ? '[role=' + c.getAttribute('role') + ']' : '')) : 'none';
+    out.sendControlLive = !!sendControl();
+
+    out.editables = [];
+    var eds = document.querySelectorAll('[contenteditable="true"]');
+    for (var k = 0; k < eds.length; k++) {
+      if (!visible(eds[k])) continue;
+      out.editables.push(eds[k].tagName + '[role=' + (eds[k].getAttribute('role') || '') + ']');
+    }
+
+    var txt = JSON.stringify(out, null, 1);
+    try { console.log('[Herbal Leaf probe]', out); } catch (e) {}
+    try { if (navigator.clipboard) navigator.clipboard.writeText(txt); } catch (e) {}
+    log('Probe: ' + out.visibleDialogs + ' dialog(s), pencil ' + out.pencilClickTarget +
+      ', recipient box ' + (out.recipientBoxFound ? 'FOUND' : 'not found') +
+      ', ' + out.inputs.length + ' visible input(s), composer ' + out.composer +
+      '. Full detail is on the clipboard and in the console.');
+  }
+  $('#probe').addEventListener('click', probeDom);
 
   async function autoRun() {
     if (AUTO_RUN !== 'dialog' && AUTO_RUN !== 'send') return;
@@ -2579,7 +2698,10 @@ function startLoop() {
      late, and it does not care whether window.opener lived.
      /direct/new/ also opens with the recipient box already up, which is exactly
      where drafting starts. */
-  const target = "https://www.instagram.com/direct/new/#hlmlist=" +
+  /* The inbox rather than /direct/new/: it is certainly a real page, and it means
+     the pencil path is the one path, exercised every time, rather than a special
+     case for the first account that only shows up in one run out of N. */
+  const target = "https://www.instagram.com/direct/inbox/#hlmlist=" +
     encodeURIComponent(handles.join(","));
 
   /* The one pop-up of the whole run, and it rides this click. */
