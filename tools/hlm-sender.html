@@ -253,12 +253,16 @@
       (see below) and "Open batch" gives you the whole cap in one click.
     </p>
     <p class="sub" style="margin: 0 0 10px">
-      Two routes to the same place, and the profile one is the better of the two:
-      on their profile the sender clicks the Message button, which can only open a
-      thread with that account. The DM route has to search for them instead, and a
-      search can be wrong. Either way the sender opens the dialog for you, so a
-      queued tab is one keypress from sent, or none at all with the unattended
-      setting in section 6.
+      With the loop on (section 6) neither of these buttons opens a tab per person.
+      They only decide the order and who is in the batch: the loop hands the whole
+      list to ONE Instagram tab, which stays on the messages page and drafts each
+      person in turn. Nothing navigates, so there is one pop-up for the whole run
+      and no permission to grant.
+    </p>
+    <p class="sub" style="margin: 0 0 10px">
+      With the loop off they do what they say: a tab each, either their profile
+      (where the sender clicks Message) or the DM composer (where it searches for
+      the handle and takes an exact match or nothing).
     </p>
     <div class="row-controls">
       <button class="primary" id="openProfiles">Queue profile tabs</button>
@@ -391,8 +395,13 @@
         A bookmarklet cannot launch itself, and no page can inject script into
         another site's tab: that is a browser boundary, not a missing feature. So
         anything past "arm it with one click" needs the userscript, which the
-        browser runs on every matching page by itself. Install that and a queued
-        tab arms with no click at all.
+        browser runs on every matching page by itself.
+      </p>
+      <p class="sub" style="margin: 0 0 10px">
+        With the send mode chosen, "Run the loop over N" in section 3 opens one
+        Instagram tab, hands it the list of handles, and that tab does the rest:
+        draft, send, draft the next, without ever leaving the messages page. This
+        page keeps the transcript and the contact history as each one is confirmed.
       </p>
       <div class="field">
         <label for="autoRun">When a queued tab arms</label>
@@ -408,11 +417,10 @@
           close the Instagram tab when the whole loop finishes
         </label>
         <span class="hint" style="margin-top: 4px">
-          The loop uses ONE Instagram tab and points it at each account in turn, so
-          only the very first one is a pop-up and the rest are ordinary navigations.
-          That is deliberate: reopening a tab per account needs pop-up permission
-          that Chrome often will not keep for a page opened from a file, and this
-          way it needs none. Untick this to be left on the last thread instead.
+          The loop uses ONE Instagram tab for the whole run and never navigates it,
+          so there is exactly one pop-up and no permission to grant. Untick this to
+          be left on the last thread when it finishes, which is useful for checking
+          that the messages really went.
         </span>
       </div>
       <div class="row-controls" style="gap: 14px">
@@ -440,7 +448,7 @@
       <li><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>D</kbd> only opens the message dialog, and sends nothing.</li>
       <li><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd> sends the one newsletter message.</li>
       <li><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> sends a single welcome message.</li>
-      <li><kbd>Esc</kbd> cancels an unattended run if one is counting down, and otherwise hides the panel.</li>
+      <li><kbd>Esc</kbd> cancels a run in progress, and otherwise hides the panel. The panel also grows a "Run the list" button when this page hands it one.</li>
       <li><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd> still works as an alias for the welcome run.</li>
     </ul>
     <p class="sub" style="margin: 12px 0 0">
@@ -605,6 +613,31 @@
     msgs = next;
     try { localStorage.setItem(MSG_KEY, JSON.stringify(msgs)); return true; }
     catch (e) { return false; }
+  }
+
+  /* Keyed by HANDLE rather than by the thread's URL.
+     The list runner never navigates, so every thread it opens shares one pathname,
+     and the path-keyed record below would call the second person a duplicate of
+     the first. That failed exactly that way in testing: one send, then every
+     remaining account reported "already sent on this thread". The handle is the
+     only stable identity on this route. */
+  var SENTBY_KEY = 'hlmSender.sentby.v1';
+
+  function sentFor(handle) {
+    try {
+      var m = JSON.parse(localStorage.getItem(SENTBY_KEY)) || {};
+      return m[String(handle).toLowerCase()] || null;
+    } catch (e) { return null; }
+  }
+  function markSentFor(handle, kind) {
+    if (!handle) return;
+    try {
+      var m = JSON.parse(localStorage.getItem(SENTBY_KEY)) || {};
+      var k = String(handle).toLowerCase();
+      m[k] = (m[k] && typeof m[k] === 'object') ? m[k] : {};
+      m[k][kind] = Date.now();
+      localStorage.setItem(SENTBY_KEY, JSON.stringify(m));
+    } catch (e) {}
   }
 
   function sentHere() {
@@ -849,13 +882,47 @@
     return null;
   }
 
-  function recipientBox() {
-    var sels = ['input[name="queryBox"]', 'input[placeholder*="earch"]', 'input[type="text"]'];
-    for (var i = 0; i < sels.length; i++) {
-      var els = document.querySelectorAll(sels[i]);
-      for (var j = 0; j < els.length; j++) if (visible(els[j])) return els[j];
+  /* The new-message dialog, when one is open. Everything about drafting is scoped
+     to it, because the DM page ALSO has a search box in the inbox sidebar and a
+     handle typed into that one searches instead of drafting. */
+  function draftDialog() {
+    var dlgs = document.querySelectorAll('div[role="dialog"]');
+    for (var i = 0; i < dlgs.length; i++) {
+      if (visible(dlgs[i]) && dlgs[i].querySelector('input')) return dlgs[i];
     }
     return null;
+  }
+
+  /* The recipient field. queryBox is Instagram's own name for it and exists only
+     while that dialog is open, which makes it both the most specific selector and
+     a reliable "is the dialog up" test. */
+  function recipientBox() {
+    var q = document.querySelector('input[name="queryBox"]');
+    if (q && visible(q)) return q;
+    var dlg = draftDialog();
+    if (!dlg) return null;
+    var ins = dlg.querySelectorAll('input[type="text"], input:not([type]), input[type="search"]');
+    for (var i = 0; i < ins.length; i++) if (visible(ins[i])) return ins[i];
+    return null;
+  }
+
+  /* The pencil. Its label is on an svg inside the button often enough that the
+     ancestor walk matters. */
+  function newMessageButton() {
+    var sels = [
+      'div[role="button"][aria-label="New message"]',
+      'a[href="/direct/new/"]',
+      '[aria-label="New message"]',
+      '[aria-label="New Message"]'
+    ];
+    for (var i = 0; i < sels.length; i++) {
+      var els = document.querySelectorAll(sels[i]);
+      for (var j = 0; j < els.length; j++) {
+        if (visible(els[j])) return clickableAncestor(els[j]);
+      }
+    }
+    /* An inbox with no threads in it offers this instead of a pencil. */
+    return labelledButton(['send message', 'new message']);
   }
 
   /* React owns this input's value, so assigning .value directly is ignored. The
@@ -878,7 +945,10 @@
   /* A row matches only when some whole token of its text equals the handle. */
   function exactRow(handle) {
     var want = String(handle).toLowerCase();
-    var rows = document.querySelectorAll('div[role="button"], div[role="option"], li, label');
+    /* Scoped to the dialog when there is one: the inbox behind it lists people
+       too, and a row picked from there opens the wrong existing thread. */
+    var scope = draftDialog() || document;
+    var rows = scope.querySelectorAll('div[role="button"], div[role="option"], li, label');
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
       if (!visible(row)) continue;
@@ -993,32 +1063,67 @@
     if (!handle) {
       throw new Error('no message box, and no handle in the URL to open one with');
     }
+    return draftTo(handle, log);
+  }
 
+  /* Start a fresh draft to one handle WITHOUT leaving this page.
+     This is what the list runner is built on, and why it never navigates: the
+     pencil opens the new-message dialog over whatever thread is showing, the
+     recipient is picked from that dialog, and the composer that appears is the
+     same composer the sender already knows how to drive. Nothing reloads, so the
+     panel survives the whole run and there is no tab to reopen, no pop-up to be
+     blocked and no arming to redo.
+
+     EXACT MATCH OR REFUSE still governs the pick, and it matters more here than
+     anywhere: this route searches by name, so a loose match would open a thread
+     with a stranger and then send them three messages. A handle with no exact
+     result is passed over rather than guessed at. */
+  async function draftTo(handle, log) {
     var box = recipientBox();
-    if (!box) throw new Error('could not find the recipient search box on this page');
+    if (!box) {
+      var pencil = newMessageButton();
+      if (!pencil) {
+        throw new Error('no New message button on this page, so no draft could be started. ' +
+          'This needs to be an Instagram Direct page');
+      }
+      log('Starting a new draft...');
+      pencil.click();
+      try {
+        await waitFor(function () { return (box = recipientBox()); }, 12000);
+      } catch (e) {
+        throw new Error('clicked New message but the recipient box never appeared');
+      }
+    }
+    await sleep(SETTLE_MS);
 
     log('Looking up @' + handle + '...');
     setInputValue(box, handle);
 
     var row = null;
     try {
-      await waitFor(function () { return (row = exactRow(handle)); }, 6000);
+      await waitFor(function () { return (row = exactRow(handle)); }, 9000);
     } catch (e) {
-      throw new Error('no result exactly matching @' + handle + ', so nothing was opened');
+      /* One account's answer, not the run's: move on to the next. */
+      throw skipError('no result exactly matching @' + handle + ', so nothing was opened. ' +
+        'A changed handle, a deleted account, or one that cannot be messaged');
     }
 
     row.click();
-    await sleep(300);
+    await sleep(400);
 
+    /* The tick or Chat button. Its absence is fine on layouts that open the
+       thread the moment a recipient is picked. */
     var go = labelledButton(['chat', 'next', 'done']);
     if (go) { go.click(); }
 
     try {
-      await waitFor(function () { return !!findComposer(); }, 8000);
+      await waitFor(function () { return !!findComposer(); }, 12000);
     } catch (e) {
       throw new Error('picked @' + handle + ' but no message box appeared');
     }
-    log('Thread open with @' + handle + '.');
+    /* On screen is not the same as ready to take text. */
+    await sleep(SETTLE_MS);
+    log('Draft open with @' + handle + '.');
   }
 
   async function sendOne(text) {
@@ -1108,6 +1213,7 @@
     '      <span id="autotext">Waiting.</span>',
     '      <button id="autostop">Cancel</button>',
     '    </div>',
+    '    <button class="act" id="runlist" style="display:none">Run the list</button>',
     '    <button class="act alt" id="dialog">Open the message dialog</button>',
     '    <button class="act" id="welcome">Send welcome (3)</button>',
     '    <button class="act alt" id="news">Send newsletter (1)</button>',
@@ -1138,6 +1244,7 @@
   var logEl = $('#log');
   var welcomeBtn = $('#welcome');
   var dialogBtn = $('#dialog');
+  var runListBtn = $('#runlist');
   var newsBtn = $('#news');
   var oneBtns = Array.prototype.slice.call(root.querySelectorAll('[data-one]'));
   var areas = Array.prototype.slice.call(root.querySelectorAll('[data-r]'));
@@ -1153,11 +1260,13 @@
   function setBusy(b) {
     welcomeBtn.disabled = b;
     dialogBtn.disabled = b;
+    runListBtn.disabled = b;
     newsBtn.disabled = b;
     oneBtns.forEach(function (x) { x.disabled = b; });
   }
   function refreshDupe() {
-    var s = sentHere() || {};
+    var who = armedHandle();
+    var s = Object.assign({}, sentHere() || {}, (who && sentFor(who)) || {});
     var bits = [];
     if (s.welcome) bits.push('welcome');
     if (s.newsletter) bits.push('newsletter');
@@ -1434,6 +1543,168 @@
     }
     return false;
   }
+
+  /* ---------- the list runner: one tab, no navigation ----------
+     The sender page posts a list of handles here and this walks it, drafting each
+     one in turn from the DM page. Nothing navigates and nothing reloads, so the
+     panel and its lock and its counters all survive the whole run, which is what
+     makes this the version that works: the earlier design reopened or renavigated
+     a tab per account and every failure it had came from that.
+
+     The list arrives by postMessage from the window that opened this one. It is
+     accepted ONLY from that window, because a handle list is an instruction to
+     message real people and anything else on the internet has no business
+     supplying one. */
+
+  var runQueue = [];
+  var runTotal = 0;
+  var runDone = 0;
+  var listRunning = false;
+  var batchSeen = null;
+
+  function refreshRunBtn() {
+    if (!runQueue.length) { runListBtn.style.display = 'none'; return; }
+    runListBtn.style.display = '';
+    runListBtn.textContent = listRunning
+      ? 'Running, ' + runQueue.length + ' to go'
+      : 'Run the list (' + runQueue.length + ')';
+    runListBtn.disabled = listRunning;
+  }
+
+  function acceptQueue(handles, batch) {
+    if (batch && batch === batchSeen) return;        // the page re-posts until acked
+    batchSeen = batch || null;
+    runQueue = handles.filter(function (h) {
+      return typeof h === 'string' && /^[a-z0-9._]{1,30}$/i.test(h);
+    });
+    runTotal = runQueue.length;
+    runDone = 0;
+    refreshRunBtn();
+    reportHome('queued', '', String(runTotal));
+    log('List received: ' + runTotal + (runTotal === 1 ? ' account.' : ' accounts.'));
+    if (AUTO_RUN === 'send' && runQueue.length) runList();
+  }
+
+  window.addEventListener('message', function (e) {
+    /* Only the opener. No opener means no list, and the panel says so. */
+    if (!window.opener || e.source !== window.opener) return;
+    var d = e.data;
+    if (!d || typeof d !== 'object' || d.app !== 'hlm-sender') return;
+    if (d.kind === 'queue' && Array.isArray(d.handles)) acceptQueue(d.handles, d.batch);
+    if (d.kind === 'stop') {
+      cancelled = true;
+      runQueue = [];
+      refreshRunBtn();
+      showAuto('Stopped from the sender page.', true);
+    }
+  });
+
+  async function runList() {
+    if (listRunning) return;
+    if (!runQueue.length) {
+      log('No list to run. Start it from the sender page.', true);
+      return;
+    }
+    listRunning = true;
+    cancelled = false;
+    refreshRunBtn();
+
+    /* One lock for the whole run rather than one per account: this tab is doing
+       the entire list, so a second tab must not start a second run alongside it. */
+    if (lockHeldElsewhere()) {
+      showAuto('Another tab is running a list. Close it, or wait for it to finish.', true);
+      listRunning = false;
+      refreshRunBtn();
+      return;
+    }
+    takeLock();
+    var beat = setInterval(holdLock, 15000);
+
+    try {
+      await pageSettled();
+      while (runQueue.length && !cancelled) {
+        var who = runQueue[0];
+
+        var s = sitting();
+        if (s.n >= SITTING_CAP) {
+          showAuto('Session cap reached, ' + s.n + ' sent in this sitting. Stopping here.', true);
+          reportHome('capped', who, s.n + ' sent in this sitting, which is the cap');
+          break;
+        }
+
+        /* A note, deliberately NOT a skip. The sender page owns who gets messaged:
+           it has the roster, the contact history, the cadence and the mute list. If
+           it put somebody in this batch, that was a decision, and this tab is in no
+           position to overrule it. */
+        if (sentFor(who)) log('Note: this browser has messaged @' + who + ' before.');
+        showAuto('Drafting to @' + who + '. ' + runDone + ' of ' + runTotal + ' done.', false);
+
+        var problem = null, fatal = false;
+        try {
+          await draftTo(who, log);
+        } catch (err) {
+          problem = err.message;
+          fatal = !err.skip;
+        }
+
+        if (problem) {
+          if (fatal) {
+            showAuto('Stopped: ' + problem, true);
+            reportHome('failed', who, problem);
+            break;
+          }
+          showAuto('Passed over @' + who + '.', false);
+          reportHome('unreachable', who, problem);
+          runQueue.shift(); runDone++;
+          refreshRunBtn();
+          if (runQueue.length && !(await waitCancellable(BETWEEN_MS))) break;
+          continue;
+        }
+
+        if (!(await countdown(COUNTDOWN_MS, who))) {
+          showAuto('Cancelled before anything sent.', true);
+          reportHome('failed', who, 'cancelled during the countdown');
+          break;
+        }
+
+        showAuto('Sending to @' + who + '.', true);
+        var res = await run('welcome', [0, 1, 2]);
+        if (res.error && !res.skip) {
+          showAuto('Stopped: ' + res.error, true);
+          reportHome('failed', who, res.error);
+          break;
+        }
+        if (res.error) {
+          reportHome('unreachable', who, res.error);
+        } else {
+          countSend();
+          markSentFor(who, 'welcome');
+          writeJson(LAST_KEY, { at: Date.now() });
+          reportHome('sent', who);
+        }
+
+        runQueue.shift(); runDone++;
+        refreshRunBtn();
+        if (runQueue.length && !cancelled) {
+          showAuto(runDone + ' of ' + runTotal + ' done. Next in ' +
+            Math.round(BETWEEN_MS / 1000) + 's.', false);
+          if (!(await waitCancellable(BETWEEN_MS))) break;
+        }
+      }
+    } finally {
+      clearInterval(beat);
+      releaseLock();
+      listRunning = false;
+      refreshRunBtn();
+    }
+
+    if (!runQueue.length) {
+      showAuto('List finished, ' + runDone + ' of ' + runTotal + ' worked through.', false);
+    }
+    reportHome('done', '', runDone + ' of ' + runTotal);
+  }
+
+  runListBtn.addEventListener('click', function () { runList(); });
 
   async function autoRun() {
     if (AUTO_RUN !== 'dialog' && AUTO_RUN !== 'send') return;
@@ -2018,30 +2289,19 @@ function refreshQueueUI(extra) {
   statusEl.textContent = extra ? msg + " " + extra : msg;
 }
 
-/* The one Instagram tab the loop drives. Held so it can be NAVIGATED rather than
- * reopened, which is the whole trick: only the first tab is a pop-up, and every
- * one after it is an ordinary navigation of a window this page already owns.
- * Setting another window's location is allowed across origins even though
- * reading it is not, so this needs no pop-up permission and no gesture. */
+/* The single Instagram tab the loop hands its list to. Kept so the page can
+ * re-point it, focus it and close it, and so a second run reuses it rather than
+ * asking Chrome for another pop-up. */
 let loopWin = null;
 
-/* Returns false when the tab could not be opened, leaving the item queued. */
-function openOne(reuse) {
+/* Opens ONE tab for the item at the head of the queue. This is the manual path
+ * only: "Open next tab", "Open batch of", and the O key. The loop does not use it,
+ * because the loop never opens a tab per account. */
+function openOne() {
   const item = queue[0];
   if (!item) return false;
-
-  let ok = false;
-  if (reuse && loopWin && !loopWin.closed) {
-    try { loopWin.location.href = item.url; ok = true; } catch (e) { ok = false; }
-    if (ok) { try { loopWin.focus(); } catch (e) {} }
-  }
-  if (!ok) {
-    /* A named target reuses a window of that name where one survives, and only
-       falls back to a genuinely new tab when it does not. */
-    const win = window.open(item.url, reuse ? "hlmSenderTab" : "_blank");
-    if (!win) return false;
-    if (reuse) loopWin = win;
-  }
+  const win = window.open(item.url, "_blank");
+  if (!win) return false;
 
   queue.shift();
   opened++;
@@ -2109,11 +2369,13 @@ const loopArmed = () => saved.autoRun === "send";
  * countdown, the three messages, and enough slack for the dialog to open and for
  * Instagram to be slow. */
 function stallMs() {
-  /* Settle before the page is touched, up to 20s waiting for the Message button,
-     settle again once the composer is up, the countdown, three messages, and a
-     minute of slack for Instagram being slow. Generous on purpose: a watchdog
-     that fires while a tab is still working would stop a healthy run. */
-  return (2 * saved.settle + 20 + saved.countdown + 3 * (saved.gapMs / 1000) + 60) * 1000;
+  /* One account's worth of work, generously: two settles, up to 12s for the
+     recipient box, 9s to find an exact match, the countdown, three messages, the
+     gap before the next one, and 60s of slack for Instagram being slow. Generous
+     on purpose, since a watchdog that fires while the tab is still working would
+     stop a healthy run. */
+  return (2 * saved.settle + 21 + saved.countdown + 3 * (saved.gapMs / 1000) +
+    saved.betweenTabs + 60) * 1000;
 }
 let stallTimer = null;
 function armStall(who) {
@@ -2146,6 +2408,7 @@ function loopEnd(why, clean) {
   loop = { on: false, target: 0, sent: 0, skipped: 0 };
   loopStopBtn.hidden = true;
   clearTimeout(stallTimer);
+  stopPosting();
   if (was) loopSay(why, "meh");
   if (was && clean && saved.autoClose && loopWin && !loopWin.closed) {
     try { loopWin.close(); } catch (e) {}
@@ -2153,53 +2416,92 @@ function loopEnd(why, clean) {
   refreshQueueUI();
 }
 
+/* Hands the whole list to ONE Instagram tab and then just listens.
+ *
+ * This replaced a design that pointed a tab at one profile after another, and the
+ * difference is the point: nothing navigates now. The tab lands on the DM page
+ * once, and the sender inside it drafts each person in turn from there. That
+ * removes every failure the old shape had, in one go. No pop-up per account, no
+ * arming again after each load, no waiting for a profile header to render, and no
+ * tab lifecycle to get wrong.
+ *
+ * The list goes out by postMessage and is re-posted until the tab acknowledges it,
+ * because the tab has to boot and arm before it can listen and this page cannot
+ * know when that happened.
+ */
+let loopPost = null;
+
+function stopPosting() {
+  if (loopPost) { clearInterval(loopPost); loopPost = null; }
+}
+
+function postToTab(msg) {
+  if (!loopWin || loopWin.closed) return false;
+  try {
+    loopWin.postMessage(Object.assign({ app: "hlm-sender" }, msg), "https://www.instagram.com");
+    return true;
+  } catch (e) { return false; }
+}
+
 function startLoop() {
-  loop = { on: true, target: Math.min(batchSize(), queue.length), sent: 0, skipped: 0 };
+  const take = Math.min(batchSize(), queue.length);
+  const handles = queue.slice(0, take).map(it => FOLLOWERS[it.index].handle);
+  if (!handles.length) return refreshQueueUI("Nothing queued, so nothing to run.");
+
+  loop = { on: true, target: handles.length, sent: 0, skipped: 0 };
   loopStopBtn.hidden = false;
   loopLogEl.textContent = "";
-  loopSay("Loop started over " + loop.target +
-    (loop.target === 1 ? " account" : " accounts") + ", one tab at a time.", "meh");
-  /* This click is the one real gesture available, and it is the ONLY pop-up the
-     whole run needs: the same tab is navigated from here on. */
-  const nxt = nextUp();
-  if (!openOne(true)) {
-    loopSay("Chrome blocked the very first tab, so nothing ran.", "bad");
+  loopSay("Handing " + handles.length + (handles.length === 1 ? " account" : " accounts") +
+    " to one Instagram tab. Nothing navigates from here on.", "meh");
+
+  /* The one pop-up of the whole run, and it rides this click. /direct/new/ opens
+     with the recipient box already up, which is exactly where drafting starts. */
+  if (!loopWin || loopWin.closed) {
+    loopWin = window.open("https://www.instagram.com/direct/new/", "hlmSenderTab");
+  } else {
+    try { loopWin.location.href = "https://www.instagram.com/direct/new/"; } catch (e) {}
+    try { loopWin.focus(); } catch (e) {}
+  }
+  if (!loopWin) {
+    loopSay("Chrome blocked the tab, so nothing ran.", "bad");
     loopEnd("Loop stopped.");
     return refreshQueueUI(BLOCKED_HELP);
   }
-  if (nxt) armStall(nxt.handle);
-  renderList();
-  refreshCadence();
-  refreshQueueUI("Loop running. Opened @" + (nxt ? nxt.handle : "") + ".");
+
+  /* Re-post until it acks. The tab is still loading for the first second or two
+     and a message sent into a page that is not listening yet is simply lost. */
+  const batch = "b" + loop.target + "-" + handles.join(",").length + "-" + handles[0];
+  let tries = 0;
+  stopPosting();
+  loopPost = setInterval(() => {
+    if (!loop.on || ++tries > 60) return stopPosting();
+    if (!loopWin || loopWin.closed) {
+      stopPosting();
+      loopSay("The Instagram tab was closed before it took the list.", "bad");
+      return loopEnd("Loop stopped.");
+    }
+    postToTab({ kind: "queue", batch: batch, handles: handles });
+  }, 700);
+  postToTab({ kind: "queue", batch: batch, handles: handles });
+
+  armStall(handles[0]);
+  refreshQueueUI("Waiting for the Instagram tab to take the list.");
 }
 
-/* Opening the next tab is deliberately delayed by the same gap the sender paces
- * itself with, so the tab arrives to a lock that is already free. */
-function loopAdvance() {
-  if (!loop.on) return;
-  clearTimeout(stallTimer);
-  if (loop.sent + loop.skipped >= loop.target) return loopEnd("Loop finished: " +
-    loop.sent + " sent, " + loop.skipped + " skipped.", true);
-  if (!queue.length) return loopEnd("Loop finished, the queue is empty: " +
-    loop.sent + " sent, " + loop.skipped + " skipped.", true);
+/* Drops one handle out of the queue by name. The tab decides the order it works
+   in, so position in the queue is no longer the thing that identifies an item. */
+function dropFromQueue(handle) {
+  const i = queue.findIndex(it => FOLLOWERS[it.index] &&
+    FOLLOWERS[it.index].handle.toLowerCase() === String(handle).toLowerCase());
+  if (i >= 0) queue.splice(i, 1);
+}
 
-  const wait = Math.max(3, saved.betweenTabs) * 1000;
-  refreshQueueUI("Next account in " + Math.round(wait / 1000) + "s.");
-  setTimeout(() => {
-    if (!loop.on) return;
-    const nxt = nextUp();
-    /* Reuse: this navigates the tab already open rather than asking for another. */
-    if (!openOne(true)) {
-      loopSay("Could not point the tab at the next account, so the loop stopped here. " +
-        "Nothing was lost.", "bad");
-      loopEnd("Loop stopped.");
-      return refreshQueueUI(BLOCKED_HELP);
-    }
-    if (nxt) armStall(nxt.handle);
-    renderList();
-    refreshCadence();
-    refreshQueueUI("Loop running, on @" + (nxt ? nxt.handle : "") + ".");
-  }, wait);
+function loopTally() {
+  if (!loop.on) return;
+  if (loop.sent + loop.skipped >= loop.target) {
+    return loopEnd("Loop finished: " + loop.sent + " sent, " + loop.skipped + " skipped.", true);
+  }
+  refreshQueueUI("Loop running: " + (loop.sent + loop.skipped) + " of " + loop.target + " done.");
 }
 
 /* The only channel back from instagram.com, which is a different origin. The
@@ -2212,29 +2514,43 @@ window.addEventListener("message", (e) => {
   const who = typeof d.handle === "string" ? d.handle.slice(0, 40) : "";
   const why = typeof d.why === "string" ? d.why.slice(0, 200) : "";
 
+  if (d.kind === "queued") {
+    stopPosting();
+    loopSay("The tab has the list (" + (why || "?") + " accounts) and is working through it.", "meh");
+    armStall("the first account");
+    return refreshQueueUI("Loop running in the Instagram tab.");
+  }
+
   if (d.kind === "sent") {
     loop.sent++;
+    /* Stamped HERE and nowhere earlier. Opening a tab used to be the only signal
+       this page got, so it had to guess; a confirmed send is not a guess. */
+    if (who) { stamp(who, campaign === "newsletter" ? "n" : "c"); dropFromQueue(who); }
     loopSay("sent      @" + who, "good");
-    /* The stamp went on at tab-open time, which is a guess. This is the real
-       confirmation, so it is worth writing again with an honest timestamp. */
-    if (who) stamp(who, campaign === "newsletter" ? "n" : "c");
     renderList();
     refreshCadence();
-    return loopAdvance();
+    armStall("the next account");
+    return loopTally();
   }
   if (d.kind === "skipped") {
     loop.skipped++;
+    if (who) { stamp(who, campaign === "newsletter" ? "n" : "c"); dropFromQueue(who); }
     loopSay("skipped   @" + who + (why ? "  (" + why + ")" : ""), "meh");
-    return loopAdvance();
+    renderList();
+    refreshCadence();
+    armStall("the next account");
+    return loopTally();
   }
-  /* Cannot be messaged at all: private, or only Follow and Requested on offer.
-     The loop moves on, and the stamp put on at navigation time is REMOVED, since
-     nothing was said to them and they should come back round if that changes. */
+  /* Could not be reached at all: no exact match for the handle, or nothing that
+     can be messaged. No stamp goes on, so it comes back round another day. */
   if (d.kind === "unreachable") {
     loop.skipped++;
-    loopSay("no dialog  @" + who + (why ? "  (" + why + ")" : "") + ", moved on", "meh");
-    if (who) { delete ledger[who]; saveLedger(ledger); renderList(); refreshCadence(); }
-    return loopAdvance();
+    if (who) dropFromQueue(who);
+    loopSay("no match   @" + who + (why ? "  (" + why + ")" : "") + ", moved on", "meh");
+    renderList();
+    refreshCadence();
+    armStall("the next account");
+    return loopTally();
   }
   if (d.kind === "capped") {
     loopSay("stopped   @" + who + "  (" + (why || "session cap") + ")", "bad");
@@ -2242,15 +2558,22 @@ window.addEventListener("message", (e) => {
   }
   if (d.kind === "failed") {
     loopSay("FAILED    @" + who + (why ? "  (" + why + ")" : ""), "bad");
-    /* Marching on through a failure wastes the batch and hides the cause, so a
-       failure ends the run with the queue intact. */
-    if (who) { delete ledger[who]; saveLedger(ledger); renderList(); refreshCadence(); }
-    return loopEnd("Loop stopped on a failure, and that account's stamp was cleared. " +
-      "The rest are still queued.");
+    return loopEnd("Loop stopped on a failure. Nothing was stamped for that account and " +
+      "the rest are still queued. The Instagram tab is left as it was, so you can see it.");
+  }
+  if (d.kind === "done") {
+    stopPosting();
+    if (loop.on) {
+      loopSay("The tab reports it worked through " + (why || "the list") + ".", "meh");
+      loopEnd("Loop finished: " + loop.sent + " sent, " + loop.skipped + " skipped.", true);
+    }
+    return;
   }
 });
 
 loopStopBtn.addEventListener("click", () => {
+  stopPosting();
+  postToTab({ kind: "stop" });
   loopSay("Stopped by hand.", "meh");
   loopEnd("Loop stopped. Whatever is still queued stayed queued.");
 });
@@ -2466,13 +2789,13 @@ function refreshAutoWarn() {
     msg = "A queued tab will open the message dialog by itself and then stop. Nothing " +
       "sends without a keypress.";
   } else {
-    msg = "Per account: point the tab at the profile, wait " + d.settle +
-      "s for it to render, wait for the Message button and click it, settle again, then " +
-      "send the three messages and confirm each one left before the next. A " + d.countdown +
-      " second countdown you can cancel comes first. One Instagram tab, " + d.betweenTabs +
-      "s between accounts, stopping after " + d.cap + " in a sitting. An account with no " +
-      "Message button, private or only offering Follow or Requested, is passed over and " +
-      "the run carries on; a page that does not render at all stops it. " +
+    msg = "One Instagram tab takes the whole list and stays on the messages page. " +
+      "Per account: start a new draft, type the handle, take an EXACT match or pass " +
+      "over, wait " + d.settle + "s for the composer, count down " + d.countdown +
+      "s where you can still cancel, send the three messages confirming each one left, " +
+      "then wait " + d.betweenTabs + "s and draft the next. Stops after " + d.cap +
+      " in a sitting, on the first real failure, or on a tab that goes quiet. A handle " +
+      "with no exact match is passed over and the run carries on. " +
       "Scripted sending is against Instagram\u0027s terms and unattended sending is the version " +
       "of it their heuristics are looking for, so keep the cap low and read the transcript.";
   }
