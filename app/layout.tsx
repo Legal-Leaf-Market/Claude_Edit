@@ -88,6 +88,26 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <head>
+        {/*
+          impact.com publisher site verification: the crawl-time half of the
+          Impact setup whose runtime half, the Universal Tracking Tag, is the
+          first child of <body> below. The token is public by definition, since
+          it ships in the HTML of every page.
+
+          Two deliberate awkwardnesses, both from the same cause. It is a raw
+          tag rather than `metadata.other` because Impact issues the token in
+          `value` and Next's metadata API only ever emits `content`; and the
+          props are cast because `value` is not a standard <meta> attribute, so
+          React's own types do not carry it. React DOM does render it through,
+          verified against the installed react-dom. Reproduce the tag as issued
+          rather than "correcting" the attribute: the checker reads `value`.
+        */}
+        <meta
+          {...({
+            name: "impact-site-verification",
+            value: "272beb06-3345-476c-8a71-5f03c2b82ffe",
+          } as React.MetaHTMLAttributes<HTMLMetaElement>)}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="stylesheet" href={HOUSE_FONTS_HREF} />
