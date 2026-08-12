@@ -74,32 +74,38 @@ export const STORES: StoreProfile[] = [
   /*
    * The Impact.com merchants, approved August 2026.
    *
-   * NONE OF THEM CARRIES A shipsTo, AND THAT IS A DECISION RATHER THAN AN
-   * OVERSIGHT. Anderton's above has one because their UK-only shipping is a
-   * confirmed fact. For these seven it is not: American Musical Supply and
-   * Musician's Friend are US operations that very likely do not ship
-   * internationally, and Fender's and Universal Audio's direct stores are
-   * region-split, but "very likely" is not evidence. The doctrine in section 15
-   * of CLAUDE.md is explicit that absent means unrestricted because most stores
-   * here do ship broadly and inventing a limit hides real inventory from real
-   * shoppers. Confirm each merchant's actual shipping policy and add shipsTo
-   * then, one merchant at a time, rather than guessing seven at once.
+   * TWO OF THE SEVEN CARRY A shipsTo AND FIVE DO NOT, WHICH IS THE RULE BEING
+   * FOLLOWED RATHER THAN APPLIED UNEVENLY. American Musical Supply and
+   * Musician's Friend are confirmed US only, so they declare it and their
+   * stock stays away from shoppers who could never order it, exactly as
+   * Anderton's UK-only catalogue does. The other five have not been confirmed
+   * either way, and section 15 of CLAUDE.md is explicit that absent means
+   * unrestricted, because inventing a limit hides real inventory from real
+   * shoppers. Confirm a merchant's actual policy first, then add it.
+   *
+   * Worth knowing what a restriction costs before adding one on a hunch: these
+   * are two of the largest catalogues here, and a US-only declaration removes
+   * both of them wholesale from every non-US shopper's results. The shopper is
+   * always told and is always one click from seeing them anyway, but being
+   * wrong in this direction is expensive and nearly invisible from inside.
    */
   {
     source: "musiciansfriend",
     slug: "musicians-friend",
     name: "Musician's Friend",
     tagline: "One of the biggest catalogues in the business",
+    shipsTo: ["US"],
     blurb:
-      "Musician's Friend carries close to everything: guitars, drums, keys, live sound and studio gear, from entry level up. Worth checking against the smaller shops here, because the same product often sits at three different prices across this site.",
+      "Musician's Friend carries close to everything: guitars, drums, keys, live sound and studio gear, from entry level up. Worth checking against the smaller shops here, because the same product often sits at three different prices across this site. They ship within the US only.",
   },
   {
     source: "americanmusical",
     slug: "american-musical-supply",
     name: "American Musical Supply",
     tagline: "Broad instrument retail, long-running US shop",
+    shipsTo: ["US"],
     blurb:
-      "American Musical Supply has been selling instruments and pro audio for decades, with a catalogue wide enough to cover most of what a working player or a home studio needs.",
+      "American Musical Supply has been selling instruments and pro audio for decades, with a catalogue wide enough to cover most of what a working player or a home studio needs. They ship within the US only.",
   },
   {
     source: "fender",

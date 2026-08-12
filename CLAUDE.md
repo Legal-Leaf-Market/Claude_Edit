@@ -200,9 +200,13 @@ built for that site's own frontend rather than published for this use.
   is one `sort()` from preferring the merchants that pay, which is ranking by
   commission before a shopper sees a single result. A test asserts the word
   never appears in that file.
-  **No `shipsTo` on any of the seven, deliberately.** Anderton's has one because
-  UK-only shipping is confirmed. For these it is not, and section 15's default
-  is that absent means unrestricted precisely so a guess cannot hide real
+  **Two of the seven declare a `shipsTo` and five do not.** American Musical
+  Supply and Musician's Friend are confirmed US only and say so, which means a
+  British shopper now loses two of the largest catalogues here and Anderton's is
+  hidden from an American one: the restriction cuts both ways and the notice
+  and the `?ships=all` escape hatch matter more than they did with one
+  restricted store. The other five are unconfirmed, and section 15's default is
+  that absent means unrestricted precisely so a guess cannot hide real
   inventory. Confirm a merchant's actual policy before adding one.
 
 **Facebook Marketplace is out of scope.** Not "later", not "behind a flag". It
@@ -784,12 +788,19 @@ Victory preamp gets a page of prices they can never pay.
 - **A store declares its own restriction**, as `shipsTo` on its `StoreProfile`.
   Absent means unrestricted, which is the honest default: most stores here ship
   broadly and we have no evidence otherwise, so we do not invent a limit.
-- **None of the seven Impact merchants added in August 2026 carries one**, and
-  that is this rule being followed rather than overlooked. American Musical
-  Supply and Musician's Friend are very likely US-only and the brand stores are
-  region-split, but "very likely" is not evidence, and a guessed restriction
-  hides real inventory from real shoppers. Confirm a merchant's actual policy,
-  then add `shipsTo`, one merchant at a time.
+- **Two of the seven Impact merchants added in August 2026 carry one and five
+  do not**, and both halves of that are this rule being followed. American
+  Musical Supply and Musician's Friend are confirmed US only, so they declare
+  it. The five brand stores are unconfirmed either way, and a guessed
+  restriction hides real inventory from real shoppers, so they stay
+  unrestricted until somebody checks.
+- **The restriction is no longer one-directional, and that changes what this
+  costs.** With Anderton's alone, hiding only ever affected non-UK shoppers.
+  Now a British shopper loses the two biggest US retailers and an American one
+  loses Anderton's, so the "we hid N listings from X" notice and the one-click
+  `?ships=all` are load bearing for most of the audience rather than a minority
+  of it. Do not quietly drop either, and do not add a third restricted store
+  without confirming its policy first.
 - **Restricted stores are HIDDEN, not badged**, for shoppers they cannot reach.
   A badge on every fourth card still means someone scans, compares, gets
   interested and then loses.
