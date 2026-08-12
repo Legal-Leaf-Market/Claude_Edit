@@ -420,6 +420,10 @@
         <label class="inline">stop after <input type="number" id="autoCap" min="1" max="99"> per sitting</label>
       </div>
       <p class="sub" id="autoWarn" style="margin: 10px 0 0"></p>
+      <div class="row-controls" style="margin-top: 12px">
+        <button class="primary" id="autoSave">Save these settings</button>
+      </div>
+      <div class="savestate" id="autoState"></div>
     </div>
 
     <p class="sub" style="margin: 14px 0 0">
@@ -2288,7 +2292,7 @@ function refreshSaveState(note) {
     : (note || (saved.stored
         ? "Saved, revision " + saved.rev + "."
         : "Still showing the sample wording. Nothing has been saved yet, which is fine: the sender carries the samples until you change them."));
-  ["msgState", "pickState"].forEach(id => {
+  ["msgState", "pickState", "autoState"].forEach(id => {
     const el = document.getElementById(id);
     el.textContent = msg;
     el.className = "savestate" + (dirty ? " unsaved" : "");
@@ -2330,8 +2334,12 @@ function refreshAutoWarn() {
   el.style.fontWeight = d.autoRun === "send" ? "600" : "400";
 }
 
+/* Three buttons, one action. Whichever you press, everything on the page is
+   stored: a page where half your edits are saved is worse than one where none
+   are, because you cannot tell which half. */
 document.getElementById("msgSave").addEventListener("click", () => saveAll("messages"));
 document.getElementById("pickSave").addEventListener("click", () => saveAll("pick"));
+document.getElementById("autoSave").addEventListener("click", () => saveAll("auto"));
 
 document.getElementById("msgReset").addEventListener("click", () => {
   welcomeBoxes.forEach((t, i) => { t.value = SAMPLES.welcome[i]; });
