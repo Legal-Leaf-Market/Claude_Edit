@@ -967,6 +967,115 @@
     return null;
   }
 
+  /* Set only while this file dispatches a key itself, so the panel's own hotkey
+     handler can tell that Escape apart from the user pressing it. Without this,
+     closing Instagram's dialog with Escape would cancel the run doing the closing:
+     the handler is bound on window in the CAPTURE phase, so it sees a key
+     dispatched on any element in the page. */
+  var selfKey = false;
+
+  /* Closes the new-message draft, so the next account starts from nothing rather
+     than from somebody else's draft. Best effort by design: what makes the fix
+     safe is VERIFYING the field went away, not assuming this worked. */
+  function closeDraft() {
+    var scope = draftScope();
+    if (!scope) return false;
+
+    var nodes = scope.querySelectorAll('[aria-label], svg title');
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      var isTitle = n.tagName.toLowerCase() === 'title';
+      var lab = (isTitle ? (n.textContent || '') : (n.getAttribute('aria-label') || '')).trim();
+      if (!/^(close|cancel)$/i.test(lab)) continue;
+      var owner = isTitle ? (clickableAncestor(n.parentElement) || n.parentElement) : n;
+      if (owner && visible(owner)) { realClick(owner); return true; }
+    }
+
+    selfKey = true;
+    try {
+      scope.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true, cancelable: true
+      }));
+    } finally { selfKey = false; }
+    return true;
+  }
+
+  /* THE RECIPIENTS CURRENTLY ON THE DRAFT.
+
+     Instagram renders a picked recipient as a chip carrying its own Remove
+     control, so the remove affordances inside the draft dialog are the count.
+     Scoped STRICTLY to that dialog and never to the document: this function's
+     results get CLICKED to clear a draft, and a stray control labelled "Remove"
+     somewhere else on Instagram is not something to go clicking.
+
+     0 therefore means "none visible here", not "none exist", which is why this is
+     the second line of defence and not the fix. The fix is never typing a handle
+     into a draft that somebody else's handle is already in. */
+  /* Where the draft's own furniture lives. The dialog when there is one, otherwise
+     a few levels up from the recipient field, because the chips sit beside the
+     input rather than inside it and input[name="queryBox"] is sometimes all there
+     is to go on. */
+  function draftScope() {
+    var dlg = draftDialog();
+    if (dlg) return dlg;
+    var box = recipientBox();
+    if (!box) return null;
+    var up = box;
+    for (var i = 0; i < 4 && up.parentElement; i++) up = up.parentElement;
+    return up;
+  }
+
+  function recipientChips() {
+    var dlg = draftScope();
+    if (!dlg) return [];
+    var out = [];
+    var nodes = dlg.querySelectorAll('[aria-label], svg title');
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      var isTitle = n.tagName.toLowerCase() === 'title';
+      var lab = isTitle ? (n.textContent || '') : (n.getAttribute('aria-label') || '');
+      if (!/^remove\b/i.test(lab.trim())) continue;
+      var owner = isTitle ? (clickableAncestor(n.parentElement) || n.parentElement) : n;
+      if (owner && visible(owner) && out.indexOf(owner) < 0) out.push(owner);
+    }
+    return out;
+  }
+
+  /* The handle whose draft was last used, so the next account can tell whether it
+     is looking at a fresh dialog or that one. */
+  var lastDraftHandle = '';
+
+  /* Why this draft is not safe to type into, in words, or '' when it looks clean.
+     Three independent signals, because any one of them can be blind: a chip with
+     no Remove control is invisible to the first, and the second does not need to
+     understand the markup at all, only that a chip showing @somebody contains the
+     text "somebody". */
+  function dirtyReason(prev) {
+    var n = recipientChips().length;
+    if (n) return n + ' recipient' + (n === 1 ? '' : 's') + ' on it';
+
+    var scope = draftScope();
+    if (prev && scope) {
+      var txt = String(scope.innerText || scope.textContent || '').toLowerCase();
+      if (txt.indexOf(String(prev).toLowerCase()) >= 0) return '@' + prev + ' on it';
+    }
+
+    var box = recipientBox();
+    if (box && String(box.value || '').trim()) return 'text typed into it';
+    return '';
+  }
+
+  /* Clicks every recipient off the draft. Bounded, because a chip that will not
+     go is a reason to stop rather than to keep clicking. */
+  async function clearRecipients() {
+    var guard = 0;
+    while (recipientChips().length && guard++ < 25) {
+      realClick(recipientChips()[0]);
+      await sleep(120);
+    }
+    return recipientChips().length;
+  }
+
   /* The pencil. Read off the live page rather than guessed at:
        <svg aria-label="New message" role="img" 24x24><title>New message</title>...
      Its class names are generated, so the accessibility label is the only stable
@@ -1209,6 +1318,50 @@
      result is passed over rather than guessed at. */
   async function draftTo(handle, log) {
     var box = recipientBox();
+
+    /* A RECIPIENT FIELD ALREADY ON SCREEN BELONGS TO THE PREVIOUS ACCOUNT, and
+       this is the bug that sent a group message over and over.
+
+       Instagram's To: field is input[name="queryBox"], a pick becomes a chip in it
+       rather than clearing it, and the field SURVIVES a send because the thread is
+       not created until the first message lands. So the next handle typed into that
+       same field became a SECOND recipient: account two was messaged as a group with
+       account one, account three joined that group, and everybody in it got another
+       three messages every time the loop went round. Reusing this box because it
+       happened to be there was the whole mistake.
+
+       So a draft is never inherited. It is emptied and verified empty, or nothing is
+       sent at all. */
+    if (box) {
+      var prev = lastDraftHandle;
+      log('A draft is already open, closing it before starting a new one...');
+      closeDraft();
+
+      /* THE PROOF THAT MATTERS, and it reads none of Instagram's markup: the
+         recipient field GOES AWAY and a new one comes back from the pencil. A
+         field we watched disappear cannot still have the last account on it,
+         whatever the chips are made of. Counting chips is a guess about somebody
+         else's DOM; watching the field close is not. */
+      try {
+        await waitFor(function () { return !recipientBox(); }, 4000);
+        box = null;
+      } catch (e) {
+        /* It would not close, so fall back to emptying it in place and PROVING it
+           is empty. Anything short of proof stops the run. */
+        setInputValue(box, '');
+        await clearRecipients();
+        await sleep(300);
+        var why = dirtyReason(prev);
+        if (why) {
+          throw new Error('the draft already open on this tab still has ' + why +
+            ', and it would not close, so NOTHING was sent. Sending now would have ' +
+            'messaged them AND @' + handle + ' as a GROUP. Close the message dialog ' +
+            'on this Instagram tab by hand, then run again');
+        }
+        log('Emptied the open draft and checked it is clear.');
+      }
+    }
+
     if (!box) {
       /* Snapshot first: whatever input turns up after the click is the recipient
          field, and the inbox search cannot be it because it was already here. */
@@ -1244,6 +1397,20 @@
     realClick(row);
     await sleep(400);
 
+    /* ONE PICK, ONE RECIPIENT, or nothing goes.
+
+       Layer one keeps the draft clean; this is what catches it having failed. More
+       than one recipient here means the next send is a GROUP message, which cannot
+       be taken back and which everybody in it keeps receiving on every later pass,
+       so it stops the whole run rather than this one account. 0 is not an error:
+       some layouts open the thread on the pick and show no chip at all. */
+    var picked = recipientChips().length;
+    if (picked > 1) {
+      throw new Error('this draft is addressed to ' + picked + ' people after picking @' +
+        handle + ', so it would have sent a GROUP message. Nothing was sent and the ' +
+        'run has stopped. Close the message dialog on this Instagram tab, then run again');
+    }
+
     /* The tick or Chat button. Its absence is fine on layouts that open the
        thread the moment a recipient is picked. */
     var go = labelledButton(['chat', 'next', 'done']);
@@ -1256,7 +1423,19 @@
     }
     /* On screen is not the same as ready to take text. */
     await sleep(SETTLE_MS);
-    log('Draft open with @' + handle + '.');
+
+    /* Checked AGAIN, because the composer appearing is a second chance for the
+       recipient list to be wrong, and this is the last moment before three
+       messages leave. */
+    var onDraft = recipientChips().length;
+    if (onDraft > 1) {
+      throw new Error('the message box opened on a draft addressed to ' + onDraft +
+        ' people, so it would have sent a GROUP message to them. Nothing was sent ' +
+        'and the run has stopped. Close the message dialog on this Instagram tab, ' +
+        'then run again');
+    }
+    lastDraftHandle = handle;
+    log('Draft open with @' + handle + (onDraft === 1 ? ', one recipient.' : '.'));
   }
 
   async function sendOne(text, log) {
@@ -1981,6 +2160,9 @@
     }
 
     out.recipientBoxFound = !!recipientBox();
+    /* How many people the open draft is addressed to, which is the number that
+       mattered when a run went out as a group. */
+    out.recipientsOnDraft = recipientChips().length;
     var c = findComposer();
     out.composer = c ? (c.tagName + (c.getAttribute('role') ? '[role=' + c.getAttribute('role') + ']' : '')) : 'none';
     out.sendControlLive = !!sendControl();
@@ -1997,6 +2179,7 @@
     try { if (navigator.clipboard) navigator.clipboard.writeText(txt); } catch (e) {}
     log('Probe: ' + out.visibleDialogs + ' dialog(s), pencil ' + out.pencilClickTarget +
       ', recipient box ' + (out.recipientBoxFound ? 'FOUND' : 'not found') +
+      ', recipients on the draft ' + out.recipientsOnDraft +
       ', ' + out.inputs.length + ' visible input(s), composer ' + out.composer +
       '. Full detail is on the clipboard and in the console.');
   }
@@ -2089,6 +2272,9 @@
 
   function onKey(e) {
     if (e.repeat || e.metaKey) return;
+    /* Our own Escape, sent to close Instagram's dialog. Cancelling the run on it
+       would mean the tidy-up between accounts stopped the run every time. */
+    if (selfKey) return;
 
     /* Typing in the edit box must never fire a send, and Escape there should
        let go of the field rather than hide the panel mid-edit. */
