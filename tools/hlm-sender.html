@@ -162,7 +162,7 @@
   <div class="card warn">
     <strong>Worth keeping in mind</strong>
     <ul>
-      <li>Firing the same message at dozens of accounts in one sitting is the pattern Instagram's spam heuristics watch for, and the usual result is a temporary messaging block. Ten to fifteen a session is the sane ceiling.</li>
+      <li>Firing the same message at dozens of accounts in one sitting is the pattern Instagram's spam heuristics watch for, and the usual result is a temporary messaging block on the account. There is no ceiling in this tool any more: the cap accepts 0 for none, and a run of 100+ is yours to make. Past roughly fifty DMs in a day from one account Instagram's own rate limiting is what you are up against rather than anything here, and the pacing numbers in section 6 are what buy room against it.</li>
       <li>Scripted sending is against Instagram's terms, which prohibit automated interaction. Your account carries that risk.</li>
       <li>Hemp is a US offer, and a follower list collects accounts that are nowhere near the US. Someone who cannot legally order is a mute, not a send.</li>
       <li>One "no thanks" is the whole conversation. Mute them the moment it arrives, before the next batch.</li>
@@ -240,7 +240,7 @@
       <button class="primary" id="selDue">Select who is due</button>
       <button data-select="none">Select none</button>
       <button data-select="clean">Only exact handles</button>
-      <label class="inline">cap at <input type="number" id="capN" value="12" min="1" max="99"> per session</label>
+      <label class="inline">cap at <input type="number" id="capN" value="12" min="1" max="999"> per session</label>
     </div>
     <div id="cadence"></div>
   </div>
@@ -272,7 +272,7 @@
     <div class="row-controls" style="margin-top: 8px">
       <button id="openNext" disabled>Open next tab</button>
       <button id="openBatch" disabled>Open batch of</button>
-      <label class="inline"><input type="number" id="batchSize" value="10" min="2" max="50"> <span id="batchUnit">tabs</span></label>
+      <label class="inline"><input type="number" id="batchSize" value="10" min="1" max="999"> <span id="batchUnit">tabs</span></label>
       <button id="loopStop" hidden>Stop the loop</button>
     </div>
     <div id="status">Nothing queued yet.</div>
@@ -325,7 +325,7 @@
       <textarea id="w2" style="min-height: 56px"></textarea>
     </div>
     <div class="row-controls" style="margin: 14px 0 4px">
-      <label class="inline">Pause between messages <input type="number" id="gapMs" min="300" max="20000" step="100"> ms</label>
+      <label class="inline">Pause between messages <input type="number" id="gapMs" min="0" max="20000" step="100"> ms</label>
     </div>
     <div class="row-controls" style="margin-top: 10px">
       <button class="primary" id="msgSave">Save these messages</button>
@@ -424,10 +424,10 @@
         </span>
       </div>
       <div class="row-controls" style="gap: 14px">
-        <label class="inline">settle <input type="number" id="autoSettle" min="1" max="30"> s after each page loads</label>
-        <label class="inline">count down <input type="number" id="autoCountdown" min="2" max="60"> s first</label>
-        <label class="inline">leave <input type="number" id="autoBetween" min="3" max="600"> s between tabs</label>
-        <label class="inline">stop after <input type="number" id="autoCap" min="1" max="99"> per sitting</label>
+        <label class="inline">settle <input type="number" id="autoSettle" min="0" max="120"> s after each page loads</label>
+        <label class="inline">count down <input type="number" id="autoCountdown" min="0" max="120"> s first</label>
+        <label class="inline">leave <input type="number" id="autoBetween" min="0" max="3600"> s between tabs</label>
+        <label class="inline">stop after <input type="number" id="autoCap" min="0" max="9999"> per sitting, 0 for no cap</label>
       </div>
       <p class="sub" id="autoWarn" style="margin: 10px 0 0"></p>
       <div class="row-controls" style="margin-top: 12px">
@@ -559,10 +559,19 @@
      per browser, because they decide whether a tab sends on its own and that is
      not something a stale local copy should get to answer. */
   var AUTO_RUN = (BAKED && typeof BAKED.autoRun === 'string') ? BAKED.autoRun : 'off';
-  var COUNTDOWN_MS = Math.max(2000, Number(BAKED && BAKED.countdownMs) || 5000);
-  var BETWEEN_MS = Math.max(3000, Number(BAKED && BAKED.betweenTabsMs) || 8000);
-  var SITTING_CAP = Math.max(1, Number(BAKED && BAKED.capPerSitting) || 12);
-  var SETTLE_MS = Math.max(250, Number(BAKED && BAKED.settleMs) || 2000);
+  /* No floors on any of these three. They were there to stop a fast run, and a
+     fast run is now a choice the page makes rather than one this file overrules.
+     0 is meaningful for each: no countdown, no gap between accounts, no settle. */
+  var COUNTDOWN_MS = Math.max(0, Number(BAKED && BAKED.countdownMs) || 0);
+  var BETWEEN_MS = Math.max(0, Number(BAKED && BAKED.betweenTabsMs) || 0);
+  var SETTLE_MS = Math.max(0, Number(BAKED && BAKED.settleMs) || 0);
+
+  /* 0 IS NO CAP, and it is the default when nothing is baked in. Every read of
+     this goes through CAPPED rather than comparing against the number, because
+     `n >= 0` is true of every send and a cap of nothing would otherwise stop the
+     run before the first one. */
+  var SITTING_CAP = Math.max(0, Number(BAKED && BAKED.capPerSitting) || 0);
+  var CAPPED = SITTING_CAP > 0;
   var HOME_ORIGIN = (BAKED && typeof BAKED.homeOrigin === 'string') ? BAKED.homeOrigin : '';
 
   /* Reporting back to the sender page is what lets the loop continue: the page
@@ -1564,7 +1573,9 @@
   /* ---------- unattended mode ----------
      Opening a batch of tabs and having every one of them fire on load is the
      exact burst Instagram's spam heuristics act on, so this does not do that.
-     Three brakes, and none of them is decoration:
+     Three brakes. The first is structural and always on; the other two are now
+     settings, and 0 turns each of them off, which is a run the page asked for
+     rather than one this file talked it out of:
 
      1. ONE TAB AT A TIME. Every instagram.com tab shares this origin's
         localStorage, so a lock there is a lock across the whole batch. A tab
@@ -1574,7 +1585,8 @@
         timer and a Cancel, because a tab queued against the wrong row is a
         stranger getting three messages and there is no unsending that.
      3. A CAP PER SITTING, shared the same way, so a runaway batch stops itself
-        at a number rather than working through the whole list.
+        at a number rather than working through the whole list. 0 means it works
+        through the whole list, which is the point of a list of 100+.
 
      Auto mode also refuses on any thread it has already sent on, and only ever
      runs on a tab that carries a queued handle, never on a profile you happened
@@ -1844,7 +1856,7 @@
         var who = runQueue[0];
 
         var s = sitting();
-        if (s.n >= SITTING_CAP) {
+        if (CAPPED && s.n >= SITTING_CAP) {
           showAuto('Session cap reached, ' + s.n + ' sent in this sitting. Stopping here.', true);
           reportHome('capped', who, s.n + ' sent in this sitting, which is the cap');
           break;
@@ -2020,7 +2032,7 @@
     }
 
     var s = sitting();
-    if (s.n >= SITTING_CAP) {
+    if (CAPPED && s.n >= SITTING_CAP) {
       showAuto('Session cap reached, ' + s.n + ' already sent in this sitting. ' +
         'Nothing sent here. Send by hand, or start a new sitting later.', true);
       reportHome('capped', who, s.n + ' sent in this sitting, which is the cap');
@@ -2060,7 +2072,8 @@
          to the next account, because reopening a tab per account needs pop-up
          permission and navigating one you already have does not. Closing here
          would hand that problem straight back. */
-      showAuto(n + ' of ' + SITTING_CAP + ' this sitting. Sent. Waiting for the next one.', false);
+      showAuto((CAPPED ? n + ' of ' + SITTING_CAP : 'Sent ' + n) +
+        ' this sitting. Waiting for the next one.', false);
     } finally {
       clearInterval(beat);
       releaseLock();
@@ -2245,7 +2258,7 @@ const SAMPLES = {
    that a mis-queued tab can be caught before it sends. */
 const DEFAULTS = {
   self: "herbal_leaf_market", gapMs: 1800,
-  autoRun: "off", autoClose: true, settle: 2, countdown: 5, betweenTabs: 6, cap: 12
+  autoRun: "off", autoClose: true, settle: 2, countdown: 5, betweenTabs: 6, cap: 0
 };
 const AUTO_MODES = ["off", "dialog", "send"];
 
@@ -2257,6 +2270,8 @@ const asNum = (v, fallback, lo, hi) => {
 
 function shapeSaved(raw, wasStored) {
   const o = (raw && typeof raw === "object") ? raw : {};
+  /* See limitsFreed below. Rewrites the value being read, once. */
+  if (wasStored && o.limitsFreed !== true) o.cap = 0;
   const w = Array.isArray(o.welcome) ? o.welcome : [];
   const p = (o.pick && typeof o.pick === "object") ? o.pick : {};
   const gap = parseInt(o.gapMs, 10);
@@ -2270,15 +2285,25 @@ function shapeSaved(raw, wasStored) {
       week: asText(p.week, "")
     },
     self: asText(o.self, DEFAULTS.self),
-    gapMs: Number.isFinite(gap) ? Math.min(20000, Math.max(300, gap)) : DEFAULTS.gapMs,
+    gapMs: Number.isFinite(gap) ? Math.min(20000, Math.max(0, gap)) : DEFAULTS.gapMs,
     autoRun: AUTO_MODES.indexOf(o.autoRun) >= 0 ? o.autoRun : DEFAULTS.autoRun,
     /* Absent means on, since it only matters in the send mode and closing the
        tab is what makes that mode a loop rather than a pile of tabs. */
     autoClose: o.autoClose === undefined ? DEFAULTS.autoClose : !!o.autoClose,
-    settle: asNum(o.settle, DEFAULTS.settle, 1, 30),
-    countdown: asNum(o.countdown, DEFAULTS.countdown, 2, 60),
-    betweenTabs: asNum(o.betweenTabs, DEFAULTS.betweenTabs, 3, 600),
-    cap: asNum(o.cap, DEFAULTS.cap, 1, 99),
+    settle: asNum(o.settle, DEFAULTS.settle, 0, 120),
+    countdown: asNum(o.countdown, DEFAULTS.countdown, 0, 120),
+    betweenTabs: asNum(o.betweenTabs, DEFAULTS.betweenTabs, 0, 3600),
+    /* 0 means no cap. Asked for explicitly: a run of 100+ in one sitting was
+       being stopped by a ceiling of 99, and a ceiling you cannot raise is not a
+       setting. The pacing numbers above are what actually spaces a run out; this
+       one only ever decided when to stop. */
+    cap: asNum(o.cap, DEFAULTS.cap, 0, 9999),
+    /* A ONE-TIME MIGRATION, not a live setting. Settings saved before the cap
+       could be switched off carry the old default of 12, and leaving those alone
+       would mean the ceiling came off in the file and stayed on in the browser
+       that matters. Absent means those older settings, so the cap goes to 0 once
+       and the marker stops it happening again the next time a cap is chosen. */
+    limitsFreed: true,
     /* rev 0 means nothing has ever been saved, so the boxes are still showing
        the samples. Any save lands on 1 or above, which is what lets the
        injected sender tell a published revision from a starting draft. */
@@ -3052,6 +3077,11 @@ function draft() {
     countdown: autoCountdownEl.value,
     betweenTabs: autoBetweenEl.value,
     cap: autoCapEl.value,
+    /* The boxes are showing live values, so the migration in shapeSaved is not
+       due here. Without this it would fire on every save and quietly zero a cap
+       that had just been typed in, which is the opposite of leaving the choice
+       where it belongs. */
+    limitsFreed: true,
     rev: saved.rev
   }, saved.stored);
 }
@@ -3123,13 +3153,20 @@ function refreshAutoWarn() {
   } else {
     msg = "One Instagram tab takes the whole list and stays on the messages page. " +
       "Per account: start a new draft, type the handle, take an EXACT match or pass " +
-      "over, wait " + d.settle + "s for the composer, count down " + d.countdown +
-      "s where you can still cancel, send the three messages confirming each one left, " +
-      "then wait " + d.betweenTabs + "s and draft the next. Stops after " + d.cap +
-      " in a sitting, on the first real failure, or on a tab that goes quiet. A handle " +
-      "with no exact match is passed over and the run carries on. " +
+      "over, " + (d.settle ? "wait " + d.settle + "s for the composer, " : "") +
+      (d.countdown
+        ? "count down " + d.countdown + "s where you can still cancel, "
+        : "send with NO countdown, so there is nothing to cancel, ") +
+      "send the three messages confirming each one left" +
+      (d.betweenTabs ? ", then wait " + d.betweenTabs + "s and draft the next. " : ", then draft the next straight away. ") +
+      (d.cap
+        ? "Stops after " + d.cap + " in a sitting, on the first real failure, or on a tab " +
+          "that goes quiet. "
+        : "NO CAP: it works through the whole list, however long, stopping only on the " +
+          "first real failure or a tab that goes quiet. ") +
+      "A handle with no exact match is passed over and the run carries on. " +
       "Scripted sending is against Instagram\u0027s terms and unattended sending is the version " +
-      "of it their heuristics are looking for, so keep the cap low and read the transcript.";
+      "of it their heuristics are looking for, so read the transcript.";
   }
   el.textContent = msg;
   el.style.color = d.autoRun === "send" ? "var(--flag-text)" : "var(--muted)";
