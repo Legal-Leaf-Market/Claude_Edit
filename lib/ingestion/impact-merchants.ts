@@ -48,6 +48,27 @@ export type ImpactMerchant = {
    */
   envVar: string
   /**
+   * The brand's PROGRAMME id on Impact, from the marketplace export.
+   *
+   * NOT THE CATALOGUE ID, AND NEVER USABLE AS ONE. This is the number that
+   * identifies the advertiser's programme: the thing a publisher applies to.
+   * A catalogue id identifies one published product feed belonging to that
+   * programme, and the two are unrelated numbers. Anderton's is the proof
+   * sitting in this repo already: catalogue 30480, campaign 43829.
+   *
+   * Putting a programme id in `catalogId` would ask the API for
+   * /Catalogs/<programme>/Items, which either 404s or returns whichever
+   * advertiser genuinely owns a catalogue with that number, filing their stock
+   * under this merchant's name. That is the failure the hard "do not" list
+   * calls out as worse than a 404 because nothing fails.
+   *
+   * What it is good for is matching. The admin catalogue list uses it to say
+   * which returned catalogue belongs to which merchant here, instead of asking
+   * a human to pair up two lists of names by eye. Nothing in the ingestion path
+   * reads it.
+   */
+  programId?: string
+  /**
    * Currency stamped on a row when the catalogue carries no currency column.
    *
    * A FALLBACK, NOT A DECLARATION. The feed's own column always wins where one
@@ -84,6 +105,7 @@ export const ANDERTONS: ImpactMerchant = {
   label: "Andertons Music Company",
   catalogId: env.impact.andertonsCatalogId,
   envVar: "IMPACT_ANDERTONS_CATALOG_ID",
+  programId: "43829",
   // Confirmed: Anderton's trades only in the UK and prices in pounds.
   fallbackCurrency: "GBP",
   country: "GB",
@@ -109,6 +131,7 @@ export const IMPACT_MERCHANTS: ImpactMerchant[] = [
     label: "American Musical Supply",
     catalogId: env.impact.americanMusicalCatalogId,
     envVar: "IMPACT_AMERICANMUSICAL_CATALOG_ID",
+    programId: "47665",
     fallbackCurrency: "USD",
     country: "US",
     hosts: ["americanmusical.com"],
@@ -120,6 +143,7 @@ export const IMPACT_MERCHANTS: ImpactMerchant[] = [
     label: "Musician's Friend",
     catalogId: env.impact.musiciansFriendCatalogId,
     envVar: "IMPACT_MUSICIANSFRIEND_CATALOG_ID",
+    programId: "14291",
     fallbackCurrency: "USD",
     country: "US",
     hosts: ["musiciansfriend.com"],
@@ -131,6 +155,7 @@ export const IMPACT_MERCHANTS: ImpactMerchant[] = [
     label: "Native Instruments",
     catalogId: env.impact.nativeInstrumentsCatalogId,
     envVar: "IMPACT_NATIVEINSTRUMENTS_CATALOG_ID",
+    programId: "29910",
     /*
      * USD is the guess, and it is a guess worth watching. Native Instruments is
      * a Berlin company that prices in EUR at home and USD in the US store, so
@@ -149,6 +174,7 @@ export const IMPACT_MERCHANTS: ImpactMerchant[] = [
     label: "Fender",
     catalogId: env.impact.fenderCatalogId,
     envVar: "IMPACT_FENDER_CATALOG_ID",
+    programId: "33985",
     fallbackCurrency: "USD",
     country: "US",
     hosts: ["fender.com"],
@@ -160,6 +186,7 @@ export const IMPACT_MERCHANTS: ImpactMerchant[] = [
     label: "Universal Audio",
     catalogId: env.impact.universalAudioCatalogId,
     envVar: "IMPACT_UNIVERSALAUDIO_CATALOG_ID",
+    programId: "39245",
     fallbackCurrency: "USD",
     country: "US",
     hosts: ["uaudio.com"],
@@ -171,6 +198,7 @@ export const IMPACT_MERCHANTS: ImpactMerchant[] = [
     label: "Donner Music",
     catalogId: env.impact.donnerCatalogId,
     envVar: "IMPACT_DONNER_CATALOG_ID",
+    programId: "43895",
     /*
      * Donner runs several regional programmes on Impact, one of them labelled
      * "Online sale-EU". If the catalogue this account can read turns out to be
@@ -188,6 +216,7 @@ export const IMPACT_MERCHANTS: ImpactMerchant[] = [
     label: "Plugin Alliance",
     catalogId: env.impact.pluginAllianceCatalogId,
     envVar: "IMPACT_PLUGINALLIANCE_CATALOG_ID",
+    programId: "30401",
     fallbackCurrency: "USD",
     country: "DE",
     hosts: ["plugin-alliance.com"],

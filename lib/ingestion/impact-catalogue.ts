@@ -563,7 +563,15 @@ export type ImpactCatalogSummary = {
   name: string | null
   advertiser: string | null
   items: number | null
-  /** Which merchant in the registry, if any, is already pointed at this id. */
+  /**
+   * The programme this catalogue belongs to, when the response says so.
+   *
+   * This is what lets the admin list pair a catalogue with a merchant in the
+   * registry, since the registry knows each brand's programme id from the
+   * marketplace export. It is a display aid and nothing more: the human still
+   * reads the catalogue id off the result and pastes it into an env var.
+   */
+  programId: string | null
   raw: Record<string, string>
 }
 
@@ -614,6 +622,15 @@ export async function listImpactCatalogs(
       name: pick("Name", "CatalogName"),
       advertiser: pick("AdvertiserName", "CampaignName", "Advertiser", "Campaign"),
       items: toInt(pick("NumberOfItems", "ItemCount", "TotalItems")),
+      /*
+       * Campaign first, advertiser second. Impact's marketplace export lists
+       * one row per programme, which is a campaign, so that is the number the
+       * registry holds. Reading the advertiser id too costs nothing and covers
+       * the case where this endpoint reports the account rather than the
+       * programme; `raw` carries everything either way, so a mismatch is
+       * visible rather than silently wrong.
+       */
+      programId: pick("CampaignId", "AdvertiserId", "ProgramId"),
       raw,
     }
   })

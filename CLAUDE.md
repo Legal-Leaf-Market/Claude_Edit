@@ -191,6 +191,16 @@ built for that site's own frontend rather than published for this use.
   fail safely, it either 404s or returns ANOTHER advertiser's products under this
   merchant's name. `/api/admin/impact` with `{"mode":"list"}`, surfaced as a
   button, reads the real ids off the account.
+  **A PROGRAMME ID IS NOT A CATALOGUE ID, and this is the likeliest way to get
+  the previous paragraph wrong.** The Impact marketplace export lists one number
+  per brand (AMS 47665, Musician's Friend 14291, Native Instruments 29910,
+  Fender 33985, Universal Audio 39245, Donner 43895, Plugin Alliance 30401) and
+  it identifies the PROGRAMME, the thing a publisher applies to. Anderton's is
+  the proof that the two schemes are unrelated: catalogue 30480, campaign 43829.
+  Those programme ids live in `impact-merchants.ts` as `programId`, nothing in
+  the ingestion path reads them, and their whole job is letting the admin list
+  say which returned catalogue belongs to which merchant. A test forbids either
+  id standing in for the other.
   **An approval is not a catalogue.** Impact grants a tracked link and a
   commission; whether a brand publishes a product catalogue to partners is a
   separate fact, and some of these may never have one. Unset is a fully
@@ -958,6 +968,10 @@ engine.
 - Do NOT guess an Impact catalogue id, or default one that has not been read
   off the account. A wrong id returns another advertiser's products under this
   merchant's name, which is worse than a 404 because nothing fails (section 1).
+- Do NOT put a programme id from the Impact marketplace export into an
+  `IMPACT_*_CATALOG_ID`. They are different numbering schemes and Anderton's
+  proves it: catalogue 30480, campaign 43829. The export id belongs in
+  `programId`, which nothing ingesting ever reads.
 - Do NOT write a per-merchant Impact ingestion module. The merchant is a row in
   `lib/ingestion/impact-merchants.ts` and there is one reader; eight parsers is
   section 7 broken eight ways.

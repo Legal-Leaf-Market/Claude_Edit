@@ -108,24 +108,24 @@ function ImpactCatalogueButton({ merchants }: { merchants: ImpactMerchantOption[
         advertiser: string | null
         items: number | null
         wiredTo: string | null
+        action: string
       }[] = body.catalogs ?? []
 
       const unwired = catalogs.filter((c) => !c.wiredTo)
       setMessage(
         `This account can read ${body.count} catalogue(s). ` +
           (unwired.length
-            ? `${unwired.length} of them are not wired to a merchant yet.`
+            ? `${unwired.length} of them are not wired to a merchant yet. Each line below says which variable to paste it into.`
             : "Every one of them is already wired to a merchant."),
       )
       setDetail(
         [
           "catalogues on the account:",
-          ...catalogs.map(
-            (c) =>
-              `  ${String(c.id).padEnd(8)} ${(c.advertiser ?? c.name ?? "(unnamed)").slice(0, 40).padEnd(42)}` +
-              `${c.items != null ? `${c.items.toLocaleString()} items` : ""}` +
-              `${c.wiredTo ? `  -> ${c.wiredTo}` : "  -- not wired --"}`,
-          ),
+          ...catalogs.flatMap((c) => [
+            `  ${String(c.id).padEnd(8)} ${(c.advertiser ?? c.name ?? "(unnamed)").slice(0, 40).padEnd(42)}` +
+              `${c.items != null ? `${c.items.toLocaleString()} items` : ""}`,
+            `           ${c.action}`,
+          ]),
           "",
           "merchants this site knows about:",
           ...(body.merchants ?? []).map(
