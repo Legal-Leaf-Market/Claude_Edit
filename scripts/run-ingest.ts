@@ -10,6 +10,8 @@ import { ingestSweetwaterFeed } from "../lib/ingestion/sweetwater-linkconnector"
 import { ingestGear4MusicFeed } from "../lib/ingestion/gear4music-awin"
 import { ingestZzoundsFeed } from "../lib/ingestion/zzounds-cj"
 import { ingestAndertonsFeed } from "../lib/ingestion/andertons-impact"
+import { ingestImpactCatalogue } from "../lib/ingestion/impact-catalogue"
+import { impactMerchant, impactSkipReason, IMPACT_MERCHANTS } from "../lib/ingestion/impact-merchants"
 import { ingestFullCompassFeed } from "../lib/ingestion/fullcompass-cj"
 import { ingestPinevilleMusicFeed } from "../lib/ingestion/pinevillemusic-cj"
 import { ingestFolkcraftFeed } from "../lib/ingestion/folkcraft-shopify"
@@ -37,6 +39,9 @@ import { refreshAllDeals } from "../lib/deals/pricing"
  *   npm run ingest:sweetwater        LinkConnector product datafeed
  *   npm run ingest:gear4music        Awin product datafeed
  *   npm run ingest:andertons         Impact.com catalogue, over FTP
+ *   npm run ingest:impact -- fender  Impact.com catalogue, over the REST API
+ *                                    (any merchant in impact-merchants.ts;
+ *                                    run it with no name to list them)
  *   npm run ingest:zzounds           CJ Affiliate product feed
  *   npm run ingest:fullcompass       CJ Affiliate product feed
  *   npm run ingest:pinevillemusic    CJ Affiliate product feed
@@ -80,6 +85,23 @@ async function main() {
   } else if (source === "andertons") {
     const result = await ingestAndertonsFeed()
     console.log("[ingest] Anderton's:", JSON.stringify(result, null, 2))
+  } else if (source === "impact") {
+    // One entry point for every Impact merchant, since one job serves them all.
+    // Without a merchant name it lists them rather than guessing which was
+    // meant, and says which can actually be pulled today.
+    const merchant = mode ? impactMerchant(mode) : null
+    if (!merchant) {
+      console.error(
+        `Usage: run-ingest.ts impact <${IMPACT_MERCHANTS.map((m) => m.key).join("|")}>\n` +
+          IMPACT_MERCHANTS.map(
+            (m) => `  ${m.key.padEnd(18)} ${m.label} (${impactSkipReason(m) ? "not configured" : `catalogue ${m.catalogId}`})`,
+          ).join("\n"),
+      )
+      process.exitCode = 1
+    } else {
+      const result = await ingestImpactCatalogue(merchant)
+      console.log(`[ingest] ${merchant.label}:`, JSON.stringify(result, null, 2))
+    }
   } else if (source === "zzounds") {
     const result = await ingestZzoundsFeed()
     console.log("[ingest] zZounds:", JSON.stringify(result, null, 2))
@@ -131,7 +153,7 @@ async function main() {
     console.log("[ingest] deals:", await refreshAllDeals())
   } else {
     console.error(
-      "Usage: run-ingest.ts <ebay|reverb|sweetwater|gear4music|andertons|zzounds|fullcompass|pinevillemusic|folkcraft|acousticguitar|jamstik|jacksonaudio|eminencedigital|hazeguitar|eartguitar|playwithauthority|puresmusic|squaver|easonmusicstore|gokalimba|resolve> [daily|snapshot|bootstrap]",
+      "Usage: run-ingest.ts <ebay|reverb|sweetwater|gear4music|andertons|impact|zzounds|fullcompass|pinevillemusic|folkcraft|acousticguitar|jamstik|jacksonaudio|eminencedigital|hazeguitar|eartguitar|playwithauthority|puresmusic|squaver|easonmusicstore|gokalimba|resolve> [daily|snapshot|bootstrap]",
     )
     process.exitCode = 1
   }

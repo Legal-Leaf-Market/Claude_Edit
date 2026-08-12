@@ -539,7 +539,17 @@ export const SOURCES = [
   "squaver",
   "easonmusicstore",
   "gokalimba",
+  // Impact.com catalogue merchants. Anderton's came first and has an FTP
+  // transport of its own; the rest are the same REST catalogue API with a
+  // different catalogue id each (lib/ingestion/impact-merchants.ts).
   "andertons",
+  "americanmusical",
+  "musiciansfriend",
+  "nativeinstruments",
+  "fender",
+  "universalaudio",
+  "donner",
+  "pluginalliance",
 ] as const
 export type Source = (typeof SOURCES)[number]
 
