@@ -1,5 +1,6 @@
 import { Queue, type JobsOptions } from "bullmq"
 import { env } from "@/lib/env"
+import { canPullImpactMerchant, IMPACT_MERCHANTS } from "@/lib/ingestion/impact-merchants"
 import { getRedis } from "./redis"
 
 /**
@@ -30,6 +31,12 @@ export type IngestionJob =
   | { kind: "gear4music-feed" }
   | { kind: "zzounds-feed" }
   | { kind: "andertons-catalogue" }
+  /**
+   * Any Impact.com merchant over the REST catalogue API, named by its registry
+   * key (lib/ingestion/impact-merchants.ts). One job kind rather than eight,
+   * because the merchant is data and the work is identical.
+   */
+  | { kind: "impact-catalogue"; merchant: string }
   | { kind: "fullcompass-feed" }
   | { kind: "pinevillemusic-feed" }
   | { kind: "folkcraft-feed" }
@@ -166,6 +173,32 @@ export async function registerRepeatableJobs(): Promise<string[]> {
       { name: "andertons-catalogue", data: { kind: "andertons-catalogue" } },
     )
     registered.push("andertons-catalogue @ every 6h")
+  }
+
+  /*
+   * The Impact merchants over the REST API.
+   *
+   * Gated per merchant on having a catalogue id, so an approved programme whose
+   * catalogue id nobody has looked up yet costs nothing rather than scheduling
+   * a job that logs a skip every six hours. Anderton's is skipped here because
+   * its FTP scheduler above already pulls the same catalogue; scheduling both
+   * would write the same 27k rows twice.
+   *
+   * Staggered by index so eight catalogues do not all start in the same minute
+   * and race each other on Postgres write throughput, which is what ingestion
+   * concurrency 1 exists to avoid in the first place.
+   */
+  for (const [index, merchant] of IMPACT_MERCHANTS.entries()) {
+    if (merchant.key === "andertons") continue
+    if (!canPullImpactMerchant(merchant)) continue
+
+    const minute = (3 + index * 7) % 60
+    await ingestion.upsertJobScheduler(
+      `impact-${merchant.key}`,
+      { pattern: `${minute} */6 * * *` },
+      { name: `impact-${merchant.key}`, data: { kind: "impact-catalogue", merchant: merchant.key } },
+    )
+    registered.push(`impact-${merchant.key} @ every 6h`)
   }
 
   if (env.cj.hasZzoundsFeed) {

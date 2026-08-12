@@ -19,6 +19,7 @@
     "ingest:sweetwater": "tsx scripts/run-ingest.ts sweetwater",
     "ingest:gear4music": "tsx scripts/run-ingest.ts gear4music",
     "ingest:andertons": "tsx scripts/run-ingest.ts andertons",
+    "ingest:impact": "tsx scripts/run-ingest.ts impact",
     "ingest:zzounds": "tsx scripts/run-ingest.ts zzounds",
     "ingest:fullcompass": "tsx scripts/run-ingest.ts fullcompass",
     "ingest:pinevillemusic": "tsx scripts/run-ingest.ts pinevillemusic",

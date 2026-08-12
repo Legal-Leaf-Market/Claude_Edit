@@ -26,7 +26,26 @@ export const ALLOWED_HOSTS = [
   // a feature switch: a destination has to clear it before /go will follow it,
   // and a host missing here fails closed. See lib/affiliate/impact.ts.
   /(^|\.)(pxf\.io|sjv\.io|7eer\.net|evyy\.net|impactradius\.com)$/i,
+  // Impact merchants' own storefronts, for the untracked `Original Url` their
+  // catalogues carry beside the tracked link. Each domain is declared beside
+  // its merchant in lib/ingestion/impact-merchants.ts and asserted against this
+  // list by a test, so approving a ninth merchant cannot quietly leave every
+  // one of its listings 502ing at /go.
   /(^|\.)andertons\.co\.uk$/i,
+  /(^|\.)americanmusical\.com$/i,
+  /(^|\.)musiciansfriend\.com$/i,
+  /(^|\.)native-instruments\.com$/i,
+  /(^|\.)fender\.com$/i,
+  /(^|\.)uaudio\.com$/i,
+  /(^|\.)donnermusic\.com$/i,
+  /(^|\.)donnerdeal\.com$/i,
+  /(^|\.)plugin-alliance\.com$/i,
+  // The two focus-page partners (lib/partners.ts). They have no listings and
+  // no catalogue, but /go/partner still checks its destination against this
+  // list, so an unset tracked link falls back to a host that is known good
+  // rather than to whatever a config edit happens to contain.
+  /(^|\.)martinic\.com$/i,
+  /(^|\.)distrokid\.com$/i,
   // Small independent Shopify sellers. GoAffPro-style referral links append a
   // query param to the merchant's own domain rather than redirecting through
   // a separate tracking host, so the raw and affiliate URLs share a host.

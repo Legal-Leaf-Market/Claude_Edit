@@ -71,6 +71,82 @@ export const STORES: StoreProfile[] = [
     blurb:
       "Andertons has been selling instruments out of Guildford since 1964, and the catalogue is the biggest of any store here by a wide margin: guitars, amps, synths, drums and studio gear. Prices are in pounds and they ship from the UK, which is worth factoring in if you are ordering from elsewhere.",
   },
+  /*
+   * The Impact.com merchants, approved August 2026.
+   *
+   * TWO OF THE SEVEN CARRY A shipsTo AND FIVE DO NOT, WHICH IS THE RULE BEING
+   * FOLLOWED RATHER THAN APPLIED UNEVENLY. American Musical Supply and
+   * Musician's Friend are confirmed US only, so they declare it and their
+   * stock stays away from shoppers who could never order it, exactly as
+   * Anderton's UK-only catalogue does. The other five have not been confirmed
+   * either way, and section 15 of CLAUDE.md is explicit that absent means
+   * unrestricted, because inventing a limit hides real inventory from real
+   * shoppers. Confirm a merchant's actual policy first, then add it.
+   *
+   * Worth knowing what a restriction costs before adding one on a hunch: these
+   * are two of the largest catalogues here, and a US-only declaration removes
+   * both of them wholesale from every non-US shopper's results. The shopper is
+   * always told and is always one click from seeing them anyway, but being
+   * wrong in this direction is expensive and nearly invisible from inside.
+   */
+  {
+    source: "musiciansfriend",
+    slug: "musicians-friend",
+    name: "Musician's Friend",
+    tagline: "One of the biggest catalogues in the business",
+    shipsTo: ["US"],
+    blurb:
+      "Musician's Friend carries close to everything: guitars, drums, keys, live sound and studio gear, from entry level up. Worth checking against the smaller shops here, because the same product often sits at three different prices across this site. They ship within the US only.",
+  },
+  {
+    source: "americanmusical",
+    slug: "american-musical-supply",
+    name: "American Musical Supply",
+    tagline: "Broad instrument retail, long-running US shop",
+    shipsTo: ["US"],
+    blurb:
+      "American Musical Supply has been selling instruments and pro audio for decades, with a catalogue wide enough to cover most of what a working player or a home studio needs. They ship within the US only.",
+  },
+  {
+    source: "fender",
+    slug: "fender",
+    name: "Fender",
+    tagline: "The brand's own store, direct rather than through a dealer",
+    blurb:
+      "Fender selling Fender: Stratocasters, Telecasters, Precision and Jazz basses, amps, and the parts and accessories that go with them. Prices here are the manufacturer's own, which makes them a useful floor to measure every dealer listing on this site against.",
+  },
+  {
+    source: "universalaudio",
+    slug: "universal-audio",
+    name: "Universal Audio",
+    tagline: "Interfaces, UAFX pedals and the plugin catalogue",
+    blurb:
+      "Universal Audio build the Apollo interfaces most home studios aspire to, the UAFX pedals that put their amp and reverb models on a pedalboard, and the plugin catalogue behind both.",
+  },
+  {
+    source: "nativeinstruments",
+    slug: "native-instruments",
+    name: "Native Instruments",
+    tagline: "Komplete, Maschine, Traktor and the Kontakt libraries",
+    blurb:
+      "Native Instruments sit somewhere between an instrument maker and a software house: Maschine and Komplete Kontrol are hardware, Kontakt and the libraries around it are what most producers actually reach for.",
+  },
+  {
+    source: "pluginalliance",
+    slug: "plugin-alliance",
+    name: "Plugin Alliance",
+    tagline: "Studio plugins from Brainworx and the brands they carry",
+    blurb:
+      "Plugin Alliance distributes mixing and mastering plugins from Brainworx and a long list of partner brands, including officially licensed models of hardware most studios will never own. Software rather than gear, listed here because it is bought the same way and compared the same way.",
+  },
+  {
+    source: "donner",
+    slug: "donner-music",
+    name: "Donner Music",
+    tagline: "Budget instruments, pedals and controllers, sold direct",
+    blurb:
+      "Donner make the cheap end sensible: pedals, MIDI controllers, beginner guitars and electronic drums at prices that make experimenting with a new instrument a low-stakes decision.",
+  },
   {
     source: "eartguitar",
     slug: "eart-guitar",

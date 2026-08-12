@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { describeConfig, env } from "@/lib/env"
+import { IMPACT_MERCHANTS } from "@/lib/ingestion/impact-merchants"
 
 export const dynamic = "force-dynamic"
 
@@ -67,6 +68,22 @@ export async function GET() {
       sources: {
         ebay: env.ebay.isConfigured ? (env.ebay.isSandbox ? "sandbox" : "production") : "unconfigured",
         reverb: env.awin.hasFeed ? "awin-feed" : "no-feed",
+        /*
+         * Impact merchants, named individually rather than counted. Eight
+         * programmes share one credential pair and differ only by catalogue
+         * id, so "which ones are actually wired up" is the question worth
+         * answering here, and a merchant that ingests nothing because nobody
+         * pasted its id looks exactly like a merchant with no stock.
+         *
+         * Booleans and ids only. A catalogue id is not a secret (it is on the
+         * platform's own catalogue page) and the credentials never appear.
+         */
+        impact: Object.fromEntries(
+          IMPACT_MERCHANTS.map((m) => [
+            m.key,
+            !env.impact.hasApi ? "no-credentials" : m.catalogId ? `catalogue ${m.catalogId}` : "no-catalogue-id",
+          ]),
+        ),
       },
       search: env.typesense.isConfigured ? "typesense" : "postgres",
       counts: {

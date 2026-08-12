@@ -2,6 +2,7 @@ import Link from "next/link"
 import { sql } from "drizzle-orm"
 import { ArrowRight, BellRing, Cable, Disc3, LineChart, Search as SearchIcon } from "lucide-react"
 import { InstagramStrip } from "@/components/instagram-strip"
+import { PartnerBanner } from "@/components/partner-banner"
 import { SubscribeForm } from "@/components/subscribe-form"
 import { CategoryIcon, CATEGORY_HUE, FALLBACK_HUE } from "@/components/category-icon"
 import { indexableCategories } from "@/lib/categories"
@@ -259,6 +260,14 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+
+      {/*
+        The one partner placement on this page, and it sits here rather than
+        anywhere above it for a reason: everything above is ranked inventory,
+        and a labelled ad belongs after the ranking rather than inside it. See
+        components/partner-banner.tsx for what keeps it honest.
+      */}
+      <PartnerBanner slug="distrokid" />
 
       <section className="pb-16">
         <h2 className="mb-4 font-display text-xl font-black tracking-[-0.01em] text-[var(--text)]">

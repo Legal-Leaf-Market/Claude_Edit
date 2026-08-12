@@ -227,6 +227,60 @@ export const env = {
     get hasAndertonsApi(): boolean {
       return Boolean(env.impact.accountSid && env.impact.authToken && env.impact.andertonsCatalogId)
     },
+
+    /**
+     * ONE ACCOUNT, MANY MERCHANTS.
+     *
+     * The SID and token above are this publisher's Impact credentials and they
+     * are the same for every advertiser on the network. What differs per
+     * merchant is only the catalogue id, so each of the programmes below gets
+     * exactly one variable rather than a credential block of its own.
+     *
+     * EVERY ONE OF THESE IS UNSET BY DEFAULT, AND THAT IS DELIBERATE.
+     * Anderton's id could be defaulted because it was read off the Impact
+     * platform (catalogue 30480, campaign 43829). None of these has been, and
+     * a guessed catalogue id does not fail loudly: `/Catalogs/<wrong>/Items`
+     * either 404s or, worse, returns some other advertiser's products, which
+     * would land another merchant's stock under this merchant's name. The
+     * admin "List the Impact catalogues" button reads the real ids off the
+     * account, which is the only way to fill these in.
+     *
+     * An approval is also not a catalogue. Impact grants a tracked link and a
+     * commission; whether the brand publishes a product catalogue to partners
+     * is a separate fact, and some of these will simply never have one. Unset
+     * therefore stays a fully supported state: the job logs a reason and
+     * no-ops, exactly as Sweetwater's has since the beginning.
+     */
+    americanMusicalCatalogId: str("IMPACT_AMERICANMUSICAL_CATALOG_ID"),
+    musiciansFriendCatalogId: str("IMPACT_MUSICIANSFRIEND_CATALOG_ID"),
+    nativeInstrumentsCatalogId: str("IMPACT_NATIVEINSTRUMENTS_CATALOG_ID"),
+    fenderCatalogId: str("IMPACT_FENDER_CATALOG_ID"),
+    universalAudioCatalogId: str("IMPACT_UNIVERSALAUDIO_CATALOG_ID"),
+    donnerCatalogId: str("IMPACT_DONNER_CATALOG_ID"),
+    pluginAllianceCatalogId: str("IMPACT_PLUGINALLIANCE_CATALOG_ID"),
+
+    /** Credentials only. Whether a given merchant can be pulled also needs its catalogue id. */
+    get hasApi(): boolean {
+      return Boolean(env.impact.accountSid && env.impact.authToken)
+    },
+
+    /**
+     * Tracked links for the two focus-page partners (lib/partners.ts).
+     *
+     * These are software and services rather than gear, they are deliberately
+     * NOT in the catalogue, and they have no listings, so there is no feed row
+     * to carry a link the way every other Impact merchant has. The link comes
+     * from Impact's own "create your links" step and is pasted in whole.
+     *
+     * It is never built here. Impact deep links need
+     * /c/<publisherId>/<campaignId>/<adId>, which is not something this file
+     * can assemble, and lib/affiliate/impact.ts explains at length why there is
+     * no buildImpactUrl(). Unset means the focus page links to the merchant's
+     * own site untracked, which earns nothing and is honest, rather than to a
+     * guessed tracker that credits nobody.
+     */
+    martinicLink: str("IMPACT_MARTINIC_LINK"),
+    distrokidLink: str("IMPACT_DISTROKID_LINK"),
   },
 
   /**
@@ -444,6 +498,22 @@ export function describeConfig(): string {
     `fullcompass-feed=${env.cj.hasFullCompassFeed ? "set" : "absent"}`,
     `pinevillemusic-feed=${env.cj.hasPinevilleMusicFeed ? "set" : "absent"}`,
     `andertons-feed=${env.impact.hasAndertonsFeed ? "set" : "absent"}`,
+    `impact-api=${env.impact.hasApi ? "set" : "absent"}`,
+    // Which of the Impact catalogues can actually be pulled. Counted rather
+    // than listed so one line stays one line as more merchants are approved;
+    // /api/health names them individually.
+    `impact-catalogues=${
+      [
+        env.impact.andertonsCatalogId,
+        env.impact.americanMusicalCatalogId,
+        env.impact.musiciansFriendCatalogId,
+        env.impact.nativeInstrumentsCatalogId,
+        env.impact.fenderCatalogId,
+        env.impact.universalAudioCatalogId,
+        env.impact.donnerCatalogId,
+        env.impact.pluginAllianceCatalogId,
+      ].filter(Boolean).length
+    }/8`,
     `typesense=${env.typesense.isConfigured ? "set" : "postgres-fallback"}`,
     `groq=${env.groq.isConfigured ? env.groq.model : "unconfigured"}`,
     `redis=${env.redisUrl ? "set" : "absent"}`,

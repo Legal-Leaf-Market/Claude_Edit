@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { currentSectionId, footerColumns, NAV_SECTIONS, NAV_UTILITY } from "@/lib/nav"
 import { BOARDS } from "@/lib/boards"
 import { indexableCategories } from "@/lib/categories"
+import { PARTNERS } from "@/lib/partners"
 import { RIGS } from "@/lib/rigs"
 import { SORT_OPTIONS } from "@/lib/search/types"
 import { STORES } from "@/lib/stores"
@@ -35,6 +36,7 @@ const STATIC_ROUTES = new Set([
   "/sign-in",
   "/sign-up",
   "/list-your-shop",
+  "/partners",
   "/flip-match",
   "/unsubscribe",
 ])
@@ -46,6 +48,7 @@ function isKnownRoute(href: string): boolean {
   if (STORES.some((s) => path === `/shop/${s.slug}`)) return true
   if (BOARDS.some((b) => path === `/boards/${b.slug}`)) return true
   if (RIGS.some((r) => path === `/rigs/${r.slug}`)) return true
+  if (PARTNERS.some((p) => path === `/partners/${p.slug}`)) return true
   return false
 }
 
