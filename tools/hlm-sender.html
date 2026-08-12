@@ -782,15 +782,42 @@
     el.dispatchEvent(new KeyboardEvent('keyup', o));
   }
 
-  /* A live Send control is a model-derived signal: Instagram only enables it
-     once its own model holds text. Returns null when absent or disabled. */
+  /* A live Send control is a model-derived signal: Instagram only enables it once
+     its own model holds text.
+
+     Looked for three ways, because the two views spell it differently. The
+     new-message view has a control whose text reads "Send"; the thread view you
+     land in AFTER the first message often has an icon instead, labelled rather
+     than worded. Matching only on text found the first one and not the second,
+     which is a good way to send one message out of three. */
   function sendControl() {
-    var nodes = document.querySelectorAll('div[role="button"], span[role="button"], button');
-    for (var i = nodes.length - 1; i >= 0; i--) {
-      var n = nodes[i];
-      if ((n.innerText || '').trim().toLowerCase() !== 'send' || !visible(n)) continue;
+    function live(n) {
+      if (!n || !visible(n)) return null;
       var off = n.disabled === true || n.getAttribute('aria-disabled') === 'true';
       return off ? null : n;
+    }
+
+    var nodes = document.querySelectorAll('div[role="button"], span[role="button"], button');
+    for (var i = nodes.length - 1; i >= 0; i--) {
+      if ((nodes[i].innerText || '').trim().toLowerCase() === 'send') {
+        var hit = live(nodes[i]);
+        if (hit) return hit;
+      }
+    }
+    for (var j = nodes.length - 1; j >= 0; j--) {
+      var lab = (nodes[j].getAttribute('aria-label') || '').trim().toLowerCase();
+      if (lab === 'send' || lab === 'send message') {
+        var hit2 = live(nodes[j]);
+        if (hit2) return hit2;
+      }
+    }
+    /* An svg carrying the label, the same shape as the pencil. */
+    var svgs = document.querySelectorAll('svg[aria-label="Send"], svg[aria-label="Send message"]');
+    for (var k = svgs.length - 1; k >= 0; k--) {
+      if (!visible(svgs[k])) continue;
+      var owner = clickableAncestor(svgs[k]);
+      var hit3 = live(owner !== svgs[k] ? owner : svgs[k].parentElement);
+      if (hit3) return hit3;
     }
     return null;
   }
@@ -1223,12 +1250,32 @@
     log('Draft open with @' + handle + '.');
   }
 
-  async function sendOne(text) {
+  async function sendOne(text, log) {
     var el = findComposer();
-    if (!el) throw new Error('no message box on this tab, open the DM thread first');
+    if (!el) {
+      /* THE FIRST MESSAGE CREATES THE THREAD. Instagram then re-renders from the
+         new-message view into the real thread, which takes the composer away for a
+         moment and hands back a different element. Grabbing it once and giving up
+         is how one message goes and the next two do not. */
+      if (log) log('The message box went away, waiting for the thread...');
+      try {
+        await waitFor(function () { return (el = findComposer()); }, 15000);
+      } catch (e) {
+        throw new Error('the message box went away after the last message and did ' +
+          'not come back within 15s');
+      }
+      /* Freshly rendered is not the same as ready to take text. */
+      await sleep(SETTLE_MS);
+    }
 
     var inModel = await insertText(el, text);
+
     var btn = sendControl();
+    if (!btn) {
+      /* Send only becomes live once Instagram's own model holds the text, so a
+         moment of absence here is normal rather than a failure. */
+      try { await waitFor(function () { return (btn = sendControl()); }, 2000); } catch (e) {}
+    }
 
     /* Refuse rather than fire Enter at a box whose model we could not reach.
        Pressing on regardless is how you post blank messages. */
@@ -1236,6 +1283,7 @@
       throw new Error('the message box would not take the text, so nothing was sent');
     }
 
+    if (log) log(btn ? 'Sending with the Send button...' : 'Sending with Enter...');
     if (btn) realClick(btn); else pressEnter(el);
     try {
       await waitFor(function () { return composerEmpty(el); }, 3000);
@@ -1450,8 +1498,8 @@
 
   var busy = false;
 
-  async function run(kind, indexes) {
-    if (busy) { log('Still sending, hold on.'); return; }
+  async function run(kind, indexes, onSent) {
+    if (busy) { log('Still sending, hold on.'); return { sent: 0, error: 'busy' }; }
     var texts = kind === 'newsletter'
       ? [msgs.newsletter]
       : indexes.map(function (n) { return msgs.welcome[n]; });
@@ -1472,8 +1520,11 @@
         var text = (texts[i] || '').trim();
         if (!text) { log('Message ' + (i + 1) + ' is empty, skipped.'); continue; }
         log('Sending ' + (i + 1) + ' of ' + texts.length + '...');
-        await sendOne(text);
+        await sendOne(text, log);
         sent++;
+        if (onSent) {
+          try { onSent((indexes && indexes.length) ? indexes[i] : i); } catch (e) {}
+        }
         if (i < texts.length - 1) await sleep(GAP_MS);
       }
       if (sent) { markSentHere(kind); refreshDupe(); }
@@ -1690,7 +1741,7 @@
     if (m && m[1]) {
       var fromHash = cleanHandles(decodeURIComponent(m[1]).split(','));
       if (fromHash.length) {
-        var fresh = { handles: fromHash, done: 0, total: fromHash.length };
+        var fresh = { handles: fromHash, done: 0, total: fromHash.length, sentIdx: 0 };
         saveList(fresh);
         return fresh;
       }
@@ -1701,7 +1752,12 @@
         return {
           handles: cleanHandles(st.handles),
           done: Number(st.done) || 0,
-          total: Number(st.total) || cleanHandles(st.handles).length
+          total: Number(st.total) || cleanHandles(st.handles).length,
+          /* How many of the three have already gone to the handle at the head.
+             The first message creates the thread, and if Instagram reloads the tab
+             doing it, a resume that started from zero would send that message
+             twice. Nobody wants the same welcome arriving again. */
+          sentIdx: Math.min(3, Math.max(0, Number(st.sentIdx) || 0))
         };
       }
     } catch (e) {}
@@ -1715,8 +1771,12 @@
     } catch (e) {}
   }
 
+  var runSentIdx = 0;
+
   function persistProgress() {
-    saveList(runQueue.length ? { handles: runQueue, done: runDone, total: runTotal } : null);
+    saveList(runQueue.length
+      ? { handles: runQueue, done: runDone, total: runTotal, sentIdx: runSentIdx }
+      : null);
   }
 
   function refreshRunBtn() {
@@ -1728,13 +1788,14 @@
     runListBtn.disabled = listRunning;
   }
 
-  function acceptQueue(handles, batch, done, total) {
+  function acceptQueue(handles, batch, done, total, sentIdx) {
     if (batch && batch === batchSeen) return;        // the page re-posts until acked
     if (listRunning) return;                         // a run in progress owns the list
     batchSeen = batch || null;
     runQueue = cleanHandles(handles);
     runTotal = Number(total) || runQueue.length;
     runDone = Number(done) || 0;
+    runSentIdx = Math.min(3, Math.max(0, Number(sentIdx) || 0));
     persistProgress();
     refreshRunBtn();
     reportHome('queued', '', String(runQueue.length));
@@ -1812,7 +1873,7 @@
           }
           showAuto('Passed over @' + who + '.', false);
           reportHome('unreachable', who, problem);
-          runQueue.shift(); runDone++;
+          runQueue.shift(); runDone++; runSentIdx = 0;
           persistProgress();
           refreshRunBtn();
           if (runQueue.length && !(await waitCancellable(BETWEEN_MS))) break;
@@ -1825,8 +1886,15 @@
           break;
         }
 
-        showAuto('Sending to @' + who + '.', true);
-        var res = await run('welcome', [0, 1, 2]);
+        var idxs = [0, 1, 2].slice(runSentIdx);
+        showAuto('Sending to @' + who + '.' +
+          (runSentIdx ? ' Resuming at message ' + (runSentIdx + 1) + '.' : ''), true);
+        if (runSentIdx) log('Resuming @' + who + ' at message ' + (runSentIdx + 1) +
+          ': the first ' + runSentIdx + ' already went.');
+        var res = await run('welcome', idxs, function (origIdx) {
+          runSentIdx = origIdx + 1;
+          persistProgress();
+        });
         if (res.error && !res.skip) {
           showAuto('Stopped: ' + res.error, true);
           reportHome('failed', who, res.error);
@@ -1841,7 +1909,7 @@
           reportHome('sent', who);
         }
 
-        runQueue.shift(); runDone++;
+        runQueue.shift(); runDone++; runSentIdx = 0;
         persistProgress();
         refreshRunBtn();
         if (runQueue.length && !cancelled) {
@@ -2069,7 +2137,7 @@
      happened" with no explanation is the worst thing this can do. */
   var startList = readList();
   if (startList && startList.handles.length) {
-    acceptQueue(startList.handles, 'boot', startList.done, startList.total);
+    acceptQueue(startList.handles, 'boot', startList.done, startList.total, startList.sentIdx);
   }
 
   var armedFor = armedHandle();
