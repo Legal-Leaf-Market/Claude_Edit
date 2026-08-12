@@ -588,7 +588,12 @@
       if (!window.opener || window.opener.closed) return;
       var target = (HOME_ORIGIN && HOME_ORIGIN !== 'null') ? HOME_ORIGIN : '*';
       window.opener.postMessage({
-        app: 'hlm-sender', kind: kind, handle: handle || '', why: why || ''
+        app: 'hlm-sender', kind: kind, handle: handle || '', why: why || '',
+        /* The revision of the wording this tab will actually send, which is not
+           always the one the page has saved. Saving and forgetting to re-drag the
+           bookmarklet is a two-second mistake that sends the old messages to
+           everybody, and only the page can notice. */
+        rev: (msgs && Number(msgs.rev)) || 0
       }, target);
     } catch (e) {}
   }
@@ -669,19 +674,32 @@
 
   /* The composer is the last visible editable on the page. Selectors run from
      most specific to least so a markup change degrades instead of breaking. */
-  function findComposer() {
+  function composerIn(root) {
     var sels = [
       'div[role="textbox"][contenteditable="true"]',
       'div[contenteditable="true"]',
       'textarea'
     ];
     for (var i = 0; i < sels.length; i++) {
-      var els = document.querySelectorAll(sels[i]);
+      var els = root.querySelectorAll(sels[i]);
       for (var j = els.length - 1; j >= 0; j--) {
         if (visible(els[j])) return els[j];
       }
     }
     return null;
+  }
+
+  /* THE DRAFT'S OWN BOX FIRST, and the page only as a fallback.
+
+     A conversation left open BEHIND the new-message dialog has a composer too,
+     and scanning the document takes the last visible match, which can be that
+     one: three messages into a thread with somebody who was never in the batch.
+     Preferring the dialog's own box removes that whole class of wrong-recipient
+     send. The fallback matters because once the first message creates the thread
+     there is no dialog any more, and that composer is the right one. */
+  function findComposer() {
+    var dlg = draftDialog();
+    return (dlg && composerIn(dlg)) || composerIn(document);
   }
 
   function readText(el) {
@@ -1869,6 +1887,27 @@
     return !cancelled;
   }
 
+  /* THE RUN STARTS FROM A CLEAN PAGE.
+
+     A draft left open from earlier, by a previous run or by hand, is the state
+     that turns the first account into a group with whoever was already on it.
+     draftTo refuses to send into one it cannot empty, so this is not what makes
+     the run safe; what it adds is doing the tidying ONCE at the start, before any
+     account is drafted, and writing what it found into the transcript. A run that
+     began on a dirty page should say so afterwards. */
+  async function startClean(log) {
+    if (!recipientBox()) return;
+    log('A message draft was already open when this run started. Closing it first.');
+    closeDraft();
+    try {
+      await waitFor(function () { return !recipientBox(); }, 4000);
+      log('Closed. Starting from a clean page.');
+    } catch (e) {
+      log('It would not close. The first account will refuse to send rather than ' +
+        'risk messaging whoever is still on it.');
+    }
+  }
+
   /* Waits for the lock and for the gap since the last send anywhere. */
   async function waitForTurn(who) {
     var waited = 0;
@@ -1921,10 +1960,39 @@
      run: whatever is left is still there afterwards. */
   var LIST_KEY = 'hlmSender.list.v1';
 
+  /* Also DEDUPED, because the same handle twice in one list is three more
+     messages to somebody who has already had three, and a list is assembled by
+     hand often enough for that to happen. */
   function cleanHandles(list) {
-    return (list || []).map(function (h) {
+    var seen = {};
+    var out = [];
+    var raw = (list || []).map(function (h) {
       return String(h || '').trim().replace(/^@/, '').toLowerCase();
-    }).filter(function (h) { return /^[a-z0-9._]{1,30}$/.test(h); });
+    });
+    for (var i = 0; i < raw.length; i++) {
+      var h = raw[i];
+      if (!/^[a-z0-9._]{1,30}$/.test(h) || seen[h]) continue;
+      seen[h] = true;
+      out.push(h);
+    }
+    return out;
+  }
+
+  /* Everybody this tab has actually sent to since the panel loaded. A list is
+     deduped on the way in, but a reload, a second list handed to the same tab, or
+     a queue re-run all put a handle back in front of the sender, and the ledger
+     that would catch it lives on the other origin. */
+  var sentThisRun = {};
+
+  var SELF_HANDLE = String((BAKED && BAKED.self) || '').trim().replace(/^@/, '').toLowerCase();
+
+  /* Why this handle must not be messaged, or '' when it is fine. Both cases are
+     the shopper's own mistake to make and neither is recoverable afterwards. */
+  function blockedReason(handle) {
+    var h = String(handle || '').toLowerCase();
+    if (SELF_HANDLE && h === SELF_HANDLE) return 'that is your own account';
+    if (sentThisRun[h]) return 'this tab already sent to them in this run';
+    return '';
   }
 
   function readList() {
@@ -2031,6 +2099,7 @@
 
     try {
       await pageSettled();
+      await startClean(log);
       while (runQueue.length && !cancelled) {
         var who = runQueue[0];
 
@@ -2041,11 +2110,25 @@
           break;
         }
 
-        /* A note, deliberately NOT a skip. The sender page owns who gets messaged:
+        /* A NOTE, deliberately NOT a skip. The sender page owns who gets messaged:
            it has the roster, the contact history, the cadence and the mute list. If
            it put somebody in this batch, that was a decision, and this tab is in no
            position to overrule it. */
         if (sentFor(who)) log('Note: this browser has messaged @' + who + ' before.');
+
+        /* A SKIP, and the difference from the note above is who could have decided
+           it. A cadence is a judgement the page is entitled to make; sending to
+           your own account, or twice to the same person inside one run, is not a
+           decision anybody took. */
+        var blocked = blockedReason(who);
+        if (blocked) {
+          log('Skipping @' + who + ': ' + blocked + '.');
+          reportHome('unreachable', who, blocked);
+          runQueue.shift(); runDone++; runSentIdx = 0;
+          persistProgress();
+          refreshRunBtn();
+          continue;
+        }
         showAuto('Drafting to @' + who + '. ' + runDone + ' of ' + runTotal + ' done.', false);
 
         var problem = null, fatal = false;
@@ -2094,6 +2177,7 @@
         if (res.error) {
           reportHome('unreachable', who, res.error);
         } else {
+          sentThisRun[String(who).toLowerCase()] = true;
           countSend();
           markSentFor(who, 'welcome');
           writeJson(LAST_KEY, { at: Date.now() });
@@ -2958,17 +3042,60 @@ function postToTab(msg) {
   } catch (e) { return false; }
 }
 
+/* Above this many in one batch, the run asks first. NOT a cap: the caps came off
+   deliberately and this does not put one back. It is a count read back to you
+   before anything irreversible happens, which is the one thing a batch of 200
+   cannot do for itself. */
+const CONFIRM_OVER = 25;
+
 function startLoop() {
+  /* UNSAVED EDITS MEAN THE WRONG WORDING GOES OUT. The tab sends what was saved
+     and baked into the bookmarklet, not what is in the boxes, so an edit nobody
+     pressed Save on is invisible right up to the point where it has been sent to
+     everybody. Refusing costs one click; the alternative cannot be undone. */
+  if (contentOf(draft()) !== contentOf(saved)) {
+    return refreshQueueUI("The message boxes have unsaved changes, so the tab would " +
+      "send the previously saved wording. Press \u0022Save these messages\u0022, " +
+      "re-drag the sender, then run.");
+  }
+
   loopAcked = false;
   const take = Math.min(batchSize(), queue.length);
-  const handles = queue.slice(0, take).map(it => FOLLOWERS[it.index].handle);
+
+  /* Deduped, and your own account dropped. A list assembled by hand repeats a
+     handle often enough to be worth handling, and three messages twice is somebody
+     wondering why you sent it all again. */
+  const seen = new Set();
+  const selfHandle = String(saved.self || "").trim().replace(/^@/, "").toLowerCase();
+  const handles = [];
+  let dropped = 0, self = 0;
+  queue.slice(0, take).forEach(it => {
+    const h = FOLLOWERS[it.index].handle;
+    const k = String(h).toLowerCase();
+    if (k === selfHandle) { self++; return; }
+    if (seen.has(k)) { dropped++; return; }
+    seen.add(k);
+    handles.push(h);
+  });
   if (!handles.length) return refreshQueueUI("Nothing queued, so nothing to run.");
+
+  if (handles.length > CONFIRM_OVER &&
+      !confirm("This will send the three welcome messages to " + handles.length +
+               " accounts, one after another.\n\nThat is " + (handles.length * 3) +
+               " messages in total, and none of them can be unsent.\n\nStart the run?")) {
+    return refreshQueueUI("Stopped before starting. Nothing was sent.");
+  }
 
   loop = { on: true, target: handles.length, sent: 0, skipped: 0 };
   loopStopBtn.hidden = false;
   loopLogEl.textContent = "";
   loopSay("Handing " + handles.length + (handles.length === 1 ? " account" : " accounts") +
     " to one Instagram tab. Nothing navigates from here on.", "meh");
+  /* Said AFTER the transcript is cleared above, or it would be wiped before
+     anybody read it. What was dropped and why belongs in the record of the run. */
+  if (dropped) loopSay(dropped + " duplicate handle" + (dropped === 1 ? "" : "s") +
+    " dropped from this batch.", "meh");
+  if (self) loopSay("Your own account was in the batch and has been dropped.", "meh");
 
   /* THE LIST GOES IN THE URL, which is the channel that cannot silently fail.
      postMessage below is a second route, kept because it lets a tab that is
@@ -3059,6 +3186,20 @@ window.addEventListener("message", (e) => {
     loopAcked = true;
     clearTimeout(ackTimer);
     stopPosting();
+    /* The tab has just said which wording it holds. Older than what is saved here
+       means the bookmarklet was dragged before the last save, so the run would use
+       the previous messages. Stopping is right: it is one re-drag to fix and the
+       whole batch to regret. */
+    const tabRev = Number(d.rev) || 0;
+    if (saved.stored && tabRev < saved.rev) {
+      /* The tab is told to stop too: it has the list and would otherwise carry on
+         sending the old wording regardless of what this page decides. */
+      postToTab({ kind: "stop" });
+      loopEnd("The Instagram tab is running revision " + tabRev + " of the messages and " +
+        "this page has saved revision " + saved.rev + ", so it would send the OLD " +
+        "wording. Nothing was sent. Re-drag the sender into that tab, then run again.");
+      return refreshQueueUI("Stopped: the tab has older wording than this page.");
+    }
     loopSay("The tab has the list (" + (why || "?") + " accounts) and is working through it.", "meh");
     armStall("the first account");
     return refreshQueueUI("Loop running in the Instagram tab.");
