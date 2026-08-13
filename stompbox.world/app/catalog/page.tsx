@@ -14,10 +14,19 @@ export const metadata: Metadata = {
  * The catalogue: the pedal slice of Gear Avail, on this domain.
  *
  * Rebuilt on a schedule rather than per request. Nothing here is personalised
- * and the underlying data moves on an ingestion cron, so a static page with an
- * hourly revalidate is both faster and cheaper than rendering it live.
+ * and the underlying data moves on an ingestion cron, so a static page is both
+ * faster and cheaper than rendering it live.
+ *
+ * FIFTEEN MINUTES RATHER THAN AN HOUR, AND THE REASON IS THE FAILURE CASE.
+ * A prerendered page caches whatever it rendered, INCLUDING the "catalogue is
+ * not answering" state. So this number is not just how stale a price may be,
+ * it is also how long a bad render stays on the site after the cause is fixed.
+ * That is not hypothetical: the first deploy of this page cached an upstream
+ * query error, and with an hourly window it would have sat there looking
+ * broken long after the fix shipped. The upstream is CDN-cached for ten
+ * minutes anyway, so a shorter window here costs close to nothing.
  */
-export const revalidate = 3600
+export const revalidate = 900
 
 export default async function CatalogPage() {
   const { pedals, minSample, error } = await fetchCatalog(60)
