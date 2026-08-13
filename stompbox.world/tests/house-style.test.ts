@@ -17,7 +17,15 @@ import { describe, expect, it } from "vitest"
 const EM_DASH = String.fromCharCode(0x2014)
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url))
-const SEARCH_DIRS = ["app", "components", "lib", "tests"]
+
+/*
+ * `docs` is in here because it holds the Instagram copy, which is the most
+ * likely place in the repo for an em dash to arrive: captions get drafted
+ * somewhere that inserts one automatically and then pasted in. Copy waiting to
+ * be published in front of a reader is exactly what this rule is for, so it is
+ * checked the same way the pages are rather than trusted.
+ */
+const SEARCH_DIRS = ["app", "components", "docs", "lib", "tests"]
 const EXTENSIONS = [".ts", ".tsx", ".css", ".md"]
 
 function walk(dir: string): string[] {
