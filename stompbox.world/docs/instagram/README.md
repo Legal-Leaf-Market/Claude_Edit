@@ -266,17 +266,16 @@ section degrades to the callout rather than rendering an empty grey box, so a
 bad paste looks unconfigured rather than broken. Three is the right number
 because the grid is `lg:grid-cols-3`.
 
-**The handle.** `INSTAGRAM_HANDLE` still defaults to `stompbox.world`, which is
-what the footer and the strip link to. Whether that default moves to
-`stomp_box_world` depends on something this file cannot answer, which is
-whether the old account stays up. Pointing the site at an account with nothing
-on it is worse than pointing it at the old one, so the switch waits until the
-new grid has content:
+**The handle is done.** This section used to say the default was still
+`stompbox.world` and that moving it depended on a question this file could not
+answer, namely whether the old account stays up. The owner answered it: both
+sites now default to `stomp_box_world`, here and in Gear Avail's `lib/env.ts`.
 
-```
-INSTAGRAM_HANDLE=stomp_box_world
-```
+Worth keeping in mind when editing either, because it is the one way to undo it
+by accident: **`stomp_box_world` and `stompbox.world` are different accounts.**
+The older grid matched the domain exactly, which makes the old spelling look
+like the correct one to anybody tidying up a config file.
 
-Nothing in the code needs changing for either. Both are already environment
+Nothing in the code needs changing for the embeds. Both are already environment
 variables, and both are optional, which is the shape every integration in
 `lib/env.ts` uses.
