@@ -743,6 +743,14 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
+  /* Held to the same measure as .rack-sub, and that is the whole point. The
+     hero is deliberately left aligned, but the readouts were flex-grow with no
+     cap, so the prose stopped at 62ch while the tiles ran the full width of the
+     panel underneath it. A left column with one full width row under it does
+     not read as "left aligned", it reads as a mistake. One measure, one
+     column. NOT margin shorthand: this class sits outside @layer and a margin
+     here would swallow the caller's mt-*, per the note above. */
+  max-width: 62ch;
 }
 .readout {
   flex: 1 1 9rem;
