@@ -26,7 +26,7 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url))
  * checked the same way the pages are rather than trusted.
  */
 const SEARCH_DIRS = ["app", "components", "docs", "lib", "tests"]
-const EXTENSIONS = [".ts", ".tsx", ".css", ".md"]
+const EXTENSIONS = [".ts", ".tsx", ".css", ".md", ".mjs"]
 
 function walk(dir: string): string[] {
   const out: string[] = []
