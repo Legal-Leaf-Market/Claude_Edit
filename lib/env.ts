@@ -471,7 +471,13 @@ export const env = {
    * this file uses, so a missing credential never ships a broken widget.
    */
   social: {
-    instagramHandle: str("INSTAGRAM_HANDLE", "stompbox.world"),
+    /*
+     * `stomp_box_world` with underscores, which is a DIFFERENT ACCOUNT from
+     * `stompbox.world`. The older grid matched the domain exactly, this one is
+     * the account being populated, and the two read alike enough that anyone
+     * tidying up would merge them. The sister site made the same move.
+     */
+    instagramHandle: str("INSTAGRAM_HANDLE", "stomp_box_world"),
     instagramPostUrls: str("INSTAGRAM_POST_URLS")
       .split(",")
       .map((s) => s.trim())
