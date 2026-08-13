@@ -52,6 +52,21 @@ describe("fetchCatalog", () => {
     expect(result.error).toContain("503")
   })
 
+  it("surfaces the upstream reason so a schema bug does not read as an outage", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ ok: false, error: 'column l.is_active does not exist' }), {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    )
+    const result = await fetchCatalog()
+    expect(result.error).toContain("503")
+    expect(result.error).toContain("does not exist")
+  })
+
   it("does not throw when the network fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("ECONNREFUSED")))
     const result = await fetchCatalog()
