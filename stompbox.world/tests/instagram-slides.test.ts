@@ -1,8 +1,6 @@
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-// @ts-expect-error plain JS module, deliberately not typed: it is a build tool
-// for the docs folder rather than part of the site's source.
 import { POSTS, SLIDE_COUNT } from "../docs/instagram/design/slides.mjs"
 
 /**
