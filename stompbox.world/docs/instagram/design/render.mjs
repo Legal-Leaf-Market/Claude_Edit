@@ -148,7 +148,7 @@ function paeth(a, b, c) {
  * with filter type 0. Re-filtering properly would compress better and the
  * files are already small enough that it would be effort spent on nothing.
  */
-function cropTop(file, keep) {
+export function cropTop(file, keep) {
   const buf = readFileSync(file)
   if (buf.readUInt32BE(0) !== 0x89504e47) throw new Error(`${file}: not a PNG`)
 
@@ -231,6 +231,16 @@ function cropTop(file, keep) {
  * Main
  * ------------------------------------------------------------------ */
 
+/*
+ * Guarded so avatar.mjs can import findChrome/chrome/cropTop without this
+ * running 85 renders as a side effect of the import.
+ */
+const isEntry = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]
+if (isEntry) main()
+
+export { findChrome, chrome }
+
+function main() {
 const bin = findChrome()
 const pages = existsSync(HTML_DIR) ? readdirSync(HTML_DIR).filter((f) => f.endsWith(".html")).sort() : []
 if (!pages.length) throw new Error("No html/ pages. Run: node build.mjs")
@@ -259,3 +269,4 @@ if (wrong.length) {
 }
 
 console.log(`${pages.length} PNGs in png/, all ${W}x${H}`)
+}
