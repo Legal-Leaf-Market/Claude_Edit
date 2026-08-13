@@ -1,0 +1,880 @@
+@import 'tailwindcss';
+
+/* ============================================================
+   stompbox.world's design system.
+   ------------------------------------------------------------
+   A guitarist's visual world is grey. Anodised aluminium,
+   powder-coated steel, amp chassis, flight cases, road boxes. The
+   warm metal in that world is brass, and the only saturated colour
+   is the LED that says a pedal is engaged. So:
+
+     a genuinely neutral graphite scale, six steps
+     saturated gold, used as an EDGE and almost never as a fill
+     one bright green, reserved for things that are lit
+
+   TWO THEMES, ONE PALETTE. The brand hues do not change between
+   light and dark; only the neutral scale does. The metal tokens do
+   not change either, because a pedal enclosure is a dark object
+   whatever it is standing on, and buttons that keep their material
+   across themes are what stop the interface feeling like two
+   interfaces.
+
+   THE TWO CONTRAST-CRITICAL EXCEPTIONS. --money and --accent-text
+   get a per-theme value, for legibility rather than taste. Bright
+   gold is about 1.8:1 on white and bright green about 1.9:1, both
+   far under the 4.5:1 that a number or a sentence needs. Anything
+   printing accent-coloured body text MUST use those two rather than
+   reaching for --brand-gold or --brand-led, or it will read in one
+   theme and be invisible in the other.
+
+   Dark is the default, and the surfaces sit a real step apart.
+   ============================================================ */
+
+@theme inline {
+  --font-sans: var(--sans);
+  --font-display: var(--display);
+
+  --color-gold: var(--brand-gold);
+  --color-gold-dk: var(--brand-gold-dk);
+  --color-led: var(--brand-led);
+  --color-line: var(--line);
+  --color-dim: var(--dim);
+  --color-text: var(--text);
+
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-border: var(--line);
+
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+}
+
+:root {
+  color-scheme: dark;
+
+  /* Brass and gold, saturated. This is the outline colour. */
+  --brand-gold: #ffc233;
+  --brand-gold-dk: #d99a12;
+
+  /* The engaged-pedal LED. Bright, and used sparingly enough to still read. */
+  --brand-led: #24e07a;
+  --brand-led-dk: #12b45e;
+
+  --red: #ff5a52;
+
+  /* Enclosure metal, for anything that should feel like a machined object.
+     Deliberately dark in BOTH themes, and deliberately darker than --surface
+     in this one: a pedal is a dark thing standing on a lighter board. The
+     gradient runs from above --surface at the top to well below it at the
+     bottom, which is what gives a button its dimension. */
+  --metal-hi: #3d454c;
+  --metal: #232a2f;
+  --metal-lo: #171c20;
+
+  /* --- graphite scale, dark theme ---
+     A ROOM, NOT A VOID. Near-black leaves the page with no colour of its own
+     and makes the gold do all the work of making the site look like anything.
+     These are real greys: the tone of a studio seamless or a powder-coated
+     rack, lit rather than switched off. */
+  --bg: #2a3136;
+  --bg2: #222930;
+  --surface: #333b41;
+  --surface-2: #3e474e;
+  --panel: rgba(51, 59, 65, 0.84);
+  --panel2: rgba(34, 41, 48, 0.92);
+  --glass: rgba(51, 59, 65, 0.62);
+  --glass-line: rgba(255, 194, 51, 0.24);
+  --line: #4b555d;
+  --line-strong: #636e77;
+  --chip: #2e353b;
+  --text: #f2f5f7;
+  --dim: #aab4bd;
+
+  /* Contrast-critical hues, per theme. See the header note above. */
+  --money: var(--brand-led);
+  --accent-text: #ffd06b;
+
+  /* --- type --- */
+  --display: 'Fraunces', Georgia, serif;
+  --sans: 'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* --- metrics --- */
+  --shell: min(1400px, 94vw);
+  --radius: 16px;
+  --shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.45);
+  --header-h: 74px;
+
+  /* --- page wash, per theme --- */
+  --wash-1: rgba(255, 194, 51, 0.055);
+  --wash-2: rgba(36, 224, 122, 0.035);
+  --texture-light: rgba(255, 255, 255, 0.02);
+  --texture-dark: rgba(0, 0, 0, 0.06);
+}
+
+/*
+ * Light theme.
+ *
+ * Cool paper, not warm. The dark theme is an amp chassis; this is the sheet of
+ * spec paper next to it, and the neutral runs very slightly blue so that the
+ * gold edge reads as brass rather than as mustard.
+ *
+ * The metal tokens are NOT redefined here. A pedal enclosure is a dark object
+ * whatever it is standing on, and buttons that stay dark in both themes are
+ * what keeps the interface recognisably the same interface.
+ */
+[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #f1f3f5;
+  --bg2: #e7eaed;
+  --surface: #ffffff;
+  --surface-2: #eef1f3;
+  --panel: rgba(255, 255, 255, 0.9);
+  --panel2: rgba(255, 255, 255, 0.96);
+  --glass: rgba(255, 255, 255, 0.76);
+  --glass-line: rgba(217, 154, 18, 0.28);
+  --line: #d3d9de;
+  --line-strong: #b3bcc4;
+  --chip: #e7eaed;
+  --text: #141a1f;
+  --dim: #576169;
+
+  /* Bright gold is ~1.8:1 on white and bright green ~1.9:1. Both fail body
+     text outright, so the darkened tokens carry any accent-coloured prose. */
+  --money: #0f8a48;
+  --accent-text: #8a6410;
+
+  --wash-1: rgba(255, 194, 51, 0.09);
+  --wash-2: rgba(36, 224, 122, 0.05);
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  body {
+    color: var(--text);
+    background-color: var(--bg);
+    /* Two soft corner washes on a flat ground: one gold, one LED green, so
+       both brand hues appear somewhere on every page without either being
+       used as a fill. */
+    background-image:
+      radial-gradient(circle at 12% 4%, var(--wash-1), transparent 42%),
+      radial-gradient(circle at 88% 12%, var(--wash-2), transparent 44%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--display);
+    letter-spacing: -0.02em;
+  }
+
+  /* A woven texture. Two crossed hairline gradients read as fabric at normal
+     zoom and cost nothing, which a raster texture would not. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image:
+      repeating-linear-gradient(45deg, var(--texture-light) 0 1px, transparent 1px 4px),
+      repeating-linear-gradient(-45deg, var(--texture-dark) 0 1px, transparent 1px 4px);
+  }
+
+  body > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* The focus ring is the LED, which is the same affordance the buttons use.
+     On paper the bright gold is too pale to see, so light swaps the darker. */
+  :focus-visible {
+    outline: 2px solid var(--brand-gold);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  [data-theme='light'] :focus-visible {
+    outline-color: var(--brand-gold-dk);
+  }
+
+  ::selection {
+    background: rgba(255, 194, 51, 0.3);
+    color: var(--text);
+  }
+
+  /* Anchors land below the sticky masthead instead of underneath it. */
+  [id] {
+    scroll-margin-top: calc(var(--header-h) + 16px);
+  }
+}
+
+@layer components {
+  .shell {
+    width: var(--shell);
+    margin-inline: auto;
+  }
+
+  /* Narrower measure for pages that are mostly prose, so a 1400px shell does
+     not stretch a paragraph to 200 characters. */
+  .shell-narrow {
+    width: min(920px, 94vw);
+    margin-inline: auto;
+  }
+
+  .panel {
+    background: var(--glass);
+    border: 1px solid var(--glass-line);
+    border-radius: var(--radius-xl);
+    padding: 20px 22px;
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow);
+  }
+
+  /* A solid, non-translucent plate, for anything holding dense text. */
+  .surface {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    background: color-mix(in srgb, var(--text) 6%, transparent);
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    transition: border-color 0.16s, background 0.16s;
+  }
+  .pill:hover {
+    border-color: var(--brand-gold);
+  }
+  .pill[data-active='true'] {
+    border-color: var(--brand-gold);
+    background: color-mix(in srgb, var(--brand-gold) 14%, transparent);
+    color: var(--accent-text);
+  }
+
+  /* An uppercase label, the type on the front of a rack unit. */
+  .stencil {
+    font-family: var(--sans);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+}
+
+/* ============================================================
+   PEDAL CONTROLS: the site's button language
+   ------------------------------------------------------------
+   Every button here is a stompbox face and every icon control is a
+   knob. That is not decoration for its own sake: the logo is an
+   enclosure, the site is about enclosures, and a reader who has
+   pressed a footswitch already knows what these do. Reusing one
+   physical vocabulary across a whole interface is what makes it
+   feel designed rather than assembled.
+
+   THE RULES THAT KEEP IT FROM GOING CHEESY.
+
+   1. The metal is dark in BOTH themes and never tinted.
+      Skeuomorphism fails when it tries to be pretty; real
+      enclosures are drab, and the drabness is what makes the gold
+      edge and the LED read.
+   2. Gold is an EDGE, never a fill. One hairline border plus one
+      silkscreen line inside it, exactly as a pedal is printed.
+   3. The LED is the only saturated colour and it means the same
+      thing everywhere: this control is live, or hovered, or on.
+   4. Travel is small. 2px on press, and the shadow collapses under
+      it, so it feels like a switch bottoming out rather than a box
+      falling over.
+   5. Nothing spins, bounces or glows on idle. A rack of gear at
+      rest is still.
+   ============================================================ */
+
+.stomp {
+  --stomp-face-hi: var(--metal-hi);
+  --stomp-face: var(--metal);
+  --stomp-face-lo: var(--metal-lo);
+  /* Muted at rest. Full brass is reserved for :hover and for .stomp-go, so a
+     row of eight buttons is not a row of eight gold rings. */
+  --stomp-edge: color-mix(in srgb, var(--brand-gold) 46%, var(--line-strong));
+  --stomp-ink: #f2f5f8;
+  --stomp-led: var(--brand-led);
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.62em;
+  padding: 0.74rem 1.2rem;
+  border-radius: 11px;
+  border: 1.5px solid var(--stomp-edge);
+  background: linear-gradient(
+    180deg,
+    var(--stomp-face-hi),
+    var(--stomp-face) 54%,
+    var(--stomp-face-lo)
+  );
+  color: var(--stomp-ink);
+  font-family: var(--sans);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  isolation: isolate;
+  /* The bottom edge is the enclosure's own thickness, which is what gives the
+     press somewhere to travel to. */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 2px 0 color-mix(in srgb, var(--stomp-edge) 34%, #000),
+    0 5px 14px rgba(0, 0, 0, 0.42);
+  transition:
+    transform 90ms ease,
+    box-shadow 90ms ease,
+    border-color 170ms ease;
+}
+
+/* The silkscreen hairline, the same detail the logo prints inside its edge. */
+.stomp::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--stomp-edge) 24%, transparent);
+  pointer-events: none;
+}
+
+/* The status LED. Dim at rest, lit on hover, blazing while held. */
+.stomp::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--stomp-led);
+  opacity: 0.5;
+  box-shadow: 0 0 5px var(--stomp-led);
+  transition: opacity 170ms ease, box-shadow 170ms ease;
+}
+
+.stomp:hover {
+  border-color: var(--brand-gold);
+}
+.stomp:hover::before {
+  opacity: 1;
+  box-shadow:
+    0 0 7px var(--stomp-led),
+    0 0 16px color-mix(in srgb, var(--stomp-led) 60%, transparent);
+}
+
+.stomp:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 2px 7px rgba(0, 0, 0, 0.62),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 color-mix(in srgb, var(--stomp-edge) 34%, #000);
+}
+.stomp:active::before {
+  opacity: 1;
+  box-shadow:
+    0 0 9px var(--stomp-led),
+    0 0 22px color-mix(in srgb, var(--stomp-led) 70%, transparent);
+}
+
+.stomp:disabled,
+.stomp[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+  border-color: var(--line-strong);
+  box-shadow: none;
+}
+.stomp:disabled::before,
+.stomp[aria-disabled='true']::before {
+  opacity: 0.18;
+  box-shadow: none;
+}
+
+/* The primary action: a bright green enclosure with a brass edge. Used once
+   per view, because two of these on one screen is a fairground. */
+.stomp-go {
+  --stomp-edge: var(--brand-gold);
+  --stomp-face-hi: #3df191;
+  --stomp-face: #24e07a;
+  --stomp-face-lo: #12b262;
+  --stomp-ink: #04240f;
+  --stomp-led: #f2fff7;
+}
+.stomp-go::before {
+  opacity: 0.85;
+}
+
+/* An engaged enclosure: the LED stays lit and the edge goes full brass. The
+   same "this one is on" language the knob uses, so a toggled button and a
+   toggled knob mean the same thing without a legend. */
+.stomp[aria-pressed='true'] {
+  border-color: var(--brand-gold);
+}
+.stomp[aria-pressed='true']::before {
+  opacity: 1;
+  box-shadow:
+    0 0 7px var(--stomp-led),
+    0 0 16px color-mix(in srgb, var(--stomp-led) 60%, transparent);
+}
+
+/* No LED: for a button in a row of buttons, where six lights is a runway. */
+.stomp-plain::before {
+  display: none;
+}
+
+/* Quiet variant: the edge and the type, no enclosure. */
+.stomp-ghost {
+  background: transparent;
+  border-color: var(--line-strong);
+  color: var(--text);
+  box-shadow: none;
+}
+.stomp-ghost::after,
+.stomp-ghost::before {
+  display: none;
+}
+.stomp-ghost:hover {
+  border-color: var(--brand-gold);
+  background: color-mix(in srgb, var(--brand-gold) 8%, transparent);
+}
+.stomp-ghost:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.stomp-sm {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.68rem;
+  border-radius: 9px;
+}
+.stomp-lg {
+  padding: 0.95rem 1.6rem;
+  font-size: 0.86rem;
+  border-radius: 13px;
+}
+
+/* ------------------------------------------------------------
+   Knobs: circular controls, for icon-only buttons.
+   ------------------------------------------------------------ */
+
+.knob {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--brand-gold) 62%, transparent);
+  color: var(--dim);
+  cursor: pointer;
+  /* Knurling, then the domed metal under it. A real knob is milled with fine
+     vertical ridges so a sweaty hand can still turn it. */
+  background:
+    repeating-conic-gradient(
+      from 0deg,
+      rgba(255, 255, 255, 0.09) 0deg 2.4deg,
+      rgba(0, 0, 0, 0.2) 2.4deg 4.8deg
+    ),
+    radial-gradient(circle at 50% 32%, var(--metal-hi), var(--metal) 58%, var(--metal-lo));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 2px 6px rgba(0, 0, 0, 0.45);
+  transition:
+    transform 180ms ease,
+    color 170ms ease,
+    border-color 170ms ease;
+}
+
+/* The pointer line, so the knob has an angle to be at. */
+.knob::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 2px;
+  height: 8px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--brand-gold);
+  opacity: 0.75;
+}
+
+.knob:hover {
+  color: var(--text);
+  border-color: var(--brand-gold);
+  /* Turned up a notch. Small, because a knob that spins is a toy. */
+  transform: rotate(14deg);
+}
+.knob:hover::after {
+  opacity: 1;
+}
+.knob:active {
+  transform: rotate(14deg) scale(0.95);
+}
+/* The icon inside must not rotate with the knob body. */
+.knob > svg {
+  transition: transform 180ms ease;
+}
+.knob:hover > svg {
+  transform: rotate(-14deg);
+}
+
+.knob-sm {
+  width: 30px;
+  height: 30px;
+}
+.knob-sm::after {
+  height: 6px;
+  top: 3px;
+}
+
+/* A knob that is currently engaged: the pointer goes green and stays turned. */
+.knob[aria-pressed='true'],
+.knob[data-on='true'] {
+  transform: rotate(28deg);
+  border-color: var(--brand-led);
+  color: var(--text);
+}
+.knob[aria-pressed='true']::after,
+.knob[data-on='true']::after {
+  background: var(--brand-led);
+  opacity: 1;
+  box-shadow: 0 0 6px var(--brand-led);
+}
+.knob[aria-pressed='true'] > svg,
+.knob[data-on='true'] > svg {
+  transform: rotate(-28deg);
+}
+
+/* ============================================================
+   THE RACK PANEL
+   ------------------------------------------------------------
+   A 19-inch rack panel: brushed metal, a brass rail top and
+   bottom, a status LED, and readouts in the corner. Left aligned
+   rather than centred, because equipment is labelled from the left
+   and centred type reads as a brochure. The headline is heavy
+   condensed uppercase for the same reason the wordmark is
+   chamfered: it is the type on the front of an amp.
+   ============================================================ */
+
+.rack {
+  position: relative;
+  border-radius: 18px;
+  border: 1px solid var(--line-strong);
+  background:
+    /* fine vertical brushing, barely there until the light catches it */
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.014) 0px,
+      rgba(255, 255, 255, 0.014) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--metal-hi) 40%, var(--surface)) 0%,
+      var(--surface) 26%,
+      var(--surface) 74%,
+      var(--bg2) 100%
+    );
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+/* The rails. A rack unit is bounded top and bottom, never on the sides. */
+.rack::before,
+.rack::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--brand-gold) 18%,
+    var(--brand-gold) 82%,
+    transparent
+  );
+  opacity: 0.5;
+  pointer-events: none;
+}
+.rack::before {
+  top: 0;
+}
+.rack::after {
+  bottom: 0;
+}
+
+.rack-inner {
+  padding: clamp(1.75rem, 4vw, 3.25rem);
+}
+
+/* Heavy condensed uppercase: the type on the front of an amplifier. */
+.rack-title {
+  font-family: var(--sans);
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: clamp(2.1rem, 6.2vw, 4.35rem);
+  line-height: 0.94;
+  letter-spacing: -0.012em;
+  color: var(--text);
+  margin: 0;
+}
+.rack-title em {
+  font-style: normal;
+  color: var(--accent-text);
+}
+
+.rack-sub {
+  margin-top: 1.05rem;
+  max-width: 62ch;
+  font-size: clamp(0.95rem, 1.4vw, 1.06rem);
+  line-height: 1.62;
+  color: var(--dim);
+}
+
+/* The status strip: an LED and a label, the way a unit reports itself. */
+.rack-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.led {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--brand-led);
+  box-shadow:
+    0 0 6px var(--brand-led),
+    0 0 14px color-mix(in srgb, var(--brand-led) 55%, transparent);
+}
+
+/* Readouts. Tabular numerals so the row does not jitter as counts change.
+   NO MARGIN SHORTHAND HERE. These control classes sit outside @layer, which
+   makes them beat every Tailwind utility, so a `margin: 0` reset would
+   silently swallow an `mt-*` on the element and collapse the readouts into the
+   button row above. Tailwind's preflight already zeroes the dl margin, so
+   there is nothing to reset and spacing stays the caller's to set. */
+.readouts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.readout {
+  flex: 1 1 9rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  padding: 0.7rem 0.85rem;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.readout dt {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.readout dd {
+  margin: 0.28rem 0 0;
+  font-family: var(--sans);
+  font-size: 1.45rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--accent-text);
+}
+
+/* ------------------------------------------------------------
+   The rack panel on light.
+   ------------------------------------------------------------
+   The dark panel is brushed metal lit from above. Inheriting that
+   on paper produces a near-white gradient blob with muddy dark-gold
+   type on it, so light gets its own treatment rather than the same
+   one with different variables: a clean plate, a real border, and
+   the brass rails carrying the identity instead of the fill.
+   ------------------------------------------------------------ */
+
+[data-theme='light'] .rack {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(20, 30, 40, 0.012) 0px,
+      rgba(20, 30, 40, 0.012) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    linear-gradient(180deg, #ffffff 0%, var(--surface-2) 100%);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow), inset 0 1px 0 #fff;
+}
+[data-theme='light'] .rack::before,
+[data-theme='light'] .rack::after {
+  opacity: 0.85;
+}
+[data-theme='light'] .readout {
+  background: #fff;
+  box-shadow: inset 0 1px 2px rgba(20, 30, 40, 0.06);
+}
+
+/* ------------------------------------------------------------
+   The pickup selector, used by the theme switch.
+   A three-position lever, because a guitarist already owns one and
+   it does exactly this job.
+   ------------------------------------------------------------ */
+
+.pickup {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1.5px solid color-mix(in srgb, var(--brand-gold) 48%, var(--line-strong));
+  background: linear-gradient(180deg, var(--metal-hi), var(--metal) 55%, var(--metal-lo));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 2px 6px rgba(0, 0, 0, 0.42);
+}
+
+.pickup-seg {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--dim);
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+.pickup-seg:hover {
+  color: #f2f5f7;
+}
+/* The selected segment sits under the chrome cap, so its icon goes dark. */
+.pickup-seg[aria-pressed='true'] {
+  color: #10161b;
+}
+
+.pickup-lever {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 24px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f7fafb 0%, #dfe5e9 45%, #b9c1c7 100%);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  /* Overshoots very slightly, the way a sprung lever drops into its detent. */
+  transition: transform 240ms cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+.pickup[data-position='0'] .pickup-lever {
+  transform: translateX(0);
+}
+.pickup[data-position='1'] .pickup-lever {
+  transform: translateX(26px);
+}
+.pickup[data-position='2'] .pickup-lever {
+  transform: translateX(52px);
+}
+
+/* ------------------------------------------------------------
+   The patch cable, used to join one pedal to the next.
+   A short vertical run with a jack collar at each end, drawn in CSS
+   so it costs nothing and follows the theme.
+   ------------------------------------------------------------ */
+
+.patch {
+  position: relative;
+  height: 30px;
+  margin-inline: auto;
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--line-strong), var(--line));
+}
+.patch::before,
+.patch::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  width: 11px;
+  height: 5px;
+  margin-left: -5.5px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--metal-hi), var(--metal-lo));
+  border: 1px solid color-mix(in srgb, var(--brand-gold) 40%, var(--line-strong));
+}
+.patch::before {
+  top: -2px;
+}
+.patch::after {
+  bottom: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stomp,
+  .knob,
+  .knob > svg,
+  .pickup-lever {
+    transition: none;
+  }
+  .knob:hover,
+  .knob:active,
+  .knob[aria-pressed='true'],
+  .knob[data-on='true'] {
+    transform: none;
+  }
+  .knob:hover > svg,
+  .knob[aria-pressed='true'] > svg,
+  .knob[data-on='true'] > svg {
+    transform: none;
+  }
+  .stomp:active {
+    transform: none;
+  }
+}
