@@ -2,10 +2,16 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { CatalogCard } from "@/components/catalog-card"
 import { fetchCatalog, GEAR_AVAIL_URL } from "@/lib/catalog"
-import { SITE_NAME } from "@/lib/site"
 
+/*
+ * Bare title, no site name. The root layout carries a
+ * `template: "%s | stompbox.world"`, so naming the site here got it printed
+ * twice and the live page shipped as
+ * "Pedal catalogue | stompbox.world | stompbox.world".
+ * Every other route passes a bare string for exactly this reason.
+ */
 export const metadata: Metadata = {
-  title: `Pedal catalogue | ${SITE_NAME}`,
+  title: "Pedal catalogue",
   description:
     "Every effects pedal Gear Avail tracks, with the typical used price where there are enough listings to mean one.",
 }
