@@ -51,7 +51,13 @@ function instagramPermalinks(value: string | undefined): string[] {
   })
 }
 
-const instagramHandle = str(process.env.INSTAGRAM_HANDLE) ?? "stompbox.world"
+/*
+ * The handle is NOT the domain. The original brand grid is at @stompbox.world
+ * and the account this site links to is @stomp_box_world, so the two strings
+ * look near enough alike to get "corrected" into each other by anyone tidying
+ * up. They are different accounts. Change this only on the owner's word.
+ */
+const instagramHandle = str(process.env.INSTAGRAM_HANDLE) ?? "stomp_box_world"
 const instagramPostUrls = instagramPermalinks(process.env.INSTAGRAM_POST_URLS)
 
 export const env = {
