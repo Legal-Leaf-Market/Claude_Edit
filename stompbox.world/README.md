@@ -36,6 +36,53 @@ npm run build       # static build, every page prerendered
 Every page is statically prerendered. The dataset is a TypeScript file, so a
 content change is a code change and there is nothing to revalidate.
 
+## Deployment
+
+Deployed to Vercel as the **`stompbox-world`** project, which is a separate
+project from the aggregator's `musictime` even though both are currently linked
+to the same repository. The separation is done with a **root directory** of
+`stompbox.world`, so Vercel builds this folder as if it were the whole repo:
+its own `package.json`, its own lockfile, its own build.
+
+`vercel.json` carries one setting worth explaining, since JSON cannot hold a
+comment. Two projects on one repository means **every push to `main` triggers
+both builds**, including pushes that touch only the aggregator. The
+`ignoreCommand` is Vercel's ignored-build-step hook and it runs from this
+directory:
+
+```
+git diff --quiet HEAD^ HEAD ./
+```
+
+`git diff --quiet` exits 0 when nothing changed, which is the code that tells
+Vercel to **skip** the build, and 1 when something did, which tells it to
+build. So a commit that only touches the aggregator no longer rebuilds this
+site. If `HEAD^` does not exist the command errors instead of exiting 0, and a
+non-zero exit means build, so the failure mode is a wasted build rather than a
+silently skipped deploy.
+
+This whole arrangement exists because the project is parked in the aggregator's
+repository while it waits for one of its own. Moving it out removes the root
+directory, the `ignoreCommand` and the `stompbox.world` entry in the parent's
+`tsconfig.json` exclude list, all at once. See **Moving it out** below.
+
+## Moving it out
+
+Nothing in this directory refers to its parent. It has its own `package.json`,
+`tsconfig.json`, `.gitignore` and lockfile, and `next.config.mjs` pins
+`outputFileTracingRoot` so Next does not infer an outer checkout.
+
+```bash
+cp -r stompbox.world /path/to/new-checkout && cd /path/to/new-checkout
+git init && git add . && git commit -m "Initial commit"
+git remote add origin git@github.com:OWNER/stompbox.world.git
+git push -u origin main
+```
+
+Then point the Vercel project at the new repository and clear its root
+directory. Once that is done, delete this directory from the aggregator's
+repository rather than leaving two copies to drift apart.
+
 ## The shape of the code
 
 ```
