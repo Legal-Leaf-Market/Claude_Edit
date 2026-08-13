@@ -161,17 +161,30 @@ reusable.
 ## 5. The design system, and the rules that keep it from going cheesy
 
 `app/globals.css`, `components/brand/logo.tsx`, `components/ui/stomp.tsx`.
-Ported from Gear Avail's, because it was built for exactly this subject.
+Originally ported from Gear Avail's, and no longer the same palette.
 
-A guitarist's visual world is grey: anodised aluminium, powder-coated steel,
-amp chassis, flight cases. The warm metal in it is brass, and the only
-saturated colour is the LED that says a pedal is engaged.
+**ROYAL BLUE AND BRASS, and this section used to say the opposite.** It argued
+that a guitarist's visual world is grey (anodised aluminium, powder-coated
+steel, flight cases) and that metal must never be tinted. That was a real
+argument, not drift, and the owner overruled it deliberately: the Instagram
+account is built on a jewel blue, the account is the front door for most people
+who will ever see this brand, and a site that does not match its own feed looks
+like somebody else's site. **So "it used to be grey" is not a reason to change
+any of this back.** The reason is on the record here and in the header of
+`globals.css`.
 
-- **Metal is dark in BOTH themes and never tinted.** Skeuomorphism fails when
-  it tries to be pretty. Real enclosures are drab, and the drabness is what
-  lets the gold edge and the LED read at all. Surfaces flip between themes;
-  buttons do not, and that is what stops the interface feeling like two
-  interfaces.
+Almost nothing else moved, because none of the rest depended on the hue:
+
+- **Metal is now BLUE, is the same value in both themes, and is BRIGHTER than
+  the dark ground rather than darker.** A candy blue enclosure with a brass
+  silkscreen is a real pedal, so this is if anything more literal than the grey
+  was. The half of the old rule that survived is the important half: an
+  enclosure is the same object whatever it is standing on, so surfaces flip
+  between themes and buttons do not, which is what stops the interface feeling
+  like two interfaces.
+- **Skeuomorphism still fails when it tries to be pretty.** The blue is deep and
+  saturated rather than bright and candy-coated, for the same reason the grey
+  was drab: the gold edge and the LED have to stay the things that read.
 - **Gold is an EDGE, never a fill.** One hairline border and one silkscreen
   line inside it, exactly as a pedal is printed. It is MUTED at rest and earned
   by `:hover` and by the one primary action per view, so a toolbar of eight
@@ -244,7 +257,11 @@ pedal is equally a bass, keys and studio object.
 - Do NOT scrape a gear-attribution site to grow the dataset.
 - Do NOT use an em dash.
 - Do NOT fill anything with `--brand-gold`. It is an edge colour, muted at rest.
-- Do NOT tint the metal tokens or redefine them per theme.
+- Do NOT redefine the metal tokens per theme. They are royal blue in both, and
+  an enclosure being the same object on any surface is what the rule protects.
+  Tinting them is no longer forbidden, because the owner tinted them (section 5).
+- Do NOT revert the palette to graphite because an old comment says grey. The
+  blue is a decision, it matches the Instagram account, and section 5 records it.
 - Do NOT define a colour only inside the light-theme block, or only outside it.
 - Do NOT use `--brand-gold` or `--brand-led` for prose. Use `--accent-text` and
   `--money`.

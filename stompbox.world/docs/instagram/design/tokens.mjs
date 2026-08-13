@@ -16,22 +16,112 @@
 
 export const CANVAS = { w: 1080, h: 1350 }
 
-export const COLOR = {
-  // Straight from :root in app/globals.css.
-  bg: "#2a3136",
-  plate: "#232a2f",
-  plateLo: "#171c20",
-  plateHi: "#3d454c",
-  gold: "#ffc233",
-  goldDk: "#d99a12",
-  led: "#24e07a",
-  ledDk: "#12b45e",
-  text: "#f2f5f7",
-  dim: "#aab4bd",
-  line: "#4b555d",
-  lineStrong: "#636e77",
-  red: "#ff5a52",
+/**
+ * The palette is switchable, because the feed and the website do not have to
+ * agree and now deliberately do not.
+ *
+ * `graphite` is the website's own system, lifted from app/globals.css. It is
+ * kept rather than deleted: the site still looks like that, and a slide made
+ * for a page rather than a feed should still be able to match it.
+ *
+ * `sapphire` is what the account uses. It is the same design in a different
+ * enclosure colour, which is a real thing a pedal is: a candy blue box with a
+ * brass silkscreen on it. Everything structural is unchanged, so nothing about
+ * the diagrams or the layout knows which palette it is drawing in.
+ *
+ * Switch with PALETTE=graphite node build.mjs, or edit ACTIVE below.
+ */
+export const PALETTES = {
+  graphite: {
+    bg: "#2a3136",
+    plate: "#232a2f",
+    plateLo: "#171c20",
+    plateHi: "#3d454c",
+    gold: "#ffc233",
+    goldDk: "#d99a12",
+    led: "#24e07a",
+    ledDk: "#12b45e",
+    text: "#f2f5f7",
+    dim: "#aab4bd",
+    line: "#4b555d",
+    lineStrong: "#636e77",
+    red: "#ff5a52",
+    wash1: "rgba(255, 194, 51, 0.055)",
+    wash2: "rgba(36, 224, 122, 0.032)",
+    /*
+     * A KNOB IS DARK ON ANY ENCLOSURE. Deliberately identical across palettes,
+     * which is the site's own "metal is a dark object whatever it is standing
+     * on" rule applied correctly rather than dropped. Real blue pedals have
+     * black knobs, and a blue knob on a blue plate loses its edge entirely.
+     */
+    knobHi: "#3d454c",
+    knob: "#232a2f",
+    knobLo: "#141a1e",
+  },
+
+  /*
+   * Jewel blue. The ground is deep enough that brass still reads as brass on
+   * it rather than as mustard, and the plate is the saturated one, so the
+   * enclosure is the jewel and the surface it stands on is not competing.
+   *
+   * The LED stays green. It is the one colour in this system that means
+   * something (this is the bit to notice), and a blue-on-blue accent would
+   * stop meaning it. Green on deep blue is also the highest-contrast pairing
+   * available here, at 9.4:1 on the plate.
+   */
+  sapphire: {
+    bg: "#0b1b33",
+    plate: "#123a6b",
+    plateLo: "#081428",
+    plateHi: "#1e5aa8",
+    gold: "#ffc233",
+    goldDk: "#e0a51f",
+    led: "#24e07a",
+    ledDk: "#12b45e",
+    text: "#f2f7fd",
+    dim: "#a8c0dd",
+    line: "#2d4a72",
+    lineStrong: "#5b82b8",
+    red: "#ff6b61",
+    wash1: "rgba(255, 194, 51, 0.06)",
+    wash2: "rgba(36, 224, 122, 0.03)",
+    /*
+     * A KNOB IS DARK ON ANY ENCLOSURE. Deliberately identical across palettes,
+     * which is the site's own "metal is a dark object whatever it is standing
+     * on" rule applied correctly rather than dropped. Real blue pedals have
+     * black knobs, and a blue knob on a blue plate loses its edge entirely.
+     */
+    knobHi: "#3d454c",
+    knob: "#232a2f",
+    knobLo: "#141a1e",
+  },
+
+  /* Candidates rendered for the owner to choose between. See design/README.md. */
+  electric: {
+    bg: "#08213f", plate: "#1560bd", plateLo: "#0a2b52", plateHi: "#2f86e8",
+    gold: "#ffc233", goldDk: "#e0a51f", led: "#24e07a", ledDk: "#12b45e",
+    text: "#f4f9ff", dim: "#b4cde8", line: "#2f5f96", lineStrong: "#6fa3d8",
+    red: "#ff6b61",
+    wash1: "rgba(255, 194, 51, 0.06)", wash2: "rgba(36, 224, 122, 0.03)",
+    knobHi: "#3d454c", knob: "#232a2f", knobLo: "#141a1e",
+  },
+  royal: {
+    bg: "#070f2b", plate: "#1e2f7a", plateLo: "#060b1f", plateHi: "#3a51b8",
+    gold: "#ffc233", goldDk: "#e0a51f", led: "#24e07a", ledDk: "#12b45e",
+    text: "#f3f4fd", dim: "#aeb6e0", line: "#33407f", lineStrong: "#6470bd",
+    red: "#ff6b61",
+    wash1: "rgba(255, 194, 51, 0.06)", wash2: "rgba(36, 224, 122, 0.03)",
+    knobHi: "#3d454c", knob: "#232a2f", knobLo: "#141a1e",
+  },
 }
+
+const ACTIVE = process.env.PALETTE || "royal"
+if (!PALETTES[ACTIVE]) {
+  throw new Error(`Unknown PALETTE ${ACTIVE}. Pick one of: ${Object.keys(PALETTES).join(", ")}`)
+}
+
+export const PALETTE_NAME = ACTIVE
+export const COLOR = PALETTES[ACTIVE]
 
 export const FONT = {
   display: "'Fraunces', Georgia, serif",
@@ -92,8 +182,8 @@ html, body {
   height: ${CANVAS.h}px;
   background-color: ${COLOR.bg};
   background-image:
-    radial-gradient(120% 80% at 50% 0%, rgba(255, 194, 51, 0.055), transparent 60%),
-    radial-gradient(100% 70% at 50% 100%, rgba(36, 224, 122, 0.032), transparent 60%),
+    radial-gradient(120% 80% at 50% 0%, ${COLOR.wash1}, transparent 60%),
+    radial-gradient(100% 70% at 50% 100%, ${COLOR.wash2}, transparent 60%),
     repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 4px),
     repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 1px, transparent 1px 4px);
   font-family: ${FONT.sans};
@@ -127,7 +217,7 @@ html, body {
   position: absolute;
   inset: 13px;
   border-radius: ${PLATE.radius - 7}px;
-  border: 1.5px solid rgba(255, 194, 51, 0.26);
+  border: 1.5px solid color-mix(in srgb, ${COLOR.gold} 26%, transparent);
   pointer-events: none;
 }
 

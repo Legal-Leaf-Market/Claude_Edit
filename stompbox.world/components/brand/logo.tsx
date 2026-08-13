@@ -61,9 +61,9 @@ export function StompboxMark({ size = 40, className, flat = false }: MarkProps) 
         {/* A brushed-metal face: light catches the top edge the way it does on
             an anodised enclosure sitting under a stage light. */}
         <linearGradient id={faceId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--metal-hi, #3d454c)" />
-          <stop offset="52%" stopColor="var(--metal, #232a2f)" />
-          <stop offset="100%" stopColor="var(--metal-lo, #171c20)" />
+          <stop offset="0%" stopColor="var(--metal-hi, #3a51b8)" />
+          <stop offset="52%" stopColor="var(--metal, #1e2f7a)" />
+          <stop offset="100%" stopColor="var(--metal-lo, #060b1f)" />
         </linearGradient>
         {!flat && (
           <filter id={glowId} x="-120%" y="-120%" width="340%" height="340%">
@@ -129,7 +129,7 @@ export function StompboxMark({ size = 40, className, flat = false }: MarkProps) 
         cx="50"
         cy="68"
         r="14"
-        fill="var(--metal-lo, #171c20)"
+        fill="var(--metal-lo, #060b1f)"
         stroke="var(--brand-gold, #ffc233)"
         strokeWidth="3.4"
       />

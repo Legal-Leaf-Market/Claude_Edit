@@ -8,7 +8,7 @@ html, body {
   width: 1080px;
   height: 1350px;
   overflow: hidden;
-  background: #2a3136;
+  background: #070f2b;
 }
 
 /*
@@ -21,14 +21,14 @@ html, body {
   position: relative;
   width: 1080px;
   height: 1350px;
-  background-color: #2a3136;
+  background-color: #070f2b;
   background-image:
-    radial-gradient(120% 80% at 50% 0%, rgba(255, 194, 51, 0.055), transparent 60%),
-    radial-gradient(100% 70% at 50% 100%, rgba(36, 224, 122, 0.032), transparent 60%),
+    radial-gradient(120% 80% at 50% 0%, rgba(255, 194, 51, 0.06), transparent 60%),
+    radial-gradient(100% 70% at 50% 100%, rgba(36, 224, 122, 0.03), transparent 60%),
     repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 4px),
     repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 1px, transparent 1px 4px);
   font-family: 'Jost', -apple-system, 'Segoe UI', sans-serif;
-  color: #f2f5f7;
+  color: #f3f4fd;
 }
 
 /*
@@ -45,7 +45,7 @@ html, body {
   bottom: 48px;
   border-radius: 26px;
   border: 2px solid #ffc233;
-  background: linear-gradient(180deg, #3d454c -40%, #232a2f 34%, #171c20 128%);
+  background: linear-gradient(180deg, #3a51b8 -40%, #1e2f7a 34%, #060b1f 128%);
   box-shadow: 0 18px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
   display: flex;
   flex-direction: column;
@@ -58,7 +58,7 @@ html, body {
   position: absolute;
   inset: 13px;
   border-radius: 19px;
-  border: 1.5px solid rgba(255, 194, 51, 0.26);
+  border: 1.5px solid color-mix(in srgb, #ffc233 26%, transparent);
   pointer-events: none;
 }
 
@@ -79,7 +79,7 @@ html, body {
   font-size: 92px;
   line-height: 1.04;
   letter-spacing: -0.02em;
-  color: #f2f5f7;
+  color: #f3f4fd;
 }
 .hook.small { font-size: 74px; }
 .hook.tiny { font-size: 62px; }
@@ -114,9 +114,9 @@ html, body {
   font-weight: 400;
   font-size: 37px;
   line-height: 1.44;
-  color: #f2f5f7;
+  color: #f3f4fd;
 }
-.body.dim { color: #aab4bd; }
+.body.dim { color: #aeb6e0; }
 .body + .body { margin-top: 26px; }
 
 /* The one lit thing. Used for the answer, never for decoration. */
@@ -147,12 +147,12 @@ html, body {
   font-family: 'Jost', -apple-system, 'Segoe UI', sans-serif;
   font-weight: 900;
   font-size: 25px;
-  color: #d99a12;
+  color: #e0a51f;
   min-width: 46px;
   letter-spacing: 0.06em;
 }
 .order-name { font-family: 'Jost', -apple-system, 'Segoe UI', sans-serif; font-weight: 500; font-size: 39px; }
-.order-row.muted .order-name { color: #aab4bd; }
+.order-row.muted .order-name { color: #aeb6e0; }
 .order-row.on .order-name { color: #24e07a; font-weight: 700; }
 .order-row.on .order-n { color: #24e07a; }
 /* The ends of the chain, which are not pedals and should not read as numbered. */
@@ -160,7 +160,7 @@ html, body {
   font-family: 'Fraunces', Georgia, serif;
   font-weight: 900;
   font-size: 33px;
-  color: #aab4bd;
+  color: #aeb6e0;
   letter-spacing: 0.02em;
 }
 
@@ -192,7 +192,7 @@ html, body {
   font-family: 'Jost', -apple-system, 'Segoe UI', sans-serif;
   font-weight: 500;
   font-size: 27px;
-  color: #aab4bd;
+  color: #aeb6e0;
   margin-top: 18px;
   letter-spacing: 0.01em;
 }
@@ -215,7 +215,7 @@ html, body {
   font-family: 'Jost', -apple-system, 'Segoe UI', sans-serif;
   font-weight: 600;
   font-size: 27px;
-  color: #aab4bd;
+  color: #aeb6e0;
   letter-spacing: 0.03em;
 }
 /* The LED, at the size it is on the mark. It is the only lit thing down here. */
@@ -229,6 +229,6 @@ html, body {
   font-family: 'Jost', -apple-system, 'Segoe UI', sans-serif;
   font-weight: 700;
   font-size: 25px;
-  color: #aab4bd;
+  color: #aeb6e0;
   letter-spacing: 0.12em;
 }
