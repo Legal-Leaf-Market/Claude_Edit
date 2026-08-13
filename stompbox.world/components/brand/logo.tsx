@@ -2,7 +2,7 @@
  * The stompbox.world mark and wordmark, drawn rather than typeset.
  *
  * WHY IT IS A PEDAL. The site is about pedals, so the mark is one: a die-cast
- * enclosure with a brass silkscreen edge, a status LED, two knobs and a
+ * enclosure with a white silkscreen edge, a status LED, two knobs and a
  * footswitch. Every other surface then inherits the same vocabulary. Buttons
  * are footswitches, icon controls are knobs, the theme switch is a pickup
  * selector. A logo that explains the rest of the interface is doing more work
@@ -61,9 +61,9 @@ export function StompboxMark({ size = 40, className, flat = false }: MarkProps) 
         {/* A brushed-metal face: light catches the top edge the way it does on
             an anodised enclosure sitting under a stage light. */}
         <linearGradient id={faceId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--metal-hi, #3d454c)" />
-          <stop offset="52%" stopColor="var(--metal, #232a2f)" />
-          <stop offset="100%" stopColor="var(--metal-lo, #171c20)" />
+          <stop offset="0%" stopColor="var(--metal-hi, #16305f)" />
+          <stop offset="52%" stopColor="var(--metal, #0a1a3c)" />
+          <stop offset="100%" stopColor="var(--metal-lo, #050e26)" />
         </linearGradient>
         {!flat && (
           <filter id={glowId} x="-120%" y="-120%" width="340%" height="340%">
@@ -87,7 +87,7 @@ export function StompboxMark({ size = 40, className, flat = false }: MarkProps) 
         height="94"
         rx="10"
         fill={`url(#${faceId})`}
-        stroke="var(--brand-gold, #ffc233)"
+        stroke="var(--metal-edge, #ffffff)"
         strokeWidth="4"
       />
       {/* The silkscreen line pedals print inside the edge. It is what makes the
@@ -99,7 +99,7 @@ export function StompboxMark({ size = 40, className, flat = false }: MarkProps) 
         height="83"
         rx="6.5"
         fill="none"
-        stroke="var(--brand-gold, #ffc233)"
+        stroke="var(--metal-edge, #ffffff)"
         strokeOpacity="0.28"
         strokeWidth="1.4"
       />
@@ -115,7 +115,7 @@ export function StompboxMark({ size = 40, className, flat = false }: MarkProps) 
 
       {/* Two knobs. Gone at favicon scale, and the reason it holds up big. */}
       {!flat && (
-        <g stroke="var(--brand-gold, #ffc233)" strokeWidth="2">
+        <g stroke="var(--metal-edge, #ffffff)" strokeWidth="2">
           <circle cx="37" cy="35" r="7" strokeOpacity="0.85" />
           <path d="M37 30.5 V35" strokeOpacity="0.55" strokeLinecap="round" />
           <circle cx="63" cy="35" r="7" strokeOpacity="0.85" />
@@ -129,8 +129,8 @@ export function StompboxMark({ size = 40, className, flat = false }: MarkProps) 
         cx="50"
         cy="68"
         r="14"
-        fill="var(--metal-lo, #171c20)"
-        stroke="var(--brand-gold, #ffc233)"
+        fill="var(--metal-lo, #050e26)"
+        stroke="var(--metal-edge, #ffffff)"
         strokeWidth="3.4"
       />
       {!flat && (
@@ -138,7 +138,7 @@ export function StompboxMark({ size = 40, className, flat = false }: MarkProps) 
           cx="50"
           cy="68"
           r="7"
-          stroke="var(--brand-gold, #ffc233)"
+          stroke="var(--metal-edge, #ffffff)"
           strokeOpacity="0.4"
           strokeWidth="1.6"
         />
@@ -258,7 +258,7 @@ export function StompboxLogo({
         {showDescriptor && (
           <span
             style={{ display: "block", marginTop: size * 0.13 }}
-            className="border-t border-[color:color-mix(in_srgb,var(--brand-gold)_38%,transparent)] pt-[3px] text-[0.58rem] font-semibold uppercase tracking-[0.34em] text-[var(--dim)]"
+            className="border-t border-[color:color-mix(in_srgb,var(--brand-edge)_38%,transparent)] pt-[3px] text-[0.58rem] font-semibold uppercase tracking-[0.34em] text-[var(--dim)]"
           >
             .World
           </span>

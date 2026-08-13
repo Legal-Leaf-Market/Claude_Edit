@@ -20,7 +20,7 @@ export function CatalogCard({ pedal, minSample }: { pedal: CatalogPedal; minSamp
     <a
       href={gearAvailProductUrl(pedal.slug)}
       rel="noopener"
-      className="surface group flex flex-col p-5 transition-colors hover:border-[var(--brand-gold)]"
+      className="surface group flex flex-col p-5 transition-colors hover:border-[var(--brand-edge)]"
     >
       <div className="flex items-baseline justify-between gap-3">
         <span className="stencil">{pedal.brand}</span>

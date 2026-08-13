@@ -134,7 +134,7 @@ export default async function PedalPage({ params }: { params: Promise<{ slug: st
               <li key={sibling.slug}>
                 <Link
                   href={`/pedals/${sibling.slug}`}
-                  className="surface block p-4 transition-colors hover:border-[var(--brand-gold)]"
+                  className="surface block p-4 transition-colors hover:border-[var(--brand-edge)]"
                 >
                   <span className="stencil">{sibling.maker}</span>
                   <p className="mt-1 font-semibold text-[var(--text)]">{sibling.name}</p>

@@ -3,29 +3,41 @@
 /* ============================================================
    stompbox.world's design system.
    ------------------------------------------------------------
-   A guitarist's visual world is grey. Anodised aluminium,
-   powder-coated steel, amp chassis, flight cases, road boxes. The
-   warm metal in that world is brass, and the only saturated colour
-   is the LED that says a pedal is engaged. So:
+   THIS WAS A GREY AND BRASS SYSTEM AND IS NOW A NAVY AND WHITE
+   ONE. The original was ported wholesale from Gear Avail: a
+   graphite scale with a saturated gold edge, on the reasoning that
+   a guitarist's visual world is anodised aluminium and the warm
+   metal in it is brass. Sound reasoning, and it dressed this site
+   in another site's clothes.
 
-     a genuinely neutral graphite scale, six steps
-     saturated gold, used as an EDGE and almost never as a fill
+   The owner set the brand's palette while directing the Instagram
+   avatar: a near black navy ground, sapphire depth in it, and the
+   line work in white. That is what this file now holds.
+
+     a navy scale, six steps, near black at the bottom
+     WHITE, used as an EDGE and almost never as a fill
      one bright green, reserved for things that are lit
+     sapphire, which is a GROUND colour and never a line
 
-   TWO THEMES, ONE PALETTE. The brand hues do not change between
-   light and dark; only the neutral scale does. The metal tokens do
-   not change either, because a pedal enclosure is a dark object
-   whatever it is standing on, and buttons that keep their material
-   across themes are what stop the interface feeling like two
-   interfaces.
+   THE EDGE IS PER THEME, WHICH GOLD DID NOT NEED TO BE. Brass is a
+   mid tone and reads on paper and on chassis alike. White does not:
+   it is invisible on a light background. So --brand-edge is white
+   in dark and deep sapphire in light. Everything drawn on METAL
+   gets the white either way, because the metal tokens stay dark in
+   both themes.
+
+   THE METAL IS NOW TINTED, WHICH THE OLD RULE FORBADE. An enclosure
+   is still a dark object standing on a lighter board, but it is a
+   navy one, because a grey pedal sitting on a navy page reads as a
+   leftover from the previous palette rather than as a choice.
 
    THE TWO CONTRAST-CRITICAL EXCEPTIONS. --money and --accent-text
-   get a per-theme value, for legibility rather than taste. Bright
-   gold is about 1.8:1 on white and bright green about 1.9:1, both
-   far under the 4.5:1 that a number or a sentence needs. Anything
-   printing accent-coloured body text MUST use those two rather than
-   reaching for --brand-gold or --brand-led, or it will read in one
-   theme and be invisible in the other.
+   get a per-theme value, for legibility rather than taste. White on
+   paper is 1:1 and bright green is about 1.9:1, both far under the
+   4.5:1 that a number or a sentence needs. Anything printing
+   accent-coloured body text MUST use those two rather than reaching
+   for --brand-edge or --brand-led, or it will read in one theme and
+   be invisible in the other.
 
    Dark is the default, and the surfaces sit a real step apart.
    ============================================================ */
@@ -34,8 +46,8 @@
   --font-sans: var(--sans);
   --font-display: var(--display);
 
-  --color-gold: var(--brand-gold);
-  --color-gold-dk: var(--brand-gold-dk);
+  --color-edge: var(--brand-edge);
+  --color-edge-dk: var(--brand-edge-dk);
   --color-led: var(--brand-led);
   --color-line: var(--line);
   --color-dim: var(--dim);
@@ -54,13 +66,20 @@
 :root {
   color-scheme: dark;
 
-  /* Brass and gold, saturated. This is the outline colour. */
-  --brand-gold: #ffc233;
-  --brand-gold-dk: #d99a12;
+  /* The line colour, straight off the avatar: white on navy. */
+  --brand-edge: #ffffff;
+  --brand-edge-dk: #0f3a93;
 
-  /* The engaged-pedal LED. Bright, and used sparingly enough to still read. */
+  /* The engaged-pedal LED. Bright, and used sparingly enough to still read.
+     Kept green through the repalette on purpose: it is the one saturated
+     colour, and an LED that matched the ground would stop meaning "lit". */
   --brand-led: #24e07a;
   --brand-led-dk: #12b45e;
+
+  /* Sapphire. A GROUND colour: page washes and the glow behind things. It is
+     never a line, because the line is white and two accent lines is one too
+     many. */
+  --sapphire: #1d5fe0;
 
   --red: #ff5a52;
 
@@ -68,33 +87,47 @@
      Deliberately dark in BOTH themes, and deliberately darker than --surface
      in this one: a pedal is a dark thing standing on a lighter board. The
      gradient runs from above --surface at the top to well below it at the
-     bottom, which is what gives a button its dimension. */
-  --metal-hi: #3d454c;
-  --metal: #232a2f;
-  --metal-lo: #171c20;
+     bottom, which is what gives a button its dimension.
 
-  /* --- graphite scale, dark theme ---
-     A ROOM, NOT A VOID. Near-black leaves the page with no colour of its own
-     and makes the gold do all the work of making the site look like anything.
-     These are real greys: the tone of a studio seamless or a powder-coated
-     rack, lit rather than switched off. */
-  --bg: #2a3136;
-  --bg2: #222930;
-  --surface: #333b41;
-  --surface-2: #3e474e;
-  --panel: rgba(51, 59, 65, 0.84);
-  --panel2: rgba(34, 41, 48, 0.92);
-  --glass: rgba(51, 59, 65, 0.62);
-  --glass-line: rgba(255, 194, 51, 0.24);
-  --line: #4b555d;
-  --line-strong: #636e77;
-  --chip: #2e353b;
-  --text: #f2f5f7;
-  --dim: #aab4bd;
+     Navy rather than grey now. It stays dark in both themes, which is what
+     lets the white edge work on it in both themes. */
+  --metal-hi: #16305f;
+  --metal: #0a1a3c;
+  --metal-lo: #050e26;
 
-  /* Contrast-critical hues, per theme. See the header note above. */
+  /* The edge drawn ON metal, and the reason there are two edge tokens at all.
+     --brand-edge has to flip in the light theme or it vanishes on paper. Metal
+     does NOT flip, so an edge on metal that followed --brand-edge would turn
+     deep navy on a dark navy enclosure and disappear in the other direction.
+     This one is white in both themes and is never redefined. Anything sitting
+     on a SURFACE uses --brand-edge; anything sitting on metal uses this. */
+  --metal-edge: #ffffff;
+
+  /* --- navy scale, dark theme ---
+     STILL A ROOM RATHER THAN A VOID, just a navy one. The bottom of this
+     scale is near black, which is what makes the sapphire wash read as a
+     jewel rather than as a tint, and what makes white the brightest thing on
+     the page. The steps stay a real step apart so surfaces still stack. */
+  --bg: #050d21;
+  --bg2: #030814;
+  --surface: #0b1a38;
+  --surface-2: #122448;
+  --panel: rgba(11, 26, 56, 0.84);
+  --panel2: rgba(3, 8, 20, 0.92);
+  --glass: rgba(11, 26, 56, 0.62);
+  --glass-line: rgba(255, 255, 255, 0.18);
+  --line: #1c3363;
+  --line-strong: #2a4a8c;
+  --chip: #0a1730;
+  --text: #eef3ff;
+  --dim: #9db0d4;
+
+  /* Contrast-critical hues, per theme. See the header note above.
+     #8fb6ff is 8.4:1 on --surface; white would be brighter still but is
+     reserved for the edge, and prose in the edge colour makes every sentence
+     look like a control. */
   --money: var(--brand-led);
-  --accent-text: #ffd06b;
+  --accent-text: #8fb6ff;
 
   /* --- type --- */
   --display: 'Fraunces', Georgia, serif;
@@ -107,8 +140,11 @@
   --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.45);
   --header-h: 74px;
 
-  /* --- page wash, per theme --- */
-  --wash-1: rgba(255, 194, 51, 0.055);
+  /* --- page wash, per theme ---
+     The sapphire pool from the avatar, at page scale. Stronger than the gold
+     wash it replaces, because it is doing the work the graphite ground used
+     to do: on a near black page a 5% wash is indistinguishable from nothing. */
+  --wash-1: rgba(29, 95, 224, 0.16);
   --wash-2: rgba(36, 224, 122, 0.035);
   --texture-light: rgba(255, 255, 255, 0.02);
   --texture-dark: rgba(0, 0, 0, 0.06);
@@ -119,7 +155,7 @@
  *
  * Cool paper, not warm. The dark theme is an amp chassis; this is the sheet of
  * spec paper next to it, and the neutral runs very slightly blue so that the
- * gold edge reads as brass rather than as mustard.
+ * navy edge reads as ink rather than as denim.
  *
  * The metal tokens are NOT redefined here. A pedal enclosure is a dark object
  * whatever it is standing on, and buttons that stay dark in both themes are
@@ -128,26 +164,34 @@
 [data-theme='light'] {
   color-scheme: light;
 
-  --bg: #f1f3f5;
-  --bg2: #e7eaed;
+  /* THE SURFACE EDGE FLIPS HERE, AND ONLY THIS ONE. White is 1:1 on paper, so
+     anything drawn on a SURFACE (the focus ring, a pill border, the rack
+     rails) would simply not exist in this theme. Everything drawn on METAL
+     uses --metal-edge, which is not redefined here and stays white, because
+     the enclosures it sits on stay dark. */
+  --brand-edge: #0f3a93;
+  --brand-edge-dk: #0a2864;
+
+  --bg: #eef2f9;
+  --bg2: #e3e9f4;
   --surface: #ffffff;
-  --surface-2: #eef1f3;
+  --surface-2: #edf1f8;
   --panel: rgba(255, 255, 255, 0.9);
   --panel2: rgba(255, 255, 255, 0.96);
   --glass: rgba(255, 255, 255, 0.76);
-  --glass-line: rgba(217, 154, 18, 0.28);
-  --line: #d3d9de;
-  --line-strong: #b3bcc4;
-  --chip: #e7eaed;
-  --text: #141a1f;
-  --dim: #576169;
+  --glass-line: rgba(15, 58, 147, 0.26);
+  --line: #ccd6e6;
+  --line-strong: #a9b8d0;
+  --chip: #e3e9f4;
+  --text: #0a1430;
+  --dim: #4d5c7a;
 
-  /* Bright gold is ~1.8:1 on white and bright green ~1.9:1. Both fail body
-     text outright, so the darkened tokens carry any accent-coloured prose. */
+  /* Bright green is ~1.9:1 on white and the edge is now white outright. Both
+     fail body text, so the darkened tokens carry any accent-coloured prose. */
   --money: #0f8a48;
-  --accent-text: #8a6410;
+  --accent-text: #14418f;
 
-  --wash-1: rgba(255, 194, 51, 0.09);
+  --wash-1: rgba(15, 58, 147, 0.07);
   --wash-2: rgba(36, 224, 122, 0.05);
 }
 
@@ -159,9 +203,9 @@
   body {
     color: var(--text);
     background-color: var(--bg);
-    /* Two soft corner washes on a flat ground: one gold, one LED green, so
-       both brand hues appear somewhere on every page without either being
-       used as a fill. */
+    /* Two soft corner washes on a flat ground: one sapphire, one LED green,
+       so both brand hues appear somewhere on every page without either being
+       used as a fill. The sapphire one is the avatar's pool at page scale. */
     background-image:
       radial-gradient(circle at 12% 4%, var(--wash-1), transparent 42%),
       radial-gradient(circle at 88% 12%, var(--wash-2), transparent 44%);
@@ -201,14 +245,14 @@
   }
 
   /* The focus ring is the LED, which is the same affordance the buttons use.
-     On paper the bright gold is too pale to see, so light swaps the darker. */
+     On paper a white ring is not there at all, so light swaps the darker. */
   :focus-visible {
-    outline: 2px solid var(--brand-gold);
+    outline: 2px solid var(--brand-edge);
     outline-offset: 2px;
     border-radius: 4px;
   }
   [data-theme='light'] :focus-visible {
-    outline-color: var(--brand-gold-dk);
+    outline-color: var(--brand-edge-dk);
   }
 
   ::selection {
@@ -267,11 +311,11 @@
     transition: border-color 0.16s, background 0.16s;
   }
   .pill:hover {
-    border-color: var(--brand-gold);
+    border-color: var(--brand-edge);
   }
   .pill[data-active='true'] {
-    border-color: var(--brand-gold);
-    background: color-mix(in srgb, var(--brand-gold) 14%, transparent);
+    border-color: var(--brand-edge);
+    background: color-mix(in srgb, var(--brand-edge) 14%, transparent);
     color: var(--accent-text);
   }
 
@@ -300,9 +344,9 @@
 
    1. The metal is dark in BOTH themes and never tinted.
       Skeuomorphism fails when it tries to be pretty; real
-      enclosures are drab, and the drabness is what makes the gold
+      enclosures are drab, and the drabness is what makes the white
       edge and the LED read.
-   2. Gold is an EDGE, never a fill. One hairline border plus one
+   2. The edge colour is an EDGE, never a fill. One hairline plus one
       silkscreen line inside it, exactly as a pedal is printed.
    3. The LED is the only saturated colour and it means the same
       thing everywhere: this control is live, or hovered, or on.
@@ -317,9 +361,9 @@
   --stomp-face-hi: var(--metal-hi);
   --stomp-face: var(--metal);
   --stomp-face-lo: var(--metal-lo);
-  /* Muted at rest. Full brass is reserved for :hover and for .stomp-go, so a
-     row of eight buttons is not a row of eight gold rings. */
-  --stomp-edge: color-mix(in srgb, var(--brand-gold) 46%, var(--line-strong));
+  /* Muted at rest. Full white is reserved for :hover and for .stomp-go, so a
+     row of eight buttons is not a row of eight bright rings. */
+  --stomp-edge: color-mix(in srgb, var(--metal-edge) 46%, var(--line-strong));
   --stomp-ink: #f2f5f8;
   --stomp-led: var(--brand-led);
 
@@ -384,7 +428,7 @@
 }
 
 .stomp:hover {
-  border-color: var(--brand-gold);
+  border-color: var(--metal-edge);
 }
 .stomp:hover::before {
   opacity: 1;
@@ -421,10 +465,10 @@
   box-shadow: none;
 }
 
-/* The primary action: a bright green enclosure with a brass edge. Used once
+/* The primary action: a bright green enclosure with a white edge. Used once
    per view, because two of these on one screen is a fairground. */
 .stomp-go {
-  --stomp-edge: var(--brand-gold);
+  --stomp-edge: var(--metal-edge);
   --stomp-face-hi: #3df191;
   --stomp-face: #24e07a;
   --stomp-face-lo: #12b262;
@@ -435,11 +479,11 @@
   opacity: 0.85;
 }
 
-/* An engaged enclosure: the LED stays lit and the edge goes full brass. The
+/* An engaged enclosure: the LED stays lit and the edge goes full white. The
    same "this one is on" language the knob uses, so a toggled button and a
    toggled knob mean the same thing without a legend. */
 .stomp[aria-pressed='true'] {
-  border-color: var(--brand-gold);
+  border-color: var(--metal-edge);
 }
 .stomp[aria-pressed='true']::before {
   opacity: 1;
@@ -465,8 +509,8 @@
   display: none;
 }
 .stomp-ghost:hover {
-  border-color: var(--brand-gold);
-  background: color-mix(in srgb, var(--brand-gold) 8%, transparent);
+  border-color: var(--brand-edge);
+  background: color-mix(in srgb, var(--brand-edge) 8%, transparent);
 }
 .stomp-ghost:active {
   transform: translateY(1px);
@@ -497,7 +541,7 @@
   height: 38px;
   flex: none;
   border-radius: 50%;
-  border: 1.5px solid color-mix(in srgb, var(--brand-gold) 62%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--metal-edge) 62%, transparent);
   color: var(--dim);
   cursor: pointer;
   /* Knurling, then the domed metal under it. A real knob is milled with fine
@@ -528,13 +572,13 @@
   height: 8px;
   margin-left: -1px;
   border-radius: 1px;
-  background: var(--brand-gold);
+  background: var(--metal-edge);
   opacity: 0.75;
 }
 
 .knob:hover {
   color: var(--text);
-  border-color: var(--brand-gold);
+  border-color: var(--metal-edge);
   /* Turned up a notch. Small, because a knob that spins is a toy. */
   transform: rotate(14deg);
 }
@@ -582,7 +626,7 @@
 /* ============================================================
    THE RACK PANEL
    ------------------------------------------------------------
-   A 19-inch rack panel: brushed metal, a brass rail top and
+   A 19-inch rack panel: brushed metal, a bright rail top and
    bottom, a status LED, and readouts in the corner. Left aligned
    rather than centred, because equipment is labelled from the left
    and centred type reads as a brochure. The headline is heavy
@@ -625,8 +669,8 @@
   background: linear-gradient(
     90deg,
     transparent,
-    var(--brand-gold) 18%,
-    var(--brand-gold) 82%,
+    var(--brand-edge) 18%,
+    var(--brand-edge) 82%,
     transparent
   );
   opacity: 0.5;
@@ -729,10 +773,10 @@
    The rack panel on light.
    ------------------------------------------------------------
    The dark panel is brushed metal lit from above. Inheriting that
-   on paper produces a near-white gradient blob with muddy dark-gold
+   on paper produces a near-white gradient blob with muddy dark-navy
    type on it, so light gets its own treatment rather than the same
    one with different variables: a clean plate, a real border, and
-   the brass rails carrying the identity instead of the fill.
+   the bright rails carrying the identity instead of the fill.
    ------------------------------------------------------------ */
 
 [data-theme='light'] .rack {
@@ -769,7 +813,7 @@
   align-items: center;
   padding: 3px;
   border-radius: 999px;
-  border: 1.5px solid color-mix(in srgb, var(--brand-gold) 48%, var(--line-strong));
+  border: 1.5px solid color-mix(in srgb, var(--metal-edge) 48%, var(--line-strong));
   background: linear-gradient(180deg, var(--metal-hi), var(--metal) 55%, var(--metal-lo));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
@@ -847,7 +891,7 @@
   margin-left: -5.5px;
   border-radius: 2px;
   background: linear-gradient(180deg, var(--metal-hi), var(--metal-lo));
-  border: 1px solid color-mix(in srgb, var(--brand-gold) 40%, var(--line-strong));
+  border: 1px solid color-mix(in srgb, var(--metal-edge) 40%, var(--line-strong));
 }
 .patch::before {
   top: -2px;

@@ -13,7 +13,7 @@ export function PedalCard({ pedal }: { pedal: Pedal }) {
   return (
     <Link
       href={`/pedals/${pedal.slug}`}
-      className="surface group flex flex-col p-5 transition-colors hover:border-[var(--brand-gold)]"
+      className="surface group flex flex-col p-5 transition-colors hover:border-[var(--brand-edge)]"
     >
       <div className="flex items-baseline justify-between gap-3">
         <span className="stencil">{pedal.maker}</span>

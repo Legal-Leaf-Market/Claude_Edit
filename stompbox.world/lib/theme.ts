@@ -4,7 +4,7 @@
  * Three states, and DARK IS THE DEFAULT.
  *
  * That is a product decision rather than a technical one. The palette is built
- * for dark: the brass edge and the LED green only carry against a dark plate,
+ * for dark: the white edge and the LED green only carry against a dark plate,
  * and a pedal is a dark object. A visitor whose laptop happens to be in light
  * mode should still see the site the way it was drawn, so an absent preference
  * means dark rather than "ask the OS".

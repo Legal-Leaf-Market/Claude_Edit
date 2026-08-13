@@ -161,30 +161,46 @@ reusable.
 ## 5. The design system, and the rules that keep it from going cheesy
 
 `app/globals.css`, `components/brand/logo.tsx`, `components/ui/stomp.tsx`.
-Ported from Gear Avail's, because it was built for exactly this subject.
 
-A guitarist's visual world is grey: anodised aluminium, powder-coated steel,
-amp chassis, flight cases. The warm metal in it is brass, and the only
-saturated colour is the LED that says a pedal is engaged.
+**It was Gear Avail's, and it is not any more.** The system started as a
+straight port: a graphite scale with a saturated brass edge, on the reasoning
+that a guitarist's visual world is anodised aluminium. That reasoning is sound
+and it still dressed this site in another site's clothes. The owner set this
+brand's palette while directing the Instagram avatar, and the site now wears
+it: a near black navy ground, sapphire depth in it, line work in white.
 
-- **Metal is dark in BOTH themes and never tinted.** Skeuomorphism fails when
-  it tries to be pretty. Real enclosures are drab, and the drabness is what
-  lets the gold edge and the LED read at all. Surfaces flip between themes;
-  buttons do not, and that is what stops the interface feeling like two
-  interfaces.
-- **Gold is an EDGE, never a fill.** One hairline border and one silkscreen
-  line inside it, exactly as a pedal is printed. It is MUTED at rest and earned
-  by `:hover` and by the one primary action per view, so a toolbar of eight
-  buttons is not eight gold rings.
+The only saturated colour is still the LED that says a pedal is engaged.
+
+- **Metal is dark in BOTH themes, and it is now navy rather than grey.**
+  Skeuomorphism fails when it tries to be pretty. Real enclosures are drab, and
+  the drabness is what lets the white edge and the LED read at all. Surfaces
+  flip between themes; buttons do not, and that is what stops the interface
+  feeling like two interfaces. The old rule said never tint the metal; a grey
+  pedal on a navy page read as a leftover rather than a choice, so it is
+  tinted now and the ban is lifted.
+- **The edge colour is an EDGE, never a fill.** One hairline border and one
+  silkscreen line inside it, exactly as a pedal is printed. It is MUTED at rest
+  and earned by `:hover` and by the one primary action per view, so a toolbar
+  of eight buttons is not eight bright rings.
+- **THERE ARE TWO EDGE TOKENS AND THEY ARE NOT INTERCHANGEABLE.** Brass was a
+  mid tone and worked on paper and on chassis alike. White does not, so
+  `--brand-edge` is white in dark and deep sapphire in light. But the metal
+  does not flip, so an edge on metal that followed `--brand-edge` would go deep
+  navy on a dark navy enclosure. `--metal-edge` is white in both themes and is
+  never redefined. **On a surface use `--brand-edge`; on metal use
+  `--metal-edge`.** Getting it backwards makes a control vanish in exactly one
+  theme, which is the failure nobody catches in review.
+- **Sapphire is a GROUND colour and never a line.** `--sapphire` and the page
+  washes carry it. The line is white; two accent lines is one too many.
 - **The LED is the only saturated colour** and means the same thing everywhere:
   this control is live, hovered, or on.
 - **Travel is 2px**, so a press reads as a switch bottoming out rather than a
   box falling over.
 - **Nothing spins, bounces or glows at idle.** A rack of gear at rest is still.
-- **Two tokens are contrast-critical.** Bright gold is about 1.8:1 on white and
-  bright green about 1.9:1, both far under the 4.5:1 body text needs. Anything
-  printing accent-coloured prose uses `--money` and `--accent-text`, never
-  `--brand-gold` or `--brand-led`, or it reads in one theme and vanishes in the
+- **Two tokens are contrast-critical.** White is 1:1 on paper and bright green
+  about 1.9:1, both far under the 4.5:1 body text needs. Anything printing
+  accent-coloured prose uses `--money` and `--accent-text`, never
+  `--brand-edge` or `--brand-led`, or it reads in one theme and vanishes in the
   other.
 - **Dark is the default, and "system" is stored rather than implied.** Absence
   of a stored preference means dark, so clearing the key would silently turn
@@ -196,7 +212,7 @@ trap for spacing: a `margin` in one of those rules silently swallows an `mt-*`
 on the element. `.readouts` had exactly that bug and the collapsed layout is in
 the git history. Do not put margin shorthand in a control class.
 
-**The mark is drawn, not typeset.** A die-cast enclosure with a brass
+**The mark is drawn, not typeset.** A die-cast enclosure with a white
 silkscreen edge, an LED, two knobs and a footswitch. The letterforms are
 stroked polylines with mitred joins on a 100-unit cap height, so the wordmark
 needs no font and survives being inlined into a favicon. The knobs and the
@@ -243,11 +259,17 @@ pedal is equally a bass, keys and studio object.
 - Do NOT publish a current draw, or any other measurement, that is not sourced.
 - Do NOT scrape a gear-attribution site to grow the dataset.
 - Do NOT use an em dash.
-- Do NOT fill anything with `--brand-gold`. It is an edge colour, muted at rest.
-- Do NOT tint the metal tokens or redefine them per theme.
+- Do NOT fill anything with `--brand-edge`. It is an edge colour, muted at rest.
+- Do NOT redefine the metal tokens or `--metal-edge` per theme. Tinting them is
+  fine now; making them follow the theme is not, because the white edge on them
+  depends on their staying dark.
+- Do NOT use `--brand-edge` on metal or `--metal-edge` on a surface (section 5).
+- Do NOT use `--sapphire` as a line colour. It is a ground.
 - Do NOT define a colour only inside the light-theme block, or only outside it.
-- Do NOT use `--brand-gold` or `--brand-led` for prose. Use `--accent-text` and
+- Do NOT use `--brand-edge` or `--brand-led` for prose. Use `--accent-text` and
   `--money`.
+- Do NOT forget `app/icon.svg` when the palette moves. It is literal hex by
+  necessity and silently keeps the old brand in the browser tab.
 - Do NOT put margin shorthand in a class that sits outside `@layer`.
 - Do NOT add a price, a merchant or a buy link to `lib/pedals.ts`. The
   catalogue layer carries all three and the circuit guide carries none, which

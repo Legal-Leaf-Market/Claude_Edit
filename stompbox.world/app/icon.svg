@@ -7,9 +7,14 @@
     the inner footswitch ring are dropped for the same reason the component's
     `flat` prop drops them: at 16px they are a smudge, and the enclosure, the
     LED and one big footswitch are what still read.
+
+    BEING LITERAL, THESE DO NOT FOLLOW A REPALETTE. The values below are the
+    navy metal and the white edge from app/globals.css, copied by hand. If
+    those tokens move again, this file does not, and the tab keeps the old
+    brand until somebody edits it here too.
   -->
-  <rect x="19" y="3" width="62" height="94" rx="10" fill="#232a2f" stroke="#ffc233" stroke-width="4"/>
-  <rect x="24.5" y="8.5" width="51" height="83" rx="6.5" fill="none" stroke="#ffc233" stroke-opacity="0.28" stroke-width="1.4"/>
+  <rect x="19" y="3" width="62" height="94" rx="10" fill="#0a1a3c" stroke="#ffffff" stroke-width="4"/>
+  <rect x="24.5" y="8.5" width="51" height="83" rx="6.5" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="1.4"/>
   <circle cx="50" cy="15.5" r="3.3" fill="#24e07a"/>
-  <circle cx="50" cy="68" r="14" fill="#171c20" stroke="#ffc233" stroke-width="3.4"/>
+  <circle cx="50" cy="68" r="14" fill="#050e26" stroke="#ffffff" stroke-width="3.4"/>
 </svg>
