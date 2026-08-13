@@ -272,13 +272,20 @@ html, body {
   width: ${CANVAS.w}px;
   height: ${CANVAS.h}px;
   background-color: ${COLOR.bg};
+  /*
+   * NO CROSSHATCH ON A GLOW PALETTE, for two reasons that happen to agree. The
+   * reference is a smooth pool of light and the weave fights it. And a 1px
+   * diagonal pattern across 1080x1350 is high-frequency noise that PNG cannot
+   * predict: it was most of an 870KB slide, and dropping it took the 85 slides
+   * from 76MB to a size that fits in one upload.
+   */
   background-image:
     ${COLOR.glow
       ? COLOR.glow
       : `radial-gradient(120% 80% at 50% 0%, ${COLOR.wash1}, transparent 60%),
-    radial-gradient(100% 70% at 50% 100%, ${COLOR.wash2}, transparent 60%)`},
+    radial-gradient(100% 70% at 50% 100%, ${COLOR.wash2}, transparent 60%),
     repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 4px),
-    repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 1px, transparent 1px 4px);
+    repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 1px, transparent 1px 4px)`};
   font-family: ${FONT.sans};
   color: ${COLOR.text};
 }

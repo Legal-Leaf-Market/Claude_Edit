@@ -145,8 +145,15 @@ function paeth(a, b, c) {
  * Crop a PNG to its top `keep` rows.
  *
  * Un-filters every scanline, keeps the first `keep` of them, and re-encodes
- * with filter type 0. Re-filtering properly would compress better and the
- * files are already small enough that it would be effort spent on nothing.
+ * with the PAETH filter on every row.
+ *
+ * That used to be filter 0, on the reasoning that re-filtering would compress
+ * better but the files were small enough not to bother. Then the palette gained
+ * a radial glow, every row became a smooth ramp instead of a flat run, and
+ * unfiltered rows stopped compressing at all: the 85 slides went from 24MB to
+ * 66MB and blew the upload limit. Paeth predicts each byte from its left, upper
+ * and upper-left neighbours, which is close to free on a gradient and turns the
+ * data back into mostly zeroes.
  */
 export function cropTop(file, keep) {
   const buf = readFileSync(file)
@@ -206,8 +213,14 @@ export function cropTop(file, keep) {
         default: throw new Error(`${file}: unknown filter ${filter} on row ${y}`)
       }
     }
-    out[y * (stride + 1)] = 0
-    row.copy(out, y * (stride + 1) + 1)
+    // Re-encode this row with Paeth, against the row above it.
+    out[y * (stride + 1)] = 4
+    for (let i = 0; i < stride; i++) {
+      const a = i >= bpp ? row[i - bpp] : 0
+      const b = prev[i]
+      const c = i >= bpp ? prev[i - bpp] : 0
+      out[y * (stride + 1) + 1 + i] = (row[i] - paeth(a, b, c)) & 0xff
+    }
     prev = row
   }
 

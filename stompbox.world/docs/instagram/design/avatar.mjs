@@ -15,7 +15,7 @@
  * well inside the inscribed circle, since the square corners are never seen.
  */
 
-import { writeFileSync, mkdirSync } from "node:fs"
+import { writeFileSync, rmSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 import { COLOR } from "./tokens.mjs"
@@ -51,8 +51,12 @@ const html = `<!doctype html>
   </svg>
 </div></body></html>`
 
-mkdirSync(join(HERE, "html"), { recursive: true })
-const page = join(HERE, "html", "avatar.html")
+/*
+ * Written OUTSIDE html/, because render.mjs renders every .html in that folder
+ * and an avatar page sitting there came out as an 86th slide, cropped to 4:5
+ * and shipped in the zip.
+ */
+const page = join(HERE, ".avatar.html")
 writeFileSync(page, html)
 
 const bin = findChrome()
@@ -62,7 +66,7 @@ const bin = findChrome()
  * than the window Chromium was asked for, and a screenshot is the window. So
  * measure the overhead, render that much taller, and crop back to square.
  */
-const probePage = join(HERE, "html", ".avatar-probe.html")
+const probePage = join(HERE, ".avatar-probe.html")
 writeFileSync(
   probePage,
   `<!doctype html><html><head><meta charset="utf-8"></head><body><script>
@@ -80,5 +84,8 @@ const out = join(HERE, "avatar.png")
 chrome(bin, [`--window-size=${SIZE},${windowH}`, `--screenshot=${out}`, `file://${page}`])
 const { width, height } = cropTop(out, SIZE)
 if (width !== SIZE || height !== SIZE) throw new Error(`avatar.png is ${width}x${height}`)
+
+rmSync(page, { force: true })
+rmSync(probePage, { force: true })
 
 console.log(`avatar.png, ${SIZE}x${SIZE} (viewport was ${viewport} at a ${SIZE} window)`)
