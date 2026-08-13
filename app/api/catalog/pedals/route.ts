@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
              (SELECT COUNT(*)::int
                 FROM marketplace_listings l
                WHERE l.canonical_gear_id = g.id
-                 AND l.is_active = true) AS listing_count
+                 AND l.listing_status = 'active') AS listing_count
         FROM canonical_gear g
        WHERE g.category = ${PEDAL_CATEGORY}
          ${q ? sql`AND (g.brand ILIKE ${pattern} OR g.model ILIKE ${pattern} OR (g.brand || ' ' || g.model) ILIKE ${pattern})` : sql``}

@@ -97,7 +97,24 @@ export async function fetchCatalog(limit = 60): Promise<CatalogResult> {
       next: { revalidate: 3600 },
     })
     if (!response.ok) {
-      return { ...EMPTY, error: `Gear Avail returned ${response.status}` }
+      /* Read the reason out of the body when there is one. A 503 on its own
+         reads as "the sister site is down", which is the wrong thing to go
+         looking at when the real cause is a query that no longer matches the
+         schema. That exact confusion nearly shipped: the first cut of the
+         endpoint filtered on a column that does not exist, which would have
+         thrown, been caught, and shown as a bare 503 forever. */
+      const detail = await response
+        .json()
+        .then((body: unknown) =>
+          isRecord(body) && typeof body.error === "string" ? body.error : null,
+        )
+        .catch(() => null)
+      return {
+        ...EMPTY,
+        error: detail
+          ? `Gear Avail returned ${response.status}: ${detail}`
+          : `Gear Avail returned ${response.status}`,
+      }
     }
     const body: unknown = await response.json()
     if (!isRecord(body) || !Array.isArray(body.pedals)) {
