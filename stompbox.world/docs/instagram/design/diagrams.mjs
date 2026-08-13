@@ -20,7 +20,12 @@ import { COLOR } from "./tokens.mjs"
 
 const W = 852
 const S = COLOR.lineStrong
+/* G is the SIGNAL. C is the frame: labels, enclosure edges, structural glyphs.
+   Keeping them apart is what lets the chrome go white without the guitar signal
+   going with it, and the signal being the one gold thing is what makes a
+   drawing readable at a glance. */
 const G = COLOR.gold
+const C = COLOR.chrome
 const L = COLOR.led
 const D = COLOR.dim
 
@@ -221,7 +226,7 @@ export function clipping(mode) {
   parts.push(
     line(30, wy, W - 30, wy, "rgba(255,255,255,0.09)", 1.5),
     wave(330, wy + 24, 330, 112, 2, soft ? "soft" : "hard"),
-    tag(160, wy + 84, soft ? "rounded off" : "squared off", { fill: G }),
+    tag(160, wy + 84, soft ? "rounded off" : "squared off", { fill: C }),
   )
 
   return svg(soft ? 500 : 560, parts.join(""))
@@ -342,8 +347,8 @@ export function chainBlocks(blocks, opts = {}) {
       )
     } else {
       parts.push(
-        `<rect x="${x}" y="${by}" width="${bw}" height="${bh}" rx="13" fill="url(#plateface)" stroke="${b.lit ? L : G}" stroke-width="${b.lit ? 3.2 : 2}"/>`,
-        `<rect x="${x + 6}" y="${by + 6}" width="${bw - 12}" height="${bh - 12}" rx="8" fill="none" stroke="rgba(255,194,51,0.2)" stroke-width="1.2"/>`,
+        `<rect x="${x}" y="${by}" width="${bw}" height="${bh}" rx="13" fill="url(#plateface)" stroke="${b.lit ? L : C}" stroke-width="${b.lit ? 3.2 : 2}"/>`,
+        `<rect x="${x + 6}" y="${by + 6}" width="${bw - 12}" height="${bh - 12}" rx="8" fill="none" stroke="${C}" stroke-opacity="0.22" stroke-width="1.2"/>`,
         `<circle cx="${x + bw / 2}" cy="${by + 22}" r="4.6" fill="${b.lit ? L : "rgba(36,224,122,0.3)"}"/>`,
       )
       // Names are short enough to sit on one or two lines; two is common.
@@ -452,7 +457,7 @@ export function notches(deep) {
     axes(h) +
       curve(f, h, deep ? L : G) +
       tag(W / 2, 30, deep ? "colour on: deeper, and a peak between" : "colour off: two shallow notches", {
-        fill: deep ? L : G,
+        fill: deep ? L : C,
       }),
   )
 }
@@ -516,7 +521,7 @@ export function repeats(darkening) {
   }
   parts.push(
     tag(W / 2, 26, darkening ? "each repeat darker than the last" : "the tenth carries what the first did", {
-      fill: darkening ? G : L,
+      fill: darkening ? C : L,
     }),
   )
   return svg(h, parts.join(""))
@@ -573,7 +578,7 @@ export function rectify() {
     )
     if (i < 2) {
       parts.push(
-        label(x + 264, 138, "›", { size: 46, fill: G, weight: 400 }),
+        label(x + 264, 138, "›", { size: 46, fill: C, weight: 400 }),
       )
     }
   })
@@ -639,7 +644,7 @@ export function lampVibe() {
       `<circle cx="${x - 26}" cy="118" r="5" fill="rgba(36,224,122,0.5)"/>`,
     )
   })
-  parts.push(tag(560, 232, "four stages, none of them matched", { fill: G }))
+  parts.push(tag(560, 232, "four stages, none of them matched", { fill: C }))
   // The modulation shape: lopsided rather than a clean sine.
   const pts = []
   for (let i = 0; i <= 240; i++) {

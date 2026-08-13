@@ -39,13 +39,13 @@ function fontFaces() {
  */
 function markLarge(px = 268) {
   return `<svg viewBox="0 0 100 100" width="${px}" height="${px}" role="img" aria-label="stompbox.world">
-    <rect x="19" y="3" width="62" height="94" rx="10" fill="${COLOR.plate}" stroke="${COLOR.gold}" stroke-width="4"/>
-    <rect x="24.5" y="8.5" width="51" height="83" rx="6.5" fill="none" stroke="${COLOR.gold}" stroke-opacity="0.28" stroke-width="1.4"/>
+    <rect x="19" y="3" width="62" height="94" rx="10" fill="${COLOR.plate}" stroke="${COLOR.chrome}" stroke-width="4"/>
+    <rect x="24.5" y="8.5" width="51" height="83" rx="6.5" fill="none" stroke="${COLOR.chrome}" stroke-opacity="0.28" stroke-width="1.4"/>
     <circle cx="50" cy="15.5" r="3.3" fill="${COLOR.led}"/>
-    <circle cx="34" cy="36" r="6.4" fill="none" stroke="${COLOR.gold}" stroke-opacity="0.4" stroke-width="1.6"/>
-    <circle cx="66" cy="36" r="6.4" fill="none" stroke="${COLOR.gold}" stroke-opacity="0.4" stroke-width="1.6"/>
-    <circle cx="50" cy="68" r="14" fill="${COLOR.plateLo}" stroke="${COLOR.gold}" stroke-width="3.4"/>
-    <circle cx="50" cy="68" r="8.6" fill="none" stroke="${COLOR.gold}" stroke-opacity="0.34" stroke-width="1.4"/>
+    <circle cx="34" cy="36" r="6.4" fill="none" stroke="${COLOR.chrome}" stroke-opacity="0.4" stroke-width="1.6"/>
+    <circle cx="66" cy="36" r="6.4" fill="none" stroke="${COLOR.chrome}" stroke-opacity="0.4" stroke-width="1.6"/>
+    <circle cx="50" cy="68" r="14" fill="${COLOR.plateLo}" stroke="${COLOR.chrome}" stroke-width="3.4"/>
+    <circle cx="50" cy="68" r="8.6" fill="none" stroke="${COLOR.chrome}" stroke-opacity="0.34" stroke-width="1.4"/>
   </svg>`
 }
 

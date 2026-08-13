@@ -85,28 +85,28 @@
      object whatever it is standing on, which is the half of the old rule that
      survived. The gradient still runs light at the top to dark at the bottom,
      because that is what gives a button its dimension. */
-  --metal-hi: #3a51b8;
-  --metal: #1e2f7a;
-  --metal-lo: #060b1f;
+  --metal-hi: #2c56b0;
+  --metal: #183573;
+  --metal-lo: #070f24;
 
   /* --- royal scale, dark theme ---
      A ROOM, NOT A VOID, same argument as the greys this replaced: near-black
      leaves the page with no colour of its own and makes the gold do all the
      work. These are deep navy rather than black, so the enclosure blue reads as
      a lit object on a surface instead of a shape floating in nothing. */
-  --bg: #070f2b;
-  --bg2: #050a20;
-  --surface: #142250;
-  --surface-2: #1d2d63;
-  --panel: rgba(20, 34, 80, 0.84);
-  --panel2: rgba(9, 16, 45, 0.92);
-  --glass: rgba(20, 34, 80, 0.62);
+  --bg: #070c1c;
+  --bg2: #050914;
+  --surface: #122a58;
+  --surface-2: #1b3163;
+  --panel: rgba(18, 42, 88, 0.84);
+  --panel2: rgba(7, 15, 36, 0.92);
+  --glass: rgba(18, 42, 88, 0.62);
   --glass-line: rgba(255, 194, 51, 0.24);
-  --line: #33407f;
-  --line-strong: #6470bd;
-  --chip: #101a42;
-  --text: #f3f4fd;
-  --dim: #aeb6e0;
+  --line: #304578;
+  --line-strong: #5f79bb;
+  --chip: #0e1a3a;
+  --text: #f2f6fd;
+  --dim: #abbbde;
 
   /* Contrast-critical hues, per theme. See the header note above. */
   --money: var(--brand-led);
