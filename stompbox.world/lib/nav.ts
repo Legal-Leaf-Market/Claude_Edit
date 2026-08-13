@@ -26,6 +26,11 @@ export const NAV: NavLink[] = [
     blurb: "Build a board and see the order, with the reasons",
   },
   {
+    href: "/catalog",
+    label: "Catalogue",
+    blurb: "What each pedal goes for, from our sister site Gear Avail",
+  },
+  {
     href: "/about",
     label: "About",
     blurb: "What this is, and what it deliberately does not do",

@@ -83,6 +83,46 @@ the circuit descriptions are right.
 
 ---
 
+## 2a. The catalogue, and the rule that was lifted to allow it
+
+This section used to say, flatly, that the site carried no database, no
+affiliate link and no price, and that the absence of all three was what let an
+entry say a pedal sounds thin. **The owner lifted that rule deliberately:** the
+Gear Avail pedal catalogue is now published here, because stompbox.world is a
+brand with an audience that came for pedals and sending all of them to a
+different domain to find out what one costs was throwing that away.
+
+It was lifted halfway, and the half that stayed is the point.
+
+- **The catalogue is its own layer.** `lib/catalog.ts`, `components/catalog-card.tsx`,
+  `/catalog`. Nothing in it touches `lib/pedals.ts`.
+- **A circuit entry still carries no price, no merchant and no artist.**
+  `tests/catalog.test.ts` asserts it, alongside the artist test that was
+  already there. So the sentence that says a pedal sounds thin is still
+  written by somebody with nothing riding on it, which was the actual thing
+  worth protecting.
+- **Two cards, on purpose.** `PedalCard` opens a circuit entry in this site's
+  own voice. `CatalogCard` points at somebody else's stock and carries a price
+  and an outbound arrow. If those ever start looking alike, the separation has
+  failed even though the tests still pass.
+
+**No credentials live here.** Gear Avail owns the database, the ingestion and
+the definition of what a pedal is; this site reads `/api/catalog/pedals` over
+HTTP and renders it. One connection string, one ingestion path, one taxonomy.
+`GEAR_AVAIL_URL` points at the sister site and defaults to production.
+
+**House rule 2 governs the whole layer: nothing throws.** Gear Avail being
+down, slow or shipping an unrecognised shape degrades this site to the guide it
+already was, with the reason printed. It never becomes an error page. There are
+tests for the 503, the network failure, the wrong shape and the malformed row.
+
+**A market price appears only above `minSample` listings**, which the API
+decides and this site prints as a reason when it is not met. An average of two
+asking prices is two people guessing, and printing it as a market price is the
+invented-measurement problem in section 3 wearing a currency symbol.
+
+---
+
 ## 3. No invented measurements
 
 Straight from Gear Avail's section 8, and it applies here in one specific
@@ -209,6 +249,11 @@ pedal is equally a bass, keys and studio object.
 - Do NOT use `--brand-gold` or `--brand-led` for prose. Use `--accent-text` and
   `--money`.
 - Do NOT put margin shorthand in a class that sits outside `@layer`.
-- Do NOT add a database, an affiliate link, or a price. The absence of all
-  three is what lets an entry say a pedal sounds thin.
+- Do NOT add a price, a merchant or a buy link to `lib/pedals.ts`. The
+  catalogue layer carries all three and the circuit guide carries none, which
+  is what still lets an entry say a pedal sounds thin (section 2a).
+- Do NOT add a database client or a credential to this project. The catalogue
+  is read from the sister site over HTTP, and that is the whole reason this
+  one is cheap to run and safe to hand to anyone.
+- Do NOT let a catalogue failure become an error page.
 - Do NOT make the chain notes block or auto-correct a layout.
