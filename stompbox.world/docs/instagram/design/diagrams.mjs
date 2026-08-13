@@ -278,7 +278,7 @@ function knob(cx, cy, r, at, text, opts = {}) {
   ].join("")
 }
 
-const KNOB_DEFS = `<defs><radialGradient id="knobface" cx="42%" cy="30%" r="78%"><stop offset="0%" stop-color="#3d454c"/><stop offset="62%" stop-color="#232a2f"/><stop offset="100%" stop-color="#141a1e"/></radialGradient></defs>`
+const KNOB_DEFS = `<defs><radialGradient id="knobface" cx="42%" cy="30%" r="78%"><stop offset="0%" stop-color="${COLOR.knobHi}"/><stop offset="62%" stop-color="${COLOR.knob}"/><stop offset="100%" stop-color="${COLOR.knobLo}"/></radialGradient></defs>`
 
 /** One big knob with a sweep arrow, for the reversed-Filter slide. */
 export function reversedKnob() {
@@ -380,7 +380,10 @@ export function chainBlocks(blocks, opts = {}) {
 
   return svg(
     height,
-    `<defs><linearGradient id="plateface" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3d454c"/><stop offset="40%" stop-color="#232a2f"/><stop offset="100%" stop-color="#171c20"/></linearGradient></defs>` +
+    // Palette-driven, not hardcoded. These were graphite hex and stayed grey
+    // when the palette moved, so the pedals on the board no longer matched the
+    // board they were standing on.
+    `<defs><linearGradient id="plateface" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${COLOR.plateHi}"/><stop offset="40%" stop-color="${COLOR.plate}"/><stop offset="100%" stop-color="${COLOR.plateLo}"/></linearGradient></defs>` +
       parts.join(""),
   )
 }

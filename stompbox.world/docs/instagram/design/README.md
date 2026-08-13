@@ -34,10 +34,34 @@ browser should not have to.
 
 ## What this system is, next to the site's
 
-It is the site's design system at feed scale, not a second one. Colours come
-verbatim from `app/globals.css`. What changes is the type scale, because a slide
-gets about one second and a page gets a reader, and the canvas, which is fixed
-rather than fluid.
+It is the site's design system at feed scale, not a second one. What changes is
+the type scale, because a slide gets about one second and a page gets a reader,
+and the canvas, which is fixed rather than fluid.
+
+**The palette is ROYAL BLUE, and the site followed the slides rather than the
+other way round.** Both started on the graphite and brass ported from Gear
+Avail. The owner chose a jewel blue for the account, picked `royal` from three
+candidates rendered side by side, and asked for the website to match, so
+`app/globals.css` moved too and section 5 of the project's `CLAUDE.md` records
+why. A candy blue enclosure with a brass silkscreen is a real pedal, so this is
+if anything more literal than the grey was.
+
+`tokens.mjs` keeps every palette rather than deleting the old one:
+
+| Name | What it is |
+|---|---|
+| `royal` | The account and the site. Deep indigo plate on a near-black navy ground |
+| `sapphire` | A truer mid blue. The first attempt, kept as a reference point |
+| `electric` | Brightest and most saturated. Rejected: the brass edge starts competing with the ground and dim labels lose legibility at feed size |
+| `graphite` | The original grey. Kept so a slide can still be made to match a page from before the change |
+
+```
+PALETTE=graphite node build.mjs && PALETTE=graphite node render.mjs
+```
+
+The knob tokens are deliberately identical in every palette. A knob is a dark
+object on any enclosure colour, real blue pedals have black knobs, and a blue
+knob on a blue plate loses its edge entirely.
 
 Everything section 5 of the project's `CLAUDE.md` says still holds, and holds
 for the same reasons:
