@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { isAdmin } from "@/lib/admin/gate"
 import { env } from "@/lib/env"
 import {
+  diagnoseImpactCatalogue,
+  impactApiConfig,
   ingestImpactCatalogue,
   listImpactCatalogs,
   peekImpactCatalogue,
@@ -65,7 +67,7 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => ({}))) as {
-    mode?: "list" | "peek" | "pull"
+    mode?: "list" | "peek" | "pull" | "diagnose"
     merchant?: string
     startPage?: number
     pages?: number
@@ -149,6 +151,24 @@ export async function POST(request: Request) {
       accountSid: env.impact.accountSid,
       authToken: env.impact.authToken,
       catalogId: merchant.catalogId,
+    }
+
+    /*
+     * Diagnose before peek, because it is the one that works when peek does
+     * not. A 400 has several plausible causes and the status separates none of
+     * them, so this varies exactly one parameter per probe and reports what
+     * came back. It is the counterpart to /api/admin/probe-ftp on the file
+     * transport, and it is what identified Anderton's as an advertiser-side
+     * switch rather than anything we were sending.
+     */
+    if (body.mode === "diagnose") {
+      return NextResponse.json({
+        mode: "diagnose",
+        merchant: merchant.key,
+        catalogId: merchant.catalogId,
+        seconds: seconds(),
+        ...(await diagnoseImpactCatalogue(impactApiConfig(merchant))),
+      })
     }
 
     if (body.mode === "peek") {

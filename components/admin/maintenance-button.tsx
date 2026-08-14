@@ -136,9 +136,9 @@ function PartnerLinks({ links }: { links: PartnerLinkOption[] }) {
  */
 function ImpactCatalogueButton({ merchants }: { merchants: ImpactMerchantOption[] }) {
   const [merchant, setMerchant] = useState(merchants[0]?.key ?? "andertons")
-  const [state, setState] = useState<"idle" | "listing" | "peeking" | "running" | "done" | "error">(
-    "idle",
-  )
+  const [state, setState] = useState<
+    "idle" | "listing" | "peeking" | "diagnosing" | "running" | "done" | "error"
+  >("idle")
   const [message, setMessage] = useState<string | null>(null)
   const [detail, setDetail] = useState<string | null>(null)
   const [progress, setProgress] = useState<{ wrote: number; total: number } | null>(null)
@@ -247,7 +247,58 @@ function ImpactCatalogueButton({ merchants }: { merchants: ImpactMerchantOption[
   }
 
   /**
-   * Page through the whole catalogue, five pages per request.
+   * Which of the candidate causes of a 400 is the real one.
+   *
+   * A 400 from this endpoint means a bad parameter OR paging past Impact's
+   * 20,000-record ceiling OR an API version this account cannot serve, and the
+   * status alone separates none of them. This varies one thing at a time and
+   * shows what came back, the same job "Diagnose the Anderton's connection"
+   * does for the FTP side.
+   */
+  async function diagnose() {
+    setState("diagnosing")
+    setMessage(null)
+    setDetail(null)
+    try {
+      const body = await call({ mode: "diagnose" })
+      const probes: {
+        label: string
+        varies: string
+        status: number
+        ok: boolean
+        records: number | null
+        note: string
+      }[] = body.probes ?? []
+      const catalogs: Record<string, string>[] = body.catalogs ?? []
+
+      setMessage(body.verdict ?? "No verdict returned.")
+      setDetail(
+        [
+          ...probes.flatMap((p) => [
+            `${p.ok ? "OK  " : "FAIL"} ${String(p.status).padEnd(4)} ${p.label}`,
+            `          varies: ${p.varies}`,
+            ...(p.records != null ? [`          records: ${p.records}`] : []),
+            ...(p.note ? [`          said: ${p.note}`] : []),
+            "",
+          ]),
+          catalogs.length ? `catalogues this account can read (${catalogs.length}):` : "",
+          ...catalogs.map(
+            (c) =>
+              `  ${c.Id ?? c.CatalogId ?? "?"}  ${c.Name ?? c.CatalogName ?? ""}  ${c.NumberOfItems ?? c.ItemCount ?? ""}`,
+          ),
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      )
+      setState("done")
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Something went wrong.")
+      setState("error")
+    }
+  }
+
+  /**
+   * Page through the whole catalogue.
    *
    * The loop lives here for the same reason the FTP one does: a function stops
    * at 300 seconds and the browser does not. Each call reports the page to
@@ -264,16 +315,21 @@ function ImpactCatalogueButton({ merchants }: { merchants: ImpactMerchantOption[
     let written = 0
     let inserted = 0
     let updated = 0
+    let ceiling = false
 
     try {
+      // Page size and pages-per-call are the server's to choose: they follow
+      // Impact's documented default and its paging ceiling, neither of which
+      // is a thing a button should be asserting an opinion about.
       for (let guard = 0; guard < 60; guard++) {
-        const body = await call({ mode: "pull", startPage, pages: 5, pageSize: 1000 })
+        const body = await call({ mode: "pull", startPage })
         if (body.status === "failed") throw new Error(body.error ?? "The pull failed.")
         if (body.status === "skipped") throw new Error(body.reason ?? "Skipped.")
 
         written += body.wrote ?? 0
         inserted += body.stats?.inserted ?? 0
         updated += body.stats?.updated ?? 0
+        ceiling = ceiling || Boolean(body.ceilingReached)
         setProgress({ wrote: written, total: body.totalRows ?? 0 })
 
         if (body.done || body.nextPage == null) break
@@ -281,7 +337,11 @@ function ImpactCatalogueButton({ merchants }: { merchants: ImpactMerchantOption[
       }
 
       setMessage(
-        `Wrote ${written.toLocaleString()} rows: ${inserted.toLocaleString()} new, ${updated.toLocaleString()} updated. Now run the rebuild at the bottom so they get priced.`,
+        `Wrote ${written.toLocaleString()} rows: ${inserted.toLocaleString()} new, ${updated.toLocaleString()} updated. ` +
+          (ceiling
+            ? "This stopped at Impact's 20,000-record paging ceiling rather than at the end of the catalogue, so the rest of it needs the FTP pull below. Nothing was expired, because the rows past the ceiling were never looked at. "
+            : "") +
+          "Now run the rebuild at the bottom so they get priced.",
       )
       setState("done")
     } catch (caught) {
@@ -290,7 +350,8 @@ function ImpactCatalogueButton({ merchants }: { merchants: ImpactMerchantOption[
     }
   }
 
-  const busy = state === "running" || state === "peeking" || state === "listing"
+  const busy =
+    state === "running" || state === "peeking" || state === "listing" || state === "diagnosing"
 
   return (
     <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
@@ -357,6 +418,13 @@ function ImpactCatalogueButton({ merchants }: { merchants: ImpactMerchantOption[
             aria-hidden="true"
           />
           {state === "peeking" ? "Reading..." : "Check the schema"}
+        </button>
+        <button type="button" onClick={diagnose} disabled={busy} className="stomp stomp-ghost">
+          <Stethoscope
+            className={`h-3.5 w-3.5 ${state === "diagnosing" ? "animate-pulse" : ""}`}
+            aria-hidden="true"
+          />
+          {state === "diagnosing" ? "Probing..." : "Diagnose a failure"}
         </button>
         <button type="button" onClick={pull} disabled={busy} className="stomp">
           <Download
@@ -519,9 +587,62 @@ function ProbeButton() {
  * rather than looking broken when it does.
  */
 function AndertonsButton() {
-  const [state, setState] = useState<"idle" | "running" | "done" | "error">("idle")
+  const [state, setState] = useState<"idle" | "listing" | "running" | "done" | "error">("idle")
   const [message, setMessage] = useState<string | null>(null)
+  const [detail, setDetail] = useState<string | null>(null)
   const [progress, setProgress] = useState<{ wrote: number; total: number } | null>(null)
+
+  /**
+   * Open the drop, list it, close. No download.
+   *
+   * Worth its own button because a pull is 27,000 rows against a 300 second
+   * ceiling: a wrong path or a rejected login costs minutes and then reports a
+   * timeout, which is indistinguishable from the catalogue simply being too
+   * big. This answers "does the login work and is there a file there" in about
+   * a second, and shows which file a pull would actually take.
+   */
+  async function list() {
+    setState("listing")
+    setMessage(null)
+    setDetail(null)
+    try {
+      const response = await fetch("/api/admin/ingest-andertons", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mode: "list" }),
+      })
+      const body = await response.json()
+      if (!response.ok) throw new Error(body?.hint || body?.error || `HTTP ${response.status}`)
+
+      const files: { name: string; sizeBytes: number; modified: string | null }[] = body.files ?? []
+
+      /*
+       * Three outcomes, and the middle one is the easiest to misread. A
+       * missing configured path means the LOGIN WORKED, so the listing below
+       * is from somewhere else and is a menu of what to set rather than the
+       * drop itself.
+       */
+      setMessage(
+        body.configuredPathMissing
+          ? `The SSH login worked, but ${body.configuredPath} does not exist on the server. Listed below is ${body.path} instead, which is what this account can actually see. Set IMPACT_ANDERTONS_FTP_PATH to the right directory from that list and press this again.`
+          : body.chosen
+            ? `Connected over SSH and found ${files.length} entries in ${body.path}. A pull would take ${body.chosen}.`
+            : `Connected over SSH, but nothing in ${body.path} looks like a catalogue file. What is actually there is listed below.`,
+      )
+      setDetail(
+        files
+          .map(
+            (f) =>
+              `  ${f.name.padEnd(44)} ${(f.sizeBytes ? `${(f.sizeBytes / 1_048_576).toFixed(1)} MB` : "").padStart(9)}  ${f.modified ?? ""}`,
+          )
+          .join("\n") || "(the directory is empty)",
+      )
+      setState("done")
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Something went wrong.")
+      setState("error")
+    }
+  }
 
   /**
    * Pull the catalogue a slice at a time, until it is done.
@@ -587,19 +708,44 @@ function AndertonsButton() {
     <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
       <h2 className="font-display text-base font-black text-[var(--text)]">Pull the Anderton&apos;s catalogue</h2>
       <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
-        Roughly 27,000 products over FTP from Impact. It arrives in slices of 4,000 because a
-        serverless function stops at 300 seconds, and the browser keeps asking for the next one
-        until it is finished. Leave this tab open. Safe to re-run: every row is keyed, so a repeat
-        costs time and nothing else.
+        Roughly 27,000 products over <strong className="text-[var(--text)]">SFTP</strong> from
+        Impact. It arrives in slices of 4,000 because a serverless function stops at 300 seconds,
+        and the browser keeps asking for the next one until it is finished. Leave this tab open.
+        Safe to re-run: every row is keyed, so a repeat costs time and nothing else.
+      </p>
+      <p className="mb-3 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+        <strong className="text-[var(--text)]">List the drop first.</strong> A rejected login or a
+        wrong directory takes minutes to surface as a failed pull and then looks like a timeout,
+        which is the opposite problem. Listing answers it in a second and names the file a pull
+        would take.
       </p>
 
-      <button type="button" onClick={run} disabled={state === "running"} className="stomp">
-        <Download
-          className={`h-3.5 w-3.5 ${state === "running" ? "animate-pulse" : ""}`}
-          aria-hidden="true"
-        />
-        {state === "running" ? "Pulling..." : "Pull it now"}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={list}
+          disabled={state === "running" || state === "listing"}
+          className="stomp stomp-ghost"
+        >
+          <Stethoscope
+            className={`h-3.5 w-3.5 ${state === "listing" ? "animate-pulse" : ""}`}
+            aria-hidden="true"
+          />
+          {state === "listing" ? "Listing..." : "List the drop"}
+        </button>
+        <button
+          type="button"
+          onClick={run}
+          disabled={state === "running" || state === "listing"}
+          className="stomp"
+        >
+          <Download
+            className={`h-3.5 w-3.5 ${state === "running" ? "animate-pulse" : ""}`}
+            aria-hidden="true"
+          />
+          {state === "running" ? "Pulling..." : "Pull it now"}
+        </button>
+      </div>
 
       {state === "running" && progress && (
         <p className="mt-3 text-sm tabular-nums text-[var(--accent-text)]">
@@ -619,6 +765,12 @@ function AndertonsButton() {
           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{message}</span>
         </p>
+      )}
+
+      {detail && (
+        <pre className="readout mt-3 max-h-80 overflow-auto whitespace-pre-wrap p-3 text-[0.7rem] leading-relaxed">
+          {detail}
+        </pre>
       )}
     </div>
   )

@@ -185,6 +185,16 @@ export const env = {
      * state until then, same as every other unconfirmed source in this file.
      */
     andertonsFtpHost: str("IMPACT_ANDERTONS_FTP_HOST", "products.impact.com"),
+    /**
+     * 22, because the drop is SFTP.
+     *
+     * Probing products.impact.com settled what its docs leave ambiguous: port
+     * 21 refuses AUTH TLS with a 431 and denies FEAT before any credential,
+     * port 990 does not listen, and port 22 answers SSH-2.0-APACHE-SSHD-2.14.0.
+     * The variable keeps the name IMPACT_ANDERTONS_FTP_PORT so the whole block
+     * still reads as one group; the protocol it selects is SSH.
+     */
+    andertonsFtpPort: int("IMPACT_ANDERTONS_FTP_PORT", 22),
     andertonsFtpUser: str("IMPACT_ANDERTONS_FTP_USER"),
     andertonsFtpPassword: str("IMPACT_ANDERTONS_FTP_PASSWORD"),
     andertonsFtpPath: str("IMPACT_ANDERTONS_FTP_PATH", "/Andertons-Music-Company/"),
@@ -224,6 +234,17 @@ export const env = {
      * constant because the next Impact merchant will have a different one.
      */
     andertonsCatalogId: str("IMPACT_ANDERTONS_CATALOG_ID", "30480"),
+    /**
+     * Which API version to name on every request.
+     *
+     * Impact deprecated v11 and older in March 2022 and expects a version
+     * either per request or as an account-level default. Sending it per
+     * request is what stops two accounts with different UI defaults getting
+     * different answers from identical code. Overridable rather than compiled
+     * in for the same reason as GROQ_MODEL: versions get retired on a
+     * schedule, and the fix should be a setting rather than a deploy.
+     */
+    apiVersion: str("IMPACT_API_VERSION", "13"),
     get hasAndertonsApi(): boolean {
       return Boolean(env.impact.accountSid && env.impact.authToken && env.impact.andertonsCatalogId)
     },

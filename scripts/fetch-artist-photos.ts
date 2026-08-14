@@ -182,7 +182,41 @@ async function main() {
   const path = "lib/rigs/photos.ts"
   const { readFileSync } = await import("node:fs")
   const current = readFileSync(path, "utf8")
-  const updated = current.replace(/export const PHOTOS: ArtistPhoto\[\] = \[[\s\S]*?\n\]/, render(found))
+
+  // Matches the empty single-line form as well as a populated one, for the
+  // same reason as the covers script: the file starts as `= []`, and that is
+  // exactly the state the first real run has to be able to replace.
+  const ARRAY = /export const PHOTOS: ArtistPhoto\[\] = \[\s*\]|export const PHOTOS: ArtistPhoto\[\] = \[[\s\S]*?\n\]/
+
+  /*
+   * REFUSE TO WRITE A WORSE FILE THAN THE ONE ALREADY COMMITTED.
+   *
+   * Same reasoning as the covers script. Every request failing and every
+   * artist genuinely having no freely licensed photograph both arrive here as
+   * an empty `found`, but the first is a blocked network or a Commons outage
+   * and the second has never happened. Writing on it would replace working
+   * attributions with `[]` and call it success, and since NO ATTRIBUTION, NO
+   * IMAGE is enforced in the component, the visible result is every portrait
+   * on the site silently reverting to a monogram.
+   */
+  // Counted inside the array, not across the file: the ArtistPhoto type
+  // declares the same field names, and a guard that fires on a good run is a
+  // guard somebody disables.
+  const existingBlock = current.match(ARRAY)?.[0] ?? ""
+  const existing = (existingBlock.match(/rigSlug:/g) ?? []).length
+  const force = process.argv.includes("--force")
+
+  if (!force && found.length < existing) {
+    console.error(
+      `\nRefusing to write. This run found ${found.length} photographs and ${path} already has ${existing}.\n` +
+        "That is what a network failure looks like, and writing would discard attributions that are already good.\n" +
+        "Check the failures above. If the shrink is deliberate, re-run with --force.",
+    )
+    process.exitCode = 1
+    return
+  }
+
+  const updated = current.replace(ARRAY, render(found))
   if (updated === current) throw new Error("Could not find the PHOTOS array to replace.")
   writeFileSync(path, updated)
   console.log(`\nWrote ${found.length} entries to ${path}. Review the diff before committing.`)

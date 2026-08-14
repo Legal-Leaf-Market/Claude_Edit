@@ -39,6 +39,14 @@ const STATIC_ROUTES = new Set([
   "/partners",
   "/flip-match",
   "/unsubscribe",
+  // The Anderton's UK section. Listed here for the same reason as every other
+  // static route: nav.ts may only point at pages that exist, and this set is
+  // what enforces it.
+  "/uk",
+  "/uk/rigs",
+  // The 3D rig room. A view of a board, not a place to build one, so it sits
+  // under Build alongside the planner rather than replacing it.
+  "/rig-room",
 ])
 
 function isKnownRoute(href: string): boolean {

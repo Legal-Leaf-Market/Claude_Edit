@@ -24,6 +24,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${base}/`, changeFrequency: "hourly", priority: 1 },
     { url: `${base}/search`, changeFrequency: "hourly", priority: 0.8 },
+    /*
+     * The Anderton's section. Listed unconditionally, unlike the per-store
+     * routes below which are gated on having live inventory: these two render
+     * their own editorial copy either way, so an un-ingested catalogue makes
+     * them thin rather than the soft 404 an empty inventory page would be.
+     * /uk/rigs/[slug] is deliberately absent, since one of those with no
+     * stock IS an empty inventory page.
+     */
+    { url: `${base}/uk`, changeFrequency: "daily", priority: 0.7 },
+    { url: `${base}/uk/rigs`, changeFrequency: "daily", priority: 0.6 },
+    /*
+     * The rig room renders a demonstration board when it arrives without a
+     * rig, so it is never an empty page and can be listed unconditionally.
+     * Its `?rig=` variants are deliberately absent: they are one visitor's
+     * board, not a page anybody searches for.
+     */
+    { url: `${base}/rig-room`, changeFrequency: "monthly", priority: 0.4 },
     ...indexableCategories().map(({ slug }) => ({
       url: `${base}/used/${slug}`,
       changeFrequency: "daily" as const,

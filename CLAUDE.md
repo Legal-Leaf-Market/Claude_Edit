@@ -618,6 +618,67 @@ with our own account credentials, serving the catalogues these brands publish
 to partners for this purpose. That is a different thing entirely from the frontend
 Algolia index rejected for Guitar Center (section 2).
 
+**THE API IS CLOSED FOR ANDERTON'S, BY ANDERTON'S (confirmed 11 Aug 2026).**
+Every catalogue-items call answers 400 with `{"Status":"ERROR","Message":"The
+requested catalog has not been made available via API by the Advertiser."}`,
+and the diagnose matrix ruled out every alternative: documented defaults, no
+paging parameters, the old PageSize and no version all failed identically,
+while listing catalogues answered **200 with zero rows**. So the credentials
+are valid, catalogue 30480 is the right id, and the channel is switched off in
+the BRAND's own Impact account. Nothing in this repo can change that: it needs
+Anderton's or the Impact account manager to enable it.
+
+**So the SFTP drop is not one of two transports for Anderton's, it is the
+only one.** The API code stays because it is correct, tested, and the next
+Impact merchant may well have the switch on, but do not spend another hour on
+the 400. `explainImpactStatus` reads the response BODY for this message and
+says so in as many words, and `tests/andertons-impact.test.ts` pins that it
+never blames PageSize for it. That distinction is the difference between a
+code change and an email to the merchant.
+
+**IF IT IS EVER ENABLED, THE API STILL CANNOT REACH THE WHOLE CATALOGUE.** Impact's catalogue Items endpoint refuses to page beyond 20,000
+records: a request past it answers 400 rather than an empty page. Anderton's
+publishes 27,052 products, so plain paging reaches at most about three
+quarters of it. That is not a bug to route around, it is the documented reason
+the FTP drop exists for large catalogues, and it settles the question of which
+transport is "the" one: neither. Two consequences are load bearing:
+
+- `fetchAndertonsApiRange` stops AT the ceiling and says so, rather than
+  walking into a 400 three hundred pages deep where the status would explain
+  nothing.
+- **A ceiling stop must never expire missing rows.** `done` means the walk
+  ended, and expiry reads it as "everything the catalogue lists has been
+  written". Those agree only when the walk ended because the catalogue ran
+  out. End at the ceiling and they are opposite, and expiring there retires
+  the ~7,000 products past it: live listings, gone from the site, nothing
+  thrown. `ceilingReached` exists solely to keep those two ideas apart.
+
+**Every request names its API version** (`IrVersion`, default 13, overridable
+via `IMPACT_API_VERSION`). Impact deprecated v11 and older in March 2022 and
+otherwise falls back to an account-level default set in a UI this repo cannot
+see, which is how identical code answers differently for two accounts with no
+visible cause.
+
+**Page size is Impact's documented default of 100, not a guess.** This module
+originally asked for 1000 on the strength of nothing, which is the same
+unearned assumption the alias table exists to prevent.
+
+**A failed request shows Impact's own words.** The first version named the
+status and deliberately threw the body away, on the grounds that an HTML error
+page buries the useful fact in markup. That reasoning is right about 401 and
+backwards about 400, which is the status Impact uses for every bad parameter:
+the body is the only thing that says WHICH one. Bodies are now flattened and
+clipped rather than discarded. A live 400 that could not be diagnosed from the
+error text is what paid for this.
+
+**`{"mode":"diagnose"}` is the 400's counterpart to `/api/admin/probe-ftp`.**
+A 400 has several plausible causes and the status separates none of them, so
+the diagnose mode varies exactly one thing per probe (documented defaults, no
+paging parameters, the old PageSize, no version) and lists the catalogues the
+account can actually read. That last one is what tells a wrong credential from
+a wrong catalogue id, and turns the 30480 default from a guess into a checked
+value. It writes nothing and keeps credentials in the Authorization header.
+
 **Check the schema before the first pull.** `{"mode":"peek"}` on
 `/api/admin/impact`, surfaced as a button, reads one page, writes
 nothing, and lists every field name found beside the ones the alias table
@@ -649,6 +710,74 @@ sent. **Never add a silent fallback to plaintext FTP** when TLS is refused.
 That puts a real credential in clear on the public internet, and it is a
 decision to take deliberately if at all, not one to bury in a `catch` block.
 The same instinct as the Reverb API having no fallback path (section 2).
+
+**AS OF 11 AUG 2026, NEITHER CHANNEL DELIVERS ANYTHING, AND BOTH REASONS ARE
+ON IMPACT'S SIDE.** This is written down so nobody re-debugs code that is not
+broken. The transport work is finished and proven as far as it can be proven
+from here:
+
+| Step | Result |
+|---|---|
+| SSH login on port 22 | works |
+| Home directory | one entry, `INCREMENTAL/` |
+| `INCREMENTAL/` | **empty** |
+| Catalogue Items API | 400, "not been made available via API by the Advertiser" |
+| Listing catalogues via API | 200, **zero** catalogues |
+
+So the credentials are right, the transport is right, the path is right, and
+there is no file to fetch and no API to call. **The next move is a request to
+Impact or Anderton's, not a code change.** Two things to ask for: API access
+enabled for catalogue 30480, and a FULL catalogue delivery provisioned to the
+SFTP drop rather than an empty incremental directory. An incremental feed
+cannot build the catalogue from cold in any case, since it carries changes to
+rows that are supposed to already exist.
+
+**Before ever reporting a merchant as delivering nothing, check our own
+filters.** The listing code dropped SFTP symlinks (`type === "l"`) from both
+the file and directory buckets, so a drop publishing `latest.csv ->
+2026-08-11.csv`, an ordinary way to run one, would have rendered as an empty
+directory and been blamed on the merchant. Symlinks now count as files, and
+`tests/andertons-sftp.test.ts` pins it. The empty listing above was confirmed
+after that fix.
+
+**THE DROP SERVES AN INCREMENTAL FEED, AND THAT MUST NEVER EXPIRE.** Listing
+the account's home directory found exactly one entry, `INCREMENTAL/`. An
+incremental feed carries what CHANGED rather than what exists, and everything
+downstream of the parser was written for a full snapshot. `expirePastEndDate`
+retires every active row a completed run did not see: correct after a
+snapshot, catastrophic after a delta, where a file of forty changed products
+would retire the other 27,000 with nothing thrown and the run logged as a
+success. `isIncrementalDrop()` reads the PATH, because it has to be known
+before anything is written, and expiry now needs BOTH a finished walk and a
+snapshot. It errs towards "delta" on an ambiguous name: a false positive only
+leaves stale rows visible until a full pull runs, which is the side of the tie
+this project takes everywhere else. **If a `FULL` or snapshot directory ever
+appears, that is the one to point `IMPACT_ANDERTONS_FTP_PATH` at**, and only
+then does expiry mean anything.
+
+**THE DROP IS SFTP, AND THE PROBE IS WHAT SETTLED IT (11 Aug 2026).** Impact's
+documentation says "FTP" throughout, so this was built on `basic-ftp` and every
+failure read as a wrong option on the right library. The probe found:
+
+| Port | What it said |
+|---|---|
+| 21 | `220` banner, `530 Access denied` to `FEAT` before any credential, `431` to `AUTH TLS` |
+| 990 | nothing, connection timed out |
+| 22 | `SSH-2.0-APACHE-SSHD-2.14.0` |
+
+An SSH banner means it was the **wrong library outright**, which is exactly the
+distinction the probe exists to draw and the reason it draws it without sending
+a password. Port 21 is not a fallback: it denies commands before authentication
+and refuses TLS, and the only thing it offers instead is plaintext.
+
+So the transport is `ssh2-sftp-client` on port 22 (`IMPACT_ANDERTONS_FTP_PORT`,
+defaulted to 22 and keeping the FTP name so the credential block still reads as
+one group). `basic-ftp` has been removed from the dependencies rather than left
+in place, because a dead client for a protocol this host does not speak is an
+invitation to try FTPS again. **The credential pair Impact mails out is an SSH
+login**: same pair, different protocol. If a future Impact merchant genuinely
+serves FTPS, add the client back for that merchant rather than reopening this
+one.
 
 ---
 
@@ -923,9 +1052,37 @@ far under the 4.5:1 a price or a sentence needs. Anything printing a price or
 accent-coloured body text uses `--money` and `--accent-text`, never
 `--brand-gold` or `--sage`, or it reads in one theme and vanishes in the other.
 
-**Godot is on the table for one thing only.** A separate 3D "rig room" (cables
-that hang, footswitches you stomp, knobs you hear) is a legitimate toy and a
-shareable. The planner itself stays in the DOM: it is indexable, and
+**The rig room is built, and it is NOT Godot.** `/rig-room` renders a board in
+three dimensions with three.js: real catalogue sizes, patch cables in signal
+order, click a pedal to select it. The planner at `/pedalboard` is untouched.
+
+**Godot was evaluated and rejected for it**, and the deciding argument was not
+the toolchain. A Godot build cannot import `lib/pedalboard`, so the chain
+order, the rotation footprint and the layout rules would have had to be
+rewritten in GDScript and would have drifted from the TypeScript exactly the
+way the condition classifier nearly did (section 8). Two views of one model
+beats two models. The practical objections were real too (nothing here can
+build or test a Godot export, and a web export is a tens-of-megabyte binary in
+the repo), but the logic fork is the one that would still apply on a machine
+with Godot installed.
+
+**The split that makes it testable:** `lib/rig-room/scene.ts` turns a rig into
+boxes and cable endpoints in millimetres and is unit tested;
+`components/rig-room/rig-room-canvas.tsx` only draws what it is handed. A pedal
+sunk into the board or a cable joined to the wrong neighbour renders as
+approximately fine and is invisible to review, so none of that arithmetic may
+live inside the canvas.
+
+**It reads the planner's own `?rig=`**, through the same codec, so "see it in
+3D" is a link rather than an export, and the round trip back preserves the rig.
+
+**Everything in the room is also in the DOM beneath it**, with the same
+`/gear` links, and the canvas is `aria-hidden`. That is not politeness: the
+planner rules below apply to any 3D thing here, and the way to satisfy them is
+for the canvas to be the part you can lose. three.js is imported dynamically so
+its ~600KB never reaches a page that does not draw a board.
+
+The planner itself stays in the DOM: it is indexable, and
 programmatic SEO is this site's growth model; the outbound money path is
 `/go/[listingId]` in the DOM; the layout, power and cable engines are
 TypeScript shared with the server so the assistant can build a rig; and a
@@ -1032,6 +1189,16 @@ engine.
 - Do NOT blend the new and used medians into one unlabelled number on the way
   out of this site. Send both, and say which one the headline is.
 - Do NOT point the test suite at a database you care about; it truncates.
+- Do NOT render a YouTube comment's text or its author's name anywhere. The
+  reader aggregates; counts and matched gear names are all that may leave it
+  (section 21).
+- Do NOT call the YouTube API from a request-scoped path. The quota is 10,000
+  units a day for the whole project and comment reads cost a unit per video,
+  so it belongs behind a long `revalidate` (section 21).
+- Do NOT drop an out-of-stock slot from a store rig page. Showing only what
+  the store happens to have redraws somebody's signal chain into the
+  inventory, which is section 15's dishonesty performed on the rig instead of
+  the listing (section 21).
 
 ---
 
@@ -1166,3 +1333,55 @@ dependency keeps running one way. The setup and the reasoning are in
 The practical consequence for anyone shipping a change to this endpoint: check
 what stompbox.world is actually rendering afterwards, rather than assuming a
 green deploy means the published slice is current over there.
+
+---
+## 21. Anderton's TV, and the UK section
+
+`lib/ingestion/andertons-youtube.ts` reads the channel; `lib/andertons/`
+turns it and the catalogue into pages under `/uk`.
+
+**Why one merchant has a section at all**, when section 17 says commission
+never affects ranking and payout is not why a merchant is listed. The test is
+what would happen if Anderton's paid nothing, and the answer is that this
+section would still be here, because both facts behind it would still hold:
+
+1. It is by far the largest catalogue on the site, around 27,000 products.
+2. It ships to the UK ONLY, so under section 15 every other surface here HIDES
+   it from most visitors.
+
+The second is the real reason. Regional hiding is honest but lossy, and the
+person it costs most is the UK shopper, who is exactly who it was never meant
+to affect. `/uk` is that repair. **Nothing under it reads the sixteen brands
+Anderton's pays 4% on**: rig ordering is stock coverage, and the channel panel
+is counted from what got talked about.
+
+**The store rig page shows the gaps.** `/uk/rigs/[slug]` lists every slot on a
+documented board in signal-chain order whether or not Anderton's stocks it,
+and says which ones they do not. Dropping the misses would quietly redraw a
+signal chain into whatever happened to be in stock. The subtotal covers the
+stocked slots ONLY and the copy says so in the same breath, for the same
+reason section 8 publishes no market price below `MIN_SAMPLE_SIZE`: a number
+that reads like the price of the board while silently omitting three pedals is
+a guess dressed up as a measurement.
+
+**The quota is the design constraint on the channel panel.** 10,000 units a
+day for the entire project, and comment threads cost a unit per video, so
+reading 25 videos with their comments is ~26 units. Once a day that is
+nothing; per request it is fatal, and the failure lands on every other
+YouTube-backed thing on the site rather than on the page that caused it. So it
+sits behind an hour-long `revalidate` and caps its fan-out, and an unset
+`YOUTUBE_API_KEY` renders no panel rather than a broken one, the same
+supported state as an unset `GROQ_API_KEY`.
+
+**Comments are counted, never quoted.** No comment text, no author name, no
+attribution of an opinion to a person. What leaves the reader is gear names
+and integers. `audienceFavourites` is the output worth having and the only
+reason to read comments at all: gear the audience raises more often than the
+channel does is a signal no product feed and no view count contains.
+
+**Adding any static route means three files move together**, and the nav test
+enforces it: `lib/nav.ts`, `app/sitemap.ts`, and the `STATIC_ROUTES` set in
+`tests/nav.test.ts`. `/uk` and `/uk/rigs` are in the sitemap unconditionally
+because they carry their own copy; `/uk/rigs/[slug]` is deliberately absent,
+since one of those with no stock is exactly the empty inventory page the
+per-store gate exists to keep out.
