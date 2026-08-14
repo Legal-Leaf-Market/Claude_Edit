@@ -170,9 +170,18 @@ request renders against the endpoint that is actually live.
   strings only prove that an inbound request is genuine, and they open nothing.
 - **A team webhook sees EVERY deployment on the account**, including this
   site's own and every preview build, so the route filters on event type,
-  production target and project name. `deployment.created` is deliberately not
-  in the list: it fires when the build starts, which is the moment that causes
-  the problem rather than the one that fixes it.
+  production target and project name. A webhook CAN be scoped to one project
+  at creation, and should be, but the filter does not assume somebody did.
+- **Three event names are accepted, not one.** `deployment.succeeded`,
+  `deployment.ready` and `deployment.promoted` all mean the new code is the one
+  serving traffic. Vercel's own examples use `deployment.ready` and its docs do
+  not enumerate the list in one place, so pinning this to a single string would
+  make the hook depend on a name nobody here has seen delivered. Acting twice
+  is harmless: the second refresh drops a tag that is already dropped.
+  `deployment.created` is deliberately NOT in the list, and must not be
+  subscribed to either: it fires when the build starts, so the refresh would
+  land while the old deployment is still answering and cache the stale
+  catalogue a second time.
 - **An unrecognised payload refreshes anyway.** Over-refreshing costs one page
   regeneration nobody can see; under-refreshing puts a stale catalogue back on
   the site looking like a broken deploy. The two are not equal, so a shape this
