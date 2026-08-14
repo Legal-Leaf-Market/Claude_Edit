@@ -216,6 +216,64 @@ invented-measurement problem in section 3 wearing a currency symbol.
 
 ---
 
+## 2c. The board, and the seam between the two datasets
+
+`/board`, `components/board-builder.tsx`, `lib/board.ts`. Put pedals on a
+pedalboard, see the conventional signal order, stomp them on and off, send the
+result as a link.
+
+**IT IS A SEPARATE PAGE FROM `/chain`, and they are not redundant.** `/chain`
+is the argument: eleven slots, each with the reason it sits where it does,
+server rendered and indexable, and it is what somebody arriving from a search
+should land on. `/board` is the toy built on top of that argument. Keeping them
+apart is what stops the explanation being buried under an interface.
+
+**TWO SOURCES SIT ON THE SAME BOARD AND THEY ARE NOT EQUAL.** A guide entry is
+a circuit somebody here has read. A catalogue row is a product name and a photo
+from a shop's feed with an effect type inferred from that name by the sister
+site. `circuitKnown` carries that difference into `chainNotes`, and it is the
+most important field in the whole feature:
+
+- **An absent flag means two different things depending on where it came
+  from.** On a guide entry, no `buffered` means "checked, and it is not". On a
+  catalogue row it means "nobody knows". Reading the second like the first is
+  how this site would start claiming a Belcat has true bypass on the strength
+  of a product name. There is a test for exactly that.
+- **Silence is not a clean bill of health**, so a board holding undocumented
+  pedals gets a note saying which ones were not checked. A board of catalogue
+  rows would otherwise collect no warnings and look like it had passed
+  something.
+
+**`slotForCatalogType` RETURNS NULL, AND THAT IS A FEATURE.** The sister site
+infers twelve effect types; this guide documents eleven slots, and they are not
+the same eleven. A looper conventionally goes last or in the amp's loop and
+this chain ends at reverb. "Utility" covers a gate, an ABY, a DI and a buffer,
+which belong in four different places, and the type cannot tell them apart. So
+those two get no slot, are not offered in the parts bin, and the page says how
+many were left out and why. `pitch` is the one approximation and it is a stated
+one. Do not fill these in to make the bin look fuller.
+
+**No price, no merchant and no link goes onto a board.** A layout toy that
+quotes a price is a shop, which is the separation section 2a exists to keep. A
+test asserts a board item carries none of the three.
+
+**The board lives in the URL, read from `window.location` rather than
+`useSearchParams`.** The hook opts the whole route into dynamic rendering
+unless it is wrapped in Suspense, and this page is otherwise static. The cost
+is that a shared board is not in the server-rendered HTML, which is the right
+trade: the indexable content is the explanation and the parts bin, not one
+visitor's board. `decodeBoard` is totally permissive for the same reason stale
+links are everywhere else here, and a mangled one opens a shorter board.
+
+**The enclosure is the one literal place in the design system.** Everywhere
+else a control is *like* a piece of gear; here the thing being drawn actually
+is a die-cast box. The LED rule matters more here than anywhere: lit means in
+the signal, dark means bypassed, and nothing else in that CSS block may be
+saturated. A bypassed pedal keeps its shape and loses its light, because it is
+still on your board.
+
+---
+
 ## 3. No invented measurements
 
 Straight from Gear Avail's section 8, and it applies here in one specific
@@ -362,6 +420,15 @@ pedal is equally a bass, keys and studio object.
 - Do NOT add a price, a merchant or a buy link to `lib/pedals.ts`. The
   catalogue layer carries all three and the circuit guide carries none, which
   is what still lets an entry say a pedal sounds thin (section 2a).
+- Do NOT let a catalogue row borrow a guide entry's authority. `circuitKnown`
+  is false for a reason and an absent flag on one is not the same fact as an
+  absent flag on the other (section 2c).
+- Do NOT give `slotForCatalogType` a fallback slot to make the parts bin
+  fuller. Returning null for a looper or a utility box is the honest answer.
+- Do NOT put a price on the board. A layout toy that quotes one is a shop.
+- Do NOT add a remote image host without naming it in `next.config.mjs`. The
+  URLs arrive over HTTP from another service, and an open pattern turns the
+  image optimizer into a proxy for fetching anything.
 - Do NOT add a database client or a credential to this project. The catalogue
   is read from the sister site over HTTP, and that is the whole reason this
   one is cheap to run and safe to hand to anyone. The refresh hook's two

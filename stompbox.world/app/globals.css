@@ -882,12 +882,318 @@
   bottom: -2px;
 }
 
+/* ------------------------------------------------------------
+   THE BOARD. An enclosure on a pedalboard, for /board.
+
+   This is the one place on the site where the gear metaphor is
+   literal rather than borrowed: the thing being drawn actually is
+   a die-cast box with a silkscreen, an LED and a footswitch. Every
+   rule the buttons follow still applies, and one matters more here
+   than anywhere else:
+
+   THE LED IS THE STATE. Lit means in the signal, dark means
+   bypassed. Nothing else in this block is allowed to be saturated,
+   because the moment two things glow the LED stops meaning
+   anything.
+
+   NO MARGIN SHORTHAND IN HERE. These classes sit outside @layer,
+   so they beat every Tailwind utility, and a margin here would
+   silently eat an mt-* on the element. .readouts had exactly that
+   bug once. Spacing is the caller's job.
+   ------------------------------------------------------------ */
+
+.enclosure {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  /* FIXED HEIGHT, and the two text blocks inside are fixed too. Enclosures
+     on a real board are not all the same size, but they do all sit on the
+     same deck, and a row whose boxes start at different heights because one
+     slot is called "Overdrive and distortion" reads as a layout bug rather
+     than as gear. Everything that can run long is clamped instead. */
+  height: 11.75rem;
+  padding: 0.6rem 0.5rem 1.5rem;
+  border-radius: 12px;
+  border: 1.5px solid color-mix(in srgb, var(--brand-gold) 40%, var(--line-strong));
+  background: linear-gradient(180deg, var(--metal-hi), var(--metal) 52%, var(--metal-lo));
+  color: #f2f5f8;
+  cursor: pointer;
+  isolation: isolate;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 3px 0 color-mix(in srgb, var(--line-strong) 40%, #000),
+    0 6px 16px rgba(0, 0, 0, 0.45);
+  transition:
+    transform 90ms ease,
+    box-shadow 90ms ease,
+    border-color 170ms ease;
+}
+
+/* The silkscreen hairline printed inside the edge, same detail as the mark. */
+.enclosure::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--brand-gold) 20%, transparent);
+  pointer-events: none;
+}
+
+.enclosure:hover {
+  border-color: var(--brand-gold);
+}
+
+/* Two pixels, so it reads as a switch bottoming out rather than a box
+   falling over. Same travel as every other control on the site. */
+.enclosure:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+    0 1px 0 color-mix(in srgb, var(--line-strong) 40%, #000),
+    0 3px 9px rgba(0, 0, 0, 0.5);
+}
+
+/* Bypassed. The box keeps its shape and loses its light, exactly as it would
+   on a floor. It is still on your board, it is just not in the signal, so it
+   must not read as disabled or deleted. */
+.enclosure[aria-pressed='false'] {
+  filter: saturate(0.55) brightness(0.82);
+}
+
+.enclosure-tag {
+  /* Two lines of room, always, whether the slot name needs them or not.
+     That is what keeps every face on the row at the same height. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  height: 1.5rem;
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-align: center;
+  color: color-mix(in srgb, var(--brand-gold) 68%, #ffffff);
+  line-height: 1.35;
+}
+
+/* The face: where a photo goes, or the knobs when there is none. */
+.enclosure-face {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 3.6rem;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+}
+
+.enclosure-knobs {
+  display: flex;
+  gap: 0.55rem;
+}
+.enclosure-knobs i {
+  display: block;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #6f7fc9, #16203f);
+  border: 1px solid color-mix(in srgb, var(--brand-gold) 30%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.enclosure-name {
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  /* Two lines of room, always, for the same reason the tag has two. A long
+     product name must not stretch one enclosure taller than its row. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  height: 1.7rem;
+  width: 100%;
+}
+
+.enclosure-maker {
+  font-family: var(--sans);
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(242, 245, 248, 0.62);
+  line-height: 1;
+}
+
+/* The LED, and the one saturated colour in this block. */
+.enclosure-led {
+  position: absolute;
+  top: 0.52rem;
+  right: 0.55rem;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brand-led);
+  opacity: 0.14;
+}
+.enclosure-led[data-on='true'] {
+  opacity: 1;
+  box-shadow: 0 0 7px var(--brand-led);
+}
+
+/* The footswitch, at the bottom where a foot would find it. */
+.enclosure-switch {
+  position: absolute;
+  bottom: 0.42rem;
+  left: 50%;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-left: -0.575rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #55637f, #0b1024);
+  border: 1px solid color-mix(in srgb, var(--brand-gold) 32%, var(--line-strong));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+/* Take it off the board. Sits outside the enclosure, appears on hover or
+   keyboard focus, because a delete control visible at rest on sixteen boxes
+   is sixteen invitations to lose your board. */
+.enclosure-remove {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: var(--chip);
+  color: var(--dim);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0;
+  transition:
+    opacity 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease;
+}
+.group\/pedal:hover .enclosure-remove,
+.enclosure-remove:focus-visible {
+  opacity: 1;
+}
+.enclosure-remove:hover {
+  color: var(--red);
+  border-color: var(--red);
+}
+
+/* The horizontal run between two pedals on the board. The vertical .patch
+   above it is the same cable seen on the chain page's stacked list. */
+.patch-h {
+  position: relative;
+  flex: none;
+  align-self: center;
+  width: 26px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--line-strong), var(--line));
+}
+.patch-h::before,
+.patch-h::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 5px;
+  height: 11px;
+  margin-top: -5.5px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--metal-hi), var(--metal-lo));
+  border: 1px solid color-mix(in srgb, var(--brand-gold) 40%, var(--line-strong));
+}
+.patch-h::before {
+  left: -2px;
+}
+.patch-h::after {
+  right: -2px;
+}
+
+/* The board itself: a dark deck with a rail top and bottom, which is what a
+   pedalboard is. Deliberately darker than the page so the enclosures on it
+   are the brightest thing in view. */
+/* The board itself: a dark deck with a woven grain, which is what a pedalboard
+   is. DARK IN BOTH THEMES, and derived from the metal tokens rather than from
+   literal hex, for exactly the reason the enclosures are: a pedalboard is the
+   same object whatever room it is standing in. Writing the colours out by hand
+   here would put two values outside the token set that nothing keeps in step
+   with the rest of the palette. */
+.deck {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.028) 0 2px,
+      transparent 2px 9px
+    ),
+    linear-gradient(
+      180deg,
+      var(--metal-lo),
+      color-mix(in srgb, var(--metal-lo) 74%, var(--metal))
+    );
+  box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.55);
+}
+
+/* The jack plate at each end of the chain. */
+.jack {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(180deg, var(--metal-hi), var(--metal-lo));
+  padding: 0.5rem 0.6rem;
+  font-family: var(--sans);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(242, 245, 248, 0.78);
+}
+.jack::before {
+  content: '';
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #4a5878, #05080f);
+  border: 1px solid color-mix(in srgb, var(--brand-gold) 34%, var(--line-strong));
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stomp,
   .knob,
   .knob > svg,
-  .pickup-lever {
+  .pickup-lever,
+  .enclosure,
+  .enclosure-remove {
     transition: none;
+  }
+  .enclosure:active {
+    transform: none;
   }
   .knob:hover,
   .knob:active,

@@ -1,3 +1,4 @@
+import { PedalPhoto } from "@/components/pedal-photo"
 import {
   formatMarketPrice,
   gearAvailProductUrl,
@@ -30,9 +31,15 @@ export function CatalogCard({ pedal, minSample }: { pedal: CatalogPedal; minSamp
     <a
       href={gearAvailProductUrl(pedal.slug)}
       rel="noopener"
-      className="surface group flex flex-col p-5 transition-colors hover:border-[var(--brand-gold)]"
+      className="surface group flex flex-col p-4 transition-colors hover:border-[var(--brand-gold)]"
     >
-      <div className="flex items-baseline justify-between gap-3">
+      {/* The photo leads. A catalogue is a shelf, and a shelf you cannot see
+          is a list. The API has sent one of these for every pedal since the
+          endpoint was written and this card ignored it, which is why the page
+          read as a wall of text. */}
+      <PedalPhoto src={pedal.imageUrl} alt={`${pedal.brand} ${pedal.model}`} />
+
+      <div className="mt-4 flex items-baseline justify-between gap-3">
         <span className="stencil">{pedal.brand}</span>
         <span className="stencil text-[0.58rem]">{pedal.type}</span>
       </div>
@@ -41,7 +48,7 @@ export function CatalogCard({ pedal, minSample }: { pedal: CatalogPedal; minSamp
         {pedal.model}
       </h3>
 
-      <div className="mt-4 flex-1" />
+      <div className="mt-3 flex-1" />
 
       {price ? (
         <p className="text-2xl font-black tracking-tight text-[var(--money)]">
@@ -53,10 +60,14 @@ export function CatalogCard({ pedal, minSample }: { pedal: CatalogPedal; minSamp
       ) : (
         /* Saying why there is no number is more useful than an em space where
            a price should be, and it is the honest version of the same fact.
-           The reason is per condition, not per pedal: five listings split
-           three new and two used is still no used market price. */
+           SHORTER THAN IT WAS, because it turned out to be the common case
+           rather than the exception: 46 of the 48 pedals on the shelf are
+           stocked by exactly one seller, so a two-line explanation repeated
+           down the whole grid buried the pedals it was explaining. The rule
+           it compresses is stated in full at the top of the page, and the
+           number stays here because the number is the checkable part. */
         <p className="text-sm text-[var(--dim)]">
-          No market price yet: it takes {minSample} listings of one condition to call one
+          No price yet, needs {minSample} listings
         </p>
       )}
 

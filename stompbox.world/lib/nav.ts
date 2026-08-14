@@ -23,7 +23,12 @@ export const NAV: NavLink[] = [
   {
     href: "/chain",
     label: "Signal chain",
-    blurb: "Build a board and see the order, with the reasons",
+    blurb: "The conventional order, and the reason behind every position",
+  },
+  {
+    href: "/board",
+    label: "Build a board",
+    blurb: "Put real pedals on a board, stomp them on and off, send the link",
   },
   {
     href: "/catalog",
