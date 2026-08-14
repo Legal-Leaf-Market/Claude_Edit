@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { describeConfig, env } from "@/lib/env"
 import { IMPACT_MERCHANTS } from "@/lib/ingestion/impact-merchants"
+import { partnerLinkStatus } from "@/lib/partners"
 
 export const dynamic = "force-dynamic"
 
@@ -85,6 +86,23 @@ export async function GET() {
           ]),
         ),
       },
+      /*
+       * The two focus-page partners, which have no ingest run to age and so
+       * appear nowhere else in this response.
+       *
+       * "set but rejected" is the state this exists to surface. A link that is
+       * not on an Impact tracking host is ignored and the page quietly falls
+       * back to the merchant's own site: nothing breaks, the button works, and
+       * the click earns nothing. These are the highest-paying merchants on the
+       * account and their pages have no other monetisation, so silence is
+       * expensive. Hosts and booleans only, never the link itself.
+       */
+      partners: partnerLinkStatus().map((p) => ({
+        slug: p.slug,
+        configured: p.configured,
+        earning: p.tracked,
+        host: p.host,
+      })),
       search: env.typesense.isConfigured ? "typesense" : "postgres",
       counts: {
         listings: Number(row?.listings ?? 0),

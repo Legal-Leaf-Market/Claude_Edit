@@ -38,13 +38,81 @@ export type ImpactMerchantOption = {
   envVar: string
 }
 
-export function MaintenanceButton({ merchants }: { merchants: ImpactMerchantOption[] }) {
+/** One partner's outbound link, as the server resolved it. */
+export type PartnerLinkOption = {
+  slug: string
+  name: string
+  envVar: string
+  configured: boolean
+  tracked: boolean
+  host: string | null
+  verdict: string
+}
+
+export function MaintenanceButton({
+  merchants,
+  partnerLinks = [],
+}: {
+  merchants: ImpactMerchantOption[]
+  partnerLinks?: PartnerLinkOption[]
+}) {
   return (
     <div className="space-y-3">
       <ImpactCatalogueButton merchants={merchants} />
+      <PartnerLinks links={partnerLinks} />
       <AndertonsButton />
       <ProbeButton />
       <RebuildButton />
+    </div>
+  )
+}
+
+/**
+ * Whether the two partner links are actually earning.
+ *
+ * A READOUT, NOT A BUTTON, because there is nothing to press: these are
+ * environment variables and only Vercel can change them. What it does is make a
+ * rejected link visible, which is the failure worth catching here.
+ *
+ * A link that is not on an Impact tracking host is ignored and the page falls
+ * back to the merchant's own site. Nothing breaks, the button works, the shopper
+ * arrives, and the click earns nothing. That is indistinguishable from working
+ * unless something says so, and these two pages have no other monetisation at
+ * all, since neither partner has catalogue rows carrying a feed's own link.
+ */
+function PartnerLinks({ links }: { links: PartnerLinkOption[] }) {
+  if (links.length === 0) return null
+
+  return (
+    <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
+      <h2 className="font-display text-base font-black text-[var(--text)]">Partner links</h2>
+      <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+        Martinic Audio and DistroKid have no catalogue, so these two pasted links are the only
+        monetisation their pages have. A link that is not on an Impact tracking host is ignored
+        rather than used, which earns nothing and looks exactly like working, so it is reported
+        here rather than left to a log nobody reads.
+      </p>
+
+      <ul className="space-y-2">
+        {links.map((link) => (
+          <li key={link.slug} className="flex items-start gap-2 text-sm">
+            {link.tracked ? (
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--money)]" aria-hidden="true" />
+            ) : (
+              <TriangleAlert
+                className={`mt-0.5 h-4 w-4 shrink-0 ${
+                  link.configured ? "text-[var(--red)]" : "text-[var(--muted-foreground)]"
+                }`}
+                aria-hidden="true"
+              />
+            )}
+            <span>
+              <strong className="text-[var(--text)]">{link.name}</strong>{" "}
+              <span className="text-[var(--muted-foreground)]">{link.verdict}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

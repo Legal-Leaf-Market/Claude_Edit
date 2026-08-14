@@ -5,6 +5,8 @@ import { ArrowLeft } from "lucide-react"
 import { PEDALS, pedalBySlug } from "@/lib/pedals"
 import { SLOT_BY_ID } from "@/lib/chain"
 import { StompLink } from "@/components/ui/stomp"
+import { CircuitFigure } from "@/components/circuit-figure"
+import { CitationBlock } from "@/components/citation"
 
 /** Every pedal page is static: the dataset is a file, so there is nothing to revalidate. */
 export function generateStaticParams() {
@@ -64,7 +66,31 @@ export default async function PedalPage({ params }: { params: Promise<{ slug: st
         <p className="mt-4 text-lg leading-relaxed text-[var(--dim)]">{pedal.summary}</p>
       </header>
 
-      <div className="mt-10 space-y-8">
+      {/*
+        The figure sits above the prose rather than beside it, because it is an
+        illustration OF the paragraph underneath and reading the two in that
+        order is the point. It also gives the page the one thing every page here
+        was missing: something to look at that is not type.
+      */}
+      <div className="mt-10">
+        <CircuitFigure shape={pedal.shape} />
+      </div>
+
+      {/*
+        Quotes sit under the site's own description rather than over it. The page
+        makes its argument first and then shows who else says so, which keeps the
+        writing answerable for itself: a page that opens with a builder's quote is
+        borrowing authority for a claim it has not made yet.
+      */}
+      {pedal.citations?.length ? (
+        <div className="mt-8 space-y-4">
+          {pedal.citations.map((citation) => (
+            <CitationBlock key={`${citation.voiceId}-${citation.url}`} citation={citation} />
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-8 space-y-8">
         <section className="surface p-6">
           <h2 className="stencil">What the circuit does</h2>
           <p className="mt-3 leading-relaxed text-[var(--text)]">{pedal.circuit}</p>

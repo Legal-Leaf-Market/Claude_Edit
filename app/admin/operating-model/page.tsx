@@ -4,6 +4,7 @@ import { OperatingModelDashboard } from "@/components/admin/operating-model-dash
 import { isAdmin } from "@/lib/admin/gate"
 import { MaintenanceButton } from "@/components/admin/maintenance-button"
 import { IMPACT_MERCHANTS } from "@/lib/ingestion/impact-merchants"
+import { partnerLinkStatus } from "@/lib/partners"
 
 // Checked server-side before a single byte of the model goes out; an
 // unauthenticated request gets a redirect, not a page that merely hides the
@@ -42,6 +43,7 @@ export default async function OperatingModelPage() {
             catalogId: m.catalogId || null,
             envVar: m.envVar,
           }))}
+          partnerLinks={partnerLinkStatus()}
         />
       </div>
       <OperatingModelDashboard />

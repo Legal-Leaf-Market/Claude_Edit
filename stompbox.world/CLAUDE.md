@@ -43,10 +43,14 @@ components/
   brand/logo.tsx     Mark and wordmark, both drawn as paths
   ui/stomp.tsx       Stomp, StompLink, Knob: the button language
   chain-builder.tsx  The only stateful component on the site
+  circuit-figure.tsx Draws a figure. Server component, no animation
+  citation.tsx       A quote plus its source. Renders nothing without one
   site-header.tsx, site-footer.tsx, theme-toggle.tsx
   instagram-strip.tsx, pedal-card.tsx, icons/instagram-glyph.tsx
 lib/
   pedals.ts          THE dataset
+  figures.ts         Circuit figure geometry, one sampler, one grid (section 3a)
+  voices.ts          Who may be quoted, and what a citation must carry (section 2d)
   chain.ts           Slot order, ordering, notes. Pure, no React
   env.ts             Optional config only. Nothing throws
   theme.ts           Three states, dark is the default
@@ -274,6 +278,59 @@ still on your board.
 
 ---
 
+## 2d. Quoting builders, and the rule that makes it safe
+
+`lib/voices.ts` holds who may be quoted, `components/citation.tsx` renders one,
+and `citations` on an entry in `lib/pedals.ts` carries them.
+
+**WHY THIS IS ALLOWED WHEN ARTIST CREDITS ARE NOT.** Section 2 forbids "this
+pedal is on that record": a claim about a session nobody here witnessed, on a rig
+that changed between takes. A builder explaining a circuit in public, on the
+record, is a different kind of thing. It is primary source material about the
+subject of the page. The dataset still carries no artist field and
+`tests/pedals.test.ts` still asserts it.
+
+**NO QUOTE WITHOUT A CITATION A READER CAN OPEN.** The `Citation` type cannot be
+satisfied without a speaker in the registry, the source it appeared in, a date and
+an https URL, `citationProblems()` lists what is missing, and the renderer returns
+NULL rather than printing words whose source is incomplete. A test asserts every
+citation in the dataset is renderable.
+
+This is stricter than anything else here for a reason. A circuit description can
+be checked by picking up the pedal. An era is hedged to a decade on purpose. A
+quote can only be trusted or traced, so if it cannot be traced it must not be
+printed.
+
+**VERBATIM OR FLAGGED.** A tightened paraphrase inside quotation marks is a
+fabrication with a citation stapled to it, which is worse than an uncited
+paraphrase because the citation buys it trust it has not earned. Set
+`paraphrase: true` and the renderer drops the quotation marks, changes the label
+to "Sourced, in our words" and tells the reader to check the source.
+
+**ROLE IS PRINTED, AND IT IS NOT A COMPLIMENT.** A founder of a pedal company is
+an expert and an interested party at once, sometimes about their own product and
+sometimes about a competitor's. `role` says what they do so a reader can weigh the
+words, `aboutOwnProduct` says so out loud where it applies, and a test rejects a
+role that reads as praise rather than as a job. This matters because the reason a
+circuit entry carries no price and no merchant (section 2a) is so that the
+sentence calling a pedal thin is written by somebody with nothing riding on it.
+A quote is the one place an interested voice enters, so it arrives labelled.
+
+**NAMES ARE CHECKED BEFORE THEY GO IN THE REGISTRY.** A wrong name over a real
+quote misattributes somebody's words in public, which is worse than having no
+quote. Where a name is not confirmed against the company's own site or the
+person's own channel, it stays out until it is.
+
+**AND THE QUOTES THEMSELVES ARE NEVER WRITTEN HERE.** Not summarised from memory,
+not reconstructed from the gist of a video. They are transcribed from the source
+by a person who watched or read it, with the URL beside them. There is no
+automated path either: Gear Avail's guide records that YouTube's caption download
+only works for videos you own and that every transcript library gets around that
+by hitting an internal endpoint, which is the same conduct section 2 rejects for
+catalogues.
+
+---
+
 ## 3. No invented measurements
 
 Straight from Gear Avail's section 8, and it applies here in one specific
@@ -285,6 +342,59 @@ figure appears in that note.
 If real, sourced figures are ever added, they go in a field with a source
 beside them. A number typed from memory into a spec-shaped slot is worse than
 no number, because it looks like a measurement.
+
+---
+
+## 3a. The figures, and why they are drawn rather than photographed
+
+`lib/figures.ts` generates the geometry, `components/circuit-figure.tsx` draws
+it, and `shape` on each entry in `lib/pedals.ts` says which figure belongs to
+which circuit.
+
+**WHY THE SITE NEEDED THEM.** Every page argued that naming the circuit beats
+reaching for another adjective, and then showed nothing. The one claim the site
+is built on was the one claim a reader could not see. The catalogue route had
+merchant photographs and the guide, which is the actual content, had type and
+more type.
+
+**WHY DRAWN.** Two reasons and the second is the real one. The rights answer is
+that product photography belongs to whoever shot it: the catalogue may show
+merchant images because those arrive in a feed published to partners for that
+purpose, and nothing on the guide side has any such licence, so pulling a JPEG
+off a storefront is the same act section 2 rejects for a catalogue. The better
+answer is that a photo of a Tube Screamer and a photo of a RAT tell a reader
+nothing, because they are both a box with three knobs. The difference is what
+happens to the waveform, and that is drawable. A photo would have been
+decoration; this is the content.
+
+**SHAPE IS CHOSEN BY READING THE ENTRY, NEVER FROM FAMILY.** This is the rule
+most likely to be "simplified" later, and the dataset is what forbids it: a Tube
+Screamer and a RAT are both `family: "Drive"`, and their own `circuit` text says
+one rounds the peaks inside a feedback loop while the other shears them off
+against ground. Keying the picture off family would print the same drawing above
+two paragraphs that contradict it. `tests/figures.test.ts` pins that pair, and
+pins the analog against the digital delay for the same reason.
+
+**GEOMETRY IN A PURE MODULE, NOT SVG IN A COMPONENT.** Twelve hand-authored
+SVGs drift on the second edit: a different baseline here, a heavier stroke
+there, and the set stops reading as one system. One sampler on one grid makes
+them consistent by construction and testable with no renderer, which is the same
+instinct as the wordmark being stroked polylines rather than a font.
+
+**ZERO GOES WHERE ZERO IS.** A waveform swings both ways and is drawn around the
+middle. A magnitude cannot go negative, so a response curve or an envelope is
+drawn from the floor. The first version drew everything around a mid-line, which
+wasted half the frame and implied a curve could dip below an axis it never
+crosses. A test asserts every `zero: "bottom"` figure stays above its own floor.
+
+**RAILS MEAN SOMETHING.** Dashed horizontal lines appear only on the figures
+where running out of room is the subject, so a rail is never decoration. A test
+pins exactly which shapes have them.
+
+**NOTHING HERE IS A MEASUREMENT**, which is section 3 reaching into the pictures.
+Every captioned figure says on itself that it illustrates the description rather
+than tracing a specific unit. A curve that looked measured while being drawn
+would be the same dishonesty as a guessed current draw.
 
 ---
 
@@ -414,8 +524,26 @@ pedal is equally a bass, keys and studio object.
 ## 8. Hard "do not" list
 
 - Do NOT add an artist attribution field to `lib/pedals.ts`.
+- Do NOT write a quote. Ever. Transcribe it from the source with the URL beside
+  it, or leave the field empty. Words invented for a named living person are a
+  fabrication that reads exactly like a sourced quote (section 2d).
+- Do NOT put a paraphrase in quotation marks. Set `paraphrase: true` instead.
+- Do NOT add a voice to `lib/voices.ts` whose name and role have not been checked
+  against their own site or channel.
+- Do NOT drop `role` from a rendered citation, or soften it into praise. It is
+  what lets a reader weigh an interested expert's words (section 2d).
+- Do NOT scrape a transcript to source a quote. The caption API only covers
+  videos you own and the libraries that get around it hit an internal endpoint.
 - Do NOT print a precise year in the `era` field.
 - Do NOT publish a current draw, or any other measurement, that is not sourced.
+- Do NOT key a circuit figure off `family`. Two Drive pedals in this dataset do
+  opposite things to the waveform and their entries say so, so the figure is
+  chosen by reading the entry (section 3a).
+- Do NOT let a figure claim to be measured. Every captioned one says it
+  illustrates the description, and that line stays.
+- Do NOT add a photograph to the guide side. The catalogue's images come from a
+  feed published for that purpose; the guide has no such licence and its
+  pictures are drawn (section 3a).
 - Do NOT scrape a gear-attribution site to grow the dataset.
 - Do NOT use an em dash.
 - Do NOT fill anything with `--brand-gold`. It is an edge colour, muted at rest.
@@ -456,3 +584,13 @@ pedal is equally a bass, keys and studio object.
   The population is Gear Avail's `/used/effects-pedals` shelf, and a second
   opinion about it on this domain is how the two drifted the first time.
 - Do NOT make the chain notes block or auto-correct a layout.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
