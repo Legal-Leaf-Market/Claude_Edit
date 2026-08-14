@@ -263,6 +263,7 @@ lib/
   ingestion/upsert.ts       Idempotent writes, price history, run bookkeeping
   canonical/resolve.ts      Four-tier entity resolution (section 4)
   canonical/model-parse.ts  Brand/model/category from keyword-soup titles
+  canonical/merge-duplicates.ts  Folds duplicate canonical rows. Admin only (section 4)
   catalog/live-models.ts    ONE definition of what a category has in stock (section 20)
   deals/pricing.ts          Rolling median, deal threshold
   search/                   Typesense with a real Postgres fallback (section 6)
@@ -338,7 +339,7 @@ trusting the constant.
 
 ---
 
-## 4. Entity resolution: four tiers, and why the order is the order
+## 4. Entity resolution: five tiers, and why the order is the order
 
 `lib/canonical/resolve.ts`. Ordered by how much the evidence deserves trust.
 
@@ -347,6 +348,7 @@ trusting the constant.
 | 1a | GTIN | A global barcode. Hard identity. |
 | 1b | EPID | eBay's own catalogue id. Hard identity. |
 | 1c | **brand + MPN** | An MPN names one product by definition. |
+| 1d | **brand + IDENTICAL model** | Same name, character for character. Not similar: identical. |
 | 2 | brand-scoped pg_trgm on model | Probabilistic, so it sits below all identifiers. |
 | 3 | provisional row, `needs_review = true` | Last resort. |
 
@@ -357,6 +359,37 @@ the identical MPN the whole time. Adding it took the seed from 16 canonical
 rows to the correct 10, `needs_review` from 6 to 0, and deals from 1 to 4,
 because the bargains had been landing on single-listing rows with no market
 price to compare against.
+
+**TIER 1d EXISTS BECAUSE AN UNSEEN IDENTIFIER IS NOT AN UNSEEN PRODUCT.** Every
+identifier tier above used to create a row outright when its lookup missed, on
+the reasoning that a new barcode means a new instrument. That is false for a
+shop's own numbering. Shopify emits one listing per VARIANT and
+`shopify-storefront.ts` puts the variant's SKU in `mpn`, so four finishes of one
+pedal arrive carrying four part numbers nothing has ever seen, each one misses
+Tier 1c, and each one makes its own row. Jackson Audio's 1484 Twin Twelve
+Classic was published on stompbox.world four times. The tell was that the SAME
+four merged correctly when the shop left the SKU blank: whether two identical
+products became one row depended on whether somebody had filled in a box.
+
+**IDENTICAL, NOT SIMILAR, AND THAT IS THE WHOLE DESIGN.** The tempting fix is to
+let an identifier miss fall through to the fuzzy tier. Measured against this
+database's own `similarity()` at the 0.55 threshold: "DS-1 Distortion" and
+"DS-1X Distortion" score **0.82**, "Big Muff Pi" and "Little Big Muff Pi"
+**0.63**, "Tube Screamer TS9" and "Tube Screamer TS808" **0.71**. Those are
+different pedals, and they are kept apart today precisely BECAUSE they carry
+distinct part numbers. That fix would have merged all three pairs. So 1d demands
+equality and nothing looser, and a differing GTIN or EPID on the candidate
+blocks it outright. A differing MPN does NOT block it, because a disagreement
+between two shop SKUs is the exact thing being fixed.
+
+**The existing rows needed a separate fix.** Nothing re-resolves a listing that
+already has a canonical id, so the resolver change does nothing about what the
+old path already wrote. `lib/canonical/merge-duplicates.ts` folds them, behind
+`/api/admin/merge-duplicates` and two buttons: one that reports what it would
+do and writes nothing, one that does it. It applies the same rule as 1d, refuses
+any group whose hard identifiers disagree, and is idempotent. It is deliberately
+NOT part of the nightly job: everything that job does is recomputable and this
+deletes rows.
 
 Two rules that must not be relaxed:
 
@@ -370,6 +403,14 @@ Two rules that must not be relaxed:
 **Fuzzy matching is brand-scoped for the same reason.** "Standard" under Gibson
 and "Standard" under Squier are instruments an order of magnitude apart in
 price. An unscoped `similarity()` search happily merges them.
+
+**A MEASURED WARNING ABOUT THE FUZZY THRESHOLD, not acted on.** 0.55 is
+described above as conservative and the numbers in the 1d note say it is not,
+for short model names that differ by a suffix. Two listings with NO identifiers
+whose models are "DS-1 Distortion" and "DS-1X Distortion" merge today, at 0.82.
+Raising the threshold would split real matches and is a judgement call with a
+whole-catalogue blast radius, so it is written down here rather than changed
+quietly. If it is ever raised, reseed and check the counts (section 10 step 4).
 
 Paid embeddings are deliberately NOT wired up. `resolveByEmbedding()` is a
 marked stub. Structured fields carry the vast majority of rows; do not spend on
@@ -971,6 +1012,11 @@ engine.
 - Do NOT link the UI directly to `raw_url`; everything goes through `/go`.
 - Do NOT let an `inferred*` field win over an explicit one.
 - Do NOT unscope MPN or fuzzy matching from the brand.
+- Do NOT let an identifier tier create a canonical row without checking for an
+  identical brand+model first. An unseen identifier is not an unseen product,
+  and a shop's per-variant SKU produces a fresh one per colourway (section 4).
+- Do NOT relax Tier 1d from identical to similar. "DS-1 Distortion" and
+  "DS-1X Distortion" are 0.82 similar and are different pedals.
 - Do NOT publish a market price below `MIN_SAMPLE_SIZE`.
 - Do NOT let the cron guard fail open.
 - Do NOT ship a migration and the code that reads its new columns without

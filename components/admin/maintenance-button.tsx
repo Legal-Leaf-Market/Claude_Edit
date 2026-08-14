@@ -62,7 +62,120 @@ export function MaintenanceButton({
       <PartnerLinks links={partnerLinks} />
       <AndertonsButton />
       <ProbeButton />
+      <MergeDuplicatesButton />
       <RebuildButton />
+    </div>
+  )
+}
+
+type MergeReport = {
+  seconds: number
+  groups: number
+  merged: number
+  skipped: number
+  detail: string[]
+  dryRun: boolean
+}
+
+/**
+ * Fold duplicate canonical rows into one.
+ *
+ * TWO BUTTONS, AND THE ORDER IS THE POINT. Everything else on this page is
+ * recomputable: clear a median and the next run brings it back. This deletes
+ * rows, so it looks first and only acts when you press the second one, which
+ * is the same instinct as the FTP probe sitting beside the FTP pull.
+ */
+function MergeDuplicatesButton() {
+  const [state, setState] = useState<"idle" | "running" | "done" | "error">("idle")
+  const [report, setReport] = useState<MergeReport | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function run(dryRun: boolean) {
+    setState("running")
+    setError(null)
+    try {
+      const response = await fetch("/api/admin/merge-duplicates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dryRun }),
+      })
+      const body = await response.json()
+      if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`)
+      setReport(body)
+      setState("done")
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Something went wrong.")
+      setState("error")
+    }
+  }
+
+  return (
+    <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
+      <h2 className="font-display text-base font-black text-[var(--text)]">
+        Merge duplicate instruments
+      </h2>
+      <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+        Folds canonical rows that are the same instrument into one: same brand, same model,
+        character for character. It refuses any group whose barcodes or eBay ids disagree, and it
+        never merges on a name that merely resembles another. The resolver stopped making these,
+        so this is for the ones the old path already wrote. Check first, then merge.
+      </p>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => run(true)}
+          disabled={state === "running"}
+          className="stomp"
+        >
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${state === "running" ? "animate-spin" : ""}`}
+            aria-hidden="true"
+          />
+          Check what it would merge
+        </button>
+        <button
+          type="button"
+          onClick={() => run(false)}
+          disabled={state === "running"}
+          className="stomp stomp-go"
+        >
+          Merge them
+        </button>
+      </div>
+
+      {state === "done" && report && (
+        <div className="mt-3 text-sm">
+          <p className="flex items-start gap-2 text-[var(--money)]">
+            <Check className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>
+              {report.groups === 0
+                ? "No duplicates found. Nothing to do."
+                : `${report.dryRun ? "Would fold" : "Folded"} ${report.merged} row${report.merged === 1 ? "" : "s"} across ${report.groups} group${report.groups === 1 ? "" : "s"}${report.skipped > 0 ? `, leaving ${report.skipped} alone where identifiers disagree` : ""}. ${report.seconds}s.`}
+            </span>
+          </p>
+          {report.detail.length > 0 && (
+            <ul className="mt-2 space-y-1 text-xs text-[var(--muted-foreground)]">
+              {report.detail.slice(0, 30).map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+              {report.detail.length > 30 && <li>and {report.detail.length - 30} more</li>}
+            </ul>
+          )}
+          {report.dryRun && report.merged > 0 && (
+            <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+              Nothing was written. Press &quot;Merge them&quot; to apply it.
+            </p>
+          )}
+        </div>
+      )}
+
+      {state === "error" && (
+        <p className="mt-3 flex items-start gap-2 text-sm text-[var(--red)]">
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
+        </p>
+      )}
     </div>
   )
 }
