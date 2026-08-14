@@ -8,19 +8,36 @@
  * reads the published slice and renders it. One connection string, one
  * ingestion path, one taxonomy.
  *
- * WHAT CHANGED, AND WHY THE GUIDE STILL HAS NO PRICES IN IT. CLAUDE.md used
- * to forbid a price anywhere on this site, on the reasoning that an entry
- * cannot say a pedal sounds thin while quoting a price for it. That rule was
- * lifted deliberately (see CLAUDE.md section 2a), but only halfway: the
- * catalogue is its own layer, on its own route, with its own components, and
- * `lib/pedals.ts` is untouched. A circuit entry still carries no price, no
- * merchant and no artist, so the sentence that says a pedal sounds thin is
- * still written by somebody with nothing riding on it.
+ * WHAT THE SLICE IS, AS OF THIS CHANGE. It is Gear Avail's own
+ * /used/effects-pedals shelf, model by model: every pedal with at least one
+ * LIVE listing behind it, most listed first. It used to be every pedal row
+ * that had ever been ingested, ordered by price sample size, which meant this
+ * site could open on pedals whose listings had all ended, ranked above ones
+ * you could actually buy, under a heading that said "most listed first".
+ *
+ * WHY THE GUIDE STILL HAS NO PRICES IN IT. CLAUDE.md used to forbid a price
+ * anywhere on this site, on the reasoning that an entry cannot say a pedal
+ * sounds thin while quoting a price for it. That rule was lifted deliberately
+ * (see CLAUDE.md section 2a), but only halfway: the catalogue is its own
+ * layer, on its own route, with its own components, and `lib/pedals.ts` is
+ * untouched. A circuit entry still carries no price, no merchant and no
+ * artist, so the sentence that says a pedal sounds thin is still written by
+ * somebody with nothing riding on it.
  *
  * HOUSE RULE 2 APPLIES HERE: NOTHING THROWS. Gear Avail being down, slow, or
  * misconfigured must degrade this site to the guide it already was, never to
  * an error page. Every failure path returns an empty catalogue with a reason.
  */
+
+/**
+ * Cache tag on the fetch below, so `/api/revalidate` can drop it the moment
+ * Gear Avail redeploys rather than waiting out the fifteen minute window.
+ * A page revalidate alone would re-render against a still-cached response.
+ */
+export const CATALOG_TAG = "gear-avail-catalog"
+
+/** Which market a published median measures. New and used are never blended. */
+export type PriceClass = "used" | "new"
 
 export type CatalogPedal = {
   slug: string
@@ -29,20 +46,33 @@ export type CatalogPedal = {
   imageUrl: string | null
   /** Null when the sample was too thin to mean anything. Print the reason, not a guess. */
   marketPriceCents: number | null
+  /**
+   * Which market `marketPriceCents` measures, null when there is no price.
+   *
+   * Load bearing rather than decoration: Gear Avail measures new and used
+   * separately and falls back to the new median for gear only new retailers
+   * stock. Printing that number under the words "typical used" would be this
+   * site stating a fact its own source does not.
+   */
+  marketPriceClass: PriceClass | null
+  /** Listings behind `marketPriceCents`, in its own class. */
   sampleSize: number
+  /** Live listings on Gear Avail. At least 1: that is what puts a pedal here. */
   listingCount: number
   type: string
 }
 
 export type CatalogResult = {
   pedals: CatalogPedal[]
-  /** Below this many listings Gear Avail withholds a market price. */
+  /** Below this many listings in one class, Gear Avail withholds that median. */
   minSample: number
+  /** Every pedal with live stock, not just the ones on this page of results. */
+  total: number
+  /** The Gear Avail page this slice comes from, absolute. */
+  browseUrl: string
   /** Set when the catalogue could not be read. The page says so and shows the guide. */
   error: string | null
 }
-
-const EMPTY: CatalogResult = { pedals: [], minSample: 3, error: null }
 
 /**
  * Origin of the sister site, no trailing slash. Falls back to production for
@@ -54,13 +84,48 @@ export const GEAR_AVAIL_URL = (process.env.GEAR_AVAIL_URL || "https://gearavail.
   "",
 )
 
+/**
+ * Where the catalogue comes from, used when the response does not say.
+ * The endpoint sends its own path so that a route rename over there cannot
+ * leave a dead link here, and this is the value from the day it was written.
+ */
+const DEFAULT_BROWSE_PATH = "/used/effects-pedals"
+
+const EMPTY: CatalogResult = {
+  pedals: [],
+  /* Gear Avail's real floor (MIN_SAMPLE_SIZE), used only when the response
+     omits it. It read 3 here for a while and the page printed that number in
+     a sentence, which was this site stating a rule the sister site does not
+     follow. */
+  minSample: 5,
+  total: 0,
+  browseUrl: `${GEAR_AVAIL_URL}${DEFAULT_BROWSE_PATH}`,
+  error: null,
+}
+
 /** The product page on Gear Avail, which is where buying actually happens. */
 export function gearAvailProductUrl(slug: string): string {
   return `${GEAR_AVAIL_URL}/gear/${slug}`
 }
 
+/** The whole live pedal shelf on Gear Avail, for the rows that do not fit here. */
+export function gearAvailPedalsUrl(): string {
+  return `${GEAR_AVAIL_URL}${DEFAULT_BROWSE_PATH}`
+}
+
+/** How to label a median in one word, or null when there is nothing to label. */
+export function marketPriceLabel(priceClass: PriceClass | null): string | null {
+  if (priceClass === "used") return "typical used"
+  if (priceClass === "new") return "typical new"
+  return null
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
+}
+
+function priceClassOf(raw: unknown): PriceClass | null {
+  return raw === "used" || raw === "new" ? raw : null
 }
 
 /**
@@ -74,27 +139,35 @@ function toPedal(raw: unknown): CatalogPedal | null {
   if (typeof slug !== "string" || !slug) return null
   if (typeof brand !== "string" || typeof model !== "string") return null
   const cents = raw.marketPriceCents
+  const marketPriceCents = typeof cents === "number" && Number.isFinite(cents) ? cents : null
   return {
     slug,
     brand,
     model,
     imageUrl: typeof raw.imageUrl === "string" ? raw.imageUrl : null,
-    marketPriceCents: typeof cents === "number" && Number.isFinite(cents) ? cents : null,
+    marketPriceCents,
+    /* An older endpoint sends no class at all. Falling back to "used" would
+       be a guess printed as a label, so an unlabelled price stays
+       unlabelled and the card prints the number on its own. */
+    marketPriceClass: marketPriceCents === null ? null : priceClassOf(raw.marketPriceClass),
     sampleSize: typeof raw.sampleSize === "number" ? raw.sampleSize : 0,
     listingCount: typeof raw.listingCount === "number" ? raw.listingCount : 0,
     type: typeof raw.type === "string" ? raw.type : "other",
   }
 }
 
-export async function fetchCatalog(limit = 60): Promise<CatalogResult> {
+export async function fetchCatalog(limit = 120): Promise<CatalogResult> {
   const url = `${GEAR_AVAIL_URL}/api/catalog/pedals?limit=${encodeURIComponent(String(limit))}`
   try {
     const response = await fetch(url, {
       headers: { Accept: "application/json" },
-      /* Rebuilt hourly rather than per request. The catalogue moves on an
-         ingestion cron, not on a page view, and an hour-stale market price is
-         worth more than a slow page. */
-      next: { revalidate: 3600 },
+      /* Fifteen minutes, matching the page that renders it. A longer window
+         here would quietly win: the page can rebuild every fifteen minutes
+         and still be handed an hour-old copy of this fetch, including an
+         hour-old copy of a failure.
+         The tag is the escape hatch from waiting out that window at all:
+         /api/revalidate drops it when the sister site redeploys. */
+      next: { revalidate: 900, tags: [CATALOG_TAG] },
     })
     if (!response.ok) {
       /* Read the reason out of the body when there is one. A 503 on its own
@@ -122,7 +195,18 @@ export async function fetchCatalog(limit = 60): Promise<CatalogResult> {
     }
     const minSample = typeof body.minSample === "number" ? body.minSample : EMPTY.minSample
     const pedals = body.pedals.map(toPedal).filter((p): p is CatalogPedal => p !== null)
-    return { pedals, minSample, error: null }
+    const browsePath = typeof body.browsePath === "string" ? body.browsePath : DEFAULT_BROWSE_PATH
+    return {
+      pedals,
+      minSample,
+      /* A total below what actually arrived would print "showing 60 of 12",
+         so the count in hand is the floor. */
+      total: Math.max(typeof body.total === "number" ? body.total : 0, pedals.length),
+      browseUrl: browsePath.startsWith("/")
+        ? `${GEAR_AVAIL_URL}${browsePath}`
+        : `${GEAR_AVAIL_URL}${DEFAULT_BROWSE_PATH}`,
+      error: null,
+    }
   } catch (error) {
     return { ...EMPTY, error: error instanceof Error ? error.message : "Catalogue unreachable" }
   }

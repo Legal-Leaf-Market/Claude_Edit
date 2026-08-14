@@ -3,8 +3,20 @@
 A plain guide to guitar effects pedals: what each circuit actually does to your
 signal, what you can hear as a result, and what order to put them in.
 
-Nothing here is for sale. There are no affiliate links, no prices and no
-catalogue, which is what lets an entry say a pedal sounds thin into a clean amp.
+Nothing here is for sale, and the circuit guide carries no price, no merchant
+and no affiliate link, which is what lets an entry say a pedal sounds thin into
+a clean amp.
+
+`/catalog` is the one place a price appears, and it is a separate layer: the
+live pedal shelf from the sister site Gear Avail, read over HTTP from
+`/api/catalog/pedals` and rendered here. It holds no database client and no
+credential, and it never touches `lib/pedals.ts`. See CLAUDE.md section 2a.
+
+`/board` puts those same real pedals on a pedalboard beside the documented
+circuits, in the conventional signal order, with the notes explaining what that
+order does. A catalogue pedal carries no price onto the board and no claim
+about its circuit: the notes say out loud which pedals this guide has not read,
+because silence would read as a clean bill of health. See CLAUDE.md section 2c.
 
 ## Running it
 
@@ -31,10 +43,22 @@ npm run build       # static build, every page prerendered
 | `/pedals` | The full directory, grouped in signal order rather than alphabetically |
 | `/pedals/[slug]` | One circuit: what it does, what to listen for, where it goes, its controls |
 | `/chain` | The conventional signal chain with the reason for every position, plus a builder |
+| `/board` | Put real pedals on a pedalboard, stomp them on and off, send the board as a link |
+| `/catalog` | Gear Avail's live pedal shelf, most listed first, with the typical price where there is one |
 | `/about` | What the site is, how entries are written, and what it deliberately does not do |
 
 Every page is statically prerendered. The dataset is a TypeScript file, so a
-content change is a code change and there is nothing to revalidate.
+content change is a code change and there is nothing to revalidate. `/catalog`
+is the exception: it revalidates every fifteen minutes, because its contents
+come from the sister site's ingestion rather than from this repository.
+
+There is one route handler, `POST /api/revalidate`, which refreshes `/catalog`
+when Gear Avail redeploys. Both Vercel projects build from the same commit at
+the same time, so this build can prerender against the deployment that is being
+replaced and ship numbers that are one version behind. Vercel's
+`deployment.succeeded` webhook (or `deployment.ready`, either works) calls this
+route and the next request rebuilds the page. It is optional: unset means 503 and the fifteen minute window is the
+only refresh. Setup is one dashboard step, written out in `.env.example`.
 
 ## Deployment
 
@@ -91,19 +115,29 @@ app/
   layout.tsx         Fonts, theme init script, header and footer
   page.tsx           Home
   pedals/            Directory and per-pedal pages
-  chain/             Signal chain order, and the builder island
+  chain/             Signal chain order, and the chip builder island
+  board/             The pedalboard toy (section 2c)
+  catalog/           Gear Avail's live pedal shelf (section 2a)
+  api/revalidate/    Refreshes the catalogue when the sister site redeploys
   about/
   icon.svg           The favicon: the flat build of the mark
   robots.ts, sitemap.ts
 components/
   brand/logo.tsx     The mark and the wordmark, both drawn as paths
   ui/stomp.tsx       Stomp, StompLink and Knob: the button language
-  chain-builder.tsx  The only stateful component on the site
+  chain-builder.tsx  The chip picker on /chain
+  board-builder.tsx  The board on /board
+  pedal-enclosure.tsx  One pedal, drawn as the die-cast box it is
+  pedal-photo.tsx    Catalogue photos, with a drawn fallback
+  catalog-card.tsx   Somebody else's stock, deliberately not PedalCard
   site-header.tsx, site-footer.tsx, theme-toggle.tsx
   instagram-strip.tsx, pedal-card.tsx
 lib/
   pedals.ts          THE dataset. Hand written, see the header comment
   chain.ts           Slot order, ordering and the notes engine. Pure, no React
+  board.ts           What can go on a board, in what order, and the link format
+  catalog.ts         The sister site's shelf, read over HTTP. Nothing throws
+  revalidate.ts      The two cache calls, behind a testable seam
   env.ts             Optional config, trimmed, nothing throws
   theme.ts           Three states, dark is the default
   nav.ts             THE nav tree. Header, footer and sitemap all read it
@@ -119,14 +153,17 @@ parentheses. `tests/house-style.test.ts` enforces it across the whole source
 tree, and builds the forbidden character from its code point so the test cannot
 exempt itself.
 
-**Gold is an edge, never a fill.** The palette is a neutral graphite scale, one
+**Gold is an edge, never a fill.** The palette is a deep royal blue scale, one
 saturated brass gold used as a hairline border, and one bright LED green
-reserved for things that are lit. Filling anything with `--brand-gold` breaks
-it. Gold is muted at rest and earned by `:hover` and by the one primary action
+reserved for things that are lit. It is NOT graphite, and this sentence used to
+say it was: the blue is a deliberate decision that matches the Instagram
+account, recorded in CLAUDE.md section 5, so an old comment mentioning grey is
+not a reason to change anything back. Filling anything with `--brand-gold`
+breaks it. Gold is muted at rest and earned by `:hover` and by the one primary action
 per view, so a toolbar of eight buttons is not eight gold rings.
 
-**The metal tokens never change between themes and are never tinted.** A pedal
-enclosure is a dark object whatever it is standing on. Surfaces flip between
+**The metal tokens never change between themes.** A pedal enclosure is the same
+object whatever it is standing on. Surfaces flip between
 light and dark; buttons do not, and that is what stops the interface feeling
 like two interfaces.
 
@@ -159,8 +196,8 @@ button press is 2px, so it reads as a switch bottoming out.
 
 ## Design system
 
-The look is a rack of gear rather than a web app: a genuinely neutral graphite
-scale, brass as an edge, and one LED green. Buttons are stompbox faces
+The look is a rack of gear rather than a web app: a deep royal blue scale,
+brass as an edge, and one LED green. Buttons are stompbox faces
 (`.stomp`), icon controls are knurled knobs (`.knob`), the theme switch is a
 three-way pickup selector (`.pickup`), and the hero is a 19-inch rack panel
 (`.rack`). The mark is a die-cast enclosure with an LED and a footswitch, drawn

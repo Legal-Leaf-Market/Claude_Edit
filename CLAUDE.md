@@ -244,6 +244,7 @@ app/
     auth/[...all]           Better Auth
     cron/*                  Ingest per source, refresh-deals, weekly-digest.
                             All fail closed on CRON_SECRET
+    catalog/pedals          The pedal shelf published to stompbox.world (section 20)
 lib/
   env.ts                    Every integration exposes isConfigured; nothing throws
   nav.ts                    THE nav tree. Header, mobile sheet and footer all read it
@@ -262,6 +263,7 @@ lib/
   ingestion/upsert.ts       Idempotent writes, price history, run bookkeeping
   canonical/resolve.ts      Four-tier entity resolution (section 4)
   canonical/model-parse.ts  Brand/model/category from keyword-soup titles
+  catalog/live-models.ts    ONE definition of what a category has in stock (section 20)
   deals/pricing.ts          Rolling median, deal threshold
   search/                   Typesense with a real Postgres fallback (section 6)
   queue/                    BullMQ; the OTHER way to run ingestion (section 7)
@@ -880,15 +882,40 @@ are load bearing rather than taste:
 - gold is MUTED at rest and earned by `:hover` and by the one primary action
   per view. A toolbar of eight buttons must not be eight gold rings
 
-**The mark is drawn, not typeset.** A pedal enclosure with a brass silkscreen
-edge, a status LED and a single-cutaway guitar on the face. The letterforms are
-stroked polylines with mitred joins on a 100-unit cap height, so the wordmark
-needs no font, renders identically everywhere and survives being inlined into a
-favicon. Two drafts were thrown away and both failures are worth remembering:
-chamfering the enclosure into an octagon read as a road sign at tab size, and
-cutting two deep notches either side of the neck for a double cutaway produced,
-unmistakably, a cat. A guitar's shoulders sit HIGH and the cutaway is a shallow
-scoop, not a V.
+**The mark is drawn, not typeset.** `GearAvailMark` is a tuning fork in a ring:
+two tines, a stem, a circle. It was the original mark, it was replaced during
+the redesign by a pedal enclosure containing a guitar, and it was put back
+because it survives 16 pixels and because a fork means pitch, which is every
+instrument here, where a guitar in a stompbox means one shelf of a shop that
+also sells drums, mics, keys and PA. The enclosure drawing is kept as
+`GearAvailEnclosureMark` for the board builder, where the subject genuinely is a
+stompbox and there is room to render it. The letterforms are stroked polylines
+with mitred joins on a 100-unit cap height, so the wordmark needs no font,
+renders identically everywhere and survives being inlined into a favicon.
+
+**THE FAVICON IS A PEDAL, AND THE HEADER MARK IS NOT.** `app/icon.svg` is an
+enclosure with the fork silkscreened on its face, which the owner asked for
+directly, so the argument in `logo.tsx` for the bare fork is not a reason to
+change it back. The two still read as one identity because the fork is on the
+face, which is where a pedal prints its graphic anyway. It is drawn in literal
+hex rather than `var()`, because a favicon is fetched outside the document and
+every custom property would fall back to nothing.
+
+**Every draft that was thrown away failed in the same direction: clever
+geometry becomes an accident at tab size.** Chamfering the enclosure into an
+octagon read as a road sign. Two deep notches either side of a neck, for a
+double cutaway, produced unmistakably a cat (a guitar's shoulders sit HIGH and
+the cutaway is a shallow scoop, not a V). Two knobs above a footswitch read as
+two eyes above a mouth. A fork and a switch drawn as two separate small marks
+both dissolved, which is why the fork's stem runs down into the switch: one
+graphic, one weight, and a heavier stroke than looks right at 96px. Draw the
+candidates at 16, 20, 32 and 96 on light AND dark browser chrome before
+committing one. Every failure above was invisible at the size it was drawn.
+
+**The sister site ships this same enclosure silhouette in royal blue.** Two
+projects in one repo must not put the same picture in two tabs, so Gear Avail's
+is graphite and carries the fork, and stompbox.world's is blue with a bare
+footswitch.
 
 **Two tokens are contrast-critical and are not interchangeable with the brand
 hues.** Bright gold is about 1.8:1 on white and bright green about 1.9:1, both
@@ -997,6 +1024,13 @@ engine.
 - Do NOT port the pedalboard planner into a game engine. It has to stay
   indexable, keep `/go` in the DOM, share the TypeScript engines with the
   server, and be reachable by a screen reader (section 16).
+- Do NOT answer "what is in stock in this category" with a second query. There
+  is one, `liveModels()`, and the last time two existed the published shelf
+  stocked itself with sold-out gear (section 20).
+- Do NOT publish a per-listing price, a merchant name or a deep link through
+  `/api/catalog/pedals`. The medians are ours; the feed rows are not.
+- Do NOT blend the new and used medians into one unlabelled number on the way
+  out of this site. Send both, and say which one the headline is.
 - Do NOT point the test suite at a database you care about; it truncates.
 
 ---
@@ -1051,3 +1085,84 @@ section 1 gives. A configured value that is not on an Impact tracking host is
 IGNORED with a warning rather than used, and unset means the page links to the
 merchant's own site untracked. Earning nothing beats routing a shopper through
 a tracker that credits nobody, which is the rule every network here follows.
+
+---
+
+## 20. The pedal shelf published to stompbox.world
+
+`lib/catalog/live-models.ts`, `/api/catalog/pedals`. The sister site
+(`stompbox.world/`, its own Vercel project in this repo) is a hand-written
+guide to what pedal circuits do, and it now carries the pedal slice of this
+catalogue. It holds no database client and no credential: it reads that one
+endpoint over HTTP and renders it. One connection string, one ingestion path,
+one taxonomy.
+
+**`/used/effects-pedals` IS THE DEFINITION, and the endpoint used to disagree
+with it.** That page joins `canonical_gear` to ACTIVE listings, so a model with
+nothing live in it is simply not on it. The endpoint ran its own SELECT over
+`canonical_gear` alone and ordered by `price_sample_size`, so it published
+models whose listings had all ended and ranked them ABOVE models a shopper
+could buy. That is not a rounding error: the price sample deliberately counts
+listings that ended inside the last 90 days (section 8), which is right for
+measuring a market and wrong for stocking a shelf, so the staler a model was
+the higher it sorted. The sister site printed the result under "most listed
+first". Both surfaces read `liveModels()` now, and the join is the definition:
+no active listing, no row. Section 7's "never fork the logic", applied to a
+query rather than to a trigger.
+
+**The order is live listing count**, which is what both pages claim it is.
+
+**New and used cross the wire separately**, each with its own sample size, plus
+`marketPriceClass` naming which market the headline number measures. The old
+response was `COALESCE(avg_used, avg_new)` gated on the USED sample size, which
+is section 8 broken twice in one line: it withheld the price of every new-only
+pedal (its used sample is zero), and anything it did publish arrived on a card
+labelled "typical used" whether or not it was. The used-first rule lives in
+`headlineMarket()` and is called, not restated.
+
+**`minSample` is `MIN_SAMPLE_SIZE`, not a number typed into the route.** It
+read 3 while the real floor was 5, and the sister site printed that 3 in a
+sentence explaining its own honesty policy.
+
+**The projection is where the redistribution rule is enforced.**
+`liveModels()` returns the cheapest live asking price because this site's own
+pages print it; the endpoint drops it. Merchant names, deep links and
+per-listing prices carry partner terms that differ per feed, and republishing
+them from a second domain is the quiet redistribution those terms restrict. The
+medians are our own aggregate, computed from listings we ingested, and are ours
+to publish. A shopper who wants to buy is sent to `/gear/[slug]`, where the
+attribution and the click accounting already work. There is a test asserting
+the response carries no per-listing price.
+
+**No region filter, deliberately.** Section 15 hides stores that cannot ship to
+a given shopper, from a geo guess or a cookie. A cached endpoint feeding a
+statically built sister site has neither, so it answers for an UNKNOWN region,
+which section 15 already defines as showing everything. The filtering happens
+when the shopper arrives here.
+
+**Nothing over there may throw.** The endpoint answers 503 with a reason rather
+than 500, and the sister site degrades to the guide it already was and prints
+the reason. A bare 503 reads as "the sister site is down", which is the wrong
+thing to go looking at when the real cause is a query that no longer matches
+the schema, and that confusion has already cost a day once.
+
+**A DEPLOY OF THIS PROJECT CAN SHIP STALE NUMBERS ON THE OTHER DOMAIN, and
+nothing in this repository will show it.** Both Vercel projects build from the
+same commit at the same time, and stompbox.world prerenders its catalogue page
+by fetching this endpoint during its build, so a commit that changes both can
+race itself: the sister site's build finishes first and bakes in a response
+from the deployment being replaced. The change that made the endpoint read the
+live shelf shipped exactly that, and the page sat there stating the previous
+version's numbers, which reads like a failed deploy rather than a cache.
+
+It corrects itself within fifteen minutes, and stompbox.world now also exposes
+`POST /api/revalidate` for Vercel to call when THIS project's production
+deployment succeeds, which closes the window. **No code here implements that,
+and none should.** The caller is Vercel's own webhook, configured once in the
+team dashboard, so Gear Avail still knows nothing about its sister site and the
+dependency keeps running one way. The setup and the reasoning are in
+`stompbox.world/CLAUDE.md` section 2b.
+
+The practical consequence for anyone shipping a change to this endpoint: check
+what stompbox.world is actually rendering afterwards, rather than assuming a
+green deploy means the published slice is current over there.

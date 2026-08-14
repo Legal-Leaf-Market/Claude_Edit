@@ -10,14 +10,32 @@ const nextConfig = {
   outputFileTracingRoot: import.meta.dirname,
 
   /*
-   * This site has no database, no image feeds and no user uploads, so there is
-   * no remotePatterns block here and there should not be one. Every image on
-   * the site is either drawn as inline SVG or served from /public. If a future
-   * change needs a remote image, add the specific host rather than opening
-   * this up, the same instinct as the outbound-link allowlist on the sister
-   * project.
+   * TWO HOSTS, NAMED, AND THAT IS THE WHOLE ALLOWLIST.
+   *
+   * This block used to say there should not be one, on the grounds that every
+   * image here is inline SVG or served from /public. That stopped being true
+   * when the catalogue landed: Gear Avail sends a product photo for every
+   * pedal and the card was throwing it away, so a shelf of real gear rendered
+   * as a wall of text. These are the two hosts those photos actually come
+   * from, counted off the live response rather than guessed:
+   *
+   *   cdn.shopify.com       the small independent storefronts (most of them)
+   *   upload.wikimedia.org  Wikimedia Commons, used for the seeded models
+   *
+   * NAME THE HOST, NEVER OPEN THE PATTERN. Same instinct as the outbound-link
+   * allowlist on the sister project: the URL arrives over HTTP from another
+   * service, so a misparsed feed row must not turn this site's image
+   * optimizer into an open proxy for fetching arbitrary remote content. If a
+   * new source starts serving photos from somewhere else, add that host here
+   * and nothing will render from it until you do.
    */
-  images: { formats: ["image/avif", "image/webp"] },
+  images: {
+    formats: ["image/avif", "image/webp"],
+    remotePatterns: [
+      { protocol: "https", hostname: "cdn.shopify.com" },
+      { protocol: "https", hostname: "upload.wikimedia.org" },
+    ],
+  },
 
   async headers() {
     return [

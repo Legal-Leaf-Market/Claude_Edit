@@ -60,12 +60,39 @@ function instagramPermalinks(value: string | undefined): string[] {
 const instagramHandle = str(process.env.INSTAGRAM_HANDLE) ?? "stomp_box_world"
 const instagramPostUrls = instagramPermalinks(process.env.INSTAGRAM_POST_URLS)
 
+/*
+ * The catalogue refresh hook (/api/revalidate).
+ *
+ * NOT A BREACH OF THE NO CREDENTIALS RULE, and it is worth saying why in the
+ * file that rule is written about. That rule exists so this project has no way
+ * INTO the sister site's database and nothing worth stealing from its
+ * dashboard. These two strings only prove that an inbound request is genuine.
+ * They open nothing, they reach nothing, and unset is still fully supported:
+ * the route answers 503 and the catalogue keeps refreshing on its own timer.
+ */
+const webhookSecret = str(process.env.VERCEL_WEBHOOK_SECRET)
+const manualSecret = str(process.env.REVALIDATE_SECRET)
+
 export const env = {
   social: {
     instagramHandle,
     instagramPostUrls,
     /** Posts are optional. The handle always has a value, so the follow link always works. */
     hasEmbeds: instagramPostUrls.length > 0,
+  },
+  revalidation: {
+    /** Vercel signs webhook bodies with this. The normal path. */
+    webhookSecret,
+    /** Bearer token for triggering a refresh by hand. Optional second path. */
+    manualSecret,
+    /**
+     * The VERCEL PROJECT NAME whose production deploys refresh the catalogue,
+     * which is not the same string as the domain: the aggregator's project is
+     * still called musictime, from before it was Gear Avail.
+     */
+    sisterProject: str(process.env.GEAR_AVAIL_PROJECT) ?? "musictime",
+    /** Unset is supported. It means the fifteen minute window is the only refresh. */
+    isConfigured: Boolean(webhookSecret || manualSecret),
   },
 }
 

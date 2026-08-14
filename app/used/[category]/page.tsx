@@ -1,13 +1,12 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { sql } from "drizzle-orm"
 import { CategoryHero } from "@/components/category-hero"
 import { FilterSidebar } from "@/components/filter-sidebar"
 import { ListingCard } from "@/components/listing-card"
 import { Pagination } from "@/components/pagination"
 import { SortSelect } from "@/components/sort-select"
-import { db } from "@/lib/db"
+import { liveModels } from "@/lib/catalog/live-models"
 import {
   CATEGORY_INTRO,
   CATEGORY_KICKER,
@@ -49,27 +48,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-/** Most-listed models in this category, which become the internal link mesh. */
+/**
+ * Most-listed models in this category, which become the internal link mesh.
+ *
+ * The query lives in lib/catalog/live-models.ts because this page is not the
+ * only thing that asks what a category actually has in stock: the pedal slice
+ * published to stompbox.world asks the same question, and when it asked it
+ * with its own SELECT the two answers drifted. One definition, two readers.
+ */
 async function popularModels(category: string) {
-  const result = await db.execute<{
-    slug: string
-    brand: string
-    model: string
-    listings: number
-    cheapest: number | null
-  }>(sql`
-    SELECT g.slug, g.brand, g.model,
-           COUNT(l.id)::int AS listings,
-           MIN(l.price_cents)::int AS cheapest
-    FROM canonical_gear g
-    JOIN marketplace_listings l
-      ON l.canonical_gear_id = g.id AND l.listing_status = 'active'
-    WHERE g.category = ${category}
-    GROUP BY g.slug, g.brand, g.model
-    ORDER BY listings DESC, g.brand ASC
-    LIMIT 24
-  `)
-  return result.rows
+  return liveModels({ category, limit: 24 })
 }
 
 export default async function CategoryPage({ params, searchParams }: PageProps) {
@@ -144,7 +132,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
                     {model.brand} {model.model}
                   </span>
                   <span className="shrink-0 text-xs text-[var(--muted-foreground)]">
-                    {model.cheapest != null ? `from ${formatPrice(Number(model.cheapest))}` : ""}
+                    {model.cheapestCents != null ? `from ${formatPrice(model.cheapestCents)}` : ""}
                   </span>
                 </Link>
               </li>
