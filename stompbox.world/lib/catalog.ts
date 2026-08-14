@@ -29,6 +29,13 @@
  * an error page. Every failure path returns an empty catalogue with a reason.
  */
 
+/**
+ * Cache tag on the fetch below, so `/api/revalidate` can drop it the moment
+ * Gear Avail redeploys rather than waiting out the fifteen minute window.
+ * A page revalidate alone would re-render against a still-cached response.
+ */
+export const CATALOG_TAG = "gear-avail-catalog"
+
 /** Which market a published median measures. New and used are never blended. */
 export type PriceClass = "used" | "new"
 
@@ -157,8 +164,10 @@ export async function fetchCatalog(limit = 120): Promise<CatalogResult> {
       /* Fifteen minutes, matching the page that renders it. A longer window
          here would quietly win: the page can rebuild every fifteen minutes
          and still be handed an hour-old copy of this fetch, including an
-         hour-old copy of a failure. */
-      next: { revalidate: 900 },
+         hour-old copy of a failure.
+         The tag is the escape hatch from waiting out that window at all:
+         /api/revalidate drops it when the sister site redeploys. */
+      next: { revalidate: 900, tags: [CATALOG_TAG] },
     })
     if (!response.ok) {
       /* Read the reason out of the body when there is one. A 503 on its own

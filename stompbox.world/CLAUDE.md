@@ -137,6 +137,64 @@ sentence explaining why it withholds prices. Do not type the number in again.
 **The page shows a slice and says so.** It renders 120 and links the rest to
 Gear Avail rather than paginating a copy of somebody else's catalogue.
 
+---
+
+## 2b. The refresh hook, and the race it exists for
+
+`app/api/revalidate/route.ts`, `lib/revalidate.ts`.
+
+**THE TWO PROJECTS BUILD AT THE SAME TIME, AND THIS ONE READS THE OTHER.**
+A commit that changes the endpoint over there and this page over here races
+itself: this build fetches `gearavail.com/api/catalog/pedals` to prerender
+`/catalog`, and if it wins the race it bakes in a response from the deployment
+that is being replaced. That is not hypothetical. It happened on the change
+that made the catalogue read the live shelf: `/catalog` shipped saying "81
+pedals" and "at least 3 listings" from the old endpoint while the new one was
+answering 48 and 5, and it read exactly like a deploy that had not worked.
+
+It corrects itself in fifteen minutes, because that is what `revalidate` on the
+page is for. This route closes the window. Vercel calls it when the aggregator's
+production deployment succeeds, the cached fetch is dropped, and the next
+request renders against the endpoint that is actually live.
+
+- **The coupling still runs ONE WAY.** No code shipped to Gear Avail for this
+  and none should. The caller is Vercel's own webhook, configured once in the
+  dashboard, so that project still knows nothing about this one.
+- **It fails CLOSED.** No secret configured means 503, and a bad signature
+  means 401. An open route here would let anyone on the internet make this site
+  rebuild a page on demand. Unset is still a supported state: it means the
+  fifteen minute window is the only refresh, which is where the site was.
+- **The secrets are not credentials for anything**, which is why they do not
+  break the rule in section 8 against putting one in this project. That rule is
+  about not giving this site a way INTO the sister site's data. These two
+  strings only prove that an inbound request is genuine, and they open nothing.
+- **A team webhook sees EVERY deployment on the account**, including this
+  site's own and every preview build, so the route filters on event type,
+  production target and project name. `deployment.created` is deliberately not
+  in the list: it fires when the build starts, which is the moment that causes
+  the problem rather than the one that fixes it.
+- **An unrecognised payload refreshes anyway.** Over-refreshing costs one page
+  regeneration nobody can see; under-refreshing puts a stale catalogue back on
+  the site looking like a broken deploy. The two are not equal, so a shape this
+  code has never seen gets the benefit of the doubt.
+- **The tag matters as much as the path.** `revalidatePath` alone would
+  re-render the page against a fetch that is still inside its own fifteen
+  minute window, which changes nothing. The fetch carries `CATALOG_TAG` and
+  the route drops both.
+- **Next 16 wants a cacheLife profile as `revalidateTag`'s second argument**,
+  and it decides how long the old entry may still be served. A profile like
+  `"max"` would permit precisely the stale read this route exists to prevent,
+  so it passes `{ expire: 0 }`. `updateTag` is the documented way to say
+  "immediately" and it throws in a route handler by design.
+- **The two calls live in `lib/revalidate.ts` rather than in the route**,
+  because `next/cache` is an external package that vitest cannot mock and that
+  throws an invariant when called outside a request. A first-party seam is what
+  makes the route testable at all.
+
+Setting the webhook up is a one-time dashboard step and it is written out in
+`.env.example`. Nothing here works until `VERCEL_WEBHOOK_SECRET` is set on this
+project, and nothing here breaks while it is not.
+
 **House rule 2 governs the whole layer: nothing throws.** Gear Avail being
 down, slow or shipping an unrecognised shape degrades this site to the guide it
 already was, with the reason printed. It never becomes an error page. There are
@@ -297,7 +355,12 @@ pedal is equally a bass, keys and studio object.
   is what still lets an entry say a pedal sounds thin (section 2a).
 - Do NOT add a database client or a credential to this project. The catalogue
   is read from the sister site over HTTP, and that is the whole reason this
-  one is cheap to run and safe to hand to anyone.
+  one is cheap to run and safe to hand to anyone. The refresh hook's two
+  secrets are not an exception to this: they only verify an inbound request
+  and they reach nothing (section 2b).
+- Do NOT let `/api/revalidate` fail open. Unconfigured means 503, not "allow".
+- Do NOT ship code to Gear Avail for the refresh hook. The caller is Vercel's
+  webhook, and the sister site knowing nothing about this one is the point.
 - Do NOT let a catalogue failure become an error page.
 - Do NOT label a market price "used" without checking `marketPriceClass`. New
   and used are two markets over there and the response says which one it sent.
