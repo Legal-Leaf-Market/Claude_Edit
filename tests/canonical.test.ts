@@ -262,6 +262,119 @@ describe("Tier 2: brand-scoped fuzzy match", () => {
 /*  Tier 3                                                                    */
 /* -------------------------------------------------------------------------- */
 
+/* -------------------------------------------------------------------------- */
+/*  Tier 1d                                                                   */
+/* -------------------------------------------------------------------------- */
+
+describe("Tier 1d: same brand, identical model", () => {
+  /**
+   * The bug this tier was added for, reproduced from the live shelf.
+   *
+   * Shopify emits one listing per VARIANT and the storefront ingester puts the
+   * variant's SKU in `mpn`, so four finishes of one pedal arrive carrying four
+   * part numbers nothing has ever seen. Each missed Tier 1c and made its own
+   * canonical row, and stompbox.world published Jackson Audio's 1484 Twin
+   * Twelve Classic four times in a row.
+   */
+  it("collapses a shop's per-variant SKUs onto one instrument", async () => {
+    const skus = ["JA-1484-BLK", "JA-1484-GLD", "JA-1484-WHT", "JA-1484-RED"]
+    const results = []
+    for (const sku of skus) {
+      results.push(
+        await resolveCanonicalGear(
+          listing({
+            title: "Jackson Audio 1484 Twin Twelve Classic",
+            brand: "Jackson",
+            mpn: sku,
+          }),
+        ),
+      )
+    }
+
+    const rows = await db.select().from(canonicalGear)
+    expect(rows).toHaveLength(1)
+
+    // The first made the row; the rest attached to it, and the tier says so.
+    expect(results[0]?.created).toBe(true)
+    for (const later of results.slice(1)) {
+      expect(later?.created).toBe(false)
+      expect(later?.tier).toBe("model")
+    }
+  })
+
+  it("does not need an identifier to merge, and did not before", async () => {
+    // The same four with the SKU field left blank always collapsed, via the
+    // fuzzy tier. That inconsistency was the tell: whether two identical
+    // products merged depended on whether a shop filled in a box.
+    for (let i = 0; i < 4; i += 1) {
+      await resolveCanonicalGear(
+        listing({ title: "Jackson Audio 1484 Twin Twelve Classic", brand: "Jackson" }),
+      )
+    }
+    expect(await db.select().from(canonicalGear)).toHaveLength(1)
+  })
+
+  /**
+   * The other half, and the reason this tier demands equality rather than
+   * similarity. Every pair below is two genuinely different pedals whose model
+   * strings score well above FUZZY_MATCH_THRESHOLD (0.82, 0.63 and 0.71
+   * respectively, measured against this database). They are kept apart today
+   * precisely BECAUSE they carry distinct part numbers, and sending
+   * identifier-bearing listings to the fuzzy tier would have merged all three.
+   */
+  const nearMisses: [string, string, string][] = [
+    ["Boss", "Boss DS-1 Distortion", "Boss DS-1X Distortion"],
+    ["Electro-Harmonix", "Electro-Harmonix Big Muff Pi", "Electro-Harmonix Little Big Muff Pi"],
+    ["Ibanez", "Ibanez Tube Screamer TS9", "Ibanez Tube Screamer TS808"],
+  ]
+
+  for (const [brand, one, other] of nearMisses) {
+    it(`keeps ${one} apart from ${other}`, async () => {
+      await resolveCanonicalGear(listing({ title: one, brand, mpn: `${brand}-A1` }))
+      await resolveCanonicalGear(listing({ title: other, brand, mpn: `${brand}-B2` }))
+      expect(await db.select().from(canonicalGear)).toHaveLength(2)
+    })
+  }
+
+  it("refuses to merge when the two carry different barcodes", async () => {
+    // Identical model string, conflicting hard identity. A GTIN is a global
+    // barcode, so two of them is two products however alike the names, and the
+    // under-merge bias says leave them alone.
+    await resolveCanonicalGear(
+      listing({ title: "Fender Player Stratocaster", gtin: "885978512345" }),
+    )
+    const second = await resolveCanonicalGear(
+      listing({ title: "Fender Player Stratocaster", gtin: "885978599999" }),
+    )
+    expect(second?.created).toBe(true)
+    expect(await db.select().from(canonicalGear)).toHaveLength(2)
+  })
+
+  it("still refuses to cross brands on an identical model name", async () => {
+    // "Standard" under Gibson and under Squier, the case the whole file is
+    // built around, must survive a tier that matches on the model alone.
+    await resolveCanonicalGear(
+      listing({ title: "Gibson Les Paul Standard", brand: "Gibson", mpn: "GIB-LP-STD" }),
+    )
+    await resolveCanonicalGear(
+      listing({ title: "Squier Les Paul Standard", brand: "Squier", mpn: "SQ-LP-STD" }),
+    )
+    expect(await db.select().from(canonicalGear)).toHaveLength(2)
+  })
+
+  it("fills in an identifier the first listing lacked", async () => {
+    await resolveCanonicalGear(listing({ title: "Fender Player Stratocaster", mpn: "FEN-A" }))
+    await resolveCanonicalGear(
+      listing({ title: "Fender Player Stratocaster", gtin: "885978512345", mpn: "FEN-B" }),
+    )
+    const rows = await db.select().from(canonicalGear)
+    expect(rows).toHaveLength(1)
+    // The barcode the second listing brought is now on the row, so the next
+    // listing carrying it hard-matches instead of guessing.
+    expect(rows[0].gtin).toBe("885978512345")
+  })
+})
+
 describe("Tier 3: provisional fallback", () => {
   it("creates a provisional row flagged for review", async () => {
     const result = await resolveCanonicalGear(

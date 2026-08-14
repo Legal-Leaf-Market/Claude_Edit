@@ -27,7 +27,7 @@ import { gearSlug, parseGearFromTitle } from "./model-parse"
 /** Minimum trigram similarity for a Tier 2 match. Tuned conservatively. */
 export const FUZZY_MATCH_THRESHOLD = 0.55
 
-export type MatchTier = "gtin" | "epid" | "mpn" | "fuzzy" | "provisional"
+export type MatchTier = "gtin" | "epid" | "mpn" | "model" | "fuzzy" | "provisional"
 
 export type ResolutionResult = {
   gearId: string
@@ -122,6 +122,75 @@ async function findByBrandMpn(brand: string, mpn: string): Promise<CanonicalGear
     )
     .limit(1)
   return rows[0] ?? null
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Tier 1d: same brand, identical model                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Same brand, same model, character for character once case and edge
+ * whitespace are ignored.
+ *
+ * WHY THIS EXISTS, and it is the narrowest useful rule rather than an obvious
+ * one. A listing carrying an identifier the catalogue has never seen used to
+ * create a row outright, on the reasoning that a new barcode means a new
+ * product. That is false for a shop's own numbering: Shopify emits one listing
+ * per VARIANT and lib/ingestion/shopify-storefront.ts puts the variant's SKU in
+ * `mpn`, so four finishes of one pedal arrive as four unseen "MPN"s. Each one
+ * missed Tier 1c and made its own row, which is how Jackson Audio's 1484 Twin
+ * Twelve Classic ended up on the published shelf four times.
+ *
+ * WHY NOT JUST FALL THROUGH TO THE FUZZY TIER, which is the tempting fix and is
+ * dangerous. Measured against this database's own similarity(), at the 0.55
+ * threshold: "DS-1" and "DS-1X" score 0.571, "Big Muff Pi" and "Little Big Muff
+ * Pi" 0.632, "Tube Screamer TS9" and "Tube Screamer TS808" 0.714. Those are
+ * different pedals, and today they are kept apart precisely BECAUSE they carry
+ * distinct part numbers. Sending identifier-bearing listings to the fuzzy tier
+ * would merge all three pairs and corrupt the price history of both sides,
+ * which is a far worse failure than a duplicate row.
+ *
+ * Identical is the discriminator, not similar. Every duplicate observed on the
+ * live shelf had a model string equal to its twin (the Twin Twelve, the Asabi,
+ * the Modular Fuzz), and every near-miss pair above differs. So this tier
+ * demands equality and leaves everything else to the existing ladder.
+ */
+async function findByBrandModel(brand: string, model: string): Promise<CanonicalGear | null> {
+  if (!brand || !model) return null
+  const rows = await db
+    .select()
+    .from(canonicalGear)
+    .where(
+      and(
+        sql`lower(btrim(${canonicalGear.brand})) = lower(btrim(${brand}))`,
+        sql`lower(btrim(${canonicalGear.model})) = lower(btrim(${model}))`,
+      ),
+    )
+    .orderBy(canonicalGear.createdAt)
+    .limit(1)
+  return rows[0] ?? null
+}
+
+/**
+ * Whether a hard identifier says these are definitively NOT the same product.
+ *
+ * A GTIN is a global barcode and an EPID is eBay's own catalogue id. Two rows
+ * carrying different ones are two products however alike their names, so this
+ * blocks the merge above and a separate row gets created, which is the
+ * under-merge bias this file is built on.
+ *
+ * MPN IS DELIBERATELY NOT CHECKED HERE. A differing MPN is the entire case this
+ * tier exists to fix: the field holds a shop's per-variant SKU as often as a
+ * manufacturer's part number, and treating a disagreement between two SKUs as
+ * proof of two products is what produced the duplicates in the first place.
+ */
+function conflictsOnHardId(
+  gear: CanonicalGear,
+  incoming: { gtin: string | null; epid: string | null },
+): boolean {
+  if (gear.gtin && incoming.gtin && gear.gtin !== incoming.gtin) return true
+  if (gear.epid && incoming.epid && gear.epid !== incoming.epid) return true
+  return false
 }
 
 /* -------------------------------------------------------------------------- */
@@ -265,6 +334,27 @@ async function enrichGear(gear: CanonicalGear, args: Partial<CreateArgs>): Promi
   }
 }
 
+/**
+ * An identifier this catalogue has never seen. Attach the listing to the row
+ * for the identical brand and model if there is one, and only make a new row
+ * when there is not.
+ *
+ * THE ASSUMPTION THIS REPLACES: that an unseen identifier proves an unseen
+ * product. It does not. It proves only that we have not seen that identifier,
+ * and a shop numbering its own variants produces a fresh one per colourway.
+ * The tier reported is `model` when it attached, because that is the evidence
+ * that actually decided it: the identifier contributed nothing but a miss.
+ */
+async function attachOrCreate(args: CreateArgs, tierWhenCreating: MatchTier): Promise<ResolutionResult> {
+  const twin = await findByBrandModel(args.brand, args.model)
+  if (twin && !conflictsOnHardId(twin, { gtin: args.gtin, epid: args.epid })) {
+    await enrichGear(twin, args)
+    return { gearId: twin.id, tier: "model", score: 1, created: false }
+  }
+  const created = await createGear(args)
+  return { gearId: created.id, tier: tierWhenCreating, score: 1, created: true }
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Public entry point                                                        */
 /* -------------------------------------------------------------------------- */
@@ -292,17 +382,10 @@ export async function resolveCanonicalGear(
       return { gearId: existing.id, tier: "gtin", score: 1, created: false }
     }
     if (brand && model) {
-      const created = await createGear({
-        brand,
-        model,
-        category: parsed.category,
-        gtin,
-        epid,
-        mpn,
-        imageUrl: image,
-        needsReview: false,
-      })
-      return { gearId: created.id, tier: "gtin", score: 1, created: true }
+      return attachOrCreate(
+        { brand, model, category: parsed.category, gtin, epid, mpn, imageUrl: image, needsReview: false },
+        "gtin",
+      )
     }
   }
 
@@ -314,17 +397,10 @@ export async function resolveCanonicalGear(
       return { gearId: existing.id, tier: "epid", score: 1, created: false }
     }
     if (brand && model) {
-      const created = await createGear({
-        brand,
-        model,
-        category: parsed.category,
-        gtin,
-        epid,
-        mpn,
-        imageUrl: image,
-        needsReview: false,
-      })
-      return { gearId: created.id, tier: "epid", score: 1, created: true }
+      return attachOrCreate(
+        { brand, model, category: parsed.category, gtin, epid, mpn, imageUrl: image, needsReview: false },
+        "epid",
+      )
     }
   }
 
@@ -339,21 +415,21 @@ export async function resolveCanonicalGear(
       return { gearId: existing.id, tier: "mpn", score: 1, created: false }
     }
     if (model) {
-      const created = await createGear({
-        brand,
-        model,
-        category: parsed.category,
-        gtin,
-        epid,
-        mpn,
-        imageUrl: image,
-        needsReview: false,
-      })
-      return { gearId: created.id, tier: "mpn", score: 1, created: true }
+      return attachOrCreate(
+        { brand, model, category: parsed.category, gtin, epid, mpn, imageUrl: image, needsReview: false },
+        "mpn",
+      )
     }
   }
 
   if (!model) return null
+
+  /* ---- Tier 1d: same brand, identical model ---- */
+  const twin = await findByBrandModel(brand, model)
+  if (twin && !conflictsOnHardId(twin, { gtin, epid })) {
+    await enrichGear(twin, { gtin, epid, mpn, imageUrl: image })
+    return { gearId: twin.id, tier: "model", score: 1, created: false }
+  }
 
   /* ---- Tier 2: brand-scoped fuzzy ---- */
   const candidate = await findFuzzyCandidate(brand, model)
@@ -401,7 +477,14 @@ export async function resolveUnmatchedListings(limit = 5000): Promise<Record<Mat
     .where(isNull(marketplaceListings.canonicalGearId))
     .limit(limit)
 
-  const tally: Record<MatchTier, number> = { gtin: 0, epid: 0, mpn: 0, fuzzy: 0, provisional: 0 }
+  const tally: Record<MatchTier, number> = {
+    gtin: 0,
+    epid: 0,
+    mpn: 0,
+    model: 0,
+    fuzzy: 0,
+    provisional: 0,
+  }
 
   for (const row of pending) {
     const result = await resolveCanonicalGear(row)
