@@ -159,7 +159,9 @@ export const NAV_SECTIONS: NavSection[] = [
     id: "build",
     label: "Build",
     href: "/pedalboard",
-    match: ["/pedalboard"],
+    // The rig room is a view of a board rather than a place to build one, so
+    // it lives under Build and never replaces /pedalboard in the section href.
+    match: ["/pedalboard", "/rig-room"],
     columns: [
       {
         title: "The rig builder",
@@ -183,6 +185,7 @@ export const NAV_SECTIONS: NavSection[] = [
           { href: "/pedalboard#chain", label: "Signal chain order", hint: "Flags anything running out of the usual order" },
           { href: "/pedalboard#power", label: "Power draw", hint: "Estimated total mA and how many isolated outputs" },
           { href: "/pedalboard#cost", label: "What it costs", hint: "Live prices per pedal across every store we track" },
+          { href: "/rig-room", label: "See it in three dimensions", hint: "Turn the board around. The planner stays where it is" },
         ],
       },
     ],

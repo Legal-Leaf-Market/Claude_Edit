@@ -951,9 +951,37 @@ far under the 4.5:1 a price or a sentence needs. Anything printing a price or
 accent-coloured body text uses `--money` and `--accent-text`, never
 `--brand-gold` or `--sage`, or it reads in one theme and vanishes in the other.
 
-**Godot is on the table for one thing only.** A separate 3D "rig room" (cables
-that hang, footswitches you stomp, knobs you hear) is a legitimate toy and a
-shareable. The planner itself stays in the DOM: it is indexable, and
+**The rig room is built, and it is NOT Godot.** `/rig-room` renders a board in
+three dimensions with three.js: real catalogue sizes, patch cables in signal
+order, click a pedal to select it. The planner at `/pedalboard` is untouched.
+
+**Godot was evaluated and rejected for it**, and the deciding argument was not
+the toolchain. A Godot build cannot import `lib/pedalboard`, so the chain
+order, the rotation footprint and the layout rules would have had to be
+rewritten in GDScript and would have drifted from the TypeScript exactly the
+way the condition classifier nearly did (section 8). Two views of one model
+beats two models. The practical objections were real too (nothing here can
+build or test a Godot export, and a web export is a tens-of-megabyte binary in
+the repo), but the logic fork is the one that would still apply on a machine
+with Godot installed.
+
+**The split that makes it testable:** `lib/rig-room/scene.ts` turns a rig into
+boxes and cable endpoints in millimetres and is unit tested;
+`components/rig-room/rig-room-canvas.tsx` only draws what it is handed. A pedal
+sunk into the board or a cable joined to the wrong neighbour renders as
+approximately fine and is invisible to review, so none of that arithmetic may
+live inside the canvas.
+
+**It reads the planner's own `?rig=`**, through the same codec, so "see it in
+3D" is a link rather than an export, and the round trip back preserves the rig.
+
+**Everything in the room is also in the DOM beneath it**, with the same
+`/gear` links, and the canvas is `aria-hidden`. That is not politeness: the
+planner rules below apply to any 3D thing here, and the way to satisfy them is
+for the canvas to be the part you can lose. three.js is imported dynamically so
+its ~600KB never reaches a page that does not draw a board.
+
+The planner itself stays in the DOM: it is indexable, and
 programmatic SEO is this site's growth model; the outbound money path is
 `/go/[listingId]` in the DOM; the layout, power and cable engines are
 TypeScript shared with the server so the assistant can build a rig; and a

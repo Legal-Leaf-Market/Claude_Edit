@@ -42,6 +42,9 @@ const STATIC_ROUTES = new Set([
   // what enforces it.
   "/uk",
   "/uk/rigs",
+  // The 3D rig room. A view of a board, not a place to build one, so it sits
+  // under Build alongside the planner rather than replacing it.
+  "/rig-room",
 ])
 
 function isKnownRoute(href: string): boolean {
