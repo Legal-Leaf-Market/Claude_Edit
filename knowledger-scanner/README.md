@@ -25,6 +25,15 @@ New Apps Script project, paste `Code.gs`, add an HTML file named exactly
 `Index`, paste `Index.html`, Deploy as web app (execute as Me, access: only
 myself).
 
+## Ingest service integration
+
+The app can also pull extraction runs straight from the Knowledger Statement
+Ingest service (ksinjest.knowledgerllc.com). Paste the bearer token once into
+the ingest panel; it is stored in Script Properties (never in code, never left
+in the page) and used server-side via UrlFetchApp. "List runs" shows the
+client's ingestion runs and "Import run" loads a run's records into the same
+review and export pipeline as locally parsed PDFs.
+
 ## Notes
 
 - Goldman Sachs masks portfolio numbers on the page (`XXX-XX309-4`); the

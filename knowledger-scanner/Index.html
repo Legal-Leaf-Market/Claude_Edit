@@ -41,6 +41,7 @@
   .acct-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
   .acct-head label { color: var(--dim); font-size: 12px; }
   input[type=text] { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 6px 9px; font-size: 13px; }
+  select { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 6px 9px; font-size: 13px; }
   .flex { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .grow { flex: 1; }
   a { color: var(--accent); }
@@ -67,6 +68,21 @@
     <div class="flex" style="margin-top:10px">
       <button id="btnParse" disabled>Extract &amp; parse</button>
       <span class="muted">Everything runs in your browser and your Apps Script project. No statement leaves your Google account.</span>
+    </div>
+  </div>
+
+  <div class="card" id="cardKs">
+    <h3 style="margin-top:0">Ingest service (Rahul's scraper)</h3>
+    <div class="flex">
+      <label>Token <input type="text" id="ksToken" size="30" placeholder="paste ksk_... once; stored in Script Properties"></label>
+      <label>Client <input type="text" id="ksClient" size="6" placeholder="KLR03"></label>
+      <button id="btnKsSave" class="ghost">Save</button>
+      <span class="muted" id="ksState">checking...</span>
+    </div>
+    <div class="flex" style="margin-top:10px">
+      <button id="btnKsRuns" class="ghost">List runs</button>
+      <select id="ksRunSel" style="display:none"></select>
+      <button id="btnKsImport" style="display:none">Import run into review</button>
     </div>
   </div>
 
@@ -324,6 +340,71 @@ function download(name, text, mime) {
   document.body.appendChild(a); a.click(); a.remove();
   setStep(4);
 }
+
+// ---------- ingest service (ksinjest) ----------
+function ksShowState(s) {
+  $('ksState').textContent = s.hasToken
+    ? 'token saved - client ' + s.client
+    : 'no token saved yet - client ' + s.client;
+}
+google.script.run.withSuccessHandler(ksShowState)
+  .withFailureHandler(function () { $('ksState').textContent = 'status unavailable'; })
+  .ksStatus();
+
+$('btnKsSave').addEventListener('click', function () {
+  var btn = this; btn.disabled = true;
+  google.script.run
+    .withSuccessHandler(function (s) {
+      btn.disabled = false;
+      $('ksToken').value = ''; // never leave the token sitting in the page
+      ksShowState(s);
+    })
+    .withFailureHandler(function (err) { btn.disabled = false; $('ksState').textContent = 'save failed: ' + err.message; })
+    .ksSaveToken($('ksToken').value, $('ksClient').value);
+});
+
+$('btnKsRuns').addEventListener('click', function () {
+  var btn = this; btn.disabled = true;
+  log('Listing ingest runs ...');
+  google.script.run
+    .withSuccessHandler(function (data) {
+      btn.disabled = false;
+      var runs = Array.isArray(data) ? data : (data.runs || data.items || data.results || []);
+      var sel = $('ksRunSel'); sel.innerHTML = '';
+      if (!runs.length) { log('No runs returned. Raw response: ' + JSON.stringify(data).slice(0, 400)); return; }
+      runs.forEach(function (r) {
+        var id = r.run_id !== undefined ? r.run_id : (r.id !== undefined ? r.id : r);
+        var label = 'run ' + id;
+        ['created_at', 'date', 'status', 'documents', 'records'].forEach(function (k) {
+          if (r && r[k] !== undefined) label += ' - ' + k + ': ' + r[k];
+        });
+        var opt = document.createElement('option');
+        opt.value = id; opt.textContent = label.slice(0, 90);
+        sel.appendChild(opt);
+      });
+      sel.style.display = ''; $('btnKsImport').style.display = '';
+      log(runs.length + ' run(s) listed.');
+    })
+    .withFailureHandler(function (err) { btn.disabled = false; log('List runs failed: ' + err.message); })
+    .ksListRuns();
+});
+
+$('btnKsImport').addEventListener('click', function () {
+  var btn = this; btn.disabled = true;
+  var id = $('ksRunSel').value;
+  log('Importing run ' + id + ' ...');
+  google.script.run
+    .withSuccessHandler(function (res) {
+      btn.disabled = false;
+      state.result = { documents: res.documents };
+      renderReview();
+      if (res.run_id !== undefined && res.run_id !== null) $('runId').value = String(res.run_id);
+      setStep(3);
+      log('Imported run ' + id + ' into the review table.');
+    })
+    .withFailureHandler(function (err) { btn.disabled = false; log('Import failed: ' + err.message); })
+    .ksImportRun(id);
+});
 
 $('btnJson').addEventListener('click', function () {
   download('klr_run_' + $('runId').value.trim() + '.json', buildJson(), 'application/json');
