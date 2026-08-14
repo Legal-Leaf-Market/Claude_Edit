@@ -882,15 +882,40 @@ are load bearing rather than taste:
 - gold is MUTED at rest and earned by `:hover` and by the one primary action
   per view. A toolbar of eight buttons must not be eight gold rings
 
-**The mark is drawn, not typeset.** A pedal enclosure with a brass silkscreen
-edge, a status LED and a single-cutaway guitar on the face. The letterforms are
-stroked polylines with mitred joins on a 100-unit cap height, so the wordmark
-needs no font, renders identically everywhere and survives being inlined into a
-favicon. Two drafts were thrown away and both failures are worth remembering:
-chamfering the enclosure into an octagon read as a road sign at tab size, and
-cutting two deep notches either side of the neck for a double cutaway produced,
-unmistakably, a cat. A guitar's shoulders sit HIGH and the cutaway is a shallow
-scoop, not a V.
+**The mark is drawn, not typeset.** `GearAvailMark` is a tuning fork in a ring:
+two tines, a stem, a circle. It was the original mark, it was replaced during
+the redesign by a pedal enclosure containing a guitar, and it was put back
+because it survives 16 pixels and because a fork means pitch, which is every
+instrument here, where a guitar in a stompbox means one shelf of a shop that
+also sells drums, mics, keys and PA. The enclosure drawing is kept as
+`GearAvailEnclosureMark` for the board builder, where the subject genuinely is a
+stompbox and there is room to render it. The letterforms are stroked polylines
+with mitred joins on a 100-unit cap height, so the wordmark needs no font,
+renders identically everywhere and survives being inlined into a favicon.
+
+**THE FAVICON IS A PEDAL, AND THE HEADER MARK IS NOT.** `app/icon.svg` is an
+enclosure with the fork silkscreened on its face, which the owner asked for
+directly, so the argument in `logo.tsx` for the bare fork is not a reason to
+change it back. The two still read as one identity because the fork is on the
+face, which is where a pedal prints its graphic anyway. It is drawn in literal
+hex rather than `var()`, because a favicon is fetched outside the document and
+every custom property would fall back to nothing.
+
+**Every draft that was thrown away failed in the same direction: clever
+geometry becomes an accident at tab size.** Chamfering the enclosure into an
+octagon read as a road sign. Two deep notches either side of a neck, for a
+double cutaway, produced unmistakably a cat (a guitar's shoulders sit HIGH and
+the cutaway is a shallow scoop, not a V). Two knobs above a footswitch read as
+two eyes above a mouth. A fork and a switch drawn as two separate small marks
+both dissolved, which is why the fork's stem runs down into the switch: one
+graphic, one weight, and a heavier stroke than looks right at 96px. Draw the
+candidates at 16, 20, 32 and 96 on light AND dark browser chrome before
+committing one. Every failure above was invisible at the size it was drawn.
+
+**The sister site ships this same enclosure silhouette in royal blue.** Two
+projects in one repo must not put the same picture in two tabs, so Gear Avail's
+is graphite and carries the fork, and stompbox.world's is blue with a bare
+footswitch.
 
 **Two tokens are contrast-critical and are not interchangeable with the brand
 hues.** Bright gold is about 1.8:1 on white and bright green about 1.9:1, both
