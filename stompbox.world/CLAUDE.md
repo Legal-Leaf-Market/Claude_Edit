@@ -424,7 +424,7 @@ reusable.
 `app/globals.css`, `components/brand/logo.tsx`, `components/ui/stomp.tsx`.
 Originally ported from Gear Avail's, and no longer the same palette.
 
-**ROYAL BLUE AND BRASS, and this section used to say the opposite.** It argued
+**ROYAL BLUE AND WHITE CHROME, and this section has now been overruled twice.** It argued
 that a guitarist's visual world is grey (anodised aluminium, powder-coated
 steel, flight cases) and that metal must never be tinted. That was a real
 argument, not drift, and the owner overruled it deliberately: the Instagram
@@ -446,7 +446,22 @@ Almost nothing else moved, because none of the rest depended on the hue:
 - **Skeuomorphism still fails when it tries to be pretty.** The blue is deep and
   saturated rather than bright and candy-coated, for the same reason the grey
   was drab: the gold edge and the LED have to stay the things that read.
-- **Gold is an EDGE, never a fill.** One hairline border and one silkscreen
+- **THE EDGE IS CHROME (`--chrome`), AND IT IS WHITE.** It was brass. The
+  account is white line art on a blue glow with no gold in it, so the site
+  followed. The token was RENAMED rather than repointed: a property called
+  `--brand-gold` holding `#ffffff` is a lie that outlives whoever wrote it, and
+  there were only 39 call sites to move.
+- **`--chrome` is white in BOTH themes, and `--chrome-dk` is the on-paper
+  variant.** Chrome outlines metal and metal is dark in both themes, so a white
+  edge is right on paper too. Only two accent edges land on the page itself
+  rather than on a control, the focus ring and `.pill`, and those take
+  `--chrome-dk`, which is pale steel on the dark ground and navy on paper.
+- **BRASS SURVIVES IN EXACTLY ONE PLACE: `--signal`.** `components/circuit-figure.tsx`
+  draws the output trace with it. Chrome and signal were one colour until the
+  slide system split them, and the reason holds here: a frame and a signal path
+  in the same colour stop telling you which line is the guitar. Frames are
+  chrome; the signal is the only gold thing in a drawing.
+- **Chrome is an EDGE, never a fill.** One hairline border and one silkscreen
   line inside it, exactly as a pedal is printed. It is MUTED at rest and earned
   by `:hover` and by the one primary action per view, so a toolbar of eight
   buttons is not eight gold rings.
@@ -464,12 +479,12 @@ Almost nothing else moved, because none of the rest depended on the hue:
   three states the furthest any theme can be is two flips. The accessible name
   says where the lever is and where the next flip goes, so nothing is hidden
   behind the metaphor. The cream switch tip is a MATERIAL, like the chrome, not
-  `--brand-gold` being used as a fill.
+  `--chrome` being used as a fill.
 - **Nothing spins, bounces or glows at idle.** A rack of gear at rest is still.
 - **Two tokens are contrast-critical.** Bright gold is about 1.8:1 on white and
   bright green about 1.9:1, both far under the 4.5:1 body text needs. Anything
   printing accent-coloured prose uses `--money` and `--accent-text`, never
-  `--brand-gold` or `--brand-led`, or it reads in one theme and vanishes in the
+  `--chrome` or `--brand-led`, or it reads in one theme and vanishes in the
   other.
 - **Dark is the default, and "system" is stored rather than implied.** Absence
   of a stored preference means dark, so clearing the key would silently turn
@@ -546,14 +561,20 @@ pedal is equally a bass, keys and studio object.
   pictures are drawn (section 3a).
 - Do NOT scrape a gear-attribution site to grow the dataset.
 - Do NOT use an em dash.
-- Do NOT fill anything with `--brand-gold`. It is an edge colour, muted at rest.
+- Do NOT fill anything with `--chrome`. It is an edge colour, muted at rest.
+- Do NOT use `--chrome` for an accent edge that sits on the PAGE rather than on
+  metal. White on paper is not an accent, it is nothing. Use `--chrome-dk`.
+- Do NOT paint a circuit figure's output trace in `--chrome`. That is what
+  `--signal` is for, and it is the last brass on the site.
+- Do NOT reintroduce Fraunces. The display face is blocky (Chakra Petch) because
+  the account's wordmark is, and the serif is no longer requested at all.
 - Do NOT redefine the metal tokens per theme. They are royal blue in both, and
   an enclosure being the same object on any surface is what the rule protects.
   Tinting them is no longer forbidden, because the owner tinted them (section 5).
 - Do NOT revert the palette to graphite because an old comment says grey. The
   blue is a decision, it matches the Instagram account, and section 5 records it.
 - Do NOT define a colour only inside the light-theme block, or only outside it.
-- Do NOT use `--brand-gold` or `--brand-led` for prose. Use `--accent-text` and
+- Do NOT use `--chrome` or `--brand-led` for prose. Use `--accent-text` and
   `--money`.
 - Do NOT put margin shorthand in a class that sits outside `@layer`.
 - Do NOT add a price, a merchant or a buy link to `lib/pedals.ts`. The

@@ -12,16 +12,22 @@
    match its own feed looks like somebody else's site. The owner
    chose the blue; this file follows it.
 
+   THE EDGE IS WHITE, NOT BRASS, and that was the second half of the
+   same decision. The account is white line art on a blue glow with
+   no gold in it, so the site matches. Brass survives in exactly one
+   place: --signal, the output trace in a circuit figure, because a
+   frame and a signal path drawn in one colour stop telling you
+   which line is the guitar.
+
    What did NOT change is the reasoning underneath, because none of
-   it depended on the hue being grey:
+   it depended on the hue:
 
      a deep, saturated scale with a colour of its own, six steps
-     saturated gold, used as an EDGE and almost never as a fill
+     chrome, used as an EDGE and almost never as a fill
      one bright green, reserved for things that are lit
 
-   A candy blue enclosure with a brass silkscreen on it is a real
-   pedal, so the skeuomorphism is if anything more literal than it
-   was in grey, not less.
+   A white-printed blue enclosure is a real pedal, so the
+   skeuomorphism is no less literal than the brass-on-grey was.
 
    TWO THEMES, ONE PALETTE. The brand hues do not change between
    light and dark; only the neutral scale does. The metal tokens do
@@ -32,13 +38,14 @@
    than the dark ground rather than darker than it, so the enclosure
    reads as the lit object in the room.
 
-   THE TWO CONTRAST-CRITICAL EXCEPTIONS. --money and --accent-text
-   get a per-theme value, for legibility rather than taste. Bright
-   gold is about 1.8:1 on white and bright green about 1.9:1, both
-   far under the 4.5:1 that a number or a sentence needs. Anything
-   printing accent-coloured body text MUST use those two rather than
-   reaching for --brand-gold or --brand-led, or it will read in one
-   theme and be invisible in the other.
+   THE CONTRAST-CRITICAL TOKENS. --money, --accent-text and
+   --chrome-dk get a per-theme value, for legibility rather than
+   taste. Bright green is about 1.9:1 on white and pure white is
+   1:1 on it, both far under the 4.5:1 a number or a sentence
+   needs. Anything printing accent-coloured body text MUST use
+   those rather than reaching for --chrome or --brand-led, and any
+   accent EDGE that lands on the page rather than on metal must use
+   --chrome-dk, or it will read in one theme and vanish in the other.
 
    Dark is the default, and the surfaces sit a real step apart.
    ============================================================ */
@@ -47,8 +54,8 @@
   --font-sans: var(--sans);
   --font-display: var(--display);
 
-  --color-gold: var(--brand-gold);
-  --color-gold-dk: var(--brand-gold-dk);
+  --color-chrome: var(--chrome);
+  --color-chrome-dk: var(--chrome-dk);
   --color-led: var(--brand-led);
   --color-line: var(--line);
   --color-dim: var(--dim);
@@ -67,9 +74,33 @@
 :root {
   color-scheme: dark;
 
-  /* Brass and gold, saturated. This is the outline colour. */
-  --brand-gold: #ffc233;
-  --brand-gold-dk: #d99a12;
+  /*
+   * CHROME is the outline colour, and it is WHITE.
+   *
+   * It was brass (#ffc233) and it is not any more. The Instagram account is
+   * white line art on a blue glow with no gold anywhere, and the site follows
+   * the account. The token was renamed rather than repointed: a custom property
+   * called --brand-gold holding #ffffff is a lie that outlives whoever wrote it,
+   * and there were only 39 call sites to move.
+   *
+   * WHITE IN BOTH THEMES, because chrome outlines METAL and metal is dark in
+   * both. --chrome-dk is the on-paper variant, for the two places an accent edge
+   * lands on the page rather than on a control: the focus ring and .pill.
+   */
+  --chrome: #ffffff;
+  --chrome-dk: #c3d2ee;
+
+  /*
+   * THE SIGNAL IS STILL BRASS, and this is the one place gold survives.
+   *
+   * components/circuit-figure.tsx draws the output trace with it. Chrome and
+   * signal were one colour until the slide system split them, and the reason
+   * holds here too: if the frame and the signal path are the same colour, the
+   * figure stops saying which line is the guitar. Frames are chrome; the signal
+   * is the only gold thing in a drawing.
+   */
+  --signal: #ffc233;
+  --signal-dk: #d99a12;
 
   /* The engaged-pedal LED. Bright, and used sparingly enough to still read. */
   --brand-led: #24e07a;
@@ -101,19 +132,32 @@
   --panel: rgba(18, 42, 88, 0.84);
   --panel2: rgba(7, 15, 36, 0.92);
   --glass: rgba(18, 42, 88, 0.62);
-  --glass-line: rgba(255, 194, 51, 0.24);
+  --glass-line: rgba(255, 255, 255, 0.22);
   --line: #304578;
   --line-strong: #5f79bb;
   --chip: #0e1a3a;
   --text: #f2f6fd;
   --dim: #abbbde;
 
-  /* Contrast-critical hues, per theme. See the header note above. */
+  /*
+   * Contrast-critical hues, per theme. See the header note above. --accent-text
+   * went from warm gold to a pale steel blue: it existed to echo the brass, the
+   * brass is gone, and a lone warm line on an all-white-and-blue page reads as
+   * a leftover rather than an accent.
+   */
   --money: var(--brand-led);
-  --accent-text: #ffd06b;
+  --accent-text: #a9c6f5;
 
   /* --- type --- */
-  --display: 'Fraunces', Georgia, serif;
+  /*
+   * BLOCKY, not the serif. The account's wordmark is heavy angular capitals,
+   * and the slides already set headlines in this face, so the site joins them.
+   * Fraunces is dropped from the site entirely rather than kept as a --serif
+   * nobody calls: it was only ever the display face, and an unused token plus an
+   * unused font request is two things for the next person to wonder about. The
+   * slide system keeps its own committed copy and is unaffected.
+   */
+  --display: 'Chakra Petch', 'Jost', sans-serif;
   --sans: 'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   /* --- metrics --- */
@@ -124,7 +168,9 @@
   --header-h: 74px;
 
   /* --- page wash, per theme --- */
-  --wash-1: rgba(255, 194, 51, 0.055);
+  /* The corner washes: one chrome, one LED, so both brand values appear on
+     every page without either being used as a fill. */
+  --wash-1: rgba(255, 255, 255, 0.05);
   --wash-2: rgba(36, 224, 122, 0.035);
   --texture-light: rgba(255, 255, 255, 0.02);
   --texture-dark: rgba(0, 0, 0, 0.06);
@@ -153,19 +199,26 @@
   --panel: rgba(255, 255, 255, 0.9);
   --panel2: rgba(255, 255, 255, 0.96);
   --glass: rgba(255, 255, 255, 0.76);
-  --glass-line: rgba(217, 154, 18, 0.28);
+  --glass-line: rgba(36, 53, 107, 0.24);
   --line: #d1d7e5;
   --line-strong: #aeb7cc;
   --chip: #e5e9f2;
   --text: #10162b;
   --dim: #545d78;
 
-  /* Bright gold is ~1.8:1 on white and bright green ~1.9:1. Both fail body
-     text outright, so the darkened tokens carry any accent-coloured prose. */
-  --money: #0f8a48;
-  --accent-text: #8a6410;
+  /*
+   * --chrome is NOT redefined here. It outlines metal, metal is dark in both
+   * themes, so a white edge is correct on paper too. --chrome-dk is, because it
+   * is the variant for accents that land on the page itself.
+   */
+  --chrome-dk: #24356b;
 
-  --wash-1: rgba(255, 194, 51, 0.09);
+  /* Bright green is ~1.9:1 on white and fails body text outright, so the
+     darkened tokens carry any accent-coloured prose. */
+  --money: #0f8a48;
+  --accent-text: #24356b;
+
+  --wash-1: rgba(36, 53, 107, 0.07);
   --wash-2: rgba(36, 224, 122, 0.05);
 }
 
@@ -221,16 +274,18 @@
   /* The focus ring is the LED, which is the same affordance the buttons use.
      On paper the bright gold is too pale to see, so light swaps the darker. */
   :focus-visible {
-    outline: 2px solid var(--brand-gold);
+    outline: 2px solid var(--chrome);
     outline-offset: 2px;
     border-radius: 4px;
   }
   [data-theme='light'] :focus-visible {
-    outline-color: var(--brand-gold-dk);
+    outline-color: var(--chrome-dk);
   }
 
+  /* Theme-aware without a second declaration: --chrome-dk is light steel on the
+     dark ground and navy on paper, so the wash reads on both. */
   ::selection {
-    background: rgba(255, 194, 51, 0.3);
+    background: color-mix(in srgb, var(--chrome-dk) 34%, transparent);
     color: var(--text);
   }
 
@@ -303,12 +358,14 @@
     white-space: nowrap;
     transition: border-color 0.16s, background 0.16s;
   }
+  /* A pill sits on the PAGE, not on metal, so it takes the on-paper variant.
+     A white border on white paper is not an accent, it is nothing. */
   .pill:hover {
-    border-color: var(--brand-gold);
+    border-color: var(--chrome-dk);
   }
   .pill[data-active='true'] {
-    border-color: var(--brand-gold);
-    background: color-mix(in srgb, var(--brand-gold) 14%, transparent);
+    border-color: var(--chrome-dk);
+    background: color-mix(in srgb, var(--chrome-dk) 14%, transparent);
     color: var(--accent-text);
   }
 
@@ -356,7 +413,7 @@
   --stomp-face-lo: var(--metal-lo);
   /* Muted at rest. Full brass is reserved for :hover and for .stomp-go, so a
      row of eight buttons is not a row of eight gold rings. */
-  --stomp-edge: color-mix(in srgb, var(--brand-gold) 46%, var(--line-strong));
+  --stomp-edge: color-mix(in srgb, var(--chrome) 46%, var(--line-strong));
   --stomp-ink: #f2f5f8;
   --stomp-led: var(--brand-led);
 
@@ -421,7 +478,7 @@
 }
 
 .stomp:hover {
-  border-color: var(--brand-gold);
+  border-color: var(--chrome);
 }
 .stomp:hover::before {
   opacity: 1;
@@ -461,7 +518,7 @@
 /* The primary action: a bright green enclosure with a brass edge. Used once
    per view, because two of these on one screen is a fairground. */
 .stomp-go {
-  --stomp-edge: var(--brand-gold);
+  --stomp-edge: var(--chrome);
   --stomp-face-hi: #3df191;
   --stomp-face: #24e07a;
   --stomp-face-lo: #12b262;
@@ -476,7 +533,7 @@
    same "this one is on" language the knob uses, so a toggled button and a
    toggled knob mean the same thing without a legend. */
 .stomp[aria-pressed='true'] {
-  border-color: var(--brand-gold);
+  border-color: var(--chrome);
 }
 .stomp[aria-pressed='true']::before {
   opacity: 1;
@@ -502,8 +559,8 @@
   display: none;
 }
 .stomp-ghost:hover {
-  border-color: var(--brand-gold);
-  background: color-mix(in srgb, var(--brand-gold) 8%, transparent);
+  border-color: var(--chrome);
+  background: color-mix(in srgb, var(--chrome) 8%, transparent);
 }
 .stomp-ghost:active {
   transform: translateY(1px);
@@ -534,7 +591,7 @@
   height: 38px;
   flex: none;
   border-radius: 50%;
-  border: 1.5px solid color-mix(in srgb, var(--brand-gold) 62%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--chrome) 62%, transparent);
   color: var(--dim);
   cursor: pointer;
   /* Knurling, then the domed metal under it. A real knob is milled with fine
@@ -565,13 +622,13 @@
   height: 8px;
   margin-left: -1px;
   border-radius: 1px;
-  background: var(--brand-gold);
+  background: var(--chrome);
   opacity: 0.75;
 }
 
 .knob:hover {
   color: var(--text);
-  border-color: var(--brand-gold);
+  border-color: var(--chrome);
   /* Turned up a notch. Small, because a knob that spins is a toy. */
   transform: rotate(14deg);
 }
@@ -662,8 +719,8 @@
   background: linear-gradient(
     90deg,
     transparent,
-    var(--brand-gold) 18%,
-    var(--brand-gold) 82%,
+    var(--chrome) 18%,
+    var(--chrome) 82%,
     transparent
   );
   opacity: 0.5;
@@ -815,7 +872,7 @@
 
    The switch tip is cream. That is a material rather than an
    accent, the same way the chrome is: it is what the part is made
-   of, and it is not --brand-gold being used as a fill.
+   of, and it is not --chrome being used as a fill.
    ------------------------------------------------------------ */
 
 .lp {
@@ -830,7 +887,7 @@
   height: 50px;
   padding: 0;
   border-radius: 13px;
-  border: 1.5px solid color-mix(in srgb, var(--brand-gold) 48%, var(--line-strong));
+  border: 1.5px solid color-mix(in srgb, var(--chrome) 48%, var(--line-strong));
   background: linear-gradient(180deg, var(--metal-hi), var(--metal) 55%, var(--metal-lo));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
@@ -924,7 +981,7 @@
 }
 
 .lp:hover {
-  border-color: var(--brand-gold);
+  border-color: var(--chrome);
 }
 .lp:focus-visible {
   outline: 2px solid var(--brand-led);
@@ -955,7 +1012,7 @@
   margin-left: -5.5px;
   border-radius: 2px;
   background: linear-gradient(180deg, var(--metal-hi), var(--metal-lo));
-  border: 1px solid color-mix(in srgb, var(--brand-gold) 40%, var(--line-strong));
+  border: 1px solid color-mix(in srgb, var(--chrome) 40%, var(--line-strong));
 }
 .patch::before {
   top: -2px;
@@ -999,7 +1056,7 @@
   height: 11.75rem;
   padding: 0.6rem 0.5rem 1.5rem;
   border-radius: 12px;
-  border: 1.5px solid color-mix(in srgb, var(--brand-gold) 40%, var(--line-strong));
+  border: 1.5px solid color-mix(in srgb, var(--chrome) 40%, var(--line-strong));
   background: linear-gradient(180deg, var(--metal-hi), var(--metal) 52%, var(--metal-lo));
   color: #f2f5f8;
   cursor: pointer;
@@ -1021,12 +1078,12 @@
   position: absolute;
   inset: 3px;
   border-radius: 9px;
-  border: 1px solid color-mix(in srgb, var(--brand-gold) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chrome) 20%, transparent);
   pointer-events: none;
 }
 
 .enclosure:hover {
-  border-color: var(--brand-gold);
+  border-color: var(--chrome);
 }
 
 /* Two pixels, so it reads as a switch bottoming out rather than a box
@@ -1062,7 +1119,7 @@
   letter-spacing: 0.16em;
   text-transform: uppercase;
   text-align: center;
-  color: color-mix(in srgb, var(--brand-gold) 68%, #ffffff);
+  color: color-mix(in srgb, var(--chrome) 68%, #ffffff);
   line-height: 1.35;
 }
 
@@ -1090,7 +1147,7 @@
   height: 0.85rem;
   border-radius: 50%;
   background: linear-gradient(180deg, #6f7fc9, #16203f);
-  border: 1px solid color-mix(in srgb, var(--brand-gold) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chrome) 30%, transparent);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
@@ -1146,7 +1203,7 @@
   margin-left: -0.575rem;
   border-radius: 50%;
   background: radial-gradient(circle at 50% 35%, #55637f, #0b1024);
-  border: 1px solid color-mix(in srgb, var(--brand-gold) 32%, var(--line-strong));
+  border: 1px solid color-mix(in srgb, var(--chrome) 32%, var(--line-strong));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
@@ -1205,7 +1262,7 @@
   margin-top: -5.5px;
   border-radius: 2px;
   background: linear-gradient(90deg, var(--metal-hi), var(--metal-lo));
-  border: 1px solid color-mix(in srgb, var(--brand-gold) 40%, var(--line-strong));
+  border: 1px solid color-mix(in srgb, var(--chrome) 40%, var(--line-strong));
 }
 .patch-h::before {
   left: -2px;
@@ -1262,7 +1319,7 @@
   height: 0.7rem;
   border-radius: 50%;
   background: radial-gradient(circle at 50% 35%, #4a5878, #05080f);
-  border: 1px solid color-mix(in srgb, var(--brand-gold) 34%, var(--line-strong));
+  border: 1px solid color-mix(in srgb, var(--chrome) 34%, var(--line-strong));
 }
 
 @media (prefers-reduced-motion: reduce) {

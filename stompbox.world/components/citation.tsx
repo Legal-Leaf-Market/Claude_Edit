@@ -40,7 +40,7 @@ export function CitationBlock({ citation }: { citation: Citation }) {
   }
 
   return (
-    <aside className="surface border-l-2 border-l-[var(--brand-gold)] p-5">
+    <aside className="surface border-l-2 border-l-[var(--chrome-dk)] p-5">
       <p className="stencil">
         {citation.paraphrase ? "Sourced, in our words" : "In their words"}
       </p>
