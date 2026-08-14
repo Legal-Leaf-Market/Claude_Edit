@@ -193,6 +193,17 @@ Almost nothing else moved, because none of the rest depended on the hue:
   this control is live, hovered, or on.
 - **Travel is 2px**, so a press reads as a switch bottoming out rather than a
   box falling over.
+- **The theme switch is a Les Paul toggle (`.lp`), and it CYCLES.** It was a
+  blade-style selector: three icon buttons in a pill with a chrome cap sliding
+  between them. The drawing changed because a Les Paul toggle is the switch
+  people picture when they picture a guitar switch, and it has exactly three
+  detents for exactly three theme states. The behaviour changed for a better
+  reason: you flip a toggle, you do not pick a position on it. Committing to
+  that turned three cramped 26x24 targets into one 54x50 control, and with
+  three states the furthest any theme can be is two flips. The accessible name
+  says where the lever is and where the next flip goes, so nothing is hidden
+  behind the metaphor. The cream switch tip is a MATERIAL, like the chrome, not
+  `--brand-gold` being used as a fill.
 - **Nothing spins, bounces or glows at idle.** A rack of gear at rest is still.
 - **Two tokens are contrast-critical.** Bright gold is about 1.8:1 on white and
   bright green about 1.9:1, both far under the 4.5:1 body text needs. Anything
