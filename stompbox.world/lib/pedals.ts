@@ -1,5 +1,6 @@
 import type { SlotId } from "./chain"
 import type { FigureShape } from "./figures"
+import type { Citation } from "./voices"
 
 /**
  * The pedal dataset. Hand written, and deliberately so.
@@ -67,6 +68,27 @@ export type Pedal = {
   wantsGuitarDirect?: boolean
   /** Digital circuits generally want more current than analog ones. */
   digital?: boolean
+  /**
+   * Quotes from builders and other people worth hearing on this circuit, each
+   * with the source attached (lib/voices.ts).
+   *
+   * NOT AN ARTIST CREDIT, and the distinction is the whole reason this is
+   * allowed to exist. The rule above forbids "this pedal is on that record",
+   * which is a claim about a session nobody here witnessed. A builder explaining
+   * a circuit in public, on the record, is primary source material about the
+   * subject of the page.
+   *
+   * EVERY ENTRY NEEDS A URL A READER CAN OPEN, and the type in lib/voices.ts
+   * cannot be satisfied without one. An unsourced quote with a real name on it
+   * is the worst thing this dataset could carry: unlike a circuit description it
+   * cannot be checked by picking up the pedal, and unlike an era it is not
+   * hedged. It is either true or it is words put in somebody's mouth.
+   *
+   * Optional, and empty is the honest state until a real quote has been read at
+   * its source. A page with no quote is a page with no quote; a page with an
+   * invented one is a liability.
+   */
+  citations?: Citation[]
 }
 
 export const PEDALS: Pedal[] = [
