@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function ChainPage() {
   return (
-    <div className="shell py-12">
+    <div className="shell-narrow py-12">
       <header className="max-w-prose">
         <p className="stencil">Signal chain</p>
         <h1 className="mt-2 text-4xl font-black tracking-tight text-[var(--text)]">
@@ -33,13 +33,18 @@ export default function ChainPage() {
       */}
       <section className="mt-12">
         {/*
-          Capped rather than spanning the full shell. The prose inside is held
-          to a readable measure either way, so a full-width card just puts a
-          third of the page of empty plate to the right of every paragraph. One
-          column, not two: this is a sequence, and a two-column grid asks the
-          reader to go down and then jump back up to continue it.
+          One column, not two: this is a sequence, and a two-column grid asks
+          the reader to go down and then jump back up to continue it.
+
+          The cap that used to live here (max-w-4xl, no mx-auto) existed to stop
+          a full-width card putting a third of the page of empty plate to the
+          right of every paragraph. It did not achieve that. It just moved the
+          empty plate to the right of the whole column, so the page sat against
+          the left edge of a shell that was itself centred. The measure is now
+          set by the narrower shell on the wrapper, which the header shares, so
+          the column is capped AND centred.
         */}
-        <ol className="max-w-4xl space-y-4">
+        <ol className="space-y-4">
           {SLOTS.map((slot, index) => (
             <li key={slot.id} className="surface p-6">
               <div className="flex flex-wrap items-baseline gap-3">
