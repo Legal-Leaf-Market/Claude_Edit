@@ -6,8 +6,12 @@ import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/site"
 import "./globals.css"
 
 /*
- * Two faces, loaded with one request. Fraunces carries display, Jost carries
+ * Two faces, loaded with one request. Chakra Petch carries display, Jost carries
  * UI and the heavy condensed uppercase the rack panel uses.
+ *
+ * Chakra Petch replaced Fraunces because the Instagram account's wordmark is
+ * heavy angular capitals and the site follows the account. Fraunces is not
+ * requested at all any more rather than left in the URL unused.
  *
  * Loaded as a plain stylesheet link rather than through next/font because the
  * mark and the wordmark are drawn as paths, so nothing structural depends on a
@@ -16,7 +20,7 @@ import "./globals.css"
  * is not typeset.
  */
 const FONTS_HREF =
-  "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900" +
+  "https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700" +
   "&family=Jost:wght@300;400;500;600;700;800;900&display=swap"
 
 export const metadata: Metadata = {

@@ -31,7 +31,7 @@ export function CatalogCard({ pedal, minSample }: { pedal: CatalogPedal; minSamp
     <a
       href={gearAvailProductUrl(pedal.slug)}
       rel="noopener"
-      className="surface group flex flex-col p-4 transition-colors hover:border-[var(--brand-gold)]"
+      className="surface group flex flex-col p-4 transition-colors hover:border-[var(--chrome)]"
     >
       {/* The photo leads. A catalogue is a shelf, and a shelf you cannot see
           is a list. The API has sent one of these for every pedal since the

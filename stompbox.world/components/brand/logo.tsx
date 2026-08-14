@@ -87,7 +87,7 @@ export function StompboxMark({ size = 40, className, flat = false }: MarkProps) 
         height="94"
         rx="10"
         fill={`url(#${faceId})`}
-        stroke="var(--brand-gold, #ffc233)"
+        stroke="var(--chrome, #ffffff)"
         strokeWidth="4"
       />
       {/* The silkscreen line pedals print inside the edge. It is what makes the
@@ -99,7 +99,7 @@ export function StompboxMark({ size = 40, className, flat = false }: MarkProps) 
         height="83"
         rx="6.5"
         fill="none"
-        stroke="var(--brand-gold, #ffc233)"
+        stroke="var(--chrome, #ffffff)"
         strokeOpacity="0.28"
         strokeWidth="1.4"
       />
@@ -115,7 +115,7 @@ export function StompboxMark({ size = 40, className, flat = false }: MarkProps) 
 
       {/* Two knobs. Gone at favicon scale, and the reason it holds up big. */}
       {!flat && (
-        <g stroke="var(--brand-gold, #ffc233)" strokeWidth="2">
+        <g stroke="var(--chrome, #ffffff)" strokeWidth="2">
           <circle cx="37" cy="35" r="7" strokeOpacity="0.85" />
           <path d="M37 30.5 V35" strokeOpacity="0.55" strokeLinecap="round" />
           <circle cx="63" cy="35" r="7" strokeOpacity="0.85" />
@@ -130,7 +130,7 @@ export function StompboxMark({ size = 40, className, flat = false }: MarkProps) 
         cy="68"
         r="14"
         fill="var(--metal-lo, #070f24)"
-        stroke="var(--brand-gold, #ffc233)"
+        stroke="var(--chrome, #ffffff)"
         strokeWidth="3.4"
       />
       {!flat && (
@@ -138,7 +138,7 @@ export function StompboxMark({ size = 40, className, flat = false }: MarkProps) 
           cx="50"
           cy="68"
           r="7"
-          stroke="var(--brand-gold, #ffc233)"
+          stroke="var(--chrome, #ffffff)"
           strokeOpacity="0.4"
           strokeWidth="1.6"
         />
@@ -258,7 +258,7 @@ export function StompboxLogo({
         {showDescriptor && (
           <span
             style={{ display: "block", marginTop: size * 0.13 }}
-            className="border-t border-[color:color-mix(in_srgb,var(--brand-gold)_38%,transparent)] pt-[3px] text-[0.58rem] font-semibold uppercase tracking-[0.34em] text-[var(--dim)]"
+            className="border-t border-[color:color-mix(in_srgb,var(--chrome)_38%,transparent)] pt-[3px] text-[0.58rem] font-semibold uppercase tracking-[0.34em] text-[var(--dim)]"
           >
             .World
           </span>

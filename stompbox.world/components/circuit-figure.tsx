@@ -95,7 +95,8 @@ export function CircuitFigure({
 }
 
 function strokeFor(role: FigureTrace["role"]): string {
-  if (role === "output") return "var(--brand-gold)"
+  // The signal path, and the one place brass survives. See --signal.
+  if (role === "output") return "var(--signal)"
   if (role === "control") return "var(--line-strong)"
   return "var(--dim)"
 }

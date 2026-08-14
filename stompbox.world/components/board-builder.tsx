@@ -254,7 +254,7 @@ export function BoardBuilder({ catalog }: { catalog: CatalogPedal[] }) {
                     onClick={() => add(item)}
                     disabled={already || full}
                     title={already ? "Already on the board" : `Add ${pedal.brand} ${pedal.model}`}
-                    className="surface flex items-center gap-2.5 py-1.5 pl-1.5 pr-3 text-left transition-colors hover:border-[var(--brand-gold)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-[var(--line)]"
+                    className="surface flex items-center gap-2.5 py-1.5 pl-1.5 pr-3 text-left transition-colors hover:border-[var(--chrome)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-[var(--line)]"
                   >
                     <PedalThumb src={pedal.imageUrl} alt="" />
                     <span className="min-w-0">
