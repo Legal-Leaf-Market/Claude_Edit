@@ -244,6 +244,7 @@ app/
     auth/[...all]           Better Auth
     cron/*                  Ingest per source, refresh-deals, weekly-digest.
                             All fail closed on CRON_SECRET
+    catalog/pedals          The pedal shelf published to stompbox.world (section 20)
 lib/
   env.ts                    Every integration exposes isConfigured; nothing throws
   nav.ts                    THE nav tree. Header, mobile sheet and footer all read it
@@ -262,6 +263,7 @@ lib/
   ingestion/upsert.ts       Idempotent writes, price history, run bookkeeping
   canonical/resolve.ts      Four-tier entity resolution (section 4)
   canonical/model-parse.ts  Brand/model/category from keyword-soup titles
+  catalog/live-models.ts    ONE definition of what a category has in stock (section 20)
   deals/pricing.ts          Rolling median, deal threshold
   search/                   Typesense with a real Postgres fallback (section 6)
   queue/                    BullMQ; the OTHER way to run ingestion (section 7)
@@ -997,6 +999,13 @@ engine.
 - Do NOT port the pedalboard planner into a game engine. It has to stay
   indexable, keep `/go` in the DOM, share the TypeScript engines with the
   server, and be reachable by a screen reader (section 16).
+- Do NOT answer "what is in stock in this category" with a second query. There
+  is one, `liveModels()`, and the last time two existed the published shelf
+  stocked itself with sold-out gear (section 20).
+- Do NOT publish a per-listing price, a merchant name or a deep link through
+  `/api/catalog/pedals`. The medians are ours; the feed rows are not.
+- Do NOT blend the new and used medians into one unlabelled number on the way
+  out of this site. Send both, and say which one the headline is.
 - Do NOT point the test suite at a database you care about; it truncates.
 
 ---
@@ -1051,3 +1060,63 @@ section 1 gives. A configured value that is not on an Impact tracking host is
 IGNORED with a warning rather than used, and unset means the page links to the
 merchant's own site untracked. Earning nothing beats routing a shopper through
 a tracker that credits nobody, which is the rule every network here follows.
+
+---
+
+## 20. The pedal shelf published to stompbox.world
+
+`lib/catalog/live-models.ts`, `/api/catalog/pedals`. The sister site
+(`stompbox.world/`, its own Vercel project in this repo) is a hand-written
+guide to what pedal circuits do, and it now carries the pedal slice of this
+catalogue. It holds no database client and no credential: it reads that one
+endpoint over HTTP and renders it. One connection string, one ingestion path,
+one taxonomy.
+
+**`/used/effects-pedals` IS THE DEFINITION, and the endpoint used to disagree
+with it.** That page joins `canonical_gear` to ACTIVE listings, so a model with
+nothing live in it is simply not on it. The endpoint ran its own SELECT over
+`canonical_gear` alone and ordered by `price_sample_size`, so it published
+models whose listings had all ended and ranked them ABOVE models a shopper
+could buy. That is not a rounding error: the price sample deliberately counts
+listings that ended inside the last 90 days (section 8), which is right for
+measuring a market and wrong for stocking a shelf, so the staler a model was
+the higher it sorted. The sister site printed the result under "most listed
+first". Both surfaces read `liveModels()` now, and the join is the definition:
+no active listing, no row. Section 7's "never fork the logic", applied to a
+query rather than to a trigger.
+
+**The order is live listing count**, which is what both pages claim it is.
+
+**New and used cross the wire separately**, each with its own sample size, plus
+`marketPriceClass` naming which market the headline number measures. The old
+response was `COALESCE(avg_used, avg_new)` gated on the USED sample size, which
+is section 8 broken twice in one line: it withheld the price of every new-only
+pedal (its used sample is zero), and anything it did publish arrived on a card
+labelled "typical used" whether or not it was. The used-first rule lives in
+`headlineMarket()` and is called, not restated.
+
+**`minSample` is `MIN_SAMPLE_SIZE`, not a number typed into the route.** It
+read 3 while the real floor was 5, and the sister site printed that 3 in a
+sentence explaining its own honesty policy.
+
+**The projection is where the redistribution rule is enforced.**
+`liveModels()` returns the cheapest live asking price because this site's own
+pages print it; the endpoint drops it. Merchant names, deep links and
+per-listing prices carry partner terms that differ per feed, and republishing
+them from a second domain is the quiet redistribution those terms restrict. The
+medians are our own aggregate, computed from listings we ingested, and are ours
+to publish. A shopper who wants to buy is sent to `/gear/[slug]`, where the
+attribution and the click accounting already work. There is a test asserting
+the response carries no per-listing price.
+
+**No region filter, deliberately.** Section 15 hides stores that cannot ship to
+a given shopper, from a geo guess or a cookie. A cached endpoint feeding a
+statically built sister site has neither, so it answers for an UNKNOWN region,
+which section 15 already defines as showing everything. The filtering happens
+when the shopper arrives here.
+
+**Nothing over there may throw.** The endpoint answers 503 with a reason rather
+than 500, and the sister site degrades to the guide it already was and prints
+the reason. A bare 503 reads as "the sister site is down", which is the wrong
+thing to go looking at when the real cause is a query that no longer matches
+the schema, and that confusion has already cost a day once.
