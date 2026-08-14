@@ -241,6 +241,25 @@
 }
 
 @layer components {
+
+  /*
+   * The header's nav row scrolls sideways on a narrow screen rather than
+   * wrapping or pushing the theme toggle off the edge. The scrollbar is hidden
+   * because it would sit across the masthead on every desktop that shows one,
+   * and the row is short enough that the overflow is discoverable by dragging.
+   *
+   * No margin shorthand in here: this class sits outside @layer and would beat
+   * any Tailwind spacing utility on the element.
+   */
+  .nav-rail {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    overscroll-behavior-x: contain;
+  }
+  .nav-rail::-webkit-scrollbar {
+    display: none;
+  }
+
   .shell {
     width: var(--shell);
     margin-inline: auto;
