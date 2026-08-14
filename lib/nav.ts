@@ -1,6 +1,7 @@
 import { BOARDS } from "@/lib/boards"
 import { indexableCategories } from "@/lib/categories"
 import { FEATURED_RIG_SLUGS, rigsByEffectFamily, RIGS } from "@/lib/rigs"
+import { PARTNERS } from "@/lib/partners"
 import { STORES } from "@/lib/stores"
 
 /**
@@ -195,7 +196,7 @@ export const NAV_SECTIONS: NavSection[] = [
     id: "community",
     label: "Community",
     href: "/feed",
-    match: ["/feed", "/boards", "/flip-match", "/posts"],
+    match: ["/feed", "/boards", "/flip-match", "/posts", "/partners"],
     columns: [
       {
         title: "The boards",
@@ -213,6 +214,22 @@ export const NAV_SECTIONS: NavSection[] = [
           { href: "/alerts", label: "Price alerts", hint: "Email or Discord when something drops" },
           { href: "/list-your-shop", label: "Get your shop listed", hint: "For owners, and for customers referring one" },
         ],
+      },
+      /*
+       * The two partners live under Community rather than Shop, and that is
+       * the honest filing. Shop means the catalogue: real stock, a price, a
+       * median to measure it against. Software instruments and a distribution
+       * subscription are none of those things, and putting them under Shop
+       * would imply a comparison that does not exist.
+       */
+      {
+        title: "Software and services",
+        links: PARTNERS.map((partner) => ({
+          href: `/partners/${partner.slug}`,
+          label: partner.name,
+          hint: partner.kind,
+        })),
+        more: { href: "/partners", label: "Why these are not in the catalogue" },
       },
     ],
   },
@@ -320,6 +337,10 @@ export function footerColumns(): NavColumn[] {
       links: [
         { href: "/feed", label: "The feed" },
         ...BOARDS.map((b) => ({ href: `/boards/${b.slug}`, label: b.navLabel })),
+        // Labelled here as what they are, for the same reason the pages
+        // themselves are: they are not part of the catalogue and the footer is
+        // the wrong place to be coy about it.
+        ...PARTNERS.map((p) => ({ href: `/partners/${p.slug}`, label: p.name })),
       ],
     },
   ]

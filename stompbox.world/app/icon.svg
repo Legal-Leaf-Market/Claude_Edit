@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!--
+    The favicon: the flat build of the mark in components/brand/logo.tsx.
+
+    Literal hex rather than CSS custom properties, because a favicon is fetched
+    outside the page and has no :root to resolve against. The knob detail and
+    the inner footswitch ring are dropped for the same reason the component's
+    `flat` prop drops them: at 16px they are a smudge, and the enclosure, the
+    LED and one big footswitch are what still read.
+  -->
+  <rect x="19" y="3" width="62" height="94" rx="10" fill="#183573" stroke="#ffc233" stroke-width="4"/>
+  <rect x="24.5" y="8.5" width="51" height="83" rx="6.5" fill="none" stroke="#ffc233" stroke-opacity="0.28" stroke-width="1.4"/>
+  <circle cx="50" cy="15.5" r="3.3" fill="#24e07a"/>
+  <circle cx="50" cy="68" r="14" fill="#070f24" stroke="#ffc233" stroke-width="3.4"/>
+</svg>

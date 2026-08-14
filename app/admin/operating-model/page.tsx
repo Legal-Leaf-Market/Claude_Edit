@@ -3,6 +3,8 @@ import { redirect } from "next/navigation"
 import { OperatingModelDashboard } from "@/components/admin/operating-model-dashboard"
 import { isAdmin } from "@/lib/admin/gate"
 import { MaintenanceButton } from "@/components/admin/maintenance-button"
+import { IMPACT_MERCHANTS } from "@/lib/ingestion/impact-merchants"
+import { partnerLinkStatus } from "@/lib/partners"
 
 // Checked server-side before a single byte of the model goes out; an
 // unauthenticated request gets a redirect, not a page that merely hides the
@@ -28,7 +30,21 @@ export default async function OperatingModelPage() {
         two screens of charts.
       */}
       <div className="shell pt-6">
-        <MaintenanceButton />
+        {/*
+          The merchant list is read here and handed down, rather than imported
+          by the button. The registry reads process.env by computed key, which
+          does not survive being pulled into a client bundle: every merchant
+          would render as unconfigured.
+        */}
+        <MaintenanceButton
+          merchants={IMPACT_MERCHANTS.map((m) => ({
+            key: m.key,
+            label: m.label,
+            catalogId: m.catalogId || null,
+            envVar: m.envVar,
+          }))}
+          partnerLinks={partnerLinkStatus()}
+        />
       </div>
       <OperatingModelDashboard />
     </>

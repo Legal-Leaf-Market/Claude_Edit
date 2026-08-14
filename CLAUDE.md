@@ -174,7 +174,50 @@ built for that site's own frontend rather than published for this use.
   mail), not site plumbing: it lands on their storefront rather than on a
   listing, so it has no home on a site whose every outbound link points at a
   specific listing we have actually seen in a feed. Putting it on a page would
-  be the first ad on this site, which is a product decision nobody has taken.
+  have been the first ad on this site. That was a decision nobody had taken
+  when this paragraph was written; it has since been taken for DistroKid and
+  DistroKid only (section 19). It has still not been taken for Andertons, whose
+  catalogue is ingested and therefore needs no banner.
+- **Seven more Impact merchants, approved August 2026, all through the same
+  catalogue API**: **American Musical Supply**, **Musician's Friend**, **Native
+  Instruments**, **Fender**, **Universal Audio**, **Donner Music** and **Plugin
+  Alliance**. The merchant is DATA (`lib/ingestion/impact-merchants.ts`) and
+  `lib/ingestion/impact-catalogue.ts` is the one reader; Anderton's module keeps
+  its FTP transport and delegates the rest. Eight near-identical parsers would
+  have been section 7's "never fork the logic" broken eight ways.
+  **Each needs a catalogue id, and it is never guessed.** `IMPACT_*_CATALOG_ID`
+  is unset by default and the job no-ops until it is set. Anderton's 30480 could
+  be defaulted because somebody read it off the platform; a wrong id does not
+  fail safely, it either 404s or returns ANOTHER advertiser's products under this
+  merchant's name. `/api/admin/impact` with `{"mode":"list"}`, surfaced as a
+  button, reads the real ids off the account.
+  **A PROGRAMME ID IS NOT A CATALOGUE ID, and this is the likeliest way to get
+  the previous paragraph wrong.** The Impact marketplace export lists one number
+  per brand (AMS 47665, Musician's Friend 14291, Native Instruments 29910,
+  Fender 33985, Universal Audio 39245, Donner 43895, Plugin Alliance 30401) and
+  it identifies the PROGRAMME, the thing a publisher applies to. Anderton's is
+  the proof that the two schemes are unrelated: catalogue 30480, campaign 43829.
+  Those programme ids live in `impact-merchants.ts` as `programId`, nothing in
+  the ingestion path reads them, and their whole job is letting the admin list
+  say which returned catalogue belongs to which merchant. A test forbids either
+  id standing in for the other.
+  **An approval is not a catalogue.** Impact grants a tracked link and a
+  commission; whether a brand publishes a product catalogue to partners is a
+  separate fact, and some of these may never have one. Unset is a fully
+  supported state, exactly as Sweetwater's has always been.
+  **Their commission runs 2% (Fender) to 15% (Donner), and the registry does not
+  know it.** Same rule as Anderton's named brand list: a payout-aware registry
+  is one `sort()` from preferring the merchants that pay, which is ranking by
+  commission before a shopper sees a single result. A test asserts the word
+  never appears in that file.
+  **Two of the seven declare a `shipsTo` and five do not.** American Musical
+  Supply and Musician's Friend are confirmed US only and say so, which means a
+  British shopper now loses two of the largest catalogues here and Anderton's is
+  hidden from an American one: the restriction cuts both ways and the notice
+  and the `?ships=all` escape hatch matter more than they did with one
+  restricted store. The other five are unconfirmed, and section 15's default is
+  that absent means unrestricted precisely so a guess cannot hide real
+  inventory. Confirm a merchant's actual policy before adding one.
 
 **Facebook Marketplace is out of scope.** Not "later", not "behind a flag". It
 has no public API, scraping it violates Meta's terms, and it is the exact
@@ -189,6 +232,8 @@ app/
   deals/[slug]/             Programmatic SEO, per model
   used/[category]/          Programmatic SEO, per category
   go/[listingId]/           THE outbound gateway (section 5)
+  go/partner/[slug]/        Same, for the two partners with no listings (section 19)
+  partners/                 Martinic Audio and DistroKid. NOT the catalogue (section 19)
   rigs/                     Artist rigs, and the records each is documented on
   pedalboard/               The rig builder (chain check, power, live pricing)
   alerts/, sign-in/, sign-up/
@@ -199,6 +244,7 @@ app/
     auth/[...all]           Better Auth
     cron/*                  Ingest per source, refresh-deals, weekly-digest.
                             All fail closed on CRON_SECRET
+    catalog/pedals          The pedal shelf published to stompbox.world (section 20)
 lib/
   env.ts                    Every integration exposes isConfigured; nothing throws
   nav.ts                    THE nav tree. Header, mobile sheet and footer all read it
@@ -211,9 +257,13 @@ lib/
   ingestion/ebay-ingest.ts  The three eBay jobs
   ingestion/reverb-awin.ts  Awin feed only. Never the Reverb API (section 2)
   ingestion/andertons-impact.ts  Impact FTP drop, header-bound. Worker only
+  ingestion/impact-catalogue.ts  ONE reader for all eight Impact merchants
+  ingestion/impact-merchants.ts  The merchant registry. Carries no commission
+  partners.ts               Focus-page partners and their pasted tracked links
   ingestion/upsert.ts       Idempotent writes, price history, run bookkeeping
   canonical/resolve.ts      Four-tier entity resolution (section 4)
   canonical/model-parse.ts  Brand/model/category from keyword-soup titles
+  catalog/live-models.ts    ONE definition of what a category has in stock (section 20)
   deals/pricing.ts          Rolling median, deal threshold
   search/                   Typesense with a real Postgres fallback (section 6)
   queue/                    BullMQ; the OTHER way to run ingestion (section 7)
@@ -354,6 +404,13 @@ history of two instruments and every deal badge computed from it.
   hand once the shopper is there; every other source (the paused eBay/
   Reverb/CJ/Awin feeds) has no prefillable cart at all, so checkout there is
   just the first item's own link, same destination `/go` would use for it.
+- **`/go/partner/[slug]` is the third route out, and the only one with no
+  listing behind it.** The two focus-page partners (section 19) have no
+  catalogue rows, so there is no listing id to redirect from. Everything else
+  about it is deliberately identical to `/go`: the click is logged first and
+  never blocks the shopper, the destination clears the same allowlist, and the
+  redirect is a 302 with `no-store`. Its click rows carry a null `listing_id`,
+  which is what tells partner traffic apart from marketplace traffic later.
 - **Click logging failures are swallowed on purpose.** A click we cannot bill
   for is a rounding error; a shopper who cannot reach the listing is the
   product failing at the one moment that matters.
@@ -536,23 +593,29 @@ process, and the accident is far likelier.
 | `BETTER_AUTH_SECRET` | Accounts and alerts. Unset = auth routes 503, rest of site unaffected. |
 | `RESEND_API_KEY` / `DISCORD_WEBHOOK_URL` | Alert delivery. Each no-ops with a warning. |
 | `ADMIN_PASSCODE` | `/admin/operating-model`. Unset = nobody can sign in, ever. See section 12. |
-| `INSTAGRAM_HANDLE` / `INSTAGRAM_POST_URLS` | Homepage and footer follow strip. Handle defaults to `stompbox.world`; unset post URLs render a plain follow callout instead of embeds. |
+| `INSTAGRAM_HANDLE` / `INSTAGRAM_POST_URLS` | Homepage and footer follow strip. Handle defaults to `stomp_box_world`, which is a DIFFERENT account from `stompbox.world`: the older grid matched the domain, this is the one being populated, and they read alike enough to get merged by anyone tidying up. Unset post URLs render a plain follow callout instead of embeds. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | "Continue with Google" on sign-in/sign-up. Unset means email and password only. |
-| `YOUTUBE_API_KEY` | Anderton's TV metadata and comments, via the YouTube Data API v3 (section 19). Unset means the reader no-ops. |
+| `YOUTUBE_API_KEY` | Anderton's TV metadata and comments, via the YouTube Data API v3. The reasoning, including why transcripts are off limits, is in the `youtube` block of `lib/env.ts`. Unset means the reader no-ops. |
 
-| `IMPACT_ACCOUNT_SID` / `IMPACT_AUTH_TOKEN` / `IMPACT_ANDERTONS_CATALOG_ID` | The OTHER way into the same catalogue: Impact's partner REST API (`api.impact.com/Mediapartners/{sid}/Catalogs/{id}/Items`, HTTP Basic, JSON, paginated). Both credentials are on Impact's API settings page. **Prefer this over the FTP block where it works**: ordinary HTTPS with no control connection or passive ports, and a slice is a page rather than a re-download of the whole catalogue per chunk. The catalogue id defaults to Anderton's 30480 (campaign 43829, 27,052 products) since it is not a secret; the gate is on the SID and token. |
+| `IMPACT_ACCOUNT_SID` / `IMPACT_AUTH_TOKEN` | Impact's partner REST API (`api.impact.com/Mediapartners/{sid}/Catalogs/{id}/Items`, HTTP Basic, JSON, paginated), which is the OTHER way into Anderton's and the ONLY way into the other seven merchants. Both credentials are on Impact's API settings page and both are shared by every advertiser on the account. **Prefer this over the FTP block where it works**: ordinary HTTPS with no control connection or passive ports, and a slice is a page rather than a re-download of the whole catalogue per chunk. |
+| `IMPACT_ANDERTONS_CATALOG_ID` | Defaults to 30480 (campaign 43829, 27,052 products) because somebody read it off the platform and it is not a secret. |
+| `IMPACT_AMERICANMUSICAL_CATALOG_ID`, `IMPACT_MUSICIANSFRIEND_CATALOG_ID`, `IMPACT_NATIVEINSTRUMENTS_CATALOG_ID`, `IMPACT_FENDER_CATALOG_ID`, `IMPACT_UNIVERSALAUDIO_CATALOG_ID`, `IMPACT_DONNER_CATALOG_ID`, `IMPACT_PLUGINALLIANCE_CATALOG_ID` | One per Impact merchant, ALL UNSET BY DEFAULT AND NEVER GUESSED. A wrong id does not fail safely: it either 404s or returns another advertiser's products under this merchant's name, which poisons the store page and every median built from it. Read the real ones with `{"mode":"list"}` on `/api/admin/impact`, surfaced as a button. Unset means that merchant's job no-ops, same as Sweetwater. |
+| `IMPACT_MARTINIC_LINK` / `IMPACT_DISTROKID_LINK` | Whole tracked links, pasted from Impact's "create your links" step, for the two focus-page partners (section 19). Never built here: an Impact deep link needs `/c/<publisherId>/<campaignId>/<adId>`. A value that is not on an Impact tracking host is IGNORED with a warning rather than used, and unset means the page links to the merchant's own site untracked. |
 
-**Two transports, ONE normaliser.** `normalizeRecords()` in
-`lib/ingestion/andertons-impact.ts` is shared: the FTP drop arrives as
-delimited text and the API as JSON objects, but from binding down they are the
-same thing, a list of records whose field names are the brand's choice rather
-than the network's. This is section 7's "never fork the logic" applied to
-transports rather than triggers. Do not let the API path grow its own parser.
+**Two transports and eight merchants, ONE normaliser.**
+`normalizeImpactRecords()` in `lib/ingestion/impact-catalogue.ts` is shared by
+all of them: the FTP drop arrives as delimited text and the API as JSON objects,
+but from binding down they are the same thing, a list of records whose field
+names are the brand's choice rather than the network's, and a merchant differs
+only by catalogue id, currency and country. This is section 7's "never fork the
+logic" applied to transports and to merchants rather than to triggers. Do not
+let the API path grow its own parser, and do not write a per-merchant module:
+add a row to `lib/ingestion/impact-merchants.ts` instead.
 
 **Impact's API is a legitimate partner channel, not a workaround** for the FTP
 server being awkward. It is their published Mediapartners API, authenticated
-with our own account credentials, serving the catalogue Anderton's publishes to
-partners for this purpose. That is a different thing entirely from the frontend
+with our own account credentials, serving the catalogues these brands publish
+to partners for this purpose. That is a different thing entirely from the frontend
 Algolia index rejected for Guitar Center (section 2).
 
 **THE API IS CLOSED FOR ANDERTON'S, BY ANDERTON'S (confirmed 11 Aug 2026).**
@@ -617,7 +680,7 @@ a wrong catalogue id, and turns the 30480 default from a guess into a checked
 value. It writes nothing and keeps credentials in the Authorization header.
 
 **Check the schema before the first pull.** `{"mode":"peek"}` on
-`/api/admin/andertons-api`, surfaced as a button, reads one page, writes
+`/api/admin/impact`, surfaced as a button, reads one page, writes
 nothing, and lists every field name found beside the ones the alias table
 bound. This is the header-row rule made self-service: the FTP parser earned its
 bindings from a real header row somebody pasted in, and the API earns its own
@@ -866,6 +929,19 @@ Victory preamp gets a page of prices they can never pay.
 - **A store declares its own restriction**, as `shipsTo` on its `StoreProfile`.
   Absent means unrestricted, which is the honest default: most stores here ship
   broadly and we have no evidence otherwise, so we do not invent a limit.
+- **Two of the seven Impact merchants added in August 2026 carry one and five
+  do not**, and both halves of that are this rule being followed. American
+  Musical Supply and Musician's Friend are confirmed US only, so they declare
+  it. The five brand stores are unconfirmed either way, and a guessed
+  restriction hides real inventory from real shoppers, so they stay
+  unrestricted until somebody checks.
+- **The restriction is no longer one-directional, and that changes what this
+  costs.** With Anderton's alone, hiding only ever affected non-UK shoppers.
+  Now a British shopper loses the two biggest US retailers and an American one
+  loses Anderton's, so the "we hid N listings from X" notice and the one-click
+  `?ships=all` are load bearing for most of the audience rather than a minority
+  of it. Do not quietly drop either, and do not add a third restricted store
+  without confirming its policy first.
 - **Restricted stores are HIDDEN, not badged**, for shoppers they cannot reach.
   A badge on every fourth card still means someone scans, compares, gets
   interested and then loses.
@@ -935,15 +1011,40 @@ are load bearing rather than taste:
 - gold is MUTED at rest and earned by `:hover` and by the one primary action
   per view. A toolbar of eight buttons must not be eight gold rings
 
-**The mark is drawn, not typeset.** A pedal enclosure with a brass silkscreen
-edge, a status LED and a single-cutaway guitar on the face. The letterforms are
-stroked polylines with mitred joins on a 100-unit cap height, so the wordmark
-needs no font, renders identically everywhere and survives being inlined into a
-favicon. Two drafts were thrown away and both failures are worth remembering:
-chamfering the enclosure into an octagon read as a road sign at tab size, and
-cutting two deep notches either side of the neck for a double cutaway produced,
-unmistakably, a cat. A guitar's shoulders sit HIGH and the cutaway is a shallow
-scoop, not a V.
+**The mark is drawn, not typeset.** `GearAvailMark` is a tuning fork in a ring:
+two tines, a stem, a circle. It was the original mark, it was replaced during
+the redesign by a pedal enclosure containing a guitar, and it was put back
+because it survives 16 pixels and because a fork means pitch, which is every
+instrument here, where a guitar in a stompbox means one shelf of a shop that
+also sells drums, mics, keys and PA. The enclosure drawing is kept as
+`GearAvailEnclosureMark` for the board builder, where the subject genuinely is a
+stompbox and there is room to render it. The letterforms are stroked polylines
+with mitred joins on a 100-unit cap height, so the wordmark needs no font,
+renders identically everywhere and survives being inlined into a favicon.
+
+**THE FAVICON IS A PEDAL, AND THE HEADER MARK IS NOT.** `app/icon.svg` is an
+enclosure with the fork silkscreened on its face, which the owner asked for
+directly, so the argument in `logo.tsx` for the bare fork is not a reason to
+change it back. The two still read as one identity because the fork is on the
+face, which is where a pedal prints its graphic anyway. It is drawn in literal
+hex rather than `var()`, because a favicon is fetched outside the document and
+every custom property would fall back to nothing.
+
+**Every draft that was thrown away failed in the same direction: clever
+geometry becomes an accident at tab size.** Chamfering the enclosure into an
+octagon read as a road sign. Two deep notches either side of a neck, for a
+double cutaway, produced unmistakably a cat (a guitar's shoulders sit HIGH and
+the cutaway is a shallow scoop, not a V). Two knobs above a footswitch read as
+two eyes above a mouth. A fork and a switch drawn as two separate small marks
+both dissolved, which is why the fork's stem runs down into the switch: one
+graphic, one weight, and a heavier stroke than looks right at 96px. Draw the
+candidates at 16, 20, 32 and 96 on light AND dark browser chrome before
+committing one. Every failure above was invisible at the size it was drawn.
+
+**The sister site ships this same enclosure silhouette in royal blue.** Two
+projects in one repo must not put the same picture in two tabs, so Gear Avail's
+is graphite and carries the fork, and stompbox.world's is blue with a bare
+footswitch.
 
 **Two tokens are contrast-critical and are not interchangeable with the brand
 hues.** Bright gold is about 1.8:1 on white and bright green about 1.9:1, both
@@ -1048,6 +1149,24 @@ engine.
   feed down to the paying brands is ranking by payout at the row level.
 - Do NOT bind the Impact catalogue by column position. It is brand-configured
   and the order is not stable; bind by header name and fail loudly.
+- Do NOT guess an Impact catalogue id, or default one that has not been read
+  off the account. A wrong id returns another advertiser's products under this
+  merchant's name, which is worse than a 404 because nothing fails (section 1).
+- Do NOT put a programme id from the Impact marketplace export into an
+  `IMPACT_*_CATALOG_ID`. They are different numbering schemes and Anderton's
+  proves it: catalogue 30480, campaign 43829. The export id belongs in
+  `programId`, which nothing ingesting ever reads.
+- Do NOT write a per-merchant Impact ingestion module. The merchant is a row in
+  `lib/ingestion/impact-merchants.ts` and there is one reader; eight parsers is
+  section 7 broken eight ways.
+- Do NOT put software or a service in the catalogue. No condition, no stock and
+  no second seller means no market price, and publishing one anyway is section
+  8's cardinal error. It gets a focus page (section 19).
+- Do NOT remove the "Partner" label from a banner, or place one inside a result
+  set. The label and the placement are what keep it compatible with the
+  footer's promise (section 19).
+- Do NOT add a banner for a third partner. Two labelled placements for one
+  merchant is a decision that was taken; a general ad slot is not.
 - Do NOT define a colour only inside the light-theme block, or only outside
   it. Both themes resolve from the same token set, and prices and
   accent-coloured body text must use `--money` and `--accent-text` rather than
@@ -1062,21 +1181,161 @@ engine.
 - Do NOT port the pedalboard planner into a game engine. It has to stay
   indexable, keep `/go` in the DOM, share the TypeScript engines with the
   server, and be reachable by a screen reader (section 16).
+- Do NOT answer "what is in stock in this category" with a second query. There
+  is one, `liveModels()`, and the last time two existed the published shelf
+  stocked itself with sold-out gear (section 20).
+- Do NOT publish a per-listing price, a merchant name or a deep link through
+  `/api/catalog/pedals`. The medians are ours; the feed rows are not.
+- Do NOT blend the new and used medians into one unlabelled number on the way
+  out of this site. Send both, and say which one the headline is.
 - Do NOT point the test suite at a database you care about; it truncates.
 - Do NOT render a YouTube comment's text or its author's name anywhere. The
   reader aggregates; counts and matched gear names are all that may leave it
-  (section 19).
+  (section 21).
 - Do NOT call the YouTube API from a request-scoped path. The quota is 10,000
   units a day for the whole project and comment reads cost a unit per video,
-  so it belongs behind a long `revalidate` (section 19).
+  so it belongs behind a long `revalidate` (section 21).
 - Do NOT drop an out-of-stock slot from a store rig page. Showing only what
   the store happens to have redraws somebody's signal chain into the
   inventory, which is section 15's dishonesty performed on the rig instead of
-  the listing (section 19).
+  the listing (section 21).
 
 ---
 
-## 19. Anderton's TV, and the UK section
+## 19. The two focus-page partners, and the first ad on this site
+
+`lib/partners.ts`, `/partners`, `/partners/[slug]`, `/go/partner/[slug]`.
+
+**Martinic Audio and DistroKid are Impact merchants that are deliberately NOT
+in the catalogue.** Everything in `marketplace_listings` exists to be compared:
+a price against a median, a condition against its own class, one shop's stock
+against another's. Martinic sells software instruments, and DistroKid sells a
+distribution subscription rather than a product at all. Neither has a used
+market, a condition, a second seller or a stock level, so a median over either
+would be a number with nothing behind it, which is precisely the invention
+section 8 exists to prevent. They would also sit in the search grid, where a
+shopper filtering for gear under $200 with local pickup would be handed a
+plugin licence.
+
+So each gets a hand-written page, and each page STATES ON ITSELF why it carries
+no price comparison. That is the same instinct as a gear page printing "sample
+too small to publish a market price" rather than estimating one.
+
+**The DistroKid banner is the first ad on this site, and it was an explicit
+product decision.** Section 1 records that the Andertons vanity link had no home
+here because putting it on a page "would be the first ad on this site, which is
+a product decision nobody has taken". It has been taken now, narrowly, and the
+footer's promise still holds because of what that promise actually says:
+commission never affects RANKING, and payout is not why a merchant is listed or
+delisted. A labelled banner touches neither. Four things keep it that way and
+none of them is decoration:
+
+- **It says what it is.** "Partner, we earn from this link" is on the banner
+  itself, not only in the footer. An unlabelled placement dressed as a result
+  is what would break the promise; one a shopper identifies in half a second
+  does not.
+- **It is never inside a result set.** Between sections only. Never in search,
+  never on a gear page, never displacing a listing.
+- **It goes through `/go/partner`**, so the click is recorded and the
+  destination clears the same allowlist as every other outbound link.
+- **It is visually quieter than the content around it**, per section 16: gold
+  is an edge, muted at rest, and a banner is not the one primary action on any
+  page it appears on.
+
+Martinic has no banner. One merchant with two labelled placements is a
+decision; a general ad slot is a different site.
+
+**Links are pasted, never built.** `IMPACT_MARTINIC_LINK` and
+`IMPACT_DISTROKID_LINK` hold whole tracked links from Impact's own "create your
+links" step. There is still no `buildImpactUrl()` anywhere, for the reason
+section 1 gives. A configured value that is not on an Impact tracking host is
+IGNORED with a warning rather than used, and unset means the page links to the
+merchant's own site untracked. Earning nothing beats routing a shopper through
+a tracker that credits nobody, which is the rule every network here follows.
+
+---
+
+## 20. The pedal shelf published to stompbox.world
+
+`lib/catalog/live-models.ts`, `/api/catalog/pedals`. The sister site
+(`stompbox.world/`, its own Vercel project in this repo) is a hand-written
+guide to what pedal circuits do, and it now carries the pedal slice of this
+catalogue. It holds no database client and no credential: it reads that one
+endpoint over HTTP and renders it. One connection string, one ingestion path,
+one taxonomy.
+
+**`/used/effects-pedals` IS THE DEFINITION, and the endpoint used to disagree
+with it.** That page joins `canonical_gear` to ACTIVE listings, so a model with
+nothing live in it is simply not on it. The endpoint ran its own SELECT over
+`canonical_gear` alone and ordered by `price_sample_size`, so it published
+models whose listings had all ended and ranked them ABOVE models a shopper
+could buy. That is not a rounding error: the price sample deliberately counts
+listings that ended inside the last 90 days (section 8), which is right for
+measuring a market and wrong for stocking a shelf, so the staler a model was
+the higher it sorted. The sister site printed the result under "most listed
+first". Both surfaces read `liveModels()` now, and the join is the definition:
+no active listing, no row. Section 7's "never fork the logic", applied to a
+query rather than to a trigger.
+
+**The order is live listing count**, which is what both pages claim it is.
+
+**New and used cross the wire separately**, each with its own sample size, plus
+`marketPriceClass` naming which market the headline number measures. The old
+response was `COALESCE(avg_used, avg_new)` gated on the USED sample size, which
+is section 8 broken twice in one line: it withheld the price of every new-only
+pedal (its used sample is zero), and anything it did publish arrived on a card
+labelled "typical used" whether or not it was. The used-first rule lives in
+`headlineMarket()` and is called, not restated.
+
+**`minSample` is `MIN_SAMPLE_SIZE`, not a number typed into the route.** It
+read 3 while the real floor was 5, and the sister site printed that 3 in a
+sentence explaining its own honesty policy.
+
+**The projection is where the redistribution rule is enforced.**
+`liveModels()` returns the cheapest live asking price because this site's own
+pages print it; the endpoint drops it. Merchant names, deep links and
+per-listing prices carry partner terms that differ per feed, and republishing
+them from a second domain is the quiet redistribution those terms restrict. The
+medians are our own aggregate, computed from listings we ingested, and are ours
+to publish. A shopper who wants to buy is sent to `/gear/[slug]`, where the
+attribution and the click accounting already work. There is a test asserting
+the response carries no per-listing price.
+
+**No region filter, deliberately.** Section 15 hides stores that cannot ship to
+a given shopper, from a geo guess or a cookie. A cached endpoint feeding a
+statically built sister site has neither, so it answers for an UNKNOWN region,
+which section 15 already defines as showing everything. The filtering happens
+when the shopper arrives here.
+
+**Nothing over there may throw.** The endpoint answers 503 with a reason rather
+than 500, and the sister site degrades to the guide it already was and prints
+the reason. A bare 503 reads as "the sister site is down", which is the wrong
+thing to go looking at when the real cause is a query that no longer matches
+the schema, and that confusion has already cost a day once.
+
+**A DEPLOY OF THIS PROJECT CAN SHIP STALE NUMBERS ON THE OTHER DOMAIN, and
+nothing in this repository will show it.** Both Vercel projects build from the
+same commit at the same time, and stompbox.world prerenders its catalogue page
+by fetching this endpoint during its build, so a commit that changes both can
+race itself: the sister site's build finishes first and bakes in a response
+from the deployment being replaced. The change that made the endpoint read the
+live shelf shipped exactly that, and the page sat there stating the previous
+version's numbers, which reads like a failed deploy rather than a cache.
+
+It corrects itself within fifteen minutes, and stompbox.world now also exposes
+`POST /api/revalidate` for Vercel to call when THIS project's production
+deployment succeeds, which closes the window. **No code here implements that,
+and none should.** The caller is Vercel's own webhook, configured once in the
+team dashboard, so Gear Avail still knows nothing about its sister site and the
+dependency keeps running one way. The setup and the reasoning are in
+`stompbox.world/CLAUDE.md` section 2b.
+
+The practical consequence for anyone shipping a change to this endpoint: check
+what stompbox.world is actually rendering afterwards, rather than assuming a
+green deploy means the published slice is current over there.
+
+---
+## 21. Anderton's TV, and the UK section
 
 `lib/ingestion/andertons-youtube.ts` reads the channel; `lib/andertons/`
 turns it and the catalogue into pages under `/uk`.

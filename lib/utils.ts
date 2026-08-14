@@ -64,6 +64,13 @@ export function sourceLabel(source: string): string {
   if (source === "easonmusicstore") return "Eason Music Store"
   if (source === "gokalimba") return "Go Kalimba"
   if (source === "andertons") return "Andertons Music Company"
+  if (source === "americanmusical") return "American Musical Supply"
+  if (source === "musiciansfriend") return "Musician's Friend"
+  if (source === "nativeinstruments") return "Native Instruments"
+  if (source === "fender") return "Fender"
+  if (source === "universalaudio") return "Universal Audio"
+  if (source === "donner") return "Donner Music"
+  if (source === "pluginalliance") return "Plugin Alliance"
   return source
 }
 

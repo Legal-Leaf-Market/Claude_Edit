@@ -3,6 +3,7 @@ import Link from "next/link"
 import { sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { SubscribeForm } from "@/components/subscribe-form"
+import { PartnerBanner } from "@/components/partner-banner"
 import { BOARD_BY_KIND } from "@/lib/boards"
 import type { BoardKind } from "@/lib/db/schema"
 import { formatPrice, timeAgo } from "@/lib/utils"
@@ -133,6 +134,15 @@ export default async function FeedPage() {
           </ul>
         )}
       </section>
+
+      {/*
+        Below the posts, never above them. The copy at the top of this page
+        promises there is nothing a shop can pay to move up, and that stays
+        true: the feed is ordered by recency alone and this banner is not in
+        the ordering at all. Putting it under the sentence rather than over it
+        keeps the two from reading as if they were about each other.
+      */}
+      <PartnerBanner slug="distrokid" />
     </div>
   )
 }

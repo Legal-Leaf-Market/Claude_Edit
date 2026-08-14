@@ -3,10 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   bindColumns,
   sliceRows,
-  explainImpactStatus,
-  fetchAndertonsApiPage,
-  fetchAndertonsApiRange,
-  IMPACT_PAGING_CEILING,
   ImpactSchemaError,
   normalizeAndertonsRow,
   normalizeRecords,
@@ -14,6 +10,17 @@ import {
   toCents,
   UNBOUND_BY_POLICY,
 } from "@/lib/ingestion/andertons-impact"
+/*
+ * The API transport lives in the shared reader now: it stopped being
+ * Anderton's-specific the moment Impact went from one merchant to eight, and
+ * these behaviours are the same for every one of them.
+ */
+import {
+  explainImpactStatus,
+  fetchImpactApiPage,
+  fetchImpactApiRange,
+  IMPACT_PAGING_CEILING,
+} from "@/lib/ingestion/impact-catalogue"
 import { detectDelimiter } from "@/lib/ingestion/csv"
 import { isAllowedDestination } from "@/lib/affiliate/allowed-hosts"
 
@@ -633,13 +640,13 @@ describe("the Impact API transport", () => {
 
   it("names an explicit API version on every request", async () => {
     const calls = stubFetch(() => page([{ CatalogItemId: "1" }]))
-    await fetchAndertonsApiPage(CONFIG, 1, 100)
+    await fetchImpactApiPage(CONFIG, 1, 100)
     expect(calls[0].searchParams.get("IrVersion")).toBeTruthy()
   })
 
   it("keeps credentials out of the URL, since the URL gets echoed to an admin", async () => {
     const calls = stubFetch(() => page([{ CatalogItemId: "1" }]))
-    await fetchAndertonsApiPage(CONFIG, 1, 100)
+    await fetchImpactApiPage(CONFIG, 1, 100)
     expect(calls[0].toString()).not.toContain("TOKEN")
     expect(calls[0].search).not.toContain("TOKEN")
   })
@@ -650,7 +657,7 @@ describe("the Impact API transport", () => {
    */
   it("puts Impact's own words in the error, not just the status", async () => {
     stubFetch(() => new Response(JSON.stringify({ Message: "PageSize exceeds the maximum" }), { status: 400 }))
-    await expect(fetchAndertonsApiPage(CONFIG, 1, 1000)).rejects.toThrow(/PageSize exceeds the maximum/)
+    await expect(fetchImpactApiPage(CONFIG, 1, 1000)).rejects.toThrow(/PageSize exceeds the maximum/)
   })
 
   it("flattens an HTML error body rather than refusing to show it", async () => {
@@ -661,7 +668,7 @@ describe("the Impact API transport", () => {
           headers: { "content-type": "text/html" },
         }),
     )
-    const error = await fetchAndertonsApiPage(CONFIG, 1, 100).catch((e: Error) => e)
+    const error = await fetchImpactApiPage(CONFIG, 1, 100).catch((e: Error) => e)
     expect(String(error)).toContain("Unknown parameter")
     expect(String(error)).not.toContain("<h1>")
   })
@@ -686,13 +693,13 @@ describe("the Impact API transport", () => {
   it("refuses to request a page that starts past the paging ceiling", async () => {
     const calls = stubFetch(() => page([]))
     const firstUnreachable = Math.floor(IMPACT_PAGING_CEILING / 100) + 1
-    await expect(fetchAndertonsApiPage(CONFIG, firstUnreachable, 100)).rejects.toThrow(/ceiling/i)
+    await expect(fetchImpactApiPage(CONFIG, firstUnreachable, 100)).rejects.toThrow(/ceiling/i)
     expect(calls).toHaveLength(0)
   })
 
   it("still allows the last page that fits under the ceiling", async () => {
     const calls = stubFetch(() => page([{ CatalogItemId: "1" }]))
-    await fetchAndertonsApiPage(CONFIG, IMPACT_PAGING_CEILING / 100, 100)
+    await fetchImpactApiPage(CONFIG, IMPACT_PAGING_CEILING / 100, 100)
     expect(calls).toHaveLength(1)
   })
 
@@ -713,7 +720,7 @@ describe("the Impact API transport", () => {
       ),
     )
 
-    const walk = await fetchAndertonsApiRange(CONFIG, IMPACT_PAGING_CEILING / 100, 5, 100)
+    const walk = await fetchImpactApiRange(CONFIG, IMPACT_PAGING_CEILING / 100, 5, 100)
 
     expect(walk.ceilingReached).toBe(true)
     expect(walk.nextPage).toBeNull()
@@ -721,7 +728,7 @@ describe("the Impact API transport", () => {
 
   it("does not claim a ceiling stop on an ordinary short read", async () => {
     stubFetch(() => page([{ CatalogItemId: "1" }], { "@numpages": "1" }))
-    const walk = await fetchAndertonsApiRange(CONFIG, 1, 5, 100)
+    const walk = await fetchImpactApiRange(CONFIG, 1, 5, 100)
     expect(walk.ceilingReached).toBeUndefined()
     expect(walk.nextPage).toBeNull()
   })
@@ -767,7 +774,15 @@ describe("an advertiser who has not enabled the API", () => {
     expect(explained).toMatch(/PageSize/i)
   })
 
-  it("points at the transport that does work", () => {
-    expect(explainImpactStatus(400, "30480", MESSAGE)).toMatch(/SFTP/i)
+  /*
+   * It must NOT name a fallback transport. This explainer is shared by all
+   * eight Impact merchants and only Anderton's has an SFTP drop, so telling a
+   * Fender or a Donner failure to "use the SFTP drop" would be pointing at
+   * something that does not exist for them.
+   */
+  it("says the fix is not ours without inventing a transport the merchant lacks", () => {
+    const explained = explainImpactStatus(400, "30480", MESSAGE)
+    expect(explained).toMatch(/nothing here can change that/i)
+    expect(explained).not.toMatch(/SFTP/i)
   })
 })

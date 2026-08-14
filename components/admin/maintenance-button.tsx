@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, Download, RefreshCw, Stethoscope, TriangleAlert } from "lucide-react"
+import { Check, Download, ListTree, RefreshCw, Stethoscope, TriangleAlert } from "lucide-react"
 
 /**
  * "Rebuild prices and deals", for a human with a browser.
@@ -23,10 +23,43 @@ type Result = {
   indexed?: unknown
 }
 
-export function MaintenanceButton() {
+/**
+ * One merchant on the Impact account, as the server sees it.
+ *
+ * Passed in rather than imported. The registry reads lib/env.ts, which reads
+ * process.env by computed key, and neither survives being pulled into a client
+ * bundle: the values would be undefined in a browser and every merchant would
+ * render as unconfigured.
+ */
+export type ImpactMerchantOption = {
+  key: string
+  label: string
+  catalogId: string | null
+  envVar: string
+}
+
+/** One partner's outbound link, as the server resolved it. */
+export type PartnerLinkOption = {
+  slug: string
+  name: string
+  envVar: string
+  configured: boolean
+  tracked: boolean
+  host: string | null
+  verdict: string
+}
+
+export function MaintenanceButton({
+  merchants,
+  partnerLinks = [],
+}: {
+  merchants: ImpactMerchantOption[]
+  partnerLinks?: PartnerLinkOption[]
+}) {
   return (
     <div className="space-y-3">
-      <AndertonsApiButton />
+      <ImpactCatalogueButton merchants={merchants} />
+      <PartnerLinks links={partnerLinks} />
       <AndertonsButton />
       <ProbeButton />
       <RebuildButton />
@@ -35,33 +68,145 @@ export function MaintenanceButton() {
 }
 
 /**
- * The Anderton's catalogue over Impact's REST API.
+ * Whether the two partner links are actually earning.
+ *
+ * A READOUT, NOT A BUTTON, because there is nothing to press: these are
+ * environment variables and only Vercel can change them. What it does is make a
+ * rejected link visible, which is the failure worth catching here.
+ *
+ * A link that is not on an Impact tracking host is ignored and the page falls
+ * back to the merchant's own site. Nothing breaks, the button works, the shopper
+ * arrives, and the click earns nothing. That is indistinguishable from working
+ * unless something says so, and these two pages have no other monetisation at
+ * all, since neither partner has catalogue rows carrying a feed's own link.
+ */
+function PartnerLinks({ links }: { links: PartnerLinkOption[] }) {
+  if (links.length === 0) return null
+
+  return (
+    <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
+      <h2 className="font-display text-base font-black text-[var(--text)]">Partner links</h2>
+      <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+        Martinic Audio and DistroKid have no catalogue, so these two pasted links are the only
+        monetisation their pages have. A link that is not on an Impact tracking host is ignored
+        rather than used, which earns nothing and looks exactly like working, so it is reported
+        here rather than left to a log nobody reads.
+      </p>
+
+      <ul className="space-y-2">
+        {links.map((link) => (
+          <li key={link.slug} className="flex items-start gap-2 text-sm">
+            {link.tracked ? (
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--money)]" aria-hidden="true" />
+            ) : (
+              <TriangleAlert
+                className={`mt-0.5 h-4 w-4 shrink-0 ${
+                  link.configured ? "text-[var(--red)]" : "text-[var(--muted-foreground)]"
+                }`}
+                aria-hidden="true"
+              />
+            )}
+            <span>
+              <strong className="text-[var(--text)]">{link.name}</strong>{" "}
+              <span className="text-[var(--muted-foreground)]">{link.verdict}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * Any Impact.com catalogue: list them, peek at one, pull it.
  *
  * Placed ABOVE the FTP pull because it is the one to try first: it needs two
  * values from Impact's API settings page rather than a mailed-out FTP pair and
  * a host that is only visible inside their platform, and it is plain HTTPS
  * from a serverless function rather than a control connection plus passive
- * data ports.
+ * data ports. It is also the only path the seven merchants approved after
+ * Anderton's have at all.
  *
- * Peek before pull, deliberately. Reading the field names off one real page
- * costs a second and is the only way to know the normaliser binds what it
- * thinks it binds.
+ * THREE BUTTONS IN THE ORDER YOU NEED THEM.
+ *
+ * List first, because a catalogue id cannot be guessed and a wrong one can
+ * return another advertiser's products under this merchant's name. Then peek,
+ * because reading the field names off one real page costs a second and is the
+ * only way to know the normaliser binds what it thinks it binds. Then pull.
  */
-function AndertonsApiButton() {
-  const [state, setState] = useState<"idle" | "peeking" | "diagnosing" | "running" | "done" | "error">("idle")
+function ImpactCatalogueButton({ merchants }: { merchants: ImpactMerchantOption[] }) {
+  const [merchant, setMerchant] = useState(merchants[0]?.key ?? "andertons")
+  const [state, setState] = useState<
+    "idle" | "listing" | "peeking" | "diagnosing" | "running" | "done" | "error"
+  >("idle")
   const [message, setMessage] = useState<string | null>(null)
   const [detail, setDetail] = useState<string | null>(null)
   const [progress, setProgress] = useState<{ wrote: number; total: number } | null>(null)
 
+  const chosen = merchants.find((m) => m.key === merchant) ?? null
+
   async function call(payload: Record<string, unknown>) {
-    const response = await fetch("/api/admin/andertons-api", {
+    const response = await fetch("/api/admin/impact", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ merchant, ...payload }),
     })
     const body = await response.json()
     if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`)
     return body
+  }
+
+  /**
+   * Ask the account which catalogues it can actually read.
+   *
+   * The id column is the output that matters: it is the only way to fill in an
+   * IMPACT_*_CATALOG_ID, and every merchant without one ingests nothing. The
+   * env var name is printed beside each so the next step is a paste rather than
+   * a lookup.
+   */
+  async function list() {
+    setState("listing")
+    setMessage(null)
+    setDetail(null)
+    try {
+      const body = await call({ mode: "list" })
+      const catalogs: {
+        id: string
+        name: string | null
+        advertiser: string | null
+        items: number | null
+        wiredTo: string | null
+        action: string
+      }[] = body.catalogs ?? []
+
+      const unwired = catalogs.filter((c) => !c.wiredTo)
+      setMessage(
+        `This account can read ${body.count} catalogue(s). ` +
+          (unwired.length
+            ? `${unwired.length} of them are not wired to a merchant yet. Each line below says which variable to paste it into.`
+            : "Every one of them is already wired to a merchant."),
+      )
+      setDetail(
+        [
+          "catalogues on the account:",
+          ...catalogs.flatMap((c) => [
+            `  ${String(c.id).padEnd(8)} ${(c.advertiser ?? c.name ?? "(unnamed)").slice(0, 40).padEnd(42)}` +
+              `${c.items != null ? `${c.items.toLocaleString()} items` : ""}`,
+            `           ${c.action}`,
+          ]),
+          "",
+          "merchants this site knows about:",
+          ...(body.merchants ?? []).map(
+            (m: ImpactMerchantOption) =>
+              `  ${m.key.padEnd(18)} ${m.catalogId ? `catalogue ${m.catalogId}` : `NOT SET: paste an id into ${m.envVar}`}`,
+          ),
+        ].join("\n"),
+      )
+      setState("done")
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Something went wrong.")
+      setState("error")
+    }
   }
 
   async function peek() {
@@ -205,26 +350,68 @@ function AndertonsApiButton() {
     }
   }
 
-  const busy = state === "running" || state === "peeking" || state === "diagnosing"
+  const busy =
+    state === "running" || state === "peeking" || state === "listing" || state === "diagnosing"
 
   return (
     <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
       <h2 className="font-display text-base font-black text-[var(--text)]">
-        Pull the Anderton&apos;s catalogue (API)
+        Pull an Impact catalogue
       </h2>
       <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
         Impact&apos;s partner REST API, which needs only an <code>IMPACT_ACCOUNT_SID</code> and an{" "}
-        <code>IMPACT_AUTH_TOKEN</code> from their API settings page. Try this before the FTP pull
-        below: it is ordinary HTTPS, so none of the FTP plumbing applies, and it pages rather than
-        re-downloading the whole file per chunk.
+        <code>IMPACT_AUTH_TOKEN</code> from their API settings page, shared by every merchant on the
+        account. For Anderton&apos;s, try this before the FTP pull below: it is ordinary HTTPS, so
+        none of the FTP plumbing applies, and it pages rather than re-downloading the whole file per
+        chunk. For every other merchant it is the only way in.
       </p>
       <p className="mb-3 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
-        <strong className="text-[var(--text)]">Check the schema first.</strong> It reads one page,
-        writes nothing, and lists which fields the parser bound. A field that is present but unbound
-        is the one worth knowing about: that is how a column silently arrives null on every row.
+        <strong className="text-[var(--text)]">List, then check, then pull.</strong> The list reads
+        the catalogue ids off the account, which is the only way to fill in an{" "}
+        <code>IMPACT_*_CATALOG_ID</code>: a guessed id either 404s or returns a different
+        advertiser&apos;s products under this merchant&apos;s name. The schema check then reads one
+        page and writes nothing, listing which fields the parser bound. A field that is present but
+        unbound is the one worth knowing about: that is how a column silently arrives null on every
+        row.
       </p>
 
+      <label className="mb-3 block max-w-sm text-sm text-[var(--muted-foreground)]">
+        Merchant
+        <select
+          value={merchant}
+          onChange={(event) => {
+            setMerchant(event.target.value)
+            setState("idle")
+            setMessage(null)
+            setDetail(null)
+          }}
+          className="mt-1 block w-full rounded-[8px] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text)]"
+        >
+          {merchants.map((m) => (
+            <option key={m.key} value={m.key}>
+              {m.label}
+              {m.catalogId ? ` (catalogue ${m.catalogId})` : " -- no catalogue id set"}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {chosen && !chosen.catalogId && (
+        <p className="mb-3 max-w-prose text-sm text-[var(--muted-foreground)]">
+          No catalogue id for {chosen.label} yet, so a pull would write nothing. Press{" "}
+          <strong className="text-[var(--text)]">List the catalogues</strong> and paste the matching
+          id into <code>{chosen.envVar}</code>.
+        </p>
+      )}
+
       <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={list} disabled={busy} className="stomp stomp-ghost">
+          <ListTree
+            className={`h-3.5 w-3.5 ${state === "listing" ? "animate-pulse" : ""}`}
+            aria-hidden="true"
+          />
+          {state === "listing" ? "Asking..." : "List the catalogues"}
+        </button>
         <button type="button" onClick={peek} disabled={busy} className="stomp stomp-ghost">
           <Stethoscope
             className={`h-3.5 w-3.5 ${state === "peeking" ? "animate-pulse" : ""}`}

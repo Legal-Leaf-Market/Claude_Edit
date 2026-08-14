@@ -11,6 +11,8 @@ import { ingestSweetwaterFeed } from "@/lib/ingestion/sweetwater-linkconnector"
 import { ingestGear4MusicFeed } from "@/lib/ingestion/gear4music-awin"
 import { ingestZzoundsFeed } from "@/lib/ingestion/zzounds-cj"
 import { ingestAndertonsFeed } from "@/lib/ingestion/andertons-impact"
+import { ingestImpactCatalogue } from "@/lib/ingestion/impact-catalogue"
+import { impactMerchant, IMPACT_MERCHANTS } from "@/lib/ingestion/impact-merchants"
 import { ingestFullCompassFeed } from "@/lib/ingestion/fullcompass-cj"
 import { ingestPinevilleMusicFeed } from "@/lib/ingestion/pinevillemusic-cj"
 import { ingestFolkcraftFeed } from "@/lib/ingestion/folkcraft-shopify"
@@ -82,6 +84,20 @@ export function startIngestionWorker(): Worker<IngestionJob> {
         }
         case "andertons-catalogue": {
           const result = await ingestAndertonsFeed()
+          await syncSearchIndex()
+          return result
+        }
+        case "impact-catalogue": {
+          // One case for every Impact merchant. An unknown key is a config
+          // error rather than a transient failure, so it throws with the keys
+          // that do exist instead of being retried three times with backoff.
+          const merchant = impactMerchant(job.data.merchant)
+          if (!merchant) {
+            throw new Error(
+              `Unknown Impact merchant "${job.data.merchant}". Known: ${IMPACT_MERCHANTS.map((m) => m.key).join(", ")}.`,
+            )
+          }
+          const result = await ingestImpactCatalogue(merchant)
           await syncSearchIndex()
           return result
         }

@@ -80,12 +80,27 @@ describe("storeShipsTo", () => {
 })
 
 describe("excludedSourcesFor", () => {
-  it("excludes nothing for a UK shopper", () => {
-    expect(excludedSourcesFor("GB")).toEqual([])
+  /**
+   * The restriction cuts both ways, which is the point. Anderton's is UK only
+   * and the two big US retailers are US only, so a shopper on either side of
+   * the Atlantic loses somebody. A test that only ever checked one direction
+   * would pass just as happily if the filter were hardcoded to Anderton's.
+   */
+  it("excludes the US-only retailers for a UK shopper", () => {
+    expect(excludedSourcesFor("GB").sort()).toEqual(["americanmusical", "musiciansfriend"])
   })
 
   it("excludes Anderton's for a US shopper", () => {
     expect(excludedSourcesFor("US")).toEqual(["andertons"])
+  })
+
+  /** Neither region's stores reach a shopper in a third country. */
+  it("excludes all three for a shopper somewhere else entirely", () => {
+    expect(excludedSourcesFor("DE").sort()).toEqual([
+      "americanmusical",
+      "andertons",
+      "musiciansfriend",
+    ])
   })
 
   /**
@@ -107,12 +122,17 @@ describe("excludedSourcesFor", () => {
 describe("the shopper-facing copy", () => {
   it("names the stores being hidden, so nothing disappears silently", () => {
     expect(excludedStoreNamesFor("US")).toEqual(["Andertons Music Company"])
-    expect(excludedStoreNamesFor("GB")).toEqual([])
+    expect(excludedStoreNamesFor("GB").sort()).toEqual([
+      "American Musical Supply",
+      "Musician's Friend",
+    ])
     expect(excludedStoreNamesFor(null)).toEqual([])
   })
 
   it("phrases the restriction the way a shopper would say it", () => {
     expect(shipsToLabel("andertons")).toBe("UK only")
+    expect(shipsToLabel("musiciansfriend")).toBe("US only")
+    expect(shipsToLabel("americanmusical")).toBe("US only")
   })
 
   it("has nothing to say about an unrestricted store", () => {
