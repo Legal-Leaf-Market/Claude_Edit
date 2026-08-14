@@ -1,4 +1,9 @@
-import { formatMarketPrice, gearAvailProductUrl, type CatalogPedal } from "@/lib/catalog"
+import {
+  formatMarketPrice,
+  gearAvailProductUrl,
+  marketPriceLabel,
+  type CatalogPedal,
+} from "@/lib/catalog"
 
 /**
  * One catalogue pedal.
@@ -15,6 +20,11 @@ import { formatMarketPrice, gearAvailProductUrl, type CatalogPedal } from "@/lib
  */
 export function CatalogCard({ pedal, minSample }: { pedal: CatalogPedal; minSample: number }) {
   const price = formatMarketPrice(pedal.marketPriceCents)
+  /* New and used are separate markets over there, and gear that only new
+     retailers stock is priced from the new median. Printing that under the
+     words "typical used" would be this site stating something its own source
+     does not say. An unlabelled price prints bare rather than guessing. */
+  const label = marketPriceLabel(pedal.marketPriceClass)
 
   return (
     <a
@@ -36,21 +46,23 @@ export function CatalogCard({ pedal, minSample }: { pedal: CatalogPedal; minSamp
       {price ? (
         <p className="text-2xl font-black tracking-tight text-[var(--money)]">
           {price}
-          <span className="ml-2 align-middle text-xs font-normal text-[var(--dim)]">
-            typical used
-          </span>
+          {label ? (
+            <span className="ml-2 align-middle text-xs font-normal text-[var(--dim)]">{label}</span>
+          ) : null}
         </p>
       ) : (
         /* Saying why there is no number is more useful than an em space where
-           a price should be, and it is the honest version of the same fact. */
+           a price should be, and it is the honest version of the same fact.
+           The reason is per condition, not per pedal: five listings split
+           three new and two used is still no used market price. */
         <p className="text-sm text-[var(--dim)]">
-          Fewer than {minSample} listings, so no market price yet
+          No market price yet: it takes {minSample} listings of one condition to call one
         </p>
       )}
 
       <p className="mt-2 text-xs text-[var(--dim)]">
         {pedal.listingCount > 0
-          ? `${pedal.listingCount} listing${pedal.listingCount === 1 ? "" : "s"} on Gear Avail`
+          ? `${pedal.listingCount} live listing${pedal.listingCount === 1 ? "" : "s"} on Gear Avail`
           : "No live listings right now"}
       </p>
     </a>

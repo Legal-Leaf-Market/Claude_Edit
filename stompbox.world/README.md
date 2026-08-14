@@ -3,8 +3,14 @@
 A plain guide to guitar effects pedals: what each circuit actually does to your
 signal, what you can hear as a result, and what order to put them in.
 
-Nothing here is for sale. There are no affiliate links, no prices and no
-catalogue, which is what lets an entry say a pedal sounds thin into a clean amp.
+Nothing here is for sale, and the circuit guide carries no price, no merchant
+and no affiliate link, which is what lets an entry say a pedal sounds thin into
+a clean amp.
+
+`/catalog` is the one place a price appears, and it is a separate layer: the
+live pedal shelf from the sister site Gear Avail, read over HTTP from
+`/api/catalog/pedals` and rendered here. It holds no database client and no
+credential, and it never touches `lib/pedals.ts`. See CLAUDE.md section 2a.
 
 ## Running it
 
@@ -31,10 +37,13 @@ npm run build       # static build, every page prerendered
 | `/pedals` | The full directory, grouped in signal order rather than alphabetically |
 | `/pedals/[slug]` | One circuit: what it does, what to listen for, where it goes, its controls |
 | `/chain` | The conventional signal chain with the reason for every position, plus a builder |
+| `/catalog` | Gear Avail's live pedal shelf, most listed first, with the typical price where there is one |
 | `/about` | What the site is, how entries are written, and what it deliberately does not do |
 
 Every page is statically prerendered. The dataset is a TypeScript file, so a
-content change is a code change and there is nothing to revalidate.
+content change is a code change and there is nothing to revalidate. `/catalog`
+is the exception: it revalidates every fifteen minutes, because its contents
+come from the sister site's ingestion rather than from this repository.
 
 ## Deployment
 

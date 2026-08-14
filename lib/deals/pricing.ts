@@ -199,8 +199,16 @@ export type MarketPrice = {
  * the used median is the number a visitor came for. New is the fallback, so
  * gear that only new retailers stock still shows something real rather than
  * "not enough data" beside forty live listings.
+ *
+ * Takes the two measurements rather than a whole MarketPrice, so a caller that
+ * read the medians off canonical_gear can use it without inventing a gear id.
+ * That matters more than it sounds: the endpoint publishing the pedal slice to
+ * stompbox.world restated this rule as its own COALESCE and got it wrong, and a
+ * rule stated twice is a rule that will disagree with itself eventually.
  */
-export function headlineMarket(market: MarketPrice): ClassMarket & { basis: ConditionClass | null } {
+export function headlineMarket(
+  market: Pick<MarketPrice, "used" | "new">,
+): ClassMarket & { basis: ConditionClass | null } {
   if (market.used.medianCents != null) return { ...market.used, basis: "used" }
   if (market.new.medianCents != null) return { ...market.new, basis: "new" }
   return { medianCents: null, sampleSize: market.used.sampleSize, basis: null }

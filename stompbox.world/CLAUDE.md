@@ -111,6 +111,32 @@ the definition of what a pedal is; this site reads `/api/catalog/pedals` over
 HTTP and renders it. One connection string, one ingestion path, one taxonomy.
 `GEAR_AVAIL_URL` points at the sister site and defaults to production.
 
+**THE SLICE IS GEAR AVAIL'S `/used/effects-pedals` SHELF, model by model:**
+every pedal with at least one LIVE listing behind it, most listed first. It was
+not always. The endpoint used to publish every pedal row that had ever been
+ingested, ordered by price sample size, and that sample deliberately counts
+listings which ended in the last ninety days, so this site could open on pedals
+whose listings had all gone, ranked above ones you could buy, under a heading
+that said "most listed first". Both sites read one query now (Gear Avail's
+`lib/catalog/live-models.ts`). If the catalogue here ever needs a different
+population, the fix is over there, not a filter here.
+
+**A price says which market it measures.** Gear Avail measures new and used
+separately and falls back to the new median for gear only new retailers stock,
+so the response carries `marketPriceClass` and the card prints "typical used"
+or "typical new" from it. Printing a new median under the words "typical used"
+is this site stating a fact its own source does not, which is house rule 6
+broken by a label. A response with no class prints the number bare rather than
+guessing, because an older or newer endpoint is a thing that happens when two
+projects deploy independently.
+
+**The floor is Gear Avail's `MIN_SAMPLE_SIZE`, sent in the response.** It was
+hardcoded 3 here while the real floor was 5, and the page printed that 3 in the
+sentence explaining why it withholds prices. Do not type the number in again.
+
+**The page shows a slice and says so.** It renders 120 and links the rest to
+Gear Avail rather than paginating a copy of somebody else's catalogue.
+
 **House rule 2 governs the whole layer: nothing throws.** Gear Avail being
 down, slow or shipping an unrecognised shape degrades this site to the guide it
 already was, with the reason printed. It never becomes an error page. There are
@@ -273,4 +299,10 @@ pedal is equally a bass, keys and studio object.
   is read from the sister site over HTTP, and that is the whole reason this
   one is cheap to run and safe to hand to anyone.
 - Do NOT let a catalogue failure become an error page.
+- Do NOT label a market price "used" without checking `marketPriceClass`. New
+  and used are two markets over there and the response says which one it sent.
+- Do NOT hardcode the sample floor. It arrives as `minSample` in the response.
+- Do NOT filter or re-sort the catalogue here to change which pedals appear.
+  The population is Gear Avail's `/used/effects-pedals` shelf, and a second
+  opinion about it on this domain is how the two drifted the first time.
 - Do NOT make the chain notes block or auto-correct a layout.
