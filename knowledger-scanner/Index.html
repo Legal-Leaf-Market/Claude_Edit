@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<title>KnowLedger Statement Scanner</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1216; --panel: #161b22; --panel2: #1c2330; --line: #2b3442;
+    --text: #dde3ea; --dim: #8b97a5; --accent: #4da3ff; --ok: #37c26e; --bad: #ef5b5b; --warn: #e0a23a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 20px 80px; }
+  h1 { font-size: 20px; margin: 0 0 2px; }
+  .sub { color: var(--dim); margin-bottom: 22px; }
+  .steps { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .step { padding: 6px 12px; border: 1px solid var(--line); border-radius: 20px; color: var(--dim); font-size: 13px; }
+  .step.active { border-color: var(--accent); color: var(--accent); }
+  .step.done { border-color: var(--ok); color: var(--ok); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+  .drop { border: 2px dashed var(--line); border-radius: 10px; padding: 34px; text-align: center; color: var(--dim); cursor: pointer; }
+  .drop.hover { border-color: var(--accent); color: var(--accent); }
+  button { background: var(--accent); color: #06121f; border: 0; border-radius: 8px; padding: 9px 16px; font-weight: 600; cursor: pointer; font-size: 14px; }
+  button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  button:disabled { opacity: .45; cursor: default; }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--dim); font-weight: 600; }
+  td.amt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; border: 1px solid var(--line); color: var(--dim); }
+  .chip.cust { border-color: var(--accent); color: var(--accent); }
+  .chip.high { border-color: var(--ok); color: var(--ok); }
+  .chip.medium { border-color: var(--warn); color: var(--warn); }
+  .chip.low { border-color: var(--bad); color: var(--bad); }
+  .recon { padding: 7px 10px; border-radius: 8px; margin: 8px 0; font-size: 13px; }
+  .recon.ok { background: rgba(55,194,110,.12); color: var(--ok); }
+  .recon.fail { background: rgba(239,91,91,.12); color: var(--bad); }
+  .log { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: var(--dim); white-space: pre-wrap; background: var(--panel2); border-radius: 8px; padding: 10px 12px; max-height: 200px; overflow-y: auto; }
+  .acct-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .acct-head label { color: var(--dim); font-size: 12px; }
+  input[type=text] { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 6px 9px; font-size: 13px; }
+  select { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 6px 9px; font-size: 13px; }
+  .flex { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .grow { flex: 1; }
+  a { color: var(--accent); }
+  .filelist li { color: var(--dim); margin: 2px 0; }
+  .muted { color: var(--dim); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>KnowLedger Statement Scanner</h1>
+  <div class="sub">Statement PDFs &rarr; klr03-all records &middot; Fidelity, Goldman Sachs, JP Morgan, Schwab</div>
+
+  <div class="steps">
+    <div class="step active" id="step1">1 &middot; Add PDFs</div>
+    <div class="step" id="step2">2 &middot; Extract &amp; parse</div>
+    <div class="step" id="step3">3 &middot; Review &amp; tie out</div>
+    <div class="step" id="step4">4 &middot; Export</div>
+  </div>
+
+  <div class="card" id="cardFiles">
+    <div class="drop" id="drop">Drop statement PDFs here, or click to choose files</div>
+    <input type="file" id="fileInput" accept=".pdf,application/pdf" multiple style="display:none">
+    <ul class="filelist" id="fileList"></ul>
+    <div class="flex" style="margin-top:10px">
+      <button id="btnParse" disabled>Extract &amp; parse</button>
+      <span class="muted">Everything runs in your browser and your Apps Script project. No statement leaves your Google account.</span>
+    </div>
+  </div>
+
+  <div class="card" id="cardKs">
+    <h3 style="margin-top:0">Ingest service (Rahul's scraper)</h3>
+    <div class="flex">
+      <label>Token <input type="text" id="ksToken" size="30" placeholder="paste ksk_... once; stored in Script Properties"></label>
+      <label>Client <input type="text" id="ksClient" size="6" placeholder="KLR03"></label>
+      <button id="btnKsSave" class="ghost">Save</button>
+      <span class="muted" id="ksState">checking...</span>
+    </div>
+    <div class="flex" style="margin-top:10px">
+      <button id="btnKsRuns" class="ghost">List runs</button>
+      <select id="ksRunSel" style="display:none"></select>
+      <button id="btnKsImport" style="display:none">Import run into review</button>
+    </div>
+  </div>
+
+  <div class="card" id="cardLog" style="display:none">
+    <div class="log" id="log"></div>
+  </div>
+
+  <div id="review"></div>
+
+  <div class="card" id="cardExport" style="display:none">
+    <h3 style="margin-top:0">Export</h3>
+    <div class="flex">
+      <label>Run id <input type="text" id="runId" size="10"></label>
+      <span class="muted" id="exportCounts"></span>
+    </div>
+    <div class="flex" style="margin-top:12px">
+      <button id="btnJson" class="ghost">Download JSON</button>
+      <button id="btnCsv" class="ghost">Download CSV</button>
+      <button id="btnDrive">Save both to Drive</button>
+      <span id="driveLinks"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+var state = { files: [], result: null };
+
+function $(id) { return document.getElementById(id); }
+function log(msg) {
+  $('cardLog').style.display = '';
+  $('log').textContent += msg + '\n';
+  $('log').scrollTop = $('log').scrollHeight;
+}
+function setStep(n) {
+  for (var i = 1; i <= 4; i++) {
+    var el = $('step' + i);
+    el.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+  }
+}
+function fmtAmt(v) {
+  return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ---------- file selection ----------
+$('drop').addEventListener('click', function () { $('fileInput').click(); });
+$('drop').addEventListener('dragover', function (e) { e.preventDefault(); this.classList.add('hover'); });
+$('drop').addEventListener('dragleave', function () { this.classList.remove('hover'); });
+$('drop').addEventListener('drop', function (e) {
+  e.preventDefault(); this.classList.remove('hover');
+  addFiles(e.dataTransfer.files);
+});
+$('fileInput').addEventListener('change', function () { addFiles(this.files); });
+
+function addFiles(list) {
+  for (var i = 0; i < list.length; i++) {
+    var f = list[i];
+    if (!/\.pdf$/i.test(f.name)) continue;
+    if (state.files.some(function (g) { return g.name === f.name && g.size === f.size; })) continue;
+    state.files.push(f);
+  }
+  var ul = $('fileList'); ul.innerHTML = '';
+  state.files.forEach(function (f) {
+    var li = document.createElement('li');
+    li.textContent = f.name + ' (' + Math.round(f.size / 1024) + ' KB)';
+    ul.appendChild(li);
+  });
+  $('btnParse').disabled = !state.files.length;
+}
+
+// ---------- extraction: pdf.js items -> visual lines (y-grouped, x-sorted) ----------
+async function extractPages(file) {
+  var buf = await file.arrayBuffer();
+  var pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+  var pages = [];
+  for (var n = 1; n <= pdf.numPages; n++) {
+    var page = await pdf.getPage(n);
+    var tc = await page.getTextContent();
+    var rows = [];
+    for (var i = 0; i < tc.items.length; i++) {
+      var it = tc.items[i];
+      var text = (it.str || '').split(String.fromCharCode(0)).join('').trim();
+      if (!text) continue;
+      var frag = { x: it.transform[4], y: it.transform[5], t: text.replace(/\s+/g, ' ') };
+      var row = null;
+      for (var r = 0; r < rows.length; r++) {
+        if (Math.abs(rows[r].y - frag.y) <= 2.5) { row = rows[r]; break; }
+      }
+      if (!row) { row = { y: frag.y, f: [] }; rows.push(row); }
+      row.f.push(frag);
+    }
+    rows.sort(function (a, b) { return b.y - a.y; });
+    rows.forEach(function (r) { r.f.sort(function (a, b) { return a.x - b.x; }); });
+    pages.push(rows);
+  }
+  return pages;
+}
+
+// ---------- parse ----------
+$('btnParse').addEventListener('click', async function () {
+  this.disabled = true;
+  setStep(2);
+  var docs = [];
+  for (var i = 0; i < state.files.length; i++) {
+    var f = state.files[i];
+    log('Extracting ' + f.name + ' ...');
+    try {
+      var pages = await extractPages(f);
+      docs.push({ filename: f.name, pages: pages });
+      log('  ' + pages.length + ' pages of text.');
+    } catch (e) {
+      log('  FAILED: ' + e.message);
+    }
+  }
+  if (!docs.length) { log('Nothing to parse.'); return; }
+  log('Parsing ' + docs.length + ' document(s) on the server ...');
+  google.script.run
+    .withSuccessHandler(function (result) {
+      state.result = result;
+      log('Done.');
+      renderReview();
+      setStep(3);
+    })
+    .withFailureHandler(function (err) { log('Server error: ' + err.message); })
+    .parseDocuments(docs);
+});
+
+// ---------- review ----------
+function renderReview() {
+  var host = $('review'); host.innerHTML = '';
+  var recIndex = 0;
+  state.result.documents.forEach(function (doc, di) {
+    var card = document.createElement('div'); card.className = 'card';
+    var head = '<div class="flex"><strong class="grow">' + esc(doc.filename) + '</strong>';
+    head += doc.custodian ? '<span class="chip cust">' + esc(doc.custodian) + '</span>' : '';
+    head += '</div>';
+    if (doc.error) head += '<div class="recon fail">' + esc(doc.error) + '</div>';
+    card.innerHTML = head;
+
+    doc.accounts.forEach(function (acc, ai) {
+      var sec = document.createElement('div');
+      var h = '<div class="acct-head">';
+      h += '<label>Account # <input type="text" data-doc="' + di + '" data-acc="' + ai + '" data-field="number" value="' + esc(acc.number) + '"></label>';
+      h += '<label>Report date <input type="text" size="8" data-doc="' + di + '" data-acc="' + ai + '" data-field="reportDate" value="' + esc(acc.reportDate) + '"></label>';
+      h += '<span class="chip">' + esc(acc.entity || 'entity unknown') + '</span>';
+      h += '<span class="muted">' + acc.records.length + ' records</span></div>';
+      sec.innerHTML = h;
+
+      acc.recon.forEach(function (rc) {
+        var div = document.createElement('div');
+        div.className = 'recon ' + (rc.ok ? 'ok' : 'fail');
+        div.textContent = (rc.ok ? 'TIES  ' : 'DOES NOT TIE  ') + rc.name +
+          ' - computed ' + fmtAmt(rc.actual) + ' vs stated ' + fmtAmt(rc.expected) +
+          (rc.ok ? '' : ' (residual ' + fmtAmt(rc.residual) + '; flagged, not plugged)');
+        sec.appendChild(div);
+      });
+      (acc.warnings || []).forEach(function (w) {
+        var div = document.createElement('div');
+        div.className = 'recon fail'; div.textContent = w;
+        sec.appendChild(div);
+      });
+
+      var tbl = document.createElement('table');
+      tbl.innerHTML = '<tr><th></th><th>Section</th><th>Period</th><th>TranType</th><th style="text-align:right">Amount</th><th>Conf</th></tr>';
+      acc.records.forEach(function (r, ri) {
+        r._id = recIndex++;
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td><input type="checkbox" checked data-doc="' + di + '" data-acc="' + ai + '" data-rec="' + ri + '"></td>' +
+          '<td>' + esc(r.Section) + '</td>' +
+          '<td>' + esc(r['Reporting Period']) + '</td>' +
+          '<td>' + esc(r.TranType) + '</td>' +
+          '<td class="amt">' + fmtAmt(r.Amount) + '</td>' +
+          '<td><span class="chip ' + r.confidence + '">' + r.confidence + '</span></td>';
+        tbl.appendChild(tr);
+      });
+      sec.appendChild(tbl);
+      card.appendChild(sec);
+    });
+    host.appendChild(card);
+  });
+
+  $('cardExport').style.display = '';
+  var d = new Date();
+  $('runId').value = '' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') +
+    String(d.getDate()).padStart(2, '0') + String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
+  updateCounts();
+  host.addEventListener('change', updateCounts);
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+  });
+}
+
+// ---------- export ----------
+function collectRecords() {
+  var recs = [];
+  var id = 1;
+  document.querySelectorAll('#review input[type=checkbox]').forEach(function (cb) {
+    if (!cb.checked) return;
+    var doc = state.result.documents[+cb.dataset.doc];
+    var acc = doc.accounts[+cb.dataset.acc];
+    var r = acc.records[+cb.dataset.rec];
+    var numberInput = document.querySelector('input[data-doc="' + cb.dataset.doc + '"][data-acc="' + cb.dataset.acc + '"][data-field="number"]');
+    var dateInput = document.querySelector('input[data-doc="' + cb.dataset.doc + '"][data-acc="' + cb.dataset.acc + '"][data-field="reportDate"]');
+    recs.push({
+      'Number': numberInput.value.trim(),
+      'Custodian': r.Custodian,
+      'Report Date': dateInput.value.trim(),
+      'Reporting Period': r['Reporting Period'],
+      'TranType': r.TranType,
+      'Amount': r.Amount,
+      'Source': r.Source,
+      'Section': r.Section,
+      'extracted_id': id++,
+      'confidence': r.confidence,
+      'method': 'text',
+      'retrieved_at': null
+    });
+  });
+  return recs;
+}
+
+function updateCounts() {
+  var n = document.querySelectorAll('#review input[type=checkbox]:checked').length;
+  var total = document.querySelectorAll('#review input[type=checkbox]').length;
+  $('exportCounts').textContent = n + ' of ' + total + ' records selected across ' +
+    state.result.documents.length + ' document(s)';
+}
+
+function buildJson() {
+  return JSON.stringify({ run_id: $('runId').value.trim(), records: collectRecords() });
+}
+
+function buildCsv() {
+  var cols = ['Number', 'Custodian', 'Report Date', 'Reporting Period', 'TranType', 'Amount', 'Source', 'Section', 'extracted_id', 'confidence', 'method'];
+  var lines = [cols.join(',')];
+  collectRecords().forEach(function (r) {
+    lines.push(cols.map(function (c) {
+      var v = r[c] == null ? '' : String(r[c]);
+      return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+    }).join(','));
+  });
+  return lines.join('\n');
+}
+
+function download(name, text, mime) {
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: mime }));
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setStep(4);
+}
+
+// ---------- ingest service (ksinjest) ----------
+function ksShowState(s) {
+  $('ksState').textContent = s.hasToken
+    ? 'token saved - client ' + s.client
+    : 'no token saved yet - client ' + s.client;
+}
+google.script.run.withSuccessHandler(ksShowState)
+  .withFailureHandler(function () { $('ksState').textContent = 'status unavailable'; })
+  .ksStatus();
+
+$('btnKsSave').addEventListener('click', function () {
+  var btn = this; btn.disabled = true;
+  google.script.run
+    .withSuccessHandler(function (s) {
+      btn.disabled = false;
+      $('ksToken').value = ''; // never leave the token sitting in the page
+      ksShowState(s);
+    })
+    .withFailureHandler(function (err) { btn.disabled = false; $('ksState').textContent = 'save failed: ' + err.message; })
+    .ksSaveToken($('ksToken').value, $('ksClient').value);
+});
+
+$('btnKsRuns').addEventListener('click', function () {
+  var btn = this; btn.disabled = true;
+  log('Listing ingest runs ...');
+  google.script.run
+    .withSuccessHandler(function (data) {
+      btn.disabled = false;
+      var runs = Array.isArray(data) ? data : (data.runs || data.items || data.results || []);
+      var sel = $('ksRunSel'); sel.innerHTML = '';
+      if (!runs.length) { log('No runs returned. Raw response: ' + JSON.stringify(data).slice(0, 400)); return; }
+      runs.forEach(function (r) {
+        var id = r.run_id !== undefined ? r.run_id : (r.id !== undefined ? r.id : r);
+        var label = 'run ' + id;
+        ['created_at', 'date', 'status', 'documents', 'records'].forEach(function (k) {
+          if (r && r[k] !== undefined) label += ' - ' + k + ': ' + r[k];
+        });
+        var opt = document.createElement('option');
+        opt.value = id; opt.textContent = label.slice(0, 90);
+        sel.appendChild(opt);
+      });
+      sel.style.display = ''; $('btnKsImport').style.display = '';
+      log(runs.length + ' run(s) listed.');
+    })
+    .withFailureHandler(function (err) { btn.disabled = false; log('List runs failed: ' + err.message); })
+    .ksListRuns();
+});
+
+$('btnKsImport').addEventListener('click', function () {
+  var btn = this; btn.disabled = true;
+  var id = $('ksRunSel').value;
+  log('Importing run ' + id + ' ...');
+  google.script.run
+    .withSuccessHandler(function (res) {
+      btn.disabled = false;
+      state.result = { documents: res.documents };
+      renderReview();
+      if (res.run_id !== undefined && res.run_id !== null) $('runId').value = String(res.run_id);
+      setStep(3);
+      log('Imported run ' + id + ' into the review table.');
+    })
+    .withFailureHandler(function (err) { btn.disabled = false; log('Import failed: ' + err.message); })
+    .ksImportRun(id);
+});
+
+$('btnJson').addEventListener('click', function () {
+  download('klr_run_' + $('runId').value.trim() + '.json', buildJson(), 'application/json');
+});
+$('btnCsv').addEventListener('click', function () {
+  download('klr_run_' + $('runId').value.trim() + '.csv', buildCsv(), 'text/csv');
+});
+$('btnDrive').addEventListener('click', function () {
+  var btn = this; btn.disabled = true;
+  google.script.run
+    .withSuccessHandler(function (res) {
+      btn.disabled = false;
+      $('driveLinks').innerHTML = '<a href="' + res.jsonUrl + '" target="_blank">JSON</a> &middot; ' +
+        '<a href="' + res.csvUrl + '" target="_blank">CSV</a> &middot; ' +
+        '<a href="' + res.folderUrl + '" target="_blank">folder</a>';
+      setStep(4);
+    })
+    .withFailureHandler(function (err) { btn.disabled = false; $('driveLinks').textContent = 'Save failed: ' + err.message; })
+    .saveExport('klr_run_' + $('runId').value.trim(), buildJson(), buildCsv());
+});
+</script>
+</body>
+</html>
