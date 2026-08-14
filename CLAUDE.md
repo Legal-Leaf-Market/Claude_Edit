@@ -1145,3 +1145,24 @@ than 500, and the sister site degrades to the guide it already was and prints
 the reason. A bare 503 reads as "the sister site is down", which is the wrong
 thing to go looking at when the real cause is a query that no longer matches
 the schema, and that confusion has already cost a day once.
+
+**A DEPLOY OF THIS PROJECT CAN SHIP STALE NUMBERS ON THE OTHER DOMAIN, and
+nothing in this repository will show it.** Both Vercel projects build from the
+same commit at the same time, and stompbox.world prerenders its catalogue page
+by fetching this endpoint during its build, so a commit that changes both can
+race itself: the sister site's build finishes first and bakes in a response
+from the deployment being replaced. The change that made the endpoint read the
+live shelf shipped exactly that, and the page sat there stating the previous
+version's numbers, which reads like a failed deploy rather than a cache.
+
+It corrects itself within fifteen minutes, and stompbox.world now also exposes
+`POST /api/revalidate` for Vercel to call when THIS project's production
+deployment succeeds, which closes the window. **No code here implements that,
+and none should.** The caller is Vercel's own webhook, configured once in the
+team dashboard, so Gear Avail still knows nothing about its sister site and the
+dependency keeps running one way. The setup and the reasoning are in
+`stompbox.world/CLAUDE.md` section 2b.
+
+The practical consequence for anyone shipping a change to this endpoint: check
+what stompbox.world is actually rendering afterwards, rather than assuming a
+green deploy means the published slice is current over there.

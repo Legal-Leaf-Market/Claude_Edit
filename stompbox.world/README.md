@@ -45,6 +45,14 @@ content change is a code change and there is nothing to revalidate. `/catalog`
 is the exception: it revalidates every fifteen minutes, because its contents
 come from the sister site's ingestion rather than from this repository.
 
+There is one route handler, `POST /api/revalidate`, which refreshes `/catalog`
+when Gear Avail redeploys. Both Vercel projects build from the same commit at
+the same time, so this build can prerender against the deployment that is being
+replaced and ship numbers that are one version behind. Vercel's
+`deployment.succeeded` webhook calls this route and the next request rebuilds
+the page. It is optional: unset means 503 and the fifteen minute window is the
+only refresh. Setup is one dashboard step, written out in `.env.example`.
+
 ## Deployment
 
 Deployed to Vercel as the **`stompbox-world`** project, which is a separate
