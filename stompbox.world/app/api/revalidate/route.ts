@@ -39,9 +39,17 @@ export const dynamic = "force-dynamic"
 /**
  * Vercel event types that mean "the new code is now the one serving traffic".
  *
+ * ALL THREE, DELIBERATELY, rather than the one the setup notes name. Vercel's
+ * own examples subscribe to `deployment.ready` and its docs do not enumerate
+ * the full list in one place, so pinning this to a single string would make
+ * the hook depend on a name nobody here has seen delivered. Accepting the
+ * union costs nothing: a second refresh drops a tag that is already dropped,
+ * and whichever event the webhook is configured for, it lands here.
+ *
  * `deployment.created` is deliberately absent: it fires when the build starts,
  * which is the moment that causes the problem rather than the moment that
- * fixes it.
+ * fixes it. Subscribing to it would refresh the page while the OLD deployment
+ * is still answering, and cache the stale catalogue a second time.
  */
 const LIVE_EVENTS = new Set(["deployment.succeeded", "deployment.ready", "deployment.promoted"])
 

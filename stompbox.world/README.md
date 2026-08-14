@@ -49,8 +49,8 @@ There is one route handler, `POST /api/revalidate`, which refreshes `/catalog`
 when Gear Avail redeploys. Both Vercel projects build from the same commit at
 the same time, so this build can prerender against the deployment that is being
 replaced and ship numbers that are one version behind. Vercel's
-`deployment.succeeded` webhook calls this route and the next request rebuilds
-the page. It is optional: unset means 503 and the fifteen minute window is the
+`deployment.succeeded` webhook (or `deployment.ready`, either works) calls this
+route and the next request rebuilds the page. It is optional: unset means 503 and the fifteen minute window is the
 only refresh. Setup is one dashboard step, written out in `.env.example`.
 
 ## Deployment

@@ -134,6 +134,24 @@ describe("a production deploy of the sister site", () => {
     expect(refreshCatalog).toHaveBeenCalledTimes(1)
   })
 
+  /*
+   * All three names, because Vercel's examples subscribe to deployment.ready
+   * and its docs do not enumerate the list in one place. Pinning the route to
+   * one string would make the hook depend on a name nobody here has seen
+   * delivered, and the symptom would be silence: a 200 that refreshes nothing.
+   */
+  for (const type of ["deployment.succeeded", "deployment.ready", "deployment.promoted"]) {
+    it(`accepts ${type}`, async () => {
+      const { POST, refreshCatalog } = await loadRoute({ webhook: SECRET })
+      const response = await POST(
+        webhookRequest({ type, payload: { target: "production", name: "musictime" } }) as never,
+      )
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toMatchObject({ revalidated: true })
+      expect(refreshCatalog).toHaveBeenCalledTimes(1)
+    })
+  }
+
   it("drops the tag the catalogue fetch is actually written with", async () => {
     // A typo here fails silently: the route answers 200, nothing refreshes,
     // and the only symptom is the stale page this route exists to prevent.
