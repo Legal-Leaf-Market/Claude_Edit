@@ -153,18 +153,48 @@ export type ChainNote = {
 }
 
 /**
+ * The least a thing needs to be for these notes to have an opinion about it.
+ *
+ * WIDER THAN `Pedal` ON PURPOSE, so the board builder can put a row from Gear
+ * Avail's catalogue in a chain beside a documented circuit entry. Every
+ * catalogue pedal has a name and an inferred slot; none of them has a
+ * circuit anybody here has read.
+ *
+ * WHICH IS WHY `circuitKnown` EXISTS, and it is the load-bearing field. On a
+ * guide entry an absent `buffered` means "checked, and it is not buffered".
+ * On a catalogue row it would mean "nobody knows", and reading the second as
+ * the first is how this file would start claiming a Belcat has true bypass on
+ * no evidence at all. It defaults to true so `Pedal` satisfies this as it
+ * stands and every existing caller is unchanged.
+ */
+export type ChainSubject = {
+  name: string
+  slot: SlotId
+  buffered?: boolean
+  wantsGuitarDirect?: boolean
+  digital?: boolean
+  /** False when the circuit is not documented here. Defaults to true. */
+  circuitKnown?: boolean
+}
+
+/**
  * What is worth saying about a particular set of pedals.
  *
  * These are notes, never errors. Nothing here blocks a layout or "fixes" it,
  * because every one of these arrangements is something a real board does on
  * purpose. The job is to say what the trade is, not to overrule it.
+ *
+ * Notes that turn on a circuit fact are computed from the DOCUMENTED subset
+ * only, and the undocumented ones get a note of their own saying they were not
+ * checked. Silence would read as a clean bill of health.
  */
-export function chainNotes(pedals: Pedal[]): ChainNote[] {
+export function chainNotes(pedals: ChainSubject[]): ChainNote[] {
   const notes: ChainNote[] = []
   const ordered = pedals
 
-  const sensitive = ordered.filter((pedal) => pedal.wantsGuitarDirect)
-  const buffered = ordered.filter((pedal) => pedal.buffered)
+  const documented = ordered.filter((pedal) => pedal.circuitKnown !== false)
+  const sensitive = documented.filter((pedal) => pedal.wantsGuitarDirect)
+  const buffered = documented.filter((pedal) => pedal.buffered)
 
   /*
    * The one interaction on this page that genuinely surprises people, so it
@@ -184,7 +214,7 @@ export function chainNotes(pedals: Pedal[]): ChainNote[] {
     })
   }
 
-  const bySlot = new Map<SlotId, Pedal[]>()
+  const bySlot = new Map<SlotId, ChainSubject[]>()
   for (const pedal of ordered) {
     const existing = bySlot.get(pedal.slot)
     if (existing) existing.push(pedal)
@@ -214,7 +244,7 @@ export function chainNotes(pedals: Pedal[]): ChainNote[] {
     })
   }
 
-  const digital = ordered.filter((pedal) => pedal.digital)
+  const digital = documented.filter((pedal) => pedal.digital)
   if (digital.length > 0) {
     notes.push({
       level: "info",
@@ -233,10 +263,28 @@ export function chainNotes(pedals: Pedal[]): ChainNote[] {
     })
   }
 
+  /*
+   * Last, and it exists so that silence never reads as a clean bill of health.
+   * Every note above this point is computed from circuits somebody here has
+   * actually read. A board built out of catalogue rows would otherwise collect
+   * no warnings at all and look like it had passed something.
+   */
+  const undocumented = ordered.filter((pedal) => pedal.circuitKnown === false)
+  if (undocumented.length > 0) {
+    const one = undocumented.length === 1
+    notes.push({
+      level: "info",
+      title: `${one ? "One pedal has" : `${undocumented.length} pedals have`} no circuit notes here`,
+      body:
+        `${listNames(undocumented)} ${one ? "comes" : "come"} from the catalogue rather than from this guide, so ${one ? "its position is" : "their positions are"} worked out from the product name and nothing else. ` +
+        `Nobody here has read ${one ? "that circuit" : "those circuits"}, which means the buffer, fuzz-loading and power notes above were not checked against ${one ? "it" : "them"}. Absence of a warning is not a clean bill of health.`,
+    })
+  }
+
   return notes
 }
 
-function listNames(pedals: Pedal[]): string {
+function listNames(pedals: { name: string }[]): string {
   const names = pedals.map((pedal) => pedal.name)
   if (names.length === 1) return names[0]
   if (names.length === 2) return `${names[0]} and ${names[1]}`
