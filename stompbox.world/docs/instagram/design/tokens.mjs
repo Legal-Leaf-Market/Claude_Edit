@@ -113,9 +113,86 @@ export const PALETTES = {
     wash1: "rgba(255, 194, 51, 0.06)", wash2: "rgba(36, 224, 122, 0.03)",
     knobHi: "#3d454c", knob: "#232a2f", knobLo: "#141a1e",
   },
+
+  /*
+   * MIDNIGHT: the blend of royal and sapphire the owner asked for, plus the
+   * thing the account's own artwork actually does, which neither candidate had.
+   *
+   * The reference is not a flat colour. It is a RADIAL GLOW: a saturated blue
+   * centre falling off to near-black at the edges, so the artwork sits in a
+   * pool of light rather than on a painted panel. `glow` carries that, and the
+   * ground token underneath it is nearly black rather than navy, because the
+   * corners of the reference are almost unlit.
+   */
+  midnight: {
+    bg: "#070c1c",
+    plate: "#183573",
+    plateLo: "#070f24",
+    plateHi: "#2c56b0",
+    gold: "#ffc233",
+    goldDk: "#e0a51f",
+    led: "#24e07a",
+    ledDk: "#12b45e",
+    text: "#f2f6fd",
+    dim: "#abbbde",
+    line: "#304578",
+    lineStrong: "#5f79bb",
+    red: "#ff6b61",
+    wash1: "rgba(255, 194, 51, 0.05)",
+    wash2: "rgba(36, 224, 122, 0.028)",
+    knobHi: "#3d454c", knob: "#232a2f", knobLo: "#141a1e",
+    glow: "radial-gradient(58% 42% at 50% 40%, rgba(43, 92, 226, 0.62) 0%, rgba(24, 53, 115, 0.34) 42%, transparent 72%)",
+  },
+
+  /*
+   * The same, with the edge in WHITE instead of brass, because the account's
+   * own mark and wordmark are white line art on the glow with no gold anywhere.
+   * The LED stays green: it is still the only thing that means "lit".
+   */
+  midnightWhite: {
+    bg: "#070c1c",
+    plate: "#183573",
+    plateLo: "#070f24",
+    plateHi: "#2c56b0",
+    /* gold is the SIGNAL colour and stays brass. chrome is the frame. */
+    gold: "#ffc233",
+    goldDk: "#e0a51f",
+    chrome: "#ffffff",
+    chromeDk: "#c3d2ee",
+    led: "#24e07a",
+    ledDk: "#12b45e",
+    text: "#ffffff",
+    dim: "#abbbde",
+    line: "#304578",
+    lineStrong: "#5f79bb",
+    red: "#ff6b61",
+    wash1: "rgba(255, 255, 255, 0.05)",
+    wash2: "rgba(36, 224, 122, 0.026)",
+    knobHi: "#3d454c", knob: "#232a2f", knobLo: "#141a1e",
+    glow: "radial-gradient(58% 42% at 50% 40%, rgba(43, 92, 226, 0.62) 0%, rgba(24, 53, 115, 0.34) 42%, transparent 72%)",
+  },
 }
 
-const ACTIVE = process.env.PALETTE || "royal"
+/*
+ * CHROME AND SIGNAL ARE TWO DIFFERENT COLOURS, and separating them is the whole
+ * reason this pair exists.
+ *
+ *   chrome  the frame: plate border, silkscreen, kickers, labels, pane titles
+ *   gold    the SIGNAL: cables, diodes, waveforms, response curves
+ *
+ * They used to be one token, which meant matching the account's white line art
+ * would have turned the guitar signal white as well, and the signal path being
+ * the one gold thing in a drawing is what makes the drawings readable.
+ *
+ * A palette that does not set chrome gets its own gold, so every palette written
+ * before the split behaves exactly as it did.
+ */
+for (const p of Object.values(PALETTES)) {
+  p.chrome = p.chrome ?? p.gold
+  p.chromeDk = p.chromeDk ?? p.goldDk
+}
+
+const ACTIVE = process.env.PALETTE || "midnightWhite"
 if (!PALETTES[ACTIVE]) {
   throw new Error(`Unknown PALETTE ${ACTIVE}. Pick one of: ${Object.keys(PALETTES).join(", ")}`)
 }
@@ -123,8 +200,21 @@ if (!PALETTES[ACTIVE]) {
 export const PALETTE_NAME = ACTIVE
 export const COLOR = PALETTES[ACTIVE]
 
+/*
+ * The display face is BLOCKY, not the site's serif.
+ *
+ * The account's wordmark is heavy angular capitals with chamfered corners, so
+ * the slides use a face from that family rather than the Fraunces the website
+ * sets its headings in. The site and the feed are allowed to differ here: the
+ * logo is the brand and the page is the writing, and the owner asked for the
+ * feed to match the logo.
+ *
+ * Fraunces is kept and still loaded, because the order list's guitar and amp
+ * rows use it to mark the ends of the chain as not-a-pedal.
+ */
 export const FONT = {
-  display: "'Fraunces', Georgia, serif",
+  display: "'Chakra Petch', 'Jost', sans-serif",
+  serif: "'Fraunces', Georgia, serif",
   sans: "'Jost', -apple-system, 'Segoe UI', sans-serif",
 }
 
@@ -149,6 +239,7 @@ export const PLATE = { x: 48, top: 48, bottom: 48, radius: 26 }
 export const FONT_FILES = [
   { family: "Jost", file: "jost-latin.woff2" },
   { family: "Fraunces", file: "fraunces-latin.woff2" },
+  { family: "Chakra Petch", file: "chakra-latin.woff2" },
 ]
 
 /**
@@ -181,11 +272,20 @@ html, body {
   width: ${CANVAS.w}px;
   height: ${CANVAS.h}px;
   background-color: ${COLOR.bg};
+  /*
+   * NO CROSSHATCH ON A GLOW PALETTE, for two reasons that happen to agree. The
+   * reference is a smooth pool of light and the weave fights it. And a 1px
+   * diagonal pattern across 1080x1350 is high-frequency noise that PNG cannot
+   * predict: it was most of an 870KB slide, and dropping it took the 85 slides
+   * from 76MB to a size that fits in one upload.
+   */
   background-image:
-    radial-gradient(120% 80% at 50% 0%, ${COLOR.wash1}, transparent 60%),
+    ${COLOR.glow
+      ? COLOR.glow
+      : `radial-gradient(120% 80% at 50% 0%, ${COLOR.wash1}, transparent 60%),
     radial-gradient(100% 70% at 50% 100%, ${COLOR.wash2}, transparent 60%),
     repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 4px),
-    repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 1px, transparent 1px 4px);
+    repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 1px, transparent 1px 4px)`};
   font-family: ${FONT.sans};
   color: ${COLOR.text};
 }
@@ -203,8 +303,13 @@ html, body {
   top: ${PLATE.top}px;
   bottom: ${PLATE.bottom}px;
   border-radius: ${PLATE.radius}px;
-  border: 2px solid ${COLOR.gold};
-  background: linear-gradient(180deg, ${COLOR.plateHi} -40%, ${COLOR.plate} 34%, ${COLOR.plateLo} 128%);
+  border: 2px solid ${COLOR.chrome};
+  /* On a glow palette the plate is TRANSLUCENT, so the pool of light behind it
+     reads through instead of being covered by a painted panel. That is what the
+     account's own artwork does: the art sits in the light rather than on a box. */
+  background: ${COLOR.glow
+    ? `linear-gradient(180deg, color-mix(in srgb, ${COLOR.plateHi} 30%, transparent) -40%, color-mix(in srgb, ${COLOR.plate} 26%, transparent) 34%, color-mix(in srgb, ${COLOR.plateLo} 62%, transparent) 128%)`
+    : `linear-gradient(180deg, ${COLOR.plateHi} -40%, ${COLOR.plate} 34%, ${COLOR.plateLo} 128%)`};
   box-shadow: 0 18px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
   display: flex;
   flex-direction: column;
@@ -217,7 +322,7 @@ html, body {
   position: absolute;
   inset: 13px;
   border-radius: ${PLATE.radius - 7}px;
-  border: 1.5px solid color-mix(in srgb, ${COLOR.gold} 26%, transparent);
+  border: 1.5px solid color-mix(in srgb, ${COLOR.chrome} 26%, transparent);
   pointer-events: none;
 }
 
@@ -232,22 +337,29 @@ html, body {
  * The hook. Fraunces 900, and large enough to be read at the size a feed
  * actually renders rather than the size this file is previewed at.
  */
+/*
+ * Uppercase, because the face is a display cap face and sentence case wastes
+ * it. Caps set visually larger at the same point size, so the size comes DOWN
+ * from the serif's 92px rather than staying put.
+ */
 .hook {
   font-family: ${FONT.display};
-  font-weight: 900;
-  font-size: 92px;
-  line-height: 1.04;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  font-size: 68px;
+  line-height: 1.08;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
   color: ${COLOR.text};
 }
-.hook.small { font-size: 74px; }
-.hook.tiny { font-size: 62px; }
+.hook.small { font-size: 56px; }
+.hook.tiny { font-size: 48px; }
 
 /* The heading on a mechanism slide, under the kicker. */
 .heading {
   font-family: ${FONT.display};
-  font-weight: 900;
-  font-size: 58px;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 46px;
   line-height: 1.1;
   letter-spacing: -0.01em;
 }
@@ -263,7 +375,7 @@ html, body {
   font-size: 29px;
   text-transform: uppercase;
   letter-spacing: 0.19em;
-  color: ${COLOR.gold};
+  color: ${COLOR.chrome};
   margin-bottom: 26px;
 }
 .kicker.led { color: ${COLOR.led}; }
@@ -285,7 +397,7 @@ html, body {
 /* A hairline rule, gold, muted. Separates a hook from what follows it. */
 .rule {
   height: 2px;
-  background: linear-gradient(90deg, ${COLOR.gold}, rgba(255,194,51,0.08));
+  background: linear-gradient(90deg, ${COLOR.chrome}, transparent);
   border: 0;
   margin: 34px 0;
   flex: none;
@@ -306,7 +418,7 @@ html, body {
   font-family: ${FONT.sans};
   font-weight: 900;
   font-size: 25px;
-  color: ${COLOR.goldDk};
+  color: ${COLOR.chromeDk};
   min-width: 46px;
   letter-spacing: 0.06em;
 }
@@ -316,7 +428,7 @@ html, body {
 .order-row.on .order-n { color: ${COLOR.led}; }
 /* The ends of the chain, which are not pedals and should not read as numbered. */
 .order-row.end .order-name {
-  font-family: ${FONT.display};
+  font-family: ${FONT.serif};
   font-weight: 900;
   font-size: 33px;
   color: ${COLOR.dim};
@@ -338,7 +450,7 @@ html, body {
   font-size: 25px;
   text-transform: uppercase;
   letter-spacing: 0.17em;
-  color: ${COLOR.gold};
+  color: ${COLOR.chrome};
   margin-bottom: 16px;
 }
 .pane .body { font-size: 33px; line-height: 1.4; }

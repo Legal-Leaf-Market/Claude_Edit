@@ -15,7 +15,7 @@
  * well inside the inscribed circle, since the square corners are never seen.
  */
 
-import { writeFileSync, mkdirSync } from "node:fs"
+import { writeFileSync, rmSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 import { COLOR } from "./tokens.mjs"
@@ -41,18 +41,22 @@ const html = `<!doctype html>
 </style></head>
 <body><div class="a">
   <svg viewBox="0 0 100 100" width="${MARK}" height="${MARK}" role="img" aria-label="stompbox.world">
-    <rect x="19" y="3" width="62" height="94" rx="10" fill="${COLOR.plate}" stroke="${COLOR.gold}" stroke-width="4"/>
-    <rect x="24.5" y="8.5" width="51" height="83" rx="6.5" fill="none" stroke="${COLOR.gold}" stroke-opacity="0.28" stroke-width="1.4"/>
+    <rect x="19" y="3" width="62" height="94" rx="10" fill="${COLOR.plate}" stroke="${COLOR.chrome}" stroke-width="4"/>
+    <rect x="24.5" y="8.5" width="51" height="83" rx="6.5" fill="none" stroke="${COLOR.chrome}" stroke-opacity="0.28" stroke-width="1.4"/>
     <circle cx="50" cy="15.5" r="3.3" fill="${COLOR.led}"/>
-    <circle cx="34" cy="36" r="6.4" fill="none" stroke="${COLOR.gold}" stroke-opacity="0.4" stroke-width="1.6"/>
-    <circle cx="66" cy="36" r="6.4" fill="none" stroke="${COLOR.gold}" stroke-opacity="0.4" stroke-width="1.6"/>
-    <circle cx="50" cy="68" r="14" fill="${COLOR.plateLo}" stroke="${COLOR.gold}" stroke-width="3.4"/>
-    <circle cx="50" cy="68" r="8.6" fill="none" stroke="${COLOR.gold}" stroke-opacity="0.34" stroke-width="1.4"/>
+    <circle cx="34" cy="36" r="6.4" fill="none" stroke="${COLOR.chrome}" stroke-opacity="0.4" stroke-width="1.6"/>
+    <circle cx="66" cy="36" r="6.4" fill="none" stroke="${COLOR.chrome}" stroke-opacity="0.4" stroke-width="1.6"/>
+    <circle cx="50" cy="68" r="14" fill="${COLOR.plateLo}" stroke="${COLOR.chrome}" stroke-width="3.4"/>
+    <circle cx="50" cy="68" r="8.6" fill="none" stroke="${COLOR.chrome}" stroke-opacity="0.34" stroke-width="1.4"/>
   </svg>
 </div></body></html>`
 
-mkdirSync(join(HERE, "html"), { recursive: true })
-const page = join(HERE, "html", "avatar.html")
+/*
+ * Written OUTSIDE html/, because render.mjs renders every .html in that folder
+ * and an avatar page sitting there came out as an 86th slide, cropped to 4:5
+ * and shipped in the zip.
+ */
+const page = join(HERE, ".avatar.html")
 writeFileSync(page, html)
 
 const bin = findChrome()
@@ -62,7 +66,7 @@ const bin = findChrome()
  * than the window Chromium was asked for, and a screenshot is the window. So
  * measure the overhead, render that much taller, and crop back to square.
  */
-const probePage = join(HERE, "html", ".avatar-probe.html")
+const probePage = join(HERE, ".avatar-probe.html")
 writeFileSync(
   probePage,
   `<!doctype html><html><head><meta charset="utf-8"></head><body><script>
@@ -80,5 +84,8 @@ const out = join(HERE, "avatar.png")
 chrome(bin, [`--window-size=${SIZE},${windowH}`, `--screenshot=${out}`, `file://${page}`])
 const { width, height } = cropTop(out, SIZE)
 if (width !== SIZE || height !== SIZE) throw new Error(`avatar.png is ${width}x${height}`)
+
+rmSync(page, { force: true })
+rmSync(probePage, { force: true })
 
 console.log(`avatar.png, ${SIZE}x${SIZE} (viewport was ${viewport} at a ${SIZE} window)`)

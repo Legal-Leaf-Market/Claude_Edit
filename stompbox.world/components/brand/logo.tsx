@@ -4,8 +4,8 @@
  * WHY IT IS A PEDAL. The site is about pedals, so the mark is one: a die-cast
  * enclosure with a brass silkscreen edge, a status LED, two knobs and a
  * footswitch. Every other surface then inherits the same vocabulary. Buttons
- * are footswitches, icon controls are knobs, the theme switch is a pickup
- * selector. A logo that explains the rest of the interface is doing more work
+ * are footswitches, icon controls are knobs, the theme switch is a Les Paul
+ * toggle. A logo that explains the rest of the interface is doing more work
  * than a logo that just sits in the corner.
  *
  * WHY THE FACE CARRIES CONTROLS AND NOT AN INSTRUMENT. The obvious move is to
@@ -61,9 +61,9 @@ export function StompboxMark({ size = 40, className, flat = false }: MarkProps) 
         {/* A brushed-metal face: light catches the top edge the way it does on
             an anodised enclosure sitting under a stage light. */}
         <linearGradient id={faceId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--metal-hi, #3a51b8)" />
-          <stop offset="52%" stopColor="var(--metal, #1e2f7a)" />
-          <stop offset="100%" stopColor="var(--metal-lo, #060b1f)" />
+          <stop offset="0%" stopColor="var(--metal-hi, #2c56b0)" />
+          <stop offset="52%" stopColor="var(--metal, #183573)" />
+          <stop offset="100%" stopColor="var(--metal-lo, #070f24)" />
         </linearGradient>
         {!flat && (
           <filter id={glowId} x="-120%" y="-120%" width="340%" height="340%">
@@ -129,7 +129,7 @@ export function StompboxMark({ size = 40, className, flat = false }: MarkProps) 
         cx="50"
         cy="68"
         r="14"
-        fill="var(--metal-lo, #060b1f)"
+        fill="var(--metal-lo, #070f24)"
         stroke="var(--brand-gold, #ffc233)"
         strokeWidth="3.4"
       />

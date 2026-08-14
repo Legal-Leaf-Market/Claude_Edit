@@ -75,6 +75,10 @@ const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, 
  * page holds on either host background.
  */
 const GALLERY_CSS = `
+  /* The publisher owns <body>. Painting it is what stops the page ending in the
+     host's own ground, which showed as a white band under the last post. */
+  html, body { background: #15191c; }
+
   .g-root {
     --g-ground: #15191c;
     --g-ground-2: #1a1f23;
@@ -89,11 +93,12 @@ const GALLERY_CSS = `
     font-family: 'Jost', system-ui, sans-serif;
     min-height: 100vh;
     padding: 0 0 96px;
+    overflow-x: hidden;
   }
 
   .g-root *, .g-root *::before, .g-root *::after { box-sizing: border-box; }
 
-  .g-wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
+  .g-wrap { max-width: 1180px; margin: 0 auto; padding: 0 clamp(14px, 4vw, 28px); }
 
   /* --- masthead --- */
   .g-head { padding: 64px 0 40px; border-bottom: 1px solid var(--g-edge); }
@@ -140,16 +145,41 @@ const GALLERY_CSS = `
    * is read on the platform. Each frame is a real 1080x1350 render at a quarter
    * scale, not an image of one.
    */
+  /*
+   * THE FRAME WIDTH IS A VARIABLE, AND THE SCALE IS DERIVED FROM IT.
+   *
+   * A slide is laid out at its real 1080x1350 and scaled down, and a transformed
+   * element still occupies its untransformed size, so the scale and the frame
+   * have to agree exactly or the slide either overflows its frame or floats
+   * inside it. Deriving one from the other is what makes the frame free to
+   * change per breakpoint. 1350/1080 is 1.25, hence the height.
+   */
   .g-strip {
-    display: flex; gap: 16px; overflow-x: auto; padding-bottom: 14px;
+    display: flex; gap: 14px; overflow-x: auto; padding-bottom: 14px;
     scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
   }
   .g-frame {
-    width: 270px; height: 338px; flex: none; overflow: hidden;
+    /*
+     * THE SCALE IS THE VARIABLE, and the frame size is derived from it. The
+     * other way round does not work: --fw of 340px makes the scale
+     * calc(340px / 1080), which is a LENGTH, and scale() takes a unitless
+     * number, so the declaration is dropped and the slide renders at its full
+     * 1080px inside a 340px frame. It fails silently and looks like a zoomed-in
+     * crop. CSS cannot divide a length by a length, so a vw-based frame width
+     * cannot produce a ratio at all: the breakpoints set a plain number.
+     */
+    --s: 0.25;
+    width: calc(1080px * var(--s));
+    height: calc(1350px * var(--s));
+    flex: none; overflow: hidden;
     border-radius: 10px; scroll-snap-align: start;
     box-shadow: 0 8px 26px rgba(0,0,0,0.5);
   }
-  .g-frame .slide { transform: scale(0.25); transform-origin: top left; }
+  .g-frame .slide {
+    transform: scale(var(--s));
+    transform-origin: top left;
+  }
 
   /* --- caption --- */
   .g-copy { margin-top: 26px; display: grid; gap: 14px; }
@@ -158,6 +188,7 @@ const GALLERY_CSS = `
     border-left: 2px solid var(--g-brass); border-radius: 4px;
     padding: 22px 24px; font-size: 15.5px; line-height: 1.62;
     color: var(--g-ink); white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
   .g-alt { font-size: 13.5px; line-height: 1.55; color: var(--g-dim); }
   .g-alt b {
@@ -178,6 +209,29 @@ const GALLERY_CSS = `
 
   .g-foot { padding: 46px 0 0; font-size: 14px; line-height: 1.6; color: var(--g-dim); }
   .g-foot b { color: var(--g-ink); font-weight: 600; }
+
+  /*
+   * PHONE. One slide very nearly fills the width, with a sliver of the next
+   * showing so the row reads as swipeable, and the whole page is guaranteed not
+   * to scroll sideways. A 270px frame on a 390px screen was legible but tiny,
+   * and the carousel is the thing worth looking at.
+   */
+  @media (max-width: 640px) {
+    /* 0.30 is 324px wide, which clears a 360px screen with its padding and
+       still leaves a sliver of the next slide showing. */
+    .g-frame { --s: 0.30; }
+    .g-head { padding: 40px 0 28px; }
+    .g-lede { font-size: 16.5px; }
+    .g-stats { gap: 22px 26px; }
+    .g-post { padding: 38px 0; }
+    .g-cap { padding: 18px 18px; font-size: 15px; }
+    .g-post-head { gap: 12px; }
+  }
+
+  /* Small phones: 0.26 is 281px, which still fits a 320px screen. */
+  @media (max-width: 380px) {
+    .g-frame { --s: 0.26; }
+  }
 
   @media (prefers-reduced-motion: reduce) {
     .g-btn { transition: none; }
@@ -212,6 +266,7 @@ const posts = POSTS.map((post) => {
 const slideCount = POSTS.reduce((a, p) => a + p.slides.length, 0)
 
 const page = `<title>The stompbox.world Queue</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 ${slideCss()}
 ${GALLERY_CSS}

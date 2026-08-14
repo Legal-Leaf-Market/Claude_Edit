@@ -85,28 +85,28 @@
      object whatever it is standing on, which is the half of the old rule that
      survived. The gradient still runs light at the top to dark at the bottom,
      because that is what gives a button its dimension. */
-  --metal-hi: #3a51b8;
-  --metal: #1e2f7a;
-  --metal-lo: #060b1f;
+  --metal-hi: #2c56b0;
+  --metal: #183573;
+  --metal-lo: #070f24;
 
   /* --- royal scale, dark theme ---
      A ROOM, NOT A VOID, same argument as the greys this replaced: near-black
      leaves the page with no colour of its own and makes the gold do all the
      work. These are deep navy rather than black, so the enclosure blue reads as
      a lit object on a surface instead of a shape floating in nothing. */
-  --bg: #070f2b;
-  --bg2: #050a20;
-  --surface: #142250;
-  --surface-2: #1d2d63;
-  --panel: rgba(20, 34, 80, 0.84);
-  --panel2: rgba(9, 16, 45, 0.92);
-  --glass: rgba(20, 34, 80, 0.62);
+  --bg: #070c1c;
+  --bg2: #050914;
+  --surface: #122a58;
+  --surface-2: #1b3163;
+  --panel: rgba(18, 42, 88, 0.84);
+  --panel2: rgba(7, 15, 36, 0.92);
+  --glass: rgba(18, 42, 88, 0.62);
   --glass-line: rgba(255, 194, 51, 0.24);
-  --line: #33407f;
-  --line-strong: #6470bd;
-  --chip: #101a42;
-  --text: #f3f4fd;
-  --dim: #aeb6e0;
+  --line: #304578;
+  --line-strong: #5f79bb;
+  --chip: #0e1a3a;
+  --text: #f2f6fd;
+  --dim: #abbbde;
 
   /* Contrast-critical hues, per theme. See the header note above. */
   --money: var(--brand-led);
@@ -241,6 +241,25 @@
 }
 
 @layer components {
+
+  /*
+   * The header's nav row scrolls sideways on a narrow screen rather than
+   * wrapping or pushing the theme toggle off the edge. The scrollbar is hidden
+   * because it would sit across the masthead on every desktop that shows one,
+   * and the row is short enough that the overflow is discoverable by dragging.
+   *
+   * No margin shorthand in here: this class sits outside @layer and would beat
+   * any Tailwind spacing utility on the element.
+   */
+  .nav-rail {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    overscroll-behavior-x: contain;
+  }
+  .nav-rail::-webkit-scrollbar {
+    display: none;
+  }
+
   .shell {
     width: var(--shell);
     margin-inline: auto;
@@ -784,69 +803,132 @@
 }
 
 /* ------------------------------------------------------------
-   The pickup selector, used by the theme switch.
-   A three-position lever, because a guitarist already owns one and
-   it does exactly this job.
+   The Les Paul toggle, used by the theme switch.
+   A lever with three detents, because that is the switch people
+   picture when they picture a guitar switch, and this site has
+   exactly three theme states.
+
+   ONE CONTROL, NOT THREE BUTTONS. You flip a toggle, you do not
+   pick a position on it, so it cycles. That is also why the target
+   is 54x46 instead of the 26x24 the blade selector gave each of its
+   three segments.
+
+   The switch tip is cream. That is a material rather than an
+   accent, the same way the chrome is: it is what the part is made
+   of, and it is not --brand-gold being used as a fill.
    ------------------------------------------------------------ */
 
-.pickup {
+.lp {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  padding: 3px;
-  border-radius: 999px;
+  display: block;
+  width: 54px;
+  /*
+   * 50 rather than 46. At 46 the switch tip topped out at the same height as
+   * the detent row and covered the lit one at both outer positions, which is
+   * the exact moment the indicator is meant to be telling you something.
+   */
+  height: 50px;
+  padding: 0;
+  border-radius: 13px;
   border: 1.5px solid color-mix(in srgb, var(--brand-gold) 48%, var(--line-strong));
   background: linear-gradient(180deg, var(--metal-hi), var(--metal) 55%, var(--metal-lo));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     inset 0 -1px 0 rgba(0, 0, 0, 0.5),
     0 2px 6px rgba(0, 0, 0, 0.42);
-}
-
-.pickup-seg {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 24px;
-  border: 0;
-  border-radius: 999px;
-  background: none;
-  color: var(--dim);
   cursor: pointer;
-  transition: color 160ms ease;
-}
-.pickup-seg:hover {
-  color: #f3f4fd;
-}
-/* The selected segment sits under the chrome cap, so its icon goes dark. */
-.pickup-seg[aria-pressed='true'] {
-  color: #10161b;
 }
 
-.pickup-lever {
+/* The washer the lever comes up through, and the shadow it casts into it. */
+.lp::before {
+  content: '';
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 26px;
-  height: 24px;
+  left: 50%;
+  bottom: 6px;
+  width: 19px;
+  height: 19px;
+  transform: translateX(-50%);
   border-radius: 999px;
-  background: linear-gradient(180deg, #f7fafb 0%, #dfe5e9 45%, #b9c1c7 100%);
+  background: radial-gradient(circle at 42% 32%, #eef2f6, #9aa5ae 62%, #5c656d 100%);
   box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+/* Three detents across the top, and the one the lever is in is lit. */
+.lp-detents {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  pointer-events: none;
+}
+.lp-detents i {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  transition: background 200ms linear, box-shadow 200ms linear;
+}
+.lp[data-position='0'] .lp-detents i:nth-child(1),
+.lp[data-position='1'] .lp-detents i:nth-child(2),
+.lp[data-position='2'] .lp-detents i:nth-child(3) {
+  background: var(--brand-led);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--brand-led) 70%, transparent);
+}
+
+/*
+ * The lever. Pivots at the washer, so the tip swings through an arc the way a
+ * real one does rather than sliding along a track.
+ */
+.lp-arm {
+  position: absolute;
+  left: 50%;
+  bottom: 13px;
+  width: 5px;
+  height: 19px;
+  margin-left: -2.5px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #f2f6f9, #c3ccd3 55%, #8f989f);
+  transform-origin: 50% 100%;
   /* Overshoots very slightly, the way a sprung lever drops into its detent. */
-  transition: transform 240ms cubic-bezier(0.22, 1.2, 0.36, 1);
+  transition: transform 260ms cubic-bezier(0.22, 1.2, 0.36, 1);
 }
-.pickup[data-position='0'] .pickup-lever {
-  transform: translateX(0);
+
+/* The top hat. Aged cream, which is what the part is. */
+.lp-tip {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  width: 15px;
+  height: 15px;
+  margin-left: -7.5px;
+  border-radius: 999px 999px 7px 7px;
+  background: linear-gradient(180deg, #fbf0d8 0%, #ecd9ac 48%, #c9b184 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 1px 3px rgba(0, 0, 0, 0.55);
 }
-.pickup[data-position='1'] .pickup-lever {
-  transform: translateX(26px);
+
+.lp[data-position='0'] .lp-arm {
+  transform: rotate(-27deg);
 }
-.pickup[data-position='2'] .pickup-lever {
-  transform: translateX(52px);
+.lp[data-position='1'] .lp-arm {
+  transform: rotate(0deg);
+}
+.lp[data-position='2'] .lp-arm {
+  transform: rotate(27deg);
+}
+
+.lp:hover {
+  border-color: var(--brand-gold);
+}
+.lp:focus-visible {
+  outline: 2px solid var(--brand-led);
+  outline-offset: 2px;
 }
 
 /* ------------------------------------------------------------
@@ -1187,7 +1269,7 @@
   .stomp,
   .knob,
   .knob > svg,
-  .pickup-lever,
+  .lp-arm,
   .enclosure,
   .enclosure-remove {
     transition: none;
