@@ -1,0 +1,411 @@
+<!-- KLR03: post to Sage via KnowLedger. Companion UI to Code.gs; the whole app is these two files. -->
+<style>
+  :root {
+    --ink: #1d232b; --muted: #5c6570; --line: #d9dee4; --paper: #ffffff;
+    --bg: #f2f4f6; --accent: #0b5fff; --ok: #157347; --warn: #a05a00; --bad: #b3261e;
+    --okbg: #e7f4ec; --warnbg: #fdf3e3; --badbg: #fbeae9; --chip: #eef1f4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.45 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 20px; margin: 0 0 2px; }
+  .sub { color: var(--muted); margin: 0 0 18px; font-size: 13.5px; }
+  h2 { font-size: 16px; margin: 0 0 10px; }
+  h3 { font-size: 13.5px; margin: 18px 0 6px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tab { border: 1px solid var(--line); background: var(--paper); border-radius: 8px;
+         padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 14px; color: var(--muted); }
+  .tab.active { color: var(--ink); border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+  .tab:disabled { opacity: .45; cursor: not-allowed; }
+
+  .card { background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
+          padding: 16px 18px; margin-bottom: 14px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  button.act { background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+               padding: 9px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button.act.secondary { background: var(--paper); color: var(--ink); border: 1px solid var(--line); }
+  button.act.danger { background: var(--bad); }
+  button.act:disabled { opacity: .5; cursor: not-allowed; }
+  .btnrow { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; margin: 8px 0; }
+  th, td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: var(--chip); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .scroll { overflow-x: auto; }
+
+  .badge { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 12px; font-weight: 600; }
+  .b-ok { background: var(--okbg); color: var(--ok); }
+  .b-warn { background: var(--warnbg); color: var(--warn); }
+  .b-bad { background: var(--badbg); color: var(--bad); }
+  .b-mut { background: var(--chip); color: var(--muted); }
+
+  .note { border-left: 3px solid var(--accent); background: var(--chip); padding: 8px 12px;
+          border-radius: 0 6px 6px 0; margin: 10px 0; font-size: 13.5px; }
+  .note.warn { border-color: var(--warn); background: var(--warnbg); }
+  .note.bad { border-color: var(--bad); background: var(--badbg); }
+  .note.ok { border-color: var(--ok); background: var(--okbg); }
+
+  pre, textarea.mono { background: #14181d; color: #d7dde4; border-radius: 8px; padding: 12px;
+        font: 12.5px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+        overflow: auto; max-height: 420px; white-space: pre; }
+  textarea.mono { width: 100%; min-height: 160px; background: var(--paper); color: var(--ink);
+                  border: 1px solid var(--line); white-space: pre; }
+  .kv { color: var(--muted); font-size: 13px; }
+  .kv b { color: var(--ink); }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px 22px; }
+  label.f { display: block; font-size: 12.5px; color: var(--muted); font-weight: 600; margin: 8px 0 2px; }
+  input.f, select.f { width: 100%; border: 1px solid var(--line); border-radius: 6px;
+                      padding: 7px 9px; font-size: 13.5px; background: var(--paper); color: var(--ink); }
+  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line);
+          border-top-color: var(--accent); border-radius: 50%; animation: r 0.8s linear infinite;
+          vertical-align: -2px; margin-right: 6px; }
+  @keyframes r { to { transform: rotate(360deg); } }
+  .muted { color: var(--muted); }
+  .stat { display: inline-block; background: var(--chip); border-radius: 8px; padding: 6px 12px;
+          margin: 3px 6px 3px 0; font-size: 13px; }
+  .stat b { font-size: 15px; }
+</style>
+
+<div class="wrap">
+  <h1>KLR03: post journal entries to Sage via KnowLedger</h1>
+  <p class="sub">Submits finished JEs to KnowLedger's "Post Transactions to Target" flow on the Decisions
+  platform; KnowLedger's connector makes the Sage hop from its own allowlisted IP. Nothing here talks to
+  Sage's gateway, so GW-0011 is out of the picture by construction.</p>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-1" onclick="show(1)">1 · Connect</button>
+    <button class="tab" id="tab-2" onclick="show(2)">2 · Journal entries</button>
+    <button class="tab" id="tab-3" onclick="show(3)" disabled>3 · Dry run</button>
+    <button class="tab" id="tab-4" onclick="show(4)" disabled>4 · Push</button>
+  </div>
+
+  <!-- ============ STEP 1: CONNECT ============ -->
+  <div class="panel active" id="panel-1">
+    <div class="card">
+      <h2>Readiness</h2>
+      <div id="checklist" class="muted">Loading…</div>
+      <div class="kv" id="endpointLine"></div>
+      <div class="kv" id="authLine"></div>
+      <div class="kv" id="lastPushLine"></div>
+    </div>
+
+    <div class="card">
+      <h2>Measure first</h2>
+      <p class="muted" style="margin-top:0">Diagnostics reach the portal and prove auth against a flow id
+      that cannot exist, so nothing can execute. The probe is the one pre-push call that touches the real
+      flow: it sends an empty transaction list with SendToGL forced false and says so on its face.</p>
+      <div class="btnrow">
+        <button class="act" onclick="runDiagnose()">Run diagnostics (safe, posts nothing)</button>
+        <button class="act secondary" onclick="runProbe()">Probe the flow (empty batch, SendToGL=false)</button>
+        <span id="diagSpin"></span>
+      </div>
+      <div id="diagOut"></div>
+      <div id="probeOut"></div>
+    </div>
+
+    <div class="card">
+      <h2>Settings <span class="muted" style="font-weight:400">(writes Script Properties; secrets stay there, never in code)</span></h2>
+      <div class="grid2" id="settingsGrid"></div>
+      <div class="btnrow">
+        <button class="act" onclick="saveSettingsUi()">Save settings</button>
+        <span id="setSpin"></span><span id="setMsg" class="muted"></span>
+      </div>
+      <p class="kv">Blank fields are left unchanged. Type <b>__CLEAR__</b> to delete a stored value.
+      Values are trimmed on save and on read; an invisible pasted space has caused a fake outage before.</p>
+    </div>
+  </div>
+
+  <!-- ============ STEP 2: ENTRIES ============ -->
+  <div class="panel" id="panel-2">
+    <div class="card">
+      <h2>Load and validate</h2>
+      <div class="btnrow">
+        <label><input type="radio" name="src" value="paste" checked> Paste rows</label>
+        <label><input type="radio" name="src" value="sheet"> Google Sheet</label>
+        <label><input type="radio" name="src" value="baked"> Baked-in JE_LINES <span class="muted" id="bakedHint"></span></label>
+      </div>
+      <div id="pasteBox">
+        <p class="kv">Paste straight from Excel (tab separated, header row first) or a JSON array of line
+        objects. Columns bind by header name; JE, Date, GL (or a combined Coding column), and
+        Debit/Credit (or a signed Amount) are required. A "Coding" column like
+        <b>1001||Kerry Fam|Fiag-3115|taxable</b> splits into GL, Department, Entity, SubAccount, Class.</p>
+        <textarea class="mono" id="pasteText" placeholder="JE	Date	Journal	Type	Custodian Account	Coding	Memo	Debit	Credit"></textarea>
+      </div>
+      <div class="btnrow">
+        <button class="act" onclick="runValidate()">Load &amp; validate</button>
+        <span id="valSpin"></span>
+      </div>
+      <div id="valOut"></div>
+    </div>
+  </div>
+
+  <!-- ============ STEP 3: DRY RUN ============ -->
+  <div class="panel" id="panel-3">
+    <div class="card">
+      <h2>Dry run: the exact payload, nothing sent</h2>
+      <p class="muted" style="margin-top:0">This is byte-for-byte what the push sends (the push rebuilds it
+      from the same source). The Transactions[] element shape is the documented default until Rahul
+      confirms KnowLedger's real schema; if it needs to change, the single edit point is
+      <b>mapJeToTransaction_()</b> in Code.gs.</p>
+      <div class="btnrow">
+        <button class="act" onclick="runDryRun()">Build dry run</button>
+        <span id="drySpin"></span>
+      </div>
+      <div id="dryOut"></div>
+    </div>
+  </div>
+
+  <!-- ============ STEP 4: PUSH ============ -->
+  <div class="panel" id="panel-4">
+    <div class="card">
+      <h2>Push to KnowLedger</h2>
+      <div id="pushSummary"></div>
+      <div class="btnrow">
+        <span class="kv">Type the transaction count shown above to confirm:</span>
+        <input class="f" style="width:90px" id="confirmCount" inputmode="numeric" placeholder="count">
+        <button class="act danger" id="pushBtn" onclick="runPush(false)">Push</button>
+        <span id="pushSpin"></span>
+      </div>
+      <div id="pushOut"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var state = { boot: null, source: 'paste', validated: null, dry: null };
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function badge(kind, text) { return '<span class="badge b-' + kind + '">' + esc(text) + '</span>'; }
+  function spin(id, on) { $(id).innerHTML = on ? '<span class="spin"></span>' : ''; }
+  function fail(el, err) { $(el).innerHTML = '<div class="note bad"><b>Script error:</b> ' + esc(err && err.message || err) + '</div>'; }
+
+  function show(n) {
+    for (var i = 1; i <= 4; i++) {
+      $('panel-' + i).classList.toggle('active', i === n);
+      $('tab-' + i).classList.toggle('active', i === n);
+    }
+  }
+  function enableTab(n, on) { $('tab-' + n).disabled = !on; }
+
+  document.querySelectorAll('input[name=src]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      state.source = this.value;
+      $('pasteBox').style.display = this.value === 'paste' ? '' : 'none';
+      state.validated = null; state.dry = null;
+      enableTab(3, false); enableTab(4, false);
+      $('valOut').innerHTML = '';
+    });
+  });
+
+  // ---------- bootstrap ----------
+  function boot() {
+    google.script.run.withSuccessHandler(function (b) {
+      state.boot = b;
+      renderChecklist(b);
+      renderSettings(b);
+      $('bakedHint').textContent = '(' + b.bakedLines + ' lines' + (b.bakedAllSamples ? ', all SAMPLE' : '') + ')';
+    }).withFailureHandler(function (e) { fail('checklist', e); }).getBootstrap();
+  }
+
+  function renderChecklist(b) {
+    var html = b.checklist.map(function (c) {
+      return '<div>' + (c.ok ? badge('ok', 'ready') : badge('warn', 'needed')) + ' <b>' + esc(c.item) + '</b>'
+        + (c.ok ? '' : ' <span class="muted">· ' + esc(c.need) + '</span>') + '</div>';
+    }).join('');
+    $('checklist').innerHTML = html;
+    $('endpointLine').innerHTML = '<b>Flow endpoint:</b> ' + esc(b.flowEndpoint.display);
+    $('authLine').innerHTML = '<b>Auth:</b> ' + esc(b.authDescription);
+    $('lastPushLine').innerHTML = b.lastPush
+      ? '<b>Last push:</b> ' + esc(b.lastPush.when) + ', ' + esc(b.lastPush.transactions) + ' transactions, SendToGL=' + esc(b.lastPush.sendToGL)
+      : '<b>Last push:</b> none recorded';
+  }
+
+  function renderSettings(b) {
+    var order = Object.keys(b.settings);
+    $('settingsGrid').innerHTML = order.map(function (k) {
+      var s = b.settings[k];
+      var isSecret = b.secretKeys.indexOf(k) >= 0;
+      var placeholder = isSecret ? s.hint : (s.value || '');
+      return '<div><label class="f">' + esc(k) + (isSecret ? ' (secret)' : '') + '</label>'
+        + '<input class="f" data-key="' + esc(k) + '" type="' + (isSecret ? 'password' : 'text')
+        + '" placeholder="' + esc(placeholder) + '"></div>';
+    }).join('');
+  }
+
+  function saveSettingsUi() {
+    var map = {};
+    document.querySelectorAll('#settingsGrid input').forEach(function (i) {
+      if (i.value.trim() !== '') map[i.getAttribute('data-key')] = i.value;
+    });
+    spin('setSpin', true); $('setMsg').textContent = '';
+    google.script.run.withSuccessHandler(function (r) {
+      spin('setSpin', false);
+      $('setMsg').textContent = r.changed.length ? ('Saved: ' + r.changed.join('; ')) : 'Nothing to save.';
+      state.boot = r.bootstrap; renderChecklist(r.bootstrap); renderSettings(r.bootstrap);
+    }).withFailureHandler(function (e) { spin('setSpin', false); fail('setMsg', e); }).saveSettings(map);
+  }
+
+  // ---------- diagnostics ----------
+  function runDiagnose() {
+    spin('diagSpin', true); $('diagOut').innerHTML = '';
+    google.script.run.withSuccessHandler(function (d) {
+      spin('diagSpin', false);
+      $('diagOut').innerHTML = d.steps.map(function (s) {
+        var kind = /^OK|^AUTH ACCEPTED/.test(s.verdict) ? 'ok' : /FAIL|REJECTED/.test(s.verdict) ? 'bad' : /WARN|SKIP/.test(s.verdict) ? 'warn' : 'mut';
+        return '<div class="card" style="margin:10px 0 0; padding:12px 14px">'
+          + '<b>' + esc(s.name) + '</b> ' + (s.status != null ? badge('mut', 'HTTP ' + s.status) : '')
+          + '<div class="kv">' + esc(s.detail || '') + (s.url ? ' · ' + esc(s.url) : '') + '</div>'
+          + (s.snippet ? '<pre>' + esc(s.snippet) + '</pre>' : '')
+          + '<div class="note ' + (kind === 'mut' ? '' : kind) + '">' + esc(s.verdict) + '</div></div>';
+      }).join('');
+    }).withFailureHandler(function (e) { spin('diagSpin', false); fail('diagOut', e); }).diagnoseKnowledger();
+  }
+
+  function runProbe() {
+    if (!confirm('This sends ONE real request to the posting flow with an empty transaction list and SendToGL=false. Expected: a no-op or a structured validation message. Continue?')) return;
+    spin('diagSpin', true); $('probeOut').innerHTML = '';
+    google.script.run.withSuccessHandler(function (p) {
+      spin('diagSpin', false);
+      $('probeOut').innerHTML = '<div class="card" style="margin:10px 0 0; padding:12px 14px">'
+        + '<b>Flow probe</b> ' + (p.status != null ? badge('mut', 'HTTP ' + p.status) : '')
+        + (p.url ? '<div class="kv">' + esc(p.url) + '</div>' : '')
+        + (p.requestBody ? '<h3>Sent</h3><pre>' + esc(p.requestBody) + '</pre>' : '')
+        + (p.snippet ? '<h3>Answer</h3><pre>' + esc(p.snippet) + '</pre>' : '')
+        + '<div class="note ' + (p.ok ? 'ok' : 'warn') + '">' + esc(p.verdict) + '</div></div>';
+    }).withFailureHandler(function (e) { spin('diagSpin', false); fail('probeOut', e); }).probeFlow();
+  }
+
+  // ---------- validate ----------
+  function runValidate() {
+    spin('valSpin', true); $('valOut').innerHTML = '';
+    state.validated = null; state.dry = null; enableTab(3, false); enableTab(4, false);
+    google.script.run.withSuccessHandler(function (v) {
+      spin('valSpin', false);
+      state.validated = v;
+      var h = '<div class="note ' + (v.ok ? 'ok' : 'bad') + '"><b>' + (v.ok ? 'Valid.' : 'Not ready.') + '</b> '
+        + esc(v.origin) + ' · date filter: ' + esc(v.dateFilter) + '</div>';
+      h += '<div>'
+        + '<span class="stat"><b>' + v.counts.lines + '</b> lines</span>'
+        + '<span class="stat"><b>' + v.counts.included + '</b> included</span>'
+        + '<span class="stat"><b>' + v.counts.excludedByDate + '</b> excluded by date</span>'
+        + '<span class="stat"><b>' + v.counts.jes + '</b> JEs to send</span>'
+        + '<span class="stat">debits <b>' + esc(v.totals.debits) + '</b></span>'
+        + '<span class="stat">credits <b>' + esc(v.totals.credits) + '</b></span>'
+        + (v.counts.stat ? '<span class="stat"><b>' + v.counts.stat + '</b> STAT</span>' : '')
+        + (v.counts.eb ? '<span class="stat"><b>' + v.counts.eb + '</b> EB</span>' : '')
+        + (v.counts.sample ? '<span class="stat">' + badge('warn', v.counts.sample + ' SAMPLE') + '</span>' : '')
+        + '</div>';
+      if (v.errors.length) h += '<h3>Errors (block the push)</h3>' + v.errors.map(function (e) { return '<div class="note bad">' + esc(e) + '</div>'; }).join('');
+      if (v.warnings.length) h += '<h3>Warnings (review, never auto-fixed)</h3>' + v.warnings.map(function (w) { return '<div class="note warn">' + esc(w) + '</div>'; }).join('');
+      if (v.binding) {
+        h += '<h3>Column binding (by header name, never position)</h3><div class="kv">'
+          + Object.keys(v.binding.bound).map(function (f) { return '<b>' + esc(f) + '</b> ← "' + esc(v.binding.bound[f]) + '"'; }).join(' · ')
+          + '</div>';
+        if (v.binding.unbound.length) {
+          h += '<div class="note warn"><b>Present but unbound:</b> ' + esc(v.binding.unbound.join(', '))
+            + '. An unbound column arrives empty on every row; if one of these matters, extend COLUMN_ALIASES.</div>';
+        }
+      }
+      if (v.tbTies) {
+        h += '<h3>Ending-balance tie-out vs trial balance @ 06/30/2025 (soft check)</h3><div class="scroll"><table><tr><th>Project</th><th class="num">Lines total</th><th class="num">Trial balance</th><th>Tie</th></tr>'
+          + v.tbTies.map(function (t) {
+              return '<tr><td>' + esc(t.project) + '</td><td class="num">' + esc(t.got) + '</td><td class="num">' + esc(t.expected) + '</td><td>'
+                + (t.ok === null ? badge('mut', 'no reference') : t.ok ? badge('ok', 'ties') : badge('warn', 'review')) + '</td></tr>';
+            }).join('') + '</table></div>';
+      }
+      h += '<h3>Journal entries</h3><div class="scroll"><table><tr><th>JE</th><th>Date</th><th>Journal</th><th>Types</th><th class="num">Lines</th><th class="num">Debits</th><th class="num">Credits</th><th>Balanced</th><th>In filter</th></tr>'
+        + v.jes.map(function (j) {
+            return '<tr><td>' + esc(j.je) + (j.hasSample ? ' ' + badge('warn', 'SAMPLE') : '') + '</td><td>' + esc(j.date) + '</td><td>' + esc(j.journal) + '</td><td>' + esc(j.types)
+              + '</td><td class="num">' + j.lines + (j.totalLines !== j.lines ? ' / ' + j.totalLines : '') + '</td><td class="num">' + esc(j.debits) + '</td><td class="num">' + esc(j.credits) + '</td><td>'
+              + (j.balanced === null ? badge('mut', 'n/a') : j.balanced ? badge('ok', 'balances') : badge('bad', 'OFF')) + '</td><td>'
+              + (j.included ? badge('ok', 'yes') : badge('mut', 'no')) + '</td></tr>';
+          }).join('') + '</table></div>';
+      $('valOut').innerHTML = h;
+      enableTab(3, v.ok);
+      if (v.ok) show(3);
+    }).withFailureHandler(function (e) { spin('valSpin', false); fail('valOut', e); })
+      .validateLines(state.source, state.source === 'paste' ? $('pasteText').value : '');
+  }
+
+  // ---------- dry run ----------
+  function runDryRun() {
+    spin('drySpin', true); $('dryOut').innerHTML = '';
+    google.script.run.withSuccessHandler(function (d) {
+      spin('drySpin', false);
+      state.dry = d;
+      var h = '<div class="note ' + (d.ok ? 'ok' : 'bad') + '"><b>' + (d.ok ? 'Ready.' : 'Blocked.') + '</b> '
+        + d.transactions + ' transaction(s) in ' + d.batches + ' HTTP call(s), ' + d.bytes + ' bytes of payload.</div>'
+        + '<div class="kv"><b>Endpoint:</b> ' + esc(d.endpoint) + '</div>'
+        + '<div class="kv"><b>SendToGL:</b> ' + d.sendToGL + ' · <b>IsRollUp:</b> ' + d.isRollUp + ' · <b>State:</b> ' + esc(d.state) + '</div>';
+      if (d.sendToGL === false) h += '<div class="note">SendToGL is <b>false</b>, the safe default. Confirm with Rahul what false does in their flow (expected: stage without posting) before flipping it in Settings.</div>';
+      if (d.blankIds && d.blankIds.length) h += '<div class="note warn"><b>Blank flow inputs:</b> ' + esc(d.blankIds.join(', ')) + '. The push will send them blank and let the flow validate; the flow\'s error message will name what it wants. Better: get the values from Rahul first.</div>';
+      if (d.errors && d.errors.length) h += d.errors.map(function (e) { return '<div class="note bad">' + esc(e) + '</div>'; }).join('');
+      h += '<h3>Exact payload</h3><pre>' + esc(d.payloadJson) + '</pre>';
+      $('dryOut').innerHTML = h;
+      enableTab(4, d.ok);
+      if (d.ok) {
+        $('pushSummary').innerHTML = '<div class="note"><b>' + d.transactions + ' transaction(s)</b> will be sent to '
+          + esc(d.endpoint) + ' with SendToGL=' + d.sendToGL + '. The push rebuilds the payload from the same source and re-validates; the dry run above is exactly what goes out.</div>';
+      }
+    }).withFailureHandler(function (e) { spin('drySpin', false); fail('dryOut', e); })
+      .dryRun(state.source, state.source === 'paste' ? $('pasteText').value : '');
+  }
+
+  // ---------- push ----------
+  function runPush(allowRepeat) {
+    var count = parseInt($('confirmCount').value, 10);
+    spin('pushSpin', true); $('pushBtn').disabled = true;
+    google.script.run.withSuccessHandler(function (r) {
+      spin('pushSpin', false); $('pushBtn').disabled = false;
+      if (r.refused) {
+        var h = '<div class="note ' + (r.needsRepeatConfirm ? 'warn' : 'bad') + '"><b>Refused:</b> ' + esc(r.refused) + '</div>';
+        if (r.errors) h += r.errors.map(function (e) { return '<div class="note bad">' + esc(e) + '</div>'; }).join('');
+        if (r.needsRepeatConfirm) h += '<div class="btnrow"><button class="act danger" onclick="runPush(true)">Yes, push this same batch again</button></div>';
+        $('pushOut').innerHTML = h;
+        return;
+      }
+      var h = '<div class="note ' + (r.ok ? 'ok' : 'warn') + '"><b>' + (r.ok ? 'Sent.' : 'Sent, with problems.') + '</b> '
+        + r.transactions + ' transaction(s) in ' + r.batches + ' call(s) to ' + esc(r.endpoint) + ' · SendToGL=' + r.sendToGL + '</div>';
+      if (r.note) h += '<div class="note warn">' + esc(r.note) + '</div>';
+      if (r.posted.length) h += '<h3>PostedTransactions (' + r.posted.length + ')</h3>' + genericTable(r.posted);
+      if (r.failed.length) h += '<h3>FailedToPostTransactions (' + r.failed.length + ')</h3>' + genericTable(r.failed);
+      h += '<h3>Per-call detail</h3>' + r.results.map(function (x) {
+        return '<div class="card" style="margin:8px 0; padding:12px 14px"><b>Call ' + x.batch + ' of ' + x.of + '</b> '
+          + badge(x.error ? 'bad' : (x.httpStatus >= 200 && x.httpStatus < 300 ? 'ok' : 'warn'), x.error ? 'network error' : 'HTTP ' + x.httpStatus)
+          + (x.outcome ? ' ' + badge('mut', 'outcome: ' + x.outcome) : '')
+          + (x.error ? '<div class="note bad">' + esc(x.error) + '</div>' : '')
+          + (x.rawSnippet ? '<pre>' + esc(x.rawSnippet) + '</pre>' : '') + '</div>';
+      }).join('');
+      $('pushOut').innerHTML = h;
+      boot(); // refresh last-push line
+    }).withFailureHandler(function (e) { spin('pushSpin', false); $('pushBtn').disabled = false; fail('pushOut', e); })
+      .pushToKnowLedger(state.source, state.source === 'paste' ? $('pasteText').value : '', count, !!allowRepeat);
+  }
+
+  function genericTable(arr) {
+    var rows = arr.map(function (x) { return (x && typeof x === 'object') ? x : { value: x }; });
+    var cols = [];
+    rows.forEach(function (r) { Object.keys(r).forEach(function (k) { if (cols.indexOf(k) < 0) cols.push(k); }); });
+    cols = cols.slice(0, 12);
+    return '<div class="scroll"><table><tr>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr>'
+      + rows.map(function (r) {
+          return '<tr>' + cols.map(function (c) {
+            var v = r[c];
+            return '<td>' + esc(v != null && typeof v === 'object' ? JSON.stringify(v) : v) + '</td>';
+          }).join('') + '</tr>';
+        }).join('') + '</table></div>';
+  }
+
+  boot();
+</script>
