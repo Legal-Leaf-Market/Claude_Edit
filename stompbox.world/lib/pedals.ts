@@ -1,4 +1,5 @@
 import type { SlotId } from "./chain"
+import type { FigureShape } from "./figures"
 
 /**
  * The pedal dataset. Hand written, and deliberately so.
@@ -32,6 +33,19 @@ export type Pedal = {
   family: Family
   /** Where it belongs in the signal chain. See lib/chain.ts. */
   slot: SlotId
+  /**
+   * Which drawn figure illustrates this circuit (lib/figures.ts).
+   *
+   * CHOSEN BY READING `circuit` BELOW, NOT BY FAMILY. Family is too coarse and
+   * this dataset is the proof: a Tube Screamer and a RAT are both Drive, and
+   * their own entries say one rounds the peaks inside a feedback loop while the
+   * other shears them off against ground. Drawing them identically would
+   * contradict the text printed directly under the picture.
+   *
+   * So it is filled the way every other field here is filled, by somebody
+   * reading the entry, and a test asserts every pedal has one.
+   */
+  shape: FigureShape
   /** Decade level. Never a precise year, see the note above. */
   era: string
   /** One line, used on cards and in the meta description. */
@@ -62,6 +76,7 @@ export const PEDALS: Pedal[] = [
     maker: "Ibanez",
     family: "Drive",
     slot: "drive",
+    shape: "soft-clip",
     era: "Late 1970s",
     summary: "Soft clipping and a midrange lift, built to push an amp that is already working.",
     circuit:
@@ -76,6 +91,7 @@ export const PEDALS: Pedal[] = [
     maker: "ProCo",
     family: "Drive",
     slot: "drive",
+    shape: "hard-clip",
     era: "Around the turn of the 1980s",
     summary: "Hard clipping to ground, and a tone control that runs backwards.",
     circuit:
@@ -90,6 +106,7 @@ export const PEDALS: Pedal[] = [
     maker: "Boss",
     family: "Drive",
     slot: "drive",
+    shape: "hard-clip",
     era: "Late 1970s",
     summary: "A transistor boost into hard clipping, bright and unsubtle.",
     circuit:
@@ -104,6 +121,7 @@ export const PEDALS: Pedal[] = [
     maker: "Klon",
     family: "Drive",
     slot: "drive",
+    shape: "headroom",
     era: "Mid 1990s",
     summary: "A drive with headroom, because it runs its rails well above the battery.",
     circuit:
@@ -119,6 +137,7 @@ export const PEDALS: Pedal[] = [
     maker: "Dallas Arbiter",
     family: "Fuzz",
     slot: "fuzz",
+    shape: "asymmetric-fuzz",
     era: "Mid 1960s",
     summary: "Two transistors that want to be plugged straight into the guitar.",
     circuit:
@@ -134,6 +153,7 @@ export const PEDALS: Pedal[] = [
     maker: "Electro-Harmonix",
     family: "Fuzz",
     slot: "fuzz",
+    shape: "stacked-clip",
     era: "Late 1960s",
     summary: "Two cascaded clipping stages and a tone stack that scoops the middle.",
     circuit:
@@ -148,6 +168,7 @@ export const PEDALS: Pedal[] = [
     maker: "Roger Mayer",
     family: "Fuzz",
     slot: "fuzz",
+    shape: "octave-fold",
     era: "Late 1960s",
     summary: "A fuzz with a ringing octave above the note, produced by rectification.",
     circuit:
@@ -163,6 +184,7 @@ export const PEDALS: Pedal[] = [
     maker: "Dunlop",
     family: "Filter",
     slot: "filter",
+    shape: "resonant-sweep",
     era: "Late 1960s",
     summary: "An inductor-based bandpass filter with the treadle sweeping its centre.",
     circuit:
@@ -177,6 +199,7 @@ export const PEDALS: Pedal[] = [
     maker: "MXR",
     family: "Dynamics",
     slot: "dynamics",
+    shape: "envelope",
     era: "Mid 1970s",
     summary: "An OTA compressor that flattens the attack and pushes the tail up.",
     circuit:
@@ -191,6 +214,7 @@ export const PEDALS: Pedal[] = [
     maker: "MXR",
     family: "Modulation",
     slot: "modulation",
+    shape: "phase-notch",
     era: "Mid 1970s",
     summary: "Four all-pass stages sweeping two notches, and exactly one knob.",
     circuit:
@@ -205,6 +229,7 @@ export const PEDALS: Pedal[] = [
     maker: "Electro-Harmonix",
     family: "Modulation",
     slot: "modulation",
+    shape: "phase-notch",
     era: "Mid 1970s",
     summary: "A phaser with a resonance switch, wider and more vocal than a plain sweep.",
     circuit:
@@ -219,6 +244,7 @@ export const PEDALS: Pedal[] = [
     maker: "Univox",
     family: "Modulation",
     slot: "modulation",
+    shape: "phase-notch",
     era: "Late 1960s",
     summary: "A lamp and photocells driving four deliberately mismatched phase stages.",
     circuit:
@@ -233,6 +259,7 @@ export const PEDALS: Pedal[] = [
     maker: "Boss",
     family: "Modulation",
     slot: "modulation",
+    shape: "wandering-delay",
     era: "Mid 1970s",
     summary: "The chorus circuit out of a Roland amplifier, put on the floor.",
     circuit:
@@ -247,6 +274,7 @@ export const PEDALS: Pedal[] = [
     maker: "Electro-Harmonix",
     family: "Time",
     slot: "delay",
+    shape: "decaying-repeats",
     era: "Late 1970s",
     summary: "Bucket-brigade delay whose repeats get darker every time round.",
     circuit:
@@ -261,6 +289,7 @@ export const PEDALS: Pedal[] = [
     maker: "Boss",
     family: "Time",
     slot: "delay",
+    shape: "identical-repeats",
     era: "Early 1980s",
     summary: "The first compact digital delay: repeats that keep their treble.",
     circuit:

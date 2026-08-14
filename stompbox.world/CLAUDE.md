@@ -43,10 +43,12 @@ components/
   brand/logo.tsx     Mark and wordmark, both drawn as paths
   ui/stomp.tsx       Stomp, StompLink, Knob: the button language
   chain-builder.tsx  The only stateful component on the site
+  circuit-figure.tsx Draws a figure. Server component, no animation
   site-header.tsx, site-footer.tsx, theme-toggle.tsx
   instagram-strip.tsx, pedal-card.tsx, icons/instagram-glyph.tsx
 lib/
   pedals.ts          THE dataset
+  figures.ts         Circuit figure geometry, one sampler, one grid (section 3a)
   chain.ts           Slot order, ordering, notes. Pure, no React
   env.ts             Optional config only. Nothing throws
   theme.ts           Three states, dark is the default
@@ -288,6 +290,59 @@ no number, because it looks like a measurement.
 
 ---
 
+## 3a. The figures, and why they are drawn rather than photographed
+
+`lib/figures.ts` generates the geometry, `components/circuit-figure.tsx` draws
+it, and `shape` on each entry in `lib/pedals.ts` says which figure belongs to
+which circuit.
+
+**WHY THE SITE NEEDED THEM.** Every page argued that naming the circuit beats
+reaching for another adjective, and then showed nothing. The one claim the site
+is built on was the one claim a reader could not see. The catalogue route had
+merchant photographs and the guide, which is the actual content, had type and
+more type.
+
+**WHY DRAWN.** Two reasons and the second is the real one. The rights answer is
+that product photography belongs to whoever shot it: the catalogue may show
+merchant images because those arrive in a feed published to partners for that
+purpose, and nothing on the guide side has any such licence, so pulling a JPEG
+off a storefront is the same act section 2 rejects for a catalogue. The better
+answer is that a photo of a Tube Screamer and a photo of a RAT tell a reader
+nothing, because they are both a box with three knobs. The difference is what
+happens to the waveform, and that is drawable. A photo would have been
+decoration; this is the content.
+
+**SHAPE IS CHOSEN BY READING THE ENTRY, NEVER FROM FAMILY.** This is the rule
+most likely to be "simplified" later, and the dataset is what forbids it: a Tube
+Screamer and a RAT are both `family: "Drive"`, and their own `circuit` text says
+one rounds the peaks inside a feedback loop while the other shears them off
+against ground. Keying the picture off family would print the same drawing above
+two paragraphs that contradict it. `tests/figures.test.ts` pins that pair, and
+pins the analog against the digital delay for the same reason.
+
+**GEOMETRY IN A PURE MODULE, NOT SVG IN A COMPONENT.** Twelve hand-authored
+SVGs drift on the second edit: a different baseline here, a heavier stroke
+there, and the set stops reading as one system. One sampler on one grid makes
+them consistent by construction and testable with no renderer, which is the same
+instinct as the wordmark being stroked polylines rather than a font.
+
+**ZERO GOES WHERE ZERO IS.** A waveform swings both ways and is drawn around the
+middle. A magnitude cannot go negative, so a response curve or an envelope is
+drawn from the floor. The first version drew everything around a mid-line, which
+wasted half the frame and implied a curve could dip below an axis it never
+crosses. A test asserts every `zero: "bottom"` figure stays above its own floor.
+
+**RAILS MEAN SOMETHING.** Dashed horizontal lines appear only on the figures
+where running out of room is the subject, so a rail is never decoration. A test
+pins exactly which shapes have them.
+
+**NOTHING HERE IS A MEASUREMENT**, which is section 3 reaching into the pictures.
+Every captioned figure says on itself that it illustrates the description rather
+than tracing a specific unit. A curve that looked measured while being drawn
+would be the same dishonesty as a guessed current draw.
+
+---
+
 ## 4. The chain engine is a convention, not a rule engine
 
 `lib/chain.ts`. Pure TypeScript, no React, which is what makes it testable and
@@ -405,6 +460,14 @@ pedal is equally a bass, keys and studio object.
 - Do NOT add an artist attribution field to `lib/pedals.ts`.
 - Do NOT print a precise year in the `era` field.
 - Do NOT publish a current draw, or any other measurement, that is not sourced.
+- Do NOT key a circuit figure off `family`. Two Drive pedals in this dataset do
+  opposite things to the waveform and their entries say so, so the figure is
+  chosen by reading the entry (section 3a).
+- Do NOT let a figure claim to be measured. Every captioned one says it
+  illustrates the description, and that line stays.
+- Do NOT add a photograph to the guide side. The catalogue's images come from a
+  feed published for that purpose; the guide has no such licence and its
+  pictures are drawn (section 3a).
 - Do NOT scrape a gear-attribution site to grow the dataset.
 - Do NOT use an em dash.
 - Do NOT fill anything with `--brand-gold`. It is an edge colour, muted at rest.
@@ -445,3 +508,13 @@ pedal is equally a bass, keys and studio object.
   The population is Gear Avail's `/used/effects-pedals` shelf, and a second
   opinion about it on this domain is how the two drifted the first time.
 - Do NOT make the chain notes block or auto-correct a layout.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
