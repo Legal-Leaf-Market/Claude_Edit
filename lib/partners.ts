@@ -200,3 +200,68 @@ export function partnerDestination(partner: PartnerProfile): PartnerDestination 
 export function partnerIsMonetised(partner: PartnerProfile): boolean {
   return partnerDestination(partner).tracked
 }
+
+export type PartnerLinkStatus = {
+  slug: string
+  name: string
+  envVar: string
+  /** Something is set in the environment. */
+  configured: boolean
+  /** That something was accepted, so clicks earn. */
+  tracked: boolean
+  /** Host of whatever will actually be linked to, tracked or not. */
+  host: string | null
+  /** One line: what state this is in and what to do about it. */
+  verdict: string
+}
+
+/** The variable each partner's link is read from, so a readout can name it. */
+const LINK_ENV_VARS: Record<string, string> = {
+  "martinic-audio": "IMPACT_MARTINIC_LINK",
+  distrokid: "IMPACT_DISTROKID_LINK",
+}
+
+/**
+ * Whether each partner's tracked link was accepted, for the admin panel and
+ * /api/health.
+ *
+ * WHY THIS EXISTS. A rejected link is the quietest failure in this integration.
+ * `partnerDestination` deliberately ignores a value that is not on an Impact
+ * tracking host and falls back to the merchant's own site, which is the right
+ * behaviour and completely invisible: the page still renders, the button still
+ * works, the shopper still arrives, and we simply earn nothing. The only signal
+ * is a console warning nobody reads in production.
+ *
+ * That matters more here than anywhere else on the site. These two are the
+ * highest-paying merchants on the account and the ONLY monetisation those pages
+ * have, since neither has catalogue rows carrying a feed's own tracked link. So
+ * the three states are reported explicitly: nothing set, set and rejected, set
+ * and earning. "Set and rejected" is the one worth catching, because it looks
+ * exactly like working.
+ *
+ * Reports the HOST and never the whole link. The link is not a secret (it is on
+ * the partner page for anyone to see), but /api/health is public and there is no
+ * reason to hand a scraper a tidy list of our tracked URLs.
+ */
+export function partnerLinkStatus(): PartnerLinkStatus[] {
+  return PARTNERS.map((partner) => {
+    const envVar = LINK_ENV_VARS[partner.slug] ?? "(unmapped)"
+    const configured = Boolean(partner.trackedLink.trim())
+    const { url, tracked } = partnerDestination(partner)
+
+    let host: string | null = null
+    try {
+      host = new URL(url).hostname
+    } catch {
+      host = null
+    }
+
+    const verdict = !configured
+      ? `Not set. ${partner.name} links to its own site untracked and earns nothing. Paste the whole link from Impact's "create your links" step into ${envVar}.`
+      : tracked
+        ? `Earning. Clicks go through ${host}.`
+        : `SET BUT REJECTED, so this earns nothing and looks fine. The value in ${envVar} is not an Impact tracking URL on the allowlist, so the page falls back to ${host}. Impact links live on pxf.io, sjv.io, 7eer.net, evyy.net or impactradius.com.`
+
+    return { slug: partner.slug, name: partner.name, envVar, configured, tracked, host, verdict }
+  })
+}

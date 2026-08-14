@@ -3,6 +3,7 @@ import {
   bannerPartner,
   partnerDestination,
   partnerFromSlug,
+  partnerLinkStatus,
   PARTNERS,
   type PartnerProfile,
 } from "@/lib/partners"
@@ -111,6 +112,39 @@ describe("partnerDestination", () => {
     const destination = partnerDestination(withLink(martinic, "https://evil.example/c/1/2/3"))
     expect(destination.tracked).toBe(false)
     expect(isAllowedDestination(destination.url)).toBe(true)
+  })
+})
+
+describe("partnerLinkStatus", () => {
+  /**
+   * The point of the readout: the three states have to be distinguishable, and
+   * the middle one is why it exists. A link that is set but rejected earns
+   * nothing while every visible symptom says the page works.
+   */
+  it("names a variable and a verdict for every partner", () => {
+    const statuses = partnerLinkStatus()
+    expect(statuses).toHaveLength(PARTNERS.length)
+    for (const status of statuses) {
+      expect(status.envVar).toMatch(/^IMPACT_[A-Z]+_LINK$/)
+      expect(status.verdict.length).toBeGreaterThan(30)
+      // A resolved host either way: the fallback is the merchant's own site.
+      expect(status.host).toBeTruthy()
+    }
+  })
+
+  it("reports unset as not earning, and says where to get the link", () => {
+    for (const status of partnerLinkStatus()) {
+      if (status.configured) continue
+      expect(status.tracked).toBe(false)
+      expect(status.verdict).toContain(status.envVar)
+    }
+  })
+
+  /** Every partner needs a real variable name, not the unmapped placeholder. */
+  it("maps every partner slug to a known env var", () => {
+    for (const status of partnerLinkStatus()) {
+      expect(status.envVar).not.toBe("(unmapped)")
+    }
   })
 })
 
