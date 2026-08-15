@@ -52,7 +52,7 @@ export function Board({
   if (slots.length === 0) {
     return (
       <div className="pedalboard-surface flex min-h-56 flex-col items-center justify-center gap-2 p-8 text-center">
-        <p className="font-display text-lg font-black text-[var(--text)]">Empty board.</p>
+        <p className="font-display text-lg font-bold text-[var(--text)]">Empty board.</p>
         <p className="max-w-md text-sm leading-relaxed text-[var(--muted-foreground)]">
           Search for a pedal above, or load one of the documented rigs. Once there are two on here
           it will start checking the order, and once there are three it will size a power supply.
@@ -171,7 +171,7 @@ function PedalSlot({
           className="h-3.5 w-3.5 shrink-0 cursor-grab text-[var(--dim)]"
           aria-hidden="true"
         />
-        <span className="font-display text-[11px] font-black text-[var(--dim)]">{position}</span>
+        <span className="font-display text-[11px] font-bold text-[var(--dim)]">{position}</span>
 
         {/* The type is a guess from the pedal's name, so it has to be
             correctable. A wrong guess would otherwise produce a confidently
@@ -297,7 +297,7 @@ function PedalSlot({
 
       {flagged && (
         <div
-          className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[var(--gold)]"
+          className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[var(--accent-text)]"
           aria-hidden="true"
           title="This slot has a note below"
         />

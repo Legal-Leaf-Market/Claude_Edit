@@ -33,7 +33,7 @@ export function ArtistPhoto({
   if (!photo) {
     return (
       <span
-        className={`icon-badge flex items-center justify-center font-display font-black ${className}`}
+        className={`icon-badge flex items-center justify-center font-display font-bold ${className}`}
         style={{ "--icon-hue": hue } as React.CSSProperties}
         aria-hidden="true"
       >

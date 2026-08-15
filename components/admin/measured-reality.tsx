@@ -77,7 +77,7 @@ export function MeasuredReality() {
           <Stat label="Hours invested" value={`${hoursFor()}`} sub={`5 sites live in ${WEEKS_LOGGED} weeks, ${hoursPerWeekTotal()} h/week`} />
         </div>
 
-        <h3 className="mb-1 font-display text-lg font-black text-[var(--cream)]">The funnel, and where it breaks</h3>
+        <h3 className="mb-1 font-display text-lg font-bold text-[var(--cream)]">The funnel, and where it breaks</h3>
         <p className="table-caption mb-3 mt-0">
           {WEB_SOURCE.source}. {WEB_SOURCE.window}. {WEB_SOURCE.note}
         </p>
@@ -139,7 +139,7 @@ export function MeasuredReality() {
           run-rate is roughly 500 a month against a 600 assumption.
         </p>
 
-        <h3 className="mb-1 mt-8 font-display text-lg font-black text-[var(--cream)]">Instagram, and one broken metric</h3>
+        <h3 className="mb-1 mt-8 font-display text-lg font-bold text-[var(--cream)]">Instagram, and one broken metric</h3>
         <p className="table-caption mb-3 mt-0">{SOCIAL_SOURCE.source}. {SOCIAL_SOURCE.window}.</p>
         <div className="table-wrap">
           <table className="model-table">
@@ -178,7 +178,7 @@ export function MeasuredReality() {
           server-side numbers.
         </p>
 
-        <h3 className="mb-1 mt-8 font-display text-lg font-black text-[var(--cream)]">
+        <h3 className="mb-1 mt-8 font-display text-lg font-bold text-[var(--cream)]">
           What a real month does to the projection
         </h3>
         <p className="table-caption mb-3 mt-0">
@@ -232,7 +232,7 @@ export function MeasuredReality() {
           actual. A click is visible the day it happens and waits on no payout cycle.
         </p>
 
-        <h3 className="mb-1 mt-8 font-display text-lg font-black text-[var(--cream)]">Timesheets</h3>
+        <h3 className="mb-1 mt-8 font-display text-lg font-bold text-[var(--cream)]">Timesheets</h3>
         <p className="table-caption mb-3 mt-0">
           {WEEKS_LOGGED} weeks to 10 Aug 2026. Categories stay separate because they are not the same
           kind of hour, and development has to be isolated from admin and sales to be reportable as
@@ -268,8 +268,8 @@ export function MeasuredReality() {
                 {CATEGORIES.map((k) => (
                   <td key={k} className="text-right">{hoursFor({ category: k })} h</td>
                 ))}
-                <td className="text-right text-[var(--gold)]">{hoursFor()} h</td>
-                <td className="text-right text-[var(--gold)]">{hoursPerWeekTotal().toFixed(0)} h</td>
+                <td className="text-right text-[var(--accent-text)]">{hoursFor()} h</td>
+                <td className="text-right text-[var(--accent-text)]">{hoursPerWeekTotal().toFixed(0)} h</td>
               </tr>
             </tbody>
           </table>
@@ -284,7 +284,7 @@ export function MeasuredReality() {
           model reads it.
         </p>
 
-        <h3 className="mb-1 mt-8 font-display text-lg font-black text-[var(--cream)]">
+        <h3 className="mb-1 mt-8 font-display text-lg font-bold text-[var(--cream)]">
           The time budget, and how robust it lets things get
         </h3>
         <p className="table-caption mb-3 mt-0">
@@ -316,7 +316,7 @@ export function MeasuredReality() {
               ))}
               <tr className="font-semibold">
                 <td>Total backlog</td>
-                <td className="text-right text-[var(--gold)]">{OUTLOOK.backlogHours} h</td>
+                <td className="text-right text-[var(--accent-text)]">{OUTLOOK.backlogHours} h</td>
                 <td colSpan={2} className="text-[var(--muted-foreground)]">
                   {OUTLOOK.weeksToClear.toFixed(1)} weeks at the {availableHoursPerWeek()} h/week
                   available going forward
@@ -341,7 +341,7 @@ export function MeasuredReality() {
           outreach that stop the day someone stops.
         </p>
 
-        <h3 className="mb-1 mt-8 font-display text-lg font-black text-[var(--cream)]">
+        <h3 className="mb-1 mt-8 font-display text-lg font-bold text-[var(--cream)]">
           Year {FIRST_DRAW_YEAR}, the first draw
         </h3>
         <p className="table-caption mb-3 mt-0">
@@ -380,7 +380,7 @@ export function MeasuredReality() {
                     <td className="text-right text-[var(--muted-foreground)]">
                       ${c.hourly.toFixed(2)}/h
                     </td>
-                    <td className="text-right font-semibold text-[var(--gold)]">
+                    <td className="text-right font-semibold text-[var(--accent-text)]">
                       ${d.low.toFixed(2)} to ${d.high.toFixed(2)}/h
                     </td>
                     <td className="text-right text-[var(--red)]">
@@ -447,7 +447,7 @@ export function MeasuredReality() {
           SEO than saved for when the time exists.
         </p>
 
-        <h3 className="mb-1 mt-8 font-display text-lg font-black text-[var(--cream)]">
+        <h3 className="mb-1 mt-8 font-display text-lg font-bold text-[var(--cream)]">
           What it takes to pay the team
         </h3>
         <p className="table-caption mb-3 mt-0">
@@ -511,7 +511,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub: string
   return (
     <div className="panel">
       <p className="text-xs uppercase tracking-[0.14em] text-[var(--dim)]">{label}</p>
-      <p className="mt-1 font-display text-2xl font-black text-[var(--cream)]">{value}</p>
+      <p className="mt-1 font-display text-2xl font-bold text-[var(--cream)]">{value}</p>
       <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{sub}</p>
     </div>
   )

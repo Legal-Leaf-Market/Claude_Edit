@@ -88,7 +88,7 @@ export function BoardPostForm({ board }: { board: BoardConfig }) {
         <div className="mt-4 flex gap-2">
           <Link
             href="/sign-in"
-            className="inline-flex h-10 items-center rounded-lg bg-[var(--primary)] px-4 text-sm font-medium text-[var(--primary-foreground)] hover:bg-[var(--amber-soft)]"
+            className="inline-flex h-10 items-center rounded-lg bg-[var(--primary)] px-4 text-sm font-medium text-[var(--primary-foreground)] hover:bg-[var(--primary-hover)]"
           >
             Sign in
           </Link>
@@ -116,7 +116,7 @@ export function BoardPostForm({ board }: { board: BoardConfig }) {
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
             href={`/posts/${newPostId}`}
-            className="inline-flex h-10 items-center rounded-lg bg-[var(--primary)] px-4 text-sm font-medium text-[var(--primary-foreground)] hover:bg-[var(--amber-soft)]"
+            className="inline-flex h-10 items-center rounded-lg bg-[var(--primary)] px-4 text-sm font-medium text-[var(--primary-foreground)] hover:bg-[var(--primary-hover)]"
           >
             View your post
           </Link>
@@ -147,7 +147,7 @@ export function BoardPostForm({ board }: { board: BoardConfig }) {
             setStatus("idle")
             setNewPostId(null)
           }}
-          className="mt-4 text-sm text-[var(--amber)] underline-offset-2 hover:underline"
+          className="mt-4 text-sm text-[var(--accent-text)] underline-offset-2 hover:underline"
         >
           Post another
         </button>

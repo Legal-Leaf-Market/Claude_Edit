@@ -59,7 +59,7 @@ export function AllSitesDashboard() {
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <header className="mb-8">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--amber)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent-text)]">
             All sites · Gear Avail prepared {PREPARED_ON} · sister sites prepared {SISTER_SITES_PREPARED_ON}
           </p>
           <div className="flex items-center gap-2">
@@ -79,7 +79,7 @@ export function AllSitesDashboard() {
             </button>
           </div>
         </div>
-        <h1 className="mt-1 text-2xl font-black text-[var(--cream)] sm:text-3xl">
+        <h1 className="mt-1 text-2xl font-bold text-[var(--cream)] sm:text-3xl">
           The whole affiliate family, combined
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)]">
@@ -90,7 +90,7 @@ export function AllSitesDashboard() {
           site actually assumes about itself.
         </p>
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full bg-[var(--secondary)] px-3 py-1 font-medium text-[var(--amber)]">
+          <span className="rounded-full bg-[var(--secondary)] px-3 py-1 font-medium text-[var(--accent-text)]">
             {model.monthLabels[0]} → {model.monthLabels[model.monthLabels.length - 1]}
           </span>
           <span className="rounded-full bg-[var(--secondary)] px-3 py-1 text-[var(--muted-foreground)]">
@@ -210,9 +210,9 @@ export function AllSitesDashboard() {
                 ))}
                 <tr className="border-t border-[var(--border)] font-semibold">
                   <td colSpan={2}>Total</td>
-                  <td className="text-right text-[var(--amber)]">{money(t.totalRevenue)}</td>
+                  <td className="text-right text-[var(--accent-text)]">{money(t.totalRevenue)}</td>
                   <td className="text-right">100%</td>
-                  <td className="text-right text-[var(--amber)]">{money(t.exitRunRate)}/yr</td>
+                  <td className="text-right text-[var(--accent-text)]">{money(t.exitRunRate)}/yr</td>
                   <td className="text-right">{count(t.totalSessions)}</td>
                 </tr>
               </tbody>
@@ -248,10 +248,10 @@ export function AllSitesDashboard() {
               <tbody>
                 {combinedQuarters(siteRows, model.monthLabels).map((q) => (
                   <tr key={q.index}>
-                    <td className="font-semibold text-[var(--amber)]">{q.label}</td>
+                    <td className="font-semibold text-[var(--accent-text)]">{q.label}</td>
                     <td className="text-[var(--muted-foreground)]">{q.monthsLabel}</td>
                     <td className="text-right">{count(q.sessions)}</td>
-                    <td className="text-right font-semibold text-[var(--amber)]">{money(q.revenue)}</td>
+                    <td className="text-right font-semibold text-[var(--accent-text)]">{money(q.revenue)}</td>
                     <td className="text-right">{rps(q.revPerSession)}</td>
                     <td
                       className={`text-right ${q.changeVsPriorPct === null ? "text-[var(--muted-foreground)]" : q.changeVsPriorPct >= 0 ? "text-emerald-400" : "text-red-400"}`}

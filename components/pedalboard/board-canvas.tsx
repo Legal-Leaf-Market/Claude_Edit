@@ -256,9 +256,9 @@ export function BoardCanvas({
                 severity === "fatal"
                   ? "var(--red)"
                   : selected
-                    ? "var(--brand-gold)"
+                    ? "var(--chrome)"
                     : severity === "warn"
-                      ? "var(--brand-gold)"
+                      ? "var(--accent-text)"
                       : hue
               }
               strokeWidth={selected || severity ? 2 : 1.2}

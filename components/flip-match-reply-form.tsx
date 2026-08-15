@@ -113,7 +113,7 @@ export function FlipMatchReplyForm({
           <div className="mt-3 flex gap-2">
             <Link
               href="/sign-in"
-              className="inline-flex h-9 items-center rounded-lg bg-[var(--primary)] px-3 text-sm font-medium text-[var(--primary-foreground)] hover:bg-[var(--amber-soft)]"
+              className="inline-flex h-9 items-center rounded-lg bg-[var(--primary)] px-3 text-sm font-medium text-[var(--primary-foreground)] hover:bg-[var(--primary-hover)]"
             >
               Sign in
             </Link>

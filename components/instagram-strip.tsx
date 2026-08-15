@@ -17,12 +17,12 @@ export function InstagramStrip() {
   return (
     <section className="pb-16">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-xl font-black text-[var(--cream)]">From @{handle} on Instagram</h2>
+        <h2 className="text-xl font-bold text-[var(--cream)]">From @{handle} on Instagram</h2>
         <a
           href={profileUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm text-[var(--amber)] underline-offset-2 hover:underline"
+          className="inline-flex items-center gap-1.5 text-sm text-[var(--accent-text)] underline-offset-2 hover:underline"
         >
           <InstagramGlyph className="h-4 w-4" />
           Follow
@@ -51,7 +51,7 @@ export function InstagramStrip() {
             href={profileUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[var(--amber)] underline-offset-2 hover:underline"
+            className="text-[var(--accent-text)] underline-offset-2 hover:underline"
           >
             @{handle}
           </a>

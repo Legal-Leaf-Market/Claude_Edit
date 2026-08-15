@@ -66,7 +66,7 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
                 <button
                   type="button"
                   onClick={() => setFlipped(true)}
-                  className="shrink-0 text-xs text-[var(--muted-foreground)] underline-offset-2 hover:text-[var(--amber)] hover:underline"
+                  className="shrink-0 text-xs text-[var(--muted-foreground)] underline-offset-2 hover:text-[var(--accent-text)] hover:underline"
                   aria-label={`Show details for ${hit.title}`}
                 >
                   Details
@@ -161,20 +161,20 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
             {hit.gearSlug && gearName && (
               <Link
                 href={`/gear/${hit.gearSlug}`}
-                className="w-fit text-xs text-[var(--amber)] underline-offset-2 hover:underline"
+                className="w-fit text-xs text-[var(--accent-text)] underline-offset-2 hover:underline"
               >
                 Compare all {gearName} listings
               </Link>
             )}
 
-            <div className="mt-auto flex items-center justify-between gap-2 border-t border-[rgba(210,112,58,.18)] pt-2.5">
+            <div className="mt-auto flex items-center justify-between gap-2 border-t border-[var(--line)] pt-2.5">
               <span className="card-price text-[17px]">
                 {formatPrice(hit.priceCents, hit.currency)}
               </span>
               <button
                 type="button"
                 onClick={() => setFlipped(false)}
-                className="inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold text-[var(--cream)] transition-colors hover:border-[var(--copper)] hover:text-[var(--copper)]"
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold text-[var(--cream)] transition-colors hover:border-[var(--chrome-dk)] hover:text-[var(--accent-text)]"
                 aria-label="Back to photo"
               >
                 <RotateCcw className="h-3 w-3" aria-hidden="true" />

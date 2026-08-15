@@ -47,7 +47,7 @@ function rateCell(row: MasterVendorRow, optimistic: boolean) {
   }
   if (optimistic && !isEarningToday(row) && assumed !== null) {
     return (
-      <span className="font-semibold text-[var(--gold)]">
+      <span className="font-semibold text-[var(--accent-text)]">
         {assumed}%
         <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">assumed</span>
       </span>
@@ -128,7 +128,7 @@ export function MasterVendorTable() {
             <div key={site.key} className="mb-8">
               <p className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span
-                  className="font-display text-lg font-black tracking-[-0.01em]"
+                  className="font-display text-lg font-bold tracking-[-0.01em]"
                   style={{ color: site.color }}
                 >
                   {site.name}
@@ -190,7 +190,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub: string
   return (
     <div className="panel">
       <p className="text-xs uppercase tracking-[0.14em] text-[var(--dim)]">{label}</p>
-      <p className="mt-1 font-display text-2xl font-black text-[var(--cream)]">{value}</p>
+      <p className="mt-1 font-display text-2xl font-bold text-[var(--cream)]">{value}</p>
       <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{sub}</p>
     </div>
   )

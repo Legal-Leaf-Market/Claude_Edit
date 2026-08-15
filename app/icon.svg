@@ -2,13 +2,18 @@
   <!--
     The favicon: a pedal, with the brand's tuning fork silkscreened on its face.
 
-    WHY IT IS A PEDAL NOW. It used to be the bare fork-in-a-ring mark from
-    components/brand/logo.tsx. The owner asked for a pedal, which is a
-    deliberate overrule of the note in that file arguing the fork is the better
-    mark, so "logo.tsx says the fork won" is not a reason to change this back.
-    The fork stays ON the face, which is where a pedal prints its graphic
-    anyway, so the tab icon and the mark in the header still read as one
-    identity rather than as two brands.
+    WHY IT IS A PEDAL. The owner asked for a pedal, which was a deliberate
+    overrule of the old argument for a bare fork-in-a-ring, so "the fork alone
+    won once" is not a reason to change this back. The fork stays ON the face,
+    which is where a pedal prints its graphic anyway, so the tab icon and the
+    mark in the header read as one identity rather than as two brands.
+
+    WHY IT IS ROYAL BLUE AND WHITE NOW. stompbox.world's design took over this
+    site (CLAUDE.md section 16, the owner's call), so the enclosure wears the
+    same royal blue and the print is chrome white. What keeps the two tabs
+    apart is no longer the colour, it is the graphic: THIS face carries the
+    fork, stem running down into the footswitch ring; the sister site's face
+    is a bare footswitch. tests/favicon.test.ts pins exactly that difference.
 
     WHY THE FORK KEEPS THE FOOTSWITCH UNDER IT. Drawn at 16, 20, 32 and 96
     pixels on light and dark browser chrome before it was committed. The fork
@@ -17,11 +22,6 @@
     into the switch ring, makes one printed graphic that survives the tab, and
     a heavier stroke is what carries it at 16px.
 
-    WHY NOT THE SISTER SITE'S ICON. stompbox.world ships this same enclosure
-    silhouette in royal blue with a bare footswitch. Two projects in one repo
-    must not put the same picture in two tabs, so this one is graphite (the
-    Gear Avail palette, CLAUDE.md section 16) and carries the fork.
-
     COLOURS ARE LITERAL HEX, NOT var(). A favicon is fetched outside the
     document, so there is no :root to resolve against and every custom property
     would fall back to nothing. Same reason the LED glow filter is dropped: it
@@ -29,17 +29,17 @@
   -->
   <!-- The enclosure. Portrait and rounded, which is the shape of every die-cast
        box a guitarist has stood on. -->
-  <rect x="18" y="2" width="64" height="96" rx="11" fill="#262b31" stroke="#ffc233" stroke-width="4"/>
+  <rect x="18" y="2" width="64" height="96" rx="11" fill="#183573" stroke="#ffffff" stroke-width="4"/>
   <!-- The silkscreen line pedals print inside the edge, so the face reads as
        printed rather than as empty. Gone by 20px, and that is fine: it is what
        the icon has to give at 96. -->
-  <rect x="23.5" y="7.5" width="53" height="85" rx="7" fill="none" stroke="#ffc233" stroke-opacity="0.3" stroke-width="1.4"/>
+  <rect x="23.5" y="7.5" width="53" height="85" rx="7" fill="none" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1.4"/>
   <!-- Status LED, always lit: a shop that is open says so. -->
   <circle cx="50" cy="13.5" r="3.2" fill="#24e07a"/>
   <!-- The tuning fork, tines up, its stem running into the footswitch. -->
-  <g stroke="#ffc233" stroke-width="3.6" stroke-linecap="round" fill="none">
+  <g stroke="#ffffff" stroke-width="3.6" stroke-linecap="round" fill="none">
     <path d="M37 27v14a13 13 0 0 0 26 0V27"/>
     <path d="M50 54v9"/>
   </g>
-  <circle cx="50" cy="76" r="11" fill="#14181c" stroke="#ffc233" stroke-width="3"/>
+  <circle cx="50" cy="76" r="11" fill="#070f24" stroke="#ffffff" stroke-width="3"/>
 </svg>

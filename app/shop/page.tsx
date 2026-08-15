@@ -50,10 +50,10 @@ export default async function ShopIndexPage() {
 
   return (
     <div className="shell py-10">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--amber)]">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent-text)]">
         Independent makers and shops
       </p>
-      <h1 className="mt-1 text-3xl font-black tracking-tight text-[var(--cream)]">
+      <h1 className="mt-1 text-3xl font-bold tracking-tight text-[var(--cream)]">
         Every store we list
       </h1>
       <p className="mt-3 max-w-2xl text-base leading-relaxed text-[var(--muted-foreground)]">
@@ -67,13 +67,13 @@ export default async function ShopIndexPage() {
           <li key={store.slug}>
             <Link
               href={`/shop/${store.slug}`}
-              className="panel flex h-full flex-col p-5 transition-colors hover:border-[var(--amber)]/40 hover:bg-[var(--secondary)]"
+              className="panel flex h-full flex-col p-5 transition-colors hover:border-[var(--accent-text)]/40 hover:bg-[var(--secondary)]"
             >
               <div className="flex items-center gap-3">
                 <StoreMark source={store.source} name={store.name} />
                 <p className="text-base font-semibold text-[var(--cream)]">{store.name}</p>
               </div>
-              <p className="mt-2 text-sm font-medium text-[var(--amber)]">{store.tagline}</p>
+              <p className="mt-2 text-sm font-medium text-[var(--accent-text)]">{store.tagline}</p>
               <p className="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-[var(--muted-foreground)]">
                 {store.blurb}
               </p>
@@ -92,14 +92,14 @@ export default async function ShopIndexPage() {
       </ul>
 
       <div className="panel mt-10 p-6">
-        <h2 className="text-lg font-black text-[var(--cream)]">Run a shop?</h2>
+        <h2 className="text-lg font-bold text-[var(--cream)]">Run a shop?</h2>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">
           We list independent sellers for free and take nothing from your sales. If you have gear
           online and want it in front of players who are already looking for it, tell us about it.
         </p>
         <Link
           href="/list-your-shop"
-          className="mt-4 inline-flex h-10 items-center rounded-lg bg-[var(--primary)] px-4 text-sm font-medium text-[var(--primary-foreground)] hover:bg-[var(--amber-soft)]"
+          className="mt-4 inline-flex h-10 items-center rounded-lg bg-[var(--primary)] px-4 text-sm font-medium text-[var(--primary-foreground)] hover:bg-[var(--primary-hover)]"
         >
           Get your shop listed
         </Link>

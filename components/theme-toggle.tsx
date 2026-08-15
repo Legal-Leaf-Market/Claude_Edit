@@ -1,103 +1,94 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Monitor, Moon, Sun } from "lucide-react"
-import { applyTheme, readStoredChoice, resolveTheme, type ThemeChoice } from "@/lib/theme"
+import { applyTheme, readStoredChoice, type ThemeChoice } from "@/lib/theme"
 
 /**
- * A three-way pickup selector, for the three theme states.
+ * The theme switch, drawn as a Les Paul toggle.
  *
- * The old control was a circular icon button that cycled system, light, dark.
- * It worked and it was the same widget every website has. A guitarist already
- * owns a three-position selector: it is the switch on a Les Paul, and it does
- * exactly this job, which is choosing one of three states with the position of
- * a lever telling you which.
+ * It was a blade-style pickup selector: three icon buttons in a pill with a
+ * chrome cap sliding between them. Same idea, wrong guitar. A Les Paul toggle
+ * is the switch most people picture when they picture a guitar switch, and it
+ * has exactly three detents, which is exactly how many theme states this site
+ * has. It is also the control the sister site ships, and since its design
+ * took over (CLAUDE.md section 16), the two sites sharing one switch is the
+ * point rather than a coincidence.
  *
- * So the lever slides. Left is dark, right is light, and the middle detent is
- * "follow my machine", which is the correct place for it because it sits
- * between the two things it might resolve to.
+ * IT CYCLES ON CLICK RATHER THAN OFFERING THREE TARGETS, and that is the real
+ * change rather than a drawing. You do not pick a position on a toggle, you
+ * flip it. Committing to that turns three cramped 26x24 buttons into one 54x50
+ * control, which is a better touch target than what it replaces rather than a
+ * worse one, and three states means the furthest any theme can be is two
+ * flips. The label says where it is and where the next flip goes, so the
+ * behaviour is announced rather than discovered.
  *
- * ACCESSIBILITY: three real buttons in a group rather than one button that
- * cycles. A cycling button forces a screen reader user to press up to three
- * times and listen to the label change to reach a known state; three buttons
- * let anyone jump straight to the one they want. The lever is decorative and
- * `aria-hidden`, since the pressed state is already on the buttons.
+ * Rendered only after mount. The server has no idea which of the three states
+ * is stored, so painting a position during SSR would guess wrong for anyone not
+ * on the default and then visibly correct itself. A fixed-size placeholder
+ * holds the space so the masthead does not jump.
  */
 
-const ORDER = ["dark", "system", "light"] as const
-
-const META: Record<ThemeChoice, { label: string; icon: typeof Sun }> = {
-  dark: { label: "Dark", icon: Moon },
-  system: { label: "Match my system", icon: Monitor },
-  light: { label: "Light", icon: Sun },
-}
+/*
+ * Order is the LEVER's order, not a menu's: left, middle, right. Light sits
+ * left and dark sits right so the throw runs bright to dark the way a reader
+ * would guess, and system sits in the middle detent because it is the one that
+ * is neither.
+ */
+const CHOICES: { value: ThemeChoice; label: string }[] = [
+  { value: "light", label: "Light" },
+  { value: "system", label: "Match my system" },
+  { value: "dark", label: "Dark" },
+]
 
 export function ThemeToggle({ className = "" }: { className?: string }) {
-  const [choice, setChoice] = useState<ThemeChoice>("dark")
-  const [mounted, setMounted] = useState(false)
+  const [choice, setChoice] = useState<ThemeChoice | null>(null)
 
   useEffect(() => {
     setChoice(readStoredChoice())
-    setMounted(true)
   }, [])
 
-  // Follow the OS while the choice is "system". Without this, someone whose
-  // laptop flips to dark at sunset keeps the light theme until they reload,
-  // which reads as the switch being broken.
+  /*
+   * "system" has to keep listening. The other two are fixed once chosen, but a
+   * reader who picked "follow my OS" expects the page to change when the OS
+   * does, without a reload.
+   */
   useEffect(() => {
-    if (choice !== "system" || typeof window === "undefined") return
-    const query = window.matchMedia("(prefers-color-scheme: light)")
+    if (choice !== "system") return
+    const media = window.matchMedia("(prefers-color-scheme: light)")
     const onChange = () => applyTheme("system")
-    query.addEventListener("change", onChange)
-    return () => query.removeEventListener("change", onChange)
+    media.addEventListener("change", onChange)
+    return () => media.removeEventListener("change", onChange)
   }, [choice])
 
-  function select(next: ThemeChoice) {
-    setChoice(next)
-    applyTheme(next)
+  if (choice === null) {
+    return <span className={`inline-block h-[50px] w-[54px] ${className}`} aria-hidden="true" />
   }
 
-  /*
-   * A same-size placeholder until mounted. The server cannot know which theme
-   * the inline script picked, so rendering the real lever position on the
-   * server would either mismatch on hydration or force the masthead dynamic.
-   */
-  if (!mounted) {
-    return <div className={`h-[30px] w-[86px] ${className}`} aria-hidden="true" />
-  }
-
-  const index = ORDER.indexOf(choice as (typeof ORDER)[number])
+  const position = CHOICES.findIndex((entry) => entry.value === choice)
+  const current = CHOICES[position]
+  const next = CHOICES[(position + 1) % CHOICES.length]
 
   return (
-    <div
-      role="group"
-      aria-label="Theme"
-      className={`pickup ${className}`}
-      data-position={index < 0 ? 0 : index}
+    <button
+      type="button"
+      className={`lp ${className}`}
+      data-position={position}
+      aria-label={`Colour theme: ${current.label}. Flip to ${next.label}.`}
+      title={`Theme: ${current.label}. Flip to ${next.label}.`}
+      onClick={() => {
+        setChoice(next.value)
+        applyTheme(next.value)
+      }}
     >
-      {/* The lever. Decorative: the pressed state below is the real signal. */}
-      <span className="pickup-lever" aria-hidden="true" />
-      {ORDER.map((value) => {
-        const { label, icon: Icon } = META[value]
-        const active = value === choice
-        return (
-          <button
-            key={value}
-            type="button"
-            onClick={() => select(value)}
-            aria-pressed={active}
-            title={
-              value === "system"
-                ? `Match my system (currently ${resolveTheme("system")})`
-                : label
-            }
-            aria-label={label}
-            className="pickup-seg"
-          >
-            <Icon className="h-[13px] w-[13px]" aria-hidden="true" />
-          </button>
-        )
-      })}
-    </div>
+      {/* Three detents. The lit one is where the lever is sitting. */}
+      <span className="lp-detents" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+      </span>
+      <span className="lp-arm" aria-hidden="true">
+        <span className="lp-tip" />
+      </span>
+    </button>
   )
 }

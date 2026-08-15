@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils"
  *   default      the green enclosure. ONE per view: it is the thing you
  *                actually want pressed, and two of them means neither reads
  *                as primary
- *   accent       a dark enclosure with a brass edge, for real actions that
+ *   accent       a blue enclosure with a chrome edge, for real actions that
  *                are not THE action
  *   outline      the same, without an LED, for rows of sibling controls where
  *                six lit LEDs would be a runway

@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils"
  *   go     ONE per view. The bright green enclosure is the thing you actually
  *          want the shopper to press: see it at the store, build the board,
  *          save the alert. Two on a screen and neither reads as primary.
- *   solid  the default. A dark enclosure with a brass edge, for real actions
+ *   solid  the default. A blue enclosure with a chrome edge, for real actions
  *          that are not THE action.
  *   ghost  no enclosure and no LED, for anything that would be a text link if
  *          it did not need a hit target: cancel, back, show more.

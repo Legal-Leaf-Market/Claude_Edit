@@ -46,7 +46,7 @@ export function PartnerBanner({ slug }: { slug: string }) {
     >
       <div className="min-w-0">
         <p className="eyebrow">Partner · we earn from this link</p>
-        <p className="mt-1 font-display text-lg font-black tracking-[-0.01em] text-[var(--text)]">
+        <p className="mt-1 font-display text-lg font-bold tracking-[-0.01em] text-[var(--text)]">
           {headline}
         </p>
         <p className="mt-1 max-w-xl text-sm leading-relaxed text-[var(--dim)]">{body}</p>

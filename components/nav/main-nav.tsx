@@ -181,7 +181,7 @@ export function MainNav() {
 
               {section.feature && (
                 <aside className="panel max-w-xs self-start p-5">
-                  <p className="font-display text-base font-black text-[var(--text)]">
+                  <p className="font-display text-base font-bold text-[var(--text)]">
                     {section.feature.title}
                   </p>
                   <p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">

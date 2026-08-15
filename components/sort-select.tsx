@@ -52,7 +52,7 @@ export function SortSelect() {
         <button
           type="button"
           onClick={() => go((next) => next.set("seed", String(newSeed())))}
-          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--chip)] px-4 text-sm font-semibold text-[var(--cream)] transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]"
+          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--chip)] px-4 text-sm font-semibold text-[var(--cream)] transition-colors hover:border-[var(--chrome-dk)] hover:text-[var(--accent-text)]"
         >
           <Shuffle className="h-4 w-4" aria-hidden="true" />
           Shuffle again

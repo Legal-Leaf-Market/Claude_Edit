@@ -67,7 +67,7 @@ export function RegionNotice({
 export function ShipsToBadge({ label }: { label: string | null }) {
   if (!label) return null
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--gold)] bg-[rgba(240,185,60,0.12)] px-2.5 py-1 text-xs font-semibold text-[var(--gold)]">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--chrome-dk)] bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-[var(--accent-text)]">
       <Globe className="h-3.5 w-3.5" aria-hidden="true" />
       Ships {label}
     </span>

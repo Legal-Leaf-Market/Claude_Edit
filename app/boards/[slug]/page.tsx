@@ -79,8 +79,8 @@ export default async function BoardPage({ params }: PageProps) {
         </ol>
       </nav>
 
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--amber)]">{board.tagline}</p>
-      <h1 className="mt-1 text-3xl font-black tracking-tight text-[var(--cream)]">{board.title}</h1>
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent-text)]">{board.tagline}</p>
+      <h1 className="mt-1 text-3xl font-bold tracking-tight text-[var(--cream)]">{board.title}</h1>
       <p className="mt-3 max-w-2xl text-base leading-relaxed text-[var(--muted-foreground)]">
         {board.description}
       </p>
@@ -92,8 +92,8 @@ export default async function BoardPage({ params }: PageProps) {
             href={`/boards/${b.slug}`}
             className={
               b.slug === board.slug
-                ? "rounded-full border border-[var(--amber)]/50 bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)]"
-                : "rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--muted-foreground)] transition-colors hover:border-[var(--amber)]/40 hover:text-[var(--cream)]"
+                ? "rounded-full border border-[var(--accent-text)]/50 bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)]"
+                : "rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--muted-foreground)] transition-colors hover:border-[var(--accent-text)]/40 hover:text-[var(--cream)]"
             }
           >
             {b.navLabel}
@@ -103,7 +103,7 @@ export default async function BoardPage({ params }: PageProps) {
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
         <section>
-          <h2 className="mb-4 text-lg font-black text-[var(--cream)]">
+          <h2 className="mb-4 text-lg font-bold text-[var(--cream)]">
             {posts.length > 0
               ? `${posts.length} open ${posts.length === 1 ? board.itemNounPlural.replace(/s$/, "") : board.itemNounPlural}`
               : "The board"}
@@ -119,12 +119,12 @@ export default async function BoardPage({ params }: PageProps) {
                   <li key={post.id}>
                     <Link
                       href={`/posts/${post.id}`}
-                      className="panel block p-4 transition-colors hover:border-[var(--amber)]/40 hover:bg-[var(--secondary)]"
+                      className="panel block p-4 transition-colors hover:border-[var(--accent-text)]/40 hover:bg-[var(--secondary)]"
                     >
                       <div className="flex items-baseline justify-between gap-3">
                         <p className="truncate text-sm font-medium text-[var(--cream)]">{post.title}</p>
                         {board.showPrice && (
-                          <p className="shrink-0 text-sm font-semibold text-[var(--amber)]">
+                          <p className="shrink-0 text-sm font-semibold text-[var(--accent-text)]">
                             {post.asking_price_cents != null
                               ? formatPrice(post.asking_price_cents)
                               : board.pricePlaceholder}
@@ -148,7 +148,7 @@ export default async function BoardPage({ params }: PageProps) {
         </section>
 
         <aside>
-          <h2 className="mb-4 text-lg font-black text-[var(--cream)]">Post something</h2>
+          <h2 className="mb-4 text-lg font-bold text-[var(--cream)]">Post something</h2>
           <BoardPostForm board={board} />
         </aside>
       </div>

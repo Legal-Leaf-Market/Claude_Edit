@@ -111,7 +111,7 @@ export function AlertsClient() {
         <div className="mt-4 flex gap-2">
           <Link
             href="/sign-in"
-            className="inline-flex h-10 items-center rounded-lg bg-[var(--primary)] px-4 text-sm font-medium text-[var(--primary-foreground)] hover:bg-[var(--amber-soft)]"
+            className="inline-flex h-10 items-center rounded-lg bg-[var(--primary)] px-4 text-sm font-medium text-[var(--primary-foreground)] hover:bg-[var(--primary-hover)]"
           >
             Sign in
           </Link>
@@ -202,7 +202,7 @@ export function AlertsClient() {
       </form>
 
       <section>
-        <h2 className="mb-3 text-lg font-black text-[var(--cream)]">Your alerts</h2>
+        <h2 className="mb-3 text-lg font-bold text-[var(--cream)]">Your alerts</h2>
         {loading ? (
           <p className="text-sm text-[var(--muted-foreground)]">Loading</p>
         ) : alerts.length === 0 ? (

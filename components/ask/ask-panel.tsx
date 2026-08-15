@@ -116,7 +116,7 @@ export function AskPanel() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Ask about the catalogue"
-        className="flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[var(--glass-line)] bg-[var(--accent)] px-3 text-[0.8rem] font-semibold text-[var(--accent-text)] transition-colors hover:border-[var(--copper)]"
+        className="flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[var(--glass-line)] bg-[var(--accent)] px-3 text-[0.8rem] font-semibold text-[var(--accent-text)] transition-colors hover:border-[var(--chrome-dk)]"
       >
         <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
         <span className="hidden sm:inline">Ask</span>
@@ -140,7 +140,7 @@ export function AskPanel() {
           >
             <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-5 py-3.5">
               <div className="min-w-0">
-                <p className="font-display text-base font-black text-[var(--text)]">
+                <p className="font-display text-base font-bold text-[var(--text)]">
                   Ask about the catalogue
                 </p>
                 <p className="truncate text-xs text-[var(--muted-foreground)]">
@@ -194,7 +194,7 @@ export function AskPanel() {
                           <li key={hit.id}>
                             <Link
                               href={hit.gearSlug ? `/gear/${hit.gearSlug}` : `/go/${hit.id}`}
-                              className="surface flex items-center gap-3 p-2 transition-colors hover:border-[var(--copper)]"
+                              className="surface flex items-center gap-3 p-2 transition-colors hover:border-[var(--chrome-dk)]"
                             >
                               <ListingImage
                                 src={hit.primaryImageUrl}

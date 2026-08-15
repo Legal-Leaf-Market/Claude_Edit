@@ -115,7 +115,7 @@ export function BoardPlanner({ slots }: { slots: PlannerSlot[] }) {
   return (
     <section className="mt-4 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface)] p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <h2 className="mr-auto flex items-center gap-2 font-display text-lg font-black text-[var(--text)]">
+        <h2 className="mr-auto flex items-center gap-2 font-display text-lg font-bold text-[var(--text)]">
           <LayoutGrid className="h-4 w-4 text-[var(--accent-text)]" aria-hidden="true" />
           Will it fit?
         </h2>

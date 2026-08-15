@@ -155,7 +155,7 @@ export default async function PedalboardPage({ searchParams }: PageProps) {
 
       {showStarter && (
         <section className="panel mb-6">
-          <h2 className="font-display text-lg font-black text-[var(--text)]">
+          <h2 className="font-display text-lg font-bold text-[var(--text)]">
             The four that cover most of it
           </h2>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">
@@ -170,10 +170,10 @@ export default async function PedalboardPage({ searchParams }: PageProps) {
                 className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface)] p-3"
                 style={{ borderTopColor: EFFECTS[role.type].hue, borderTopWidth: 3 }}
               >
-                <p className="font-display text-xs font-black text-[var(--dim)]">
+                <p className="font-display text-xs font-bold text-[var(--dim)]">
                   {index + 1} of 4
                 </p>
-                <p className="mt-0.5 font-display text-base font-black text-[var(--text)]">
+                <p className="mt-0.5 font-display text-base font-bold text-[var(--text)]">
                   {role.label}
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">

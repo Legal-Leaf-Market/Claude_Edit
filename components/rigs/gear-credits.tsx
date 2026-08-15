@@ -23,11 +23,11 @@ export function GearCredits({ brand, model }: { brand: string; model: string }) 
 
   return (
     <section className="panel mb-6">
-      <h2 className="flex items-center gap-2 font-display text-lg font-black text-[var(--text)]">
-        <Disc3 className="h-4.5 w-4.5 text-[var(--copper)]" aria-hidden="true" />
+      <h2 className="flex items-center gap-2 font-display text-lg font-bold text-[var(--text)]">
+        <Disc3 className="h-4.5 w-4.5 text-[var(--accent-text)]" aria-hidden="true" />
         Heard on
       </h2>
-      <div className="rule-amber my-3 w-24" />
+      <div className="rule-accent my-3 w-24" />
 
       <ul className="space-y-4">
         {credits.map(({ rig, pedal, records }) => (

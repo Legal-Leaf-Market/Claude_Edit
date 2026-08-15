@@ -80,7 +80,7 @@ export default async function PartnerPage({ params }: PageProps) {
 
       <header className="max-w-3xl">
         <p className="eyebrow">{partner.kind}</p>
-        <h1 className="mt-1 font-display text-3xl font-black tracking-[-0.01em] text-[var(--text)]">
+        <h1 className="mt-1 font-display text-3xl font-bold tracking-[-0.01em] text-[var(--text)]">
           {partner.name}
         </h1>
         <p className="mt-2 text-base font-medium text-[var(--accent-text)]">{partner.tagline}</p>
@@ -105,7 +105,7 @@ export default async function PartnerPage({ params }: PageProps) {
       </div>
 
       <section className="mt-10">
-        <h2 className="font-display text-xl font-black tracking-[-0.01em] text-[var(--text)]">
+        <h2 className="font-display text-xl font-bold tracking-[-0.01em] text-[var(--text)]">
           What is worth knowing first
         </h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -133,7 +133,7 @@ export default async function PartnerPage({ params }: PageProps) {
         has none on this page.
       */}
       <section className="panel mt-10">
-        <h2 className="font-display text-lg font-black text-[var(--text)]">
+        <h2 className="font-display text-lg font-bold text-[var(--text)]">
           Why there is no price comparison here
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-[var(--dim)]">{partner.whyNotListed}</p>

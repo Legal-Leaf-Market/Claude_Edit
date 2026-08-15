@@ -17,7 +17,7 @@ import { STORE_BY_SOURCE } from "@/lib/stores"
 
 /** Hues chosen to read clearly on #0f0c0a and to stay distinct from each other. */
 const PALETTE = [
-  { bg: "rgba(240,168,48,0.16)", fg: "#f7c877" }, // amber, the house colour
+  { bg: "rgba(240,168,48,0.16)", fg: "#f7c877" }, // amber
   { bg: "rgba(125,168,208,0.16)", fg: "#93bde0" }, // cool blue
   { bg: "rgba(198,120,180,0.16)", fg: "#dc9ecd" }, // magenta
   { bg: "rgba(120,196,150,0.16)", fg: "#8fd6ad" }, // green

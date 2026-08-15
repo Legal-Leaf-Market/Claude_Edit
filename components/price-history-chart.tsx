@@ -21,10 +21,23 @@ import type { PricePoint } from "@/lib/deals/history"
  * numbers for screen readers and for anyone who wants the actual figures.
  */
 
-const SURFACE = "#12100e"
-const SERIES = "#f0a830"
-const GRID = "rgba(255,255,255,0.07)"
-const AXIS_TEXT = "#a89e90"
+/*
+ * THE TRACE IS BRASS, AND IT IS THE ONLY BRASS ON THE SITE. When the palette
+ * went royal blue and white (CLAUDE.md section 16), gold survived in exactly
+ * one role: the signal in a drawing, because a frame and a signal path in one
+ * colour stop telling you which line is the data. The sister site's circuit
+ * figures make the same split. --chart-signal is defined in globals.css and
+ * swaps to the darkened brass on paper, where the bright one drops to 1.8:1.
+ *
+ * Everything else resolves through the theme tokens: the marker rings punch
+ * out of the line in the plate colour the chart actually sits on, and the
+ * grid hairline is mixed from the text colour so it is one step off the
+ * surface in both themes instead of only in dark.
+ */
+const SURFACE = "var(--surface)"
+const SERIES = "var(--chart-signal)"
+const GRID = "color-mix(in srgb, var(--text) 8%, transparent)"
+const AXIS_TEXT = "var(--dim)"
 
 type Geometry = {
   width: number
@@ -86,7 +99,7 @@ export function PriceHistoryChart({ points }: { points: PricePoint[] }) {
   }
 
   return (
-    <figure className="m-0">
+    <figure className="price-chart m-0">
       <svg
         ref={svgRef}
         viewBox={`0 0 ${GEOMETRY.width} ${GEOMETRY.height}`}
@@ -166,7 +179,7 @@ export function PriceHistoryChart({ points }: { points: PricePoint[] }) {
           y={last.y + 4}
           fontSize={12}
           fontWeight={600}
-          fill="#f6efe4"
+          fill="var(--text)"
         >
           {formatPrice(last.point.medianCents)}
         </text>
@@ -194,7 +207,7 @@ export function PriceHistoryChart({ points }: { points: PricePoint[] }) {
       </figcaption>
 
       <details className="mt-3">
-        <summary className="cursor-pointer text-xs text-[var(--amber)]">
+        <summary className="cursor-pointer text-xs text-[var(--accent-text)]">
           View the figures as a table
         </summary>
         <div className="mt-2 max-h-56 overflow-y-auto">

@@ -85,7 +85,7 @@ function PartnerLinks({ links }: { links: PartnerLinkOption[] }) {
 
   return (
     <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
-      <h2 className="font-display text-base font-black text-[var(--text)]">Partner links</h2>
+      <h2 className="font-display text-base font-bold text-[var(--text)]">Partner links</h2>
       <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
         Martinic Audio and DistroKid have no catalogue, so these two pasted links are the only
         monetisation their pages have. A link that is not on an Impact tracking host is ignored
@@ -294,7 +294,7 @@ function ImpactCatalogueButton({ merchants }: { merchants: ImpactMerchantOption[
 
   return (
     <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
-      <h2 className="font-display text-base font-black text-[var(--text)]">
+      <h2 className="font-display text-base font-bold text-[var(--text)]">
         Pull an Impact catalogue
       </h2>
       <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
@@ -442,7 +442,7 @@ function ProbeButton() {
 
   return (
     <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
-      <h2 className="font-display text-base font-black text-[var(--text)]">
+      <h2 className="font-display text-base font-bold text-[var(--text)]">
         Diagnose the Anderton&apos;s connection
       </h2>
       <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
@@ -585,7 +585,7 @@ function AndertonsButton() {
 
   return (
     <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
-      <h2 className="font-display text-base font-black text-[var(--text)]">Pull the Anderton&apos;s catalogue</h2>
+      <h2 className="font-display text-base font-bold text-[var(--text)]">Pull the Anderton&apos;s catalogue</h2>
       <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
         Roughly 27,000 products over FTP from Impact. It arrives in slices of 4,000 because a
         serverless function stops at 300 seconds, and the browser keeps asking for the next one
@@ -646,7 +646,7 @@ function RebuildButton() {
 
   return (
     <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
-      <h2 className="font-display text-base font-black text-[var(--text)]">Rebuild prices and deals</h2>
+      <h2 className="font-display text-base font-bold text-[var(--text)]">Rebuild prices and deals</h2>
       <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
         Resolves listings the ingest left unmatched, recomputes every market price, prunes old
         alert records and rebuilds the search index. The same job the nightly cron runs. Safe to

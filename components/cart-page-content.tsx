@@ -53,7 +53,7 @@ function StoreGroup({ source, items }: { source: Source; items: CartItem[] }) {
 
   return (
     <section className="panel p-4 sm:p-5">
-      <h2 className="mb-3 text-base font-black text-[var(--cream)]">{sourceLabel(source)}</h2>
+      <h2 className="mb-3 text-base font-bold text-[var(--cream)]">{sourceLabel(source)}</h2>
 
       <ul className="space-y-3">
         {items.map((item) => (
@@ -136,7 +136,7 @@ export function CartPageContent() {
         </p>
         <Link
           href="/search"
-          className="mt-4 inline-flex h-10 items-center rounded-lg bg-[var(--primary)] px-5 text-sm font-medium text-[var(--primary-foreground)] transition-colors hover:bg-[var(--amber-soft)]"
+          className="mt-4 inline-flex h-10 items-center rounded-lg bg-[var(--primary)] px-5 text-sm font-medium text-[var(--primary-foreground)] transition-colors hover:bg-[var(--primary-hover)]"
         >
           Browse gear
         </Link>
