@@ -235,7 +235,7 @@ export function OperatingModelDashboard() {
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <header className="mb-8">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--amber)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent-text)]">
             Operating model · prepared {PREPARED_ON}
           </p>
           <div className="flex items-center gap-2">
@@ -255,7 +255,7 @@ export function OperatingModelDashboard() {
             </button>
           </div>
         </div>
-        <h1 className="mt-1 text-2xl font-black text-[var(--cream)] sm:text-3xl">
+        <h1 className="mt-1 text-2xl font-bold text-[var(--cream)] sm:text-3xl">
           Can this actually make money?
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)]">
@@ -263,7 +263,7 @@ export function OperatingModelDashboard() {
           the real live catalogue and the affiliate links that are actually confirmed today.
         </p>
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full bg-[var(--secondary)] px-3 py-1 font-medium text-[var(--amber)]">
+          <span className="rounded-full bg-[var(--secondary)] px-3 py-1 font-medium text-[var(--accent-text)]">
             {model.monthLabels[0]} → {model.monthLabels[model.monthLabels.length - 1]}
           </span>
           <span className="rounded-full bg-[var(--secondary)] px-3 py-1 text-[var(--muted-foreground)]">
@@ -276,7 +276,7 @@ export function OperatingModelDashboard() {
         </div>
         <nav aria-label="Sections" className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs">
           {SECTIONS.map((s) => (
-            <a key={s.id} href={`#${s.id}`} className="text-[var(--muted-foreground)] hover:text-[var(--amber)]">
+            <a key={s.id} href={`#${s.id}`} className="text-[var(--muted-foreground)] hover:text-[var(--accent-text)]">
               {s.label}
             </a>
           ))}
@@ -339,7 +339,7 @@ export function OperatingModelDashboard() {
         <div className="section-body grid gap-4 sm:grid-cols-3">
           {FACTS.map((f) => (
             <div key={f.title} className="panel p-4">
-              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--amber)]">{f.tag}</p>
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--accent-text)]">{f.tag}</p>
               <h3 className="mb-2 text-base font-semibold text-[var(--cream)]">{f.title}</h3>
               <p className="text-sm leading-relaxed text-[var(--muted-foreground)]">{f.body}</p>
             </div>
@@ -412,7 +412,7 @@ export function OperatingModelDashboard() {
                     />
                     <span className="num-affix">%</span>
                   </td>
-                  <td className="text-right font-semibold text-[var(--amber)]">{rps(site.maturityRevPerSession)}</td>
+                  <td className="text-right font-semibold text-[var(--accent-text)]">{rps(site.maturityRevPerSession)}</td>
                   <td className="text-right">{money(site.maturityRevPerSession * 1000)}</td>
                 </tr>
               </tbody>
@@ -572,12 +572,12 @@ export function OperatingModelDashboard() {
               <tbody>
                 {site.quarters.map((q) => (
                   <tr key={q.index}>
-                    <td className="font-semibold text-[var(--amber)]">{q.label}</td>
+                    <td className="font-semibold text-[var(--accent-text)]">{q.label}</td>
                     <td className="text-[var(--muted-foreground)]">{q.monthsLabel}</td>
                     <td className="text-right">{count(q.sessions)}</td>
                     <td className="text-right">{count(Math.round(q.orders))}</td>
                     <td className="text-right">{money(q.gmv)}</td>
-                    <td className="text-right font-semibold text-[var(--amber)]">{money(q.revenue)}</td>
+                    <td className="text-right font-semibold text-[var(--accent-text)]">{money(q.revenue)}</td>
                     <td className="text-right">{rps(q.revPerSession)}</td>
                     <td className={`text-right ${q.changeVsPriorPct === null ? "text-[var(--muted-foreground)]" : q.changeVsPriorPct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                       {q.changeVsPriorPct === null ? "–" : signedPercent(q.changeVsPriorPct)}
@@ -589,7 +589,7 @@ export function OperatingModelDashboard() {
                   <td className="text-right">{count(site.totalSessions)}</td>
                   <td className="text-right">{count(Math.round(site.totalOrders))}</td>
                   <td className="text-right">{money(site.totalGmv)}</td>
-                  <td className="text-right text-[var(--amber)]">{money(site.totalRevenue)}</td>
+                  <td className="text-right text-[var(--accent-text)]">{money(site.totalRevenue)}</td>
                   <td className="text-right">{rps(site.totalSessions > 0 ? site.totalRevenue / site.totalSessions : 0)}</td>
                   <td className="text-right text-[var(--muted-foreground)]">–</td>
                 </tr>
@@ -643,7 +643,7 @@ export function OperatingModelDashboard() {
                         : "text-red-400"
                   return (
                     <tr key={m.index} className={m.isActual ? "bg-[var(--secondary)]/40" : ""}>
-                      <td className="font-semibold text-[var(--amber)]">
+                      <td className="font-semibold text-[var(--accent-text)]">
                         {m.label}
                         {m.isActual && (
                           <span className="ml-1.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
@@ -655,7 +655,7 @@ export function OperatingModelDashboard() {
                       <td className="text-right">{rps(m.revPerSession)}</td>
                       <td className="text-right">{m.orders.toFixed(1)}</td>
                       <td className="text-right">{money(m.gmv)}</td>
-                      <td className="text-right font-semibold text-[var(--amber)]">{money(m.revenue)}</td>
+                      <td className="text-right font-semibold text-[var(--accent-text)]">{money(m.revenue)}</td>
                       <td className="text-right">
                         <input
                           type="number"
@@ -711,7 +711,7 @@ export function OperatingModelDashboard() {
               <tbody>
                 {MERCHANTS.map((row) => (
                   <tr key={row.merchant}>
-                    <td className="font-semibold text-[var(--amber)]">{row.merchant}</td>
+                    <td className="font-semibold text-[var(--accent-text)]">{row.merchant}</td>
                     <td className="text-[var(--muted-foreground)]">{row.platform}</td>
                     <td>{statusPill(row.status)}</td>
                     <td className="text-right">{row.catalogueCount > 0 ? count(row.catalogueCount) : "–"}</td>
@@ -748,11 +748,11 @@ export function OperatingModelDashboard() {
                   const sessions = t.blendedRevPerSession > 0 ? income / t.blendedRevPerSession : 0
                   return (
                     <tr key={income}>
-                      <td className="font-semibold text-[var(--amber)]">
+                      <td className="font-semibold text-[var(--accent-text)]">
                         {money(income)}
                         {income === 8333 && <span className="ml-2 text-xs text-[var(--muted-foreground)]">($100k/yr)</span>}
                       </td>
-                      <td className="text-right font-semibold text-[var(--amber)]">{count(Math.round(sessions))}</td>
+                      <td className="text-right font-semibold text-[var(--accent-text)]">{count(Math.round(sessions))}</td>
                       <td className="text-right">{count(Math.round(sessions / 30))}</td>
                       <td className="text-right">{money(income * 12)}</td>
                     </tr>
@@ -774,7 +774,7 @@ export function OperatingModelDashboard() {
               <p className="text-2xl font-bold text-[var(--secondary)]">{String(i + 1).padStart(2, "0")}</p>
               <h3 className="mb-2 mt-1 text-base font-semibold text-[var(--cream)]">{item.title}</h3>
               <p className="text-sm leading-relaxed text-[var(--muted-foreground)]">{item.body}</p>
-              <p className="mt-2 text-xs italic text-[var(--amber)]">{item.why}</p>
+              <p className="mt-2 text-xs italic text-[var(--accent-text)]">{item.why}</p>
             </div>
           ))}
         </div>

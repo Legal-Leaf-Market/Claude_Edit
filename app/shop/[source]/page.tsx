@@ -90,10 +90,10 @@ export default async function StorePage({ params, searchParams }: PageProps) {
       </nav>
 
       <header className="mb-8 max-w-3xl">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--amber)]">Store</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent-text)]">Store</p>
         <div className="mt-1 flex items-center gap-3">
           <StoreMark source={store.source} name={store.name} size="lg" />
-          <h1 className="text-3xl font-black tracking-tight text-[var(--cream)]">{store.name}</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--cream)]">{store.name}</h1>
         </div>
         <p className="mt-2 text-base font-medium text-[var(--muted-foreground)]">{store.tagline}</p>
 
@@ -114,7 +114,7 @@ export default async function StorePage({ params, searchParams }: PageProps) {
 
         <section className="min-w-0 flex-1">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-black text-[var(--cream)]">
+            <h2 className="text-lg font-bold text-[var(--cream)]">
               {results.found.toLocaleString()} {results.found === 1 ? "listing" : "listings"}
             </h2>
             <SortSelect />

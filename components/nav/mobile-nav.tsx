@@ -61,7 +61,7 @@ export function MobileNav() {
         onClick={() => setOpen(true)}
         aria-label="Open menu"
         aria-expanded={open}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--line)] text-[var(--text)] transition-colors hover:border-[var(--copper)] lg:hidden"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--line)] text-[var(--text)] transition-colors hover:border-[var(--chrome-dk)] lg:hidden"
       >
         <Menu className="h-4.5 w-4.5" aria-hidden="true" />
       </button>
@@ -83,7 +83,7 @@ export function MobileNav() {
             className="absolute inset-y-0 right-0 flex w-[min(400px,92vw)] flex-col border-l border-[var(--line)] bg-[var(--bg2)] shadow-2xl"
           >
             <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-5 py-3.5">
-              <span className="font-display text-base font-black uppercase tracking-[0.04em] text-[var(--text)]">
+              <span className="font-display text-base font-bold uppercase tracking-[0.04em] text-[var(--text)]">
                 Menu
               </span>
               <div className="flex items-center gap-2">
@@ -109,7 +109,7 @@ export function MobileNav() {
                       <div className="flex items-center justify-between gap-2">
                         <Link
                           href={section.href}
-                          className="flex-1 py-3 font-display text-lg font-black text-[var(--text)]"
+                          className="flex-1 py-3 font-display text-lg font-bold text-[var(--text)]"
                         >
                           {section.label}
                         </Link>

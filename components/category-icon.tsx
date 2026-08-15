@@ -27,14 +27,16 @@ const S = {
 /**
  * Hue used for a category with no entry in CATEGORY_HUE below.
  *
- * Kept as a hex literal rather than `var(--copper)` on purpose: several call
+ * Kept as a hex literal rather than `var(--chrome-dk)` on purpose: several call
  * sites build a translucent wash by appending a two-digit alpha to this string
- * ("...22"), which is only valid on a hex colour. It must therefore track
- * --copper in app/globals.css by hand. It exists as a constant because the old
- * value (#f0a830, the pre-house amber) was duplicated at four call sites and
- * was left behind by the palette change at every one of them.
+ * ("...22"), which is only valid on a hex colour. It sits at the same fixed
+ * lightness as the category hues below and leans steel blue so an unknown
+ * category lands inside the royal palette instead of beside it; if the accent
+ * family in app/globals.css moves again, move this by hand. It exists as a
+ * constant because the old value (#f0a830, the pre-house amber) was duplicated
+ * at four call sites and was left behind by the palette change at every one.
  */
-export const FALLBACK_HUE = "#d2703a"
+export const FALLBACK_HUE = "#7d96d8"
 
 /** Slug -> accent. Keyed by slug so a rename is a visible edit, not a silent reshuffle. */
 export const CATEGORY_HUE: Record<string, string> = {

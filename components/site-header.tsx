@@ -31,9 +31,9 @@ export function SiteHeader() {
   return (
     <header className="masthead">
       <div className="shell flex items-center gap-3 py-3 sm:gap-4">
-        {/* Mark, then display wordmark, then an italic script tagline stacked
-            under it. Every sister carries one, and it is where the Cormorant
-            italic first appears. */}
+        {/* Mark, then the drawn wordmark, then the descriptor stacked under
+            it, bound by the same hairline the mark silkscreens inside its
+            edge. */}
         <Link
           href="/"
           aria-label="Gear Avail, home"
@@ -45,7 +45,7 @@ export function SiteHeader() {
             {/* The rule under the wordmark is the same hairline the mark
                 silkscreens inside its edge, which is what binds a square mark
                 to a wide wordmark without boxing the whole lockup. */}
-            <span className="mt-[5px] hidden border-t border-[color:color-mix(in_srgb,var(--brand-gold)_38%,transparent)] pt-[3px] font-sans text-[0.56rem] font-semibold uppercase tracking-[0.28em] text-[var(--dim)] sm:block">
+            <span className="mt-[5px] hidden border-t border-[color:color-mix(in_srgb,var(--chrome)_38%,transparent)] pt-[3px] font-sans text-[0.56rem] font-semibold uppercase tracking-[0.28em] text-[var(--dim)] sm:block">
               Used &middot; Vintage &middot; New
             </span>
           </span>
@@ -69,7 +69,12 @@ export function SiteHeader() {
         <div className="flex shrink-0 items-center gap-2">
           <AskButton />
           <CartBadge />
-          <ThemeToggle className="hidden sm:flex" />
+          {/* Always visible, at every width. The control classes sit outside
+              @layer, so a Tailwind `hidden` here would lose to .lp's own
+              display anyway; the row fits a phone with the search collapsed,
+              and a theme switch that is always in the same corner beats one
+              that hides (the sister site's header makes the same call). */}
+          <ThemeToggle />
           <MobileNav />
         </div>
       </div>

@@ -834,72 +834,97 @@ Victory preamp gets a page of prices they can never pay.
 
 ---
 
-## 16. The design system: a rack of gear, not a family site
+## 16. The design system: stompbox.world's, worn by the aggregator
 
 `app/globals.css`, `components/brand/logo.tsx`, `components/ui/stomp.tsx`.
 
-**This site has left the Leaf Market family palette, deliberately.** globals.css
-began as a port of nicotiamarket.com's tokens, sharing `--gold`, `--sage`,
-`--red` and the three faces with the sister sites, with valve-amber copper as
-Gear Avail's one accent of its own. It made the site look like a hemp
-marketplace that had swapped its product photos. Diverging was an explicit
-product decision, so "it should match the sister sites" is no longer a reason
-to change any of this back. The names `--gold`, `--sage` and `--red` survive
-because roughly 300 call sites use them; they resolve to this site's values now.
+**This site has now left two palettes behind, and both exits were the owner's
+call.** globals.css began as a port of nicotiamarket.com's tokens (the hemp
+family's golds and sages), which made a gear shop look like a hemp marketplace
+with new photos. The first redesign replaced that with a neutral graphite scale
+and a brass edge, on the argument that a guitarist's visual world is grey and
+the warm metal in it is brass. That argument was real, and the owner overruled
+it deliberately in August 2026: stompbox.world is the brand with the audience,
+its Instagram account is the front door for most people who will ever see
+either site, and the aggregator now wears that design rather than its own. So
+neither "match the hemp sites" nor "the old comments say grey and brass" is a
+reason to change any of this; the reasons are on the record here and in
+`stompbox.world/CLAUDE.md` section 5, and the two files describe one system.
 
-**What replaced it.** A guitarist's visual world is grey: anodised aluminium,
-powder-coated steel, amp chassis, flight cases. The warm metal in it is brass,
-and the only saturated colour is the LED that says a pedal is engaged. So:
+**What the system is:**
 
-- a genuinely neutral graphite scale, six steps
-- saturated gold (`--brand-gold`), used as an EDGE and almost never as a fill
+- a deep royal blue scale, six steps, dark by default
+- chrome (`--chrome`, WHITE) as the EDGE, and almost never a fill
 - one bright green (`--brand-led`), reserved for things that are lit
+- royal blue metal (`--metal-*`), the same value in both themes, BRIGHTER
+  than the dark ground so the enclosure reads as the lit object in the room
+- a blocky display face (Chakra Petch) because the account's wordmark is
+  heavy angular capitals; the serif pair is gone entirely, not parked
+
+**Token names were made honest when the values moved.** `--brand-gold` became
+`--chrome` (a gold token holding white is a lie that outlives its author), and
+the stale warm aliases (`--gold`, `--copper`, `--amber`, `--tweed`, `--steel`)
+were renamed at their call sites rather than repointed. Only the names that
+are still true survive as aliases: `--cream` is the text colour and `--deal`
+is the money colour.
+
+**BRASS SURVIVES IN EXACTLY ONE PLACE: `--signal`,** the market-price trace in
+`components/price-history-chart.tsx` (via `--chart-signal`, which swaps to the
+darkened brass on paper). The sister site's circuit figures made the same
+chrome-versus-signal split for the same reason: a frame and a signal path in
+one colour stop telling you which line is the data. Do not paint a second
+thing gold, and do not paint the trace chrome.
+
+**`--chrome` is white in BOTH themes, and `--chrome-dk` is the on-paper
+variant.** Chrome outlines metal, and metal is dark in both themes, so a white
+edge is right on paper too. An accent edge that lands on the PAGE rather than
+on a control (the focus ring, `.pill`, the navlink underline, a card's hover
+border) takes `--chrome-dk`: pale steel on the dark ground, navy on paper. A
+white border on white paper is not an accent, it is nothing.
 
 **Dark is the default, and that is a product decision rather than a technical
-one.** Cut-out product photography separates on graphite, and the brass edge
-and LED green only carry against a dark plate. Someone whose laptop is in light
-mode still gets the site as designed. "system" survives as a state you can
-choose, which means it has to be STORED: absence now means dark, so clearing
-the key would silently turn "follow my OS" into "dark".
+one.** Cut-out product photography separates on the navy plate, and the chrome
+edge and LED green only carry against a dark ground. Someone whose laptop is in
+light mode still gets the site as designed. "system" survives as a state you
+can choose, which means it has to be STORED: absence now means dark, so
+clearing the key would silently turn "follow my OS" into "dark".
 
-**The metal tokens do not change between themes.** A pedal enclosure is a dark
+**The metal tokens do not change between themes.** An enclosure is the same
 object whatever it is standing on, and controls that keep their material across
 themes are what stop the interface feeling like two interfaces. Surfaces flip;
-buttons do not.
+buttons do not. Tinting the metal is no longer forbidden, because the owner
+tinted it; redefining it per theme still is.
 
 **Every control is a piece of gear.** Buttons are stompbox faces (`.stomp`),
-icon buttons are knurled knobs (`.knob`), and the theme switch is a three-way
-pickup selector (`.pickup`). The rules that keep that off the cheese, and they
-are load bearing rather than taste:
+icon buttons are knurled knobs (`.knob`), and the theme switch is a Les Paul
+toggle (`.lp`) that CYCLES, because you flip a toggle rather than pick a
+position on one: three states means the furthest any theme can be is two
+flips, and one 54x50 target beats three cramped segments. The rules that keep
+the vocabulary off the cheese, and they are load bearing rather than taste:
 
-- metal stays dark and is never tinted; real enclosures are drab, and the
-  drabness is what lets the gold edge and the LED read at all
-- gold is an edge, never a fill: one hairline border and one silkscreen line
+- the blue is deep and saturated rather than candy-coated; the drab ground is
+  what lets the chrome edge and the LED read at all
+- chrome is an edge, never a fill: one hairline border and one silkscreen line
   inside it, exactly as a pedal is printed
 - the LED is the only saturated colour and means the same thing everywhere
 - travel is 2px, so it reads as a switch bottoming out
 - nothing spins, bounces or glows at idle. A rack of gear at rest is still
-- gold is MUTED at rest and earned by `:hover` and by the one primary action
-  per view. A toolbar of eight buttons must not be eight gold rings
+- chrome is MUTED at rest and earned by `:hover` and by the one primary action
+  per view. A toolbar of eight buttons must not be eight white rings
 
-**The mark is drawn, not typeset.** `GearAvailMark` is a tuning fork in a ring:
-two tines, a stem, a circle. It was the original mark, it was replaced during
-the redesign by a pedal enclosure containing a guitar, and it was put back
-because it survives 16 pixels and because a fork means pitch, which is every
-instrument here, where a guitar in a stompbox means one shelf of a shop that
-also sells drums, mics, keys and PA. The enclosure drawing is kept as
-`GearAvailEnclosureMark` for the board builder, where the subject genuinely is a
-stompbox and there is room to render it. The letterforms are stroked polylines
-with mitred joins on a 100-unit cap height, so the wordmark needs no font,
-renders identically everywhere and survives being inlined into a favicon.
-
-**THE FAVICON IS A PEDAL, AND THE HEADER MARK IS NOT.** `app/icon.svg` is an
-enclosure with the fork silkscreened on its face, which the owner asked for
-directly, so the argument in `logo.tsx` for the bare fork is not a reason to
-change it back. The two still read as one identity because the fork is on the
-face, which is where a pedal prints its graphic anyway. It is drawn in literal
-hex rather than `var()`, because a favicon is fetched outside the document and
-every custom property would fall back to nothing.
+**The mark is drawn, not typeset, and it is now the enclosure with the fork on
+its face.** The bare fork-in-a-ring could not survive the move to chrome: white
+line art on the light theme's paper is invisible, and an enclosure gives the
+print a metal plate to sit on in both themes, which is the same reason the
+sister site's mark is a box. The header and the favicon are one drawing now
+(`GearAvailMark` resolves tokens, `app/icon.svg` is the literal-hex build), so
+the tab and the masthead read as one identity. The guitar-faced enclosure
+survives as `GearAvailEnclosureMark` for the board builder, where the subject
+genuinely is a stompbox; its print is silkscreen ink, which is why a filled
+chrome graphic is allowed there when chrome-as-fill is banned in the interface.
+The letterforms are stroked polylines with mitred joins on a 100-unit cap
+height, so the wordmark needs no font, renders identically everywhere and
+survives being inlined into a favicon.
 
 **Every draft that was thrown away failed in the same direction: clever
 geometry becomes an accident at tab size.** Chamfering the enclosure into an
@@ -912,16 +937,18 @@ graphic, one weight, and a heavier stroke than looks right at 96px. Draw the
 candidates at 16, 20, 32 and 96 on light AND dark browser chrome before
 committing one. Every failure above was invisible at the size it was drawn.
 
-**The sister site ships this same enclosure silhouette in royal blue.** Two
-projects in one repo must not put the same picture in two tabs, so Gear Avail's
-is graphite and carries the fork, and stompbox.world's is blue with a bare
-footswitch.
+**The sister site ships this same enclosure silhouette, in the same blue.**
+Two projects in one repo must not put the same picture in two tabs, and colour
+no longer separates them, so the GRAPHIC does: Gear Avail's face carries the
+fork, stompbox.world's is a bare footswitch. `tests/favicon.test.ts` pins
+exactly that difference; if the fork ever leaves this icon or arrives on
+theirs, the two tabs collapse into one picture.
 
 **Two tokens are contrast-critical and are not interchangeable with the brand
-hues.** Bright gold is about 1.8:1 on white and bright green about 1.9:1, both
-far under the 4.5:1 a price or a sentence needs. Anything printing a price or
-accent-coloured body text uses `--money` and `--accent-text`, never
-`--brand-gold` or `--sage`, or it reads in one theme and vanishes in the other.
+hues.** Pure white is 1:1 on white and bright green about 1.9:1, both far
+under the 4.5:1 a price or a sentence needs. Anything printing a price or
+accent-coloured body text uses `--money` and `--accent-text`, never `--chrome`
+or `--sage`, or it reads in one theme and vanishes in the other.
 
 **Godot is on the table for one thing only.** A separate 3D "rig room" (cables
 that hang, footswitches you stomp, knobs you hear) is a legitimate toy and a
@@ -1013,14 +1040,28 @@ engine.
 - Do NOT define a colour only inside the light-theme block, or only outside
   it. Both themes resolve from the same token set, and prices and
   accent-coloured body text must use `--money` and `--accent-text` rather than
-  `--brand-gold` and `--sage`, which fail contrast on paper (section 16).
-- Do NOT restore the sister sites' warm palette, or re-point `--gold` /
-  `--sage` / `--red` at the family values. Diverging was a product decision,
-  not drift (section 16).
-- Do NOT tint the metal tokens, or redefine them per theme. A pedal enclosure
-  is a dark object whatever it is standing on.
-- Do NOT fill anything with `--brand-gold`. It is an edge colour, and at rest
-  it is muted; full brass is earned by hover and by the one primary action.
+  `--chrome` and `--sage`, which fail contrast on paper (section 16).
+- Do NOT revert the palette to graphite and brass because an old comment says
+  grey, and do NOT restore the hemp family's warm palette either. The royal
+  blue is the owner's decision, it matches the account both sites hang off,
+  and section 16 records it.
+- Do NOT redefine the metal tokens per theme. They are royal blue in both, and
+  an enclosure being the same object on any surface is what the rule protects.
+  Tinting them is no longer forbidden, because the owner tinted them.
+- Do NOT fill anything with `--chrome`. It is an edge colour, and at rest it
+  is muted; full chrome is earned by hover and by the one primary action. The
+  one exception is silkscreen ink inside a drawn mark (section 16).
+- Do NOT use `--chrome` for an accent edge that sits on the PAGE rather than
+  on metal. White on paper is not an accent, it is nothing. Use `--chrome-dk`.
+- Do NOT paint the price-history trace in `--chrome`, and do NOT paint a
+  second thing in `--signal`. The trace is the last brass on the site, and
+  brass stays meaningful only while it means "the signal" (section 16).
+- Do NOT reintroduce Fraunces or Cormorant Garamond. The display face is
+  blocky (Chakra Petch) because the account's wordmark is, and the serif pair
+  belongs to the hemp sites.
+- Do NOT re-create a warm alias (`--gold`, `--copper`, `--amber`) pointing at
+  a cool value, or any token whose name contradicts what it holds. Rename at
+  the call sites instead, the way the move to blue did.
 - Do NOT port the pedalboard planner into a game engine. It has to stay
   indexable, keep `/go` in the DOM, share the TypeScript engines with the
   server, and be reachable by a screen reader (section 16).
@@ -1071,7 +1112,7 @@ none of them is decoration:
   never on a gear page, never displacing a listing.
 - **It goes through `/go/partner`**, so the click is recorded and the
   destination clears the same allowlist as every other outbound link.
-- **It is visually quieter than the content around it**, per section 16: gold
+- **It is visually quieter than the content around it**, per section 16: chrome
   is an edge, muted at rest, and a banner is not the one primary action on any
   page it appears on.
 

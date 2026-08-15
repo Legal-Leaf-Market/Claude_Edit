@@ -31,7 +31,7 @@ export function Pagination({
         <Link
           href={buildHref(page - 1)}
           rel="prev"
-          className="inline-flex h-9 items-center gap-1 rounded-full border border-[var(--line)] bg-[var(--chip)] px-4 text-sm font-semibold text-[var(--cream)] transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]"
+          className="inline-flex h-9 items-center gap-1 rounded-full border border-[var(--line)] bg-[var(--chip)] px-4 text-sm font-semibold text-[var(--cream)] transition-colors hover:border-[var(--chrome-dk)] hover:text-[var(--accent-text)]"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           Previous
@@ -63,7 +63,7 @@ export function Pagination({
         <Link
           href={buildHref(page + 1)}
           rel="next"
-          className="inline-flex h-9 items-center gap-1 rounded-full border border-[var(--line)] bg-[var(--chip)] px-4 text-sm font-semibold text-[var(--cream)] transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]"
+          className="inline-flex h-9 items-center gap-1 rounded-full border border-[var(--line)] bg-[var(--chip)] px-4 text-sm font-semibold text-[var(--cream)] transition-colors hover:border-[var(--chrome-dk)] hover:text-[var(--accent-text)]"
         >
           Next
           <ChevronRight className="h-4 w-4" aria-hidden="true" />

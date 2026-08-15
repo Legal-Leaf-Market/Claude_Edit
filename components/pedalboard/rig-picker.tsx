@@ -47,7 +47,7 @@ export function RigPicker({ onLoad }: { onLoad: (slots: BoardSlot[]) => void }) 
     <section className="panel">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <h2 className="font-display text-lg font-black text-[var(--text)]">
+          <h2 className="font-display text-lg font-bold text-[var(--text)]">
             Start from a board that made a record
           </h2>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">
@@ -85,7 +85,7 @@ export function RigPicker({ onLoad }: { onLoad: (slots: BoardSlot[]) => void }) 
         <div className="mt-4 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface)] p-4">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <div>
-              <p className="font-display text-lg font-black text-[var(--text)]">{selected.name}</p>
+              <p className="font-display text-lg font-bold text-[var(--text)]">{selected.name}</p>
               <p className="text-sm text-[var(--muted-foreground)]">
                 {selected.context} · {selected.era} · {selected.genre}
               </p>

@@ -327,7 +327,7 @@ export function RigBuilder({
           {/* ---- Chain ---- */}
           <section id="chain" className="panel lg:col-span-2">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="font-display text-lg font-black text-[var(--text)]">Signal chain</h2>
+              <h2 className="font-display text-lg font-bold text-[var(--text)]">Signal chain</h2>
               {!analysis.inConventionalOrder && slots.length > 1 && (
                 <button
                   type="button"
@@ -350,7 +350,7 @@ export function RigBuilder({
               <ul className="mt-3 space-y-2">
                 {analysis.notes.map((note, index) => (
                   <li key={`${note.key}-${index}`} className="chain-note">
-                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--gold)]" aria-hidden="true" />
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent-text)]" aria-hidden="true" />
                     <span>{note.message}</span>
                   </li>
                 ))}
@@ -366,14 +366,14 @@ export function RigBuilder({
 
           {/* ---- Power ---- */}
           <section id="power" className="panel">
-            <h2 className="flex items-center gap-2 font-display text-lg font-black text-[var(--text)]">
-              <Plug className="h-4 w-4 text-[var(--copper)]" aria-hidden="true" />
+            <h2 className="flex items-center gap-2 font-display text-lg font-bold text-[var(--text)]">
+              <Plug className="h-4 w-4 text-[var(--accent-text)]" aria-hidden="true" />
               Power
             </h2>
             <dl className="mt-3 space-y-2 text-sm">
               <div className="flex items-baseline justify-between gap-2">
                 <dt className="text-[var(--muted-foreground)]">Estimated draw</dt>
-                <dd className="font-display text-lg font-black text-[var(--text)]">
+                <dd className="font-display text-lg font-bold text-[var(--text)]">
                   ~{power.totalMa}mA
                 </dd>
               </div>
@@ -402,10 +402,10 @@ export function RigBuilder({
           <section id="cost" className="panel lg:col-span-3">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <h2 className="font-display text-lg font-black text-[var(--text)]">
+                <h2 className="font-display text-lg font-bold text-[var(--text)]">
                   What this board costs
                 </h2>
-                <p className="mt-1 font-display text-3xl font-black text-[var(--money)]">
+                <p className="mt-1 font-display text-3xl font-bold text-[var(--money)]">
                   {cost.total > 0 ? formatPrice(cost.total) : "Not enough data to price it"}
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">

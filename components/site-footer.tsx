@@ -27,7 +27,7 @@ export function SiteFooter() {
       <div className="shell py-10">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-2">
-            <p className="font-display text-lg font-black uppercase tracking-[0.04em] text-[var(--text)]">
+            <p className="font-display text-lg font-bold uppercase tracking-[0.04em] text-[var(--text)]">
               Gear Avail
             </p>
             <p className="mt-2 max-w-sm text-sm leading-relaxed text-[var(--muted-foreground)]">

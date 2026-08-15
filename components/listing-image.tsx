@@ -62,8 +62,8 @@ export function ListingImage({
         <div
           className={cn("flex items-center justify-center overflow-hidden px-1 text-center", className)}
           style={{
-            background: `color-mix(in srgb, ${fallbackHue ?? "var(--copper)"} 14%, var(--surface))`,
-            color: fallbackHue ?? "var(--copper)",
+            background: `color-mix(in srgb, ${fallbackHue ?? "var(--chrome-dk)"} 14%, var(--surface))`,
+            color: fallbackHue ?? "var(--chrome-dk)",
           }}
         >
           <span className="text-[0.6rem] font-semibold uppercase leading-tight tracking-wide">

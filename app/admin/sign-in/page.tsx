@@ -30,10 +30,10 @@ export default async function AdminSignInPage({
 
   return (
     <div className="mx-auto max-w-md px-4 py-12 sm:px-6">
-      <p className="eyebrow text-xs font-semibold uppercase tracking-wide text-[var(--amber)]">
+      <p className="eyebrow text-xs font-semibold uppercase tracking-wide text-[var(--accent-text)]">
         Admin mode
       </p>
-      <h1 className="mb-2 mt-1 text-2xl font-black text-[var(--cream)]">This page is private</h1>
+      <h1 className="mb-2 mt-1 text-2xl font-bold text-[var(--cream)]">This page is private</h1>
 
       {configured ? (
         <>
@@ -53,7 +53,7 @@ export default async function AdminSignInPage({
             Set this in Vercel → Project → Settings → Environment Variables, then redeploy:
           </p>
           <div className="rounded-lg bg-[var(--secondary)] p-3">
-            <code className="font-semibold text-[var(--amber)]">ADMIN_PASSCODE</code>
+            <code className="font-semibold text-[var(--accent-text)]">ADMIN_PASSCODE</code>
             <p className="mt-1 text-xs">
               A long random string. Enter it here to unlock; it also signs the session cookie, so
               changing it signs everyone out.

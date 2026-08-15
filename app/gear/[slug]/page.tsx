@@ -82,7 +82,7 @@ export default async function GearPage({ params }: PageProps) {
           className="h-40 w-full rounded-lg sm:h-40 sm:w-40 sm:shrink-0"
         />
         <div className="min-w-0 flex-1">
-          <h1 className="text-3xl font-black tracking-[-0.02em] text-[var(--cream)]">Used {name}</h1>
+          <h1 className="text-3xl font-bold tracking-[-0.02em] text-[var(--cream)]">Used {name}</h1>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">{gear.category}</p>
 
           <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -107,7 +107,7 @@ export default async function GearPage({ params }: PageProps) {
               <dt className="text-[0.68rem] uppercase tracking-[0.14em] text-[var(--dim)]">
                 Used market
               </dt>
-              <dd className="mt-0.5 font-display text-xl font-black tracking-[-0.02em] text-[var(--cream)]">
+              <dd className="mt-0.5 font-display text-xl font-bold tracking-[-0.02em] text-[var(--cream)]">
                 {gear.avgUsedPriceCents != null
                   ? formatPrice(gear.avgUsedPriceCents)
                   : "Not enough data"}
@@ -118,7 +118,7 @@ export default async function GearPage({ params }: PageProps) {
                 <dt className="text-[0.68rem] uppercase tracking-[0.14em] text-[var(--dim)]">
                   New market
                 </dt>
-                <dd className="mt-0.5 font-display text-xl font-black tracking-[-0.02em] text-[var(--cream)]">
+                <dd className="mt-0.5 font-display text-xl font-bold tracking-[-0.02em] text-[var(--cream)]">
                   {formatPrice(gear.avgNewPriceCents)}
                 </dd>
               </div>
@@ -127,7 +127,7 @@ export default async function GearPage({ params }: PageProps) {
               <dt className="text-[0.68rem] uppercase tracking-[0.14em] text-[var(--dim)]">
                 Live listings
               </dt>
-              <dd className="mt-0.5 font-display text-xl font-black tracking-[-0.02em] text-[var(--cream)]">{listings.length}</dd>
+              <dd className="mt-0.5 font-display text-xl font-bold tracking-[-0.02em] text-[var(--cream)]">{listings.length}</dd>
             </div>
           </dl>
 
@@ -148,25 +148,25 @@ export default async function GearPage({ params }: PageProps) {
 
       {history.length >= 2 && (
         <section className="panel mb-6 p-5">
-          <h2 className="text-lg font-black tracking-[-0.01em] text-[var(--cream)]">Price over time</h2>
-          <div className="rule-amber my-3 w-24" />
+          <h2 className="text-lg font-bold tracking-[-0.01em] text-[var(--cream)]">Price over time</h2>
+          <div className="rule-accent my-3 w-24" />
           <PriceHistoryChart points={history} />
         </section>
       )}
 
       <section className="panel p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-black tracking-[-0.01em] text-[var(--cream)]">
+          <h2 className="text-lg font-bold tracking-[-0.01em] text-[var(--cream)]">
             Every live listing, cheapest first
           </h2>
           <Link
             href={`/search?q=${encodeURIComponent(name)}`}
-            className="text-sm text-[var(--amber)] underline-offset-2 hover:underline"
+            className="text-sm text-[var(--accent-text)] underline-offset-2 hover:underline"
           >
             Search similar gear
           </Link>
         </div>
-        <div className="rule-amber my-3 w-24" />
+        <div className="rule-accent my-3 w-24" />
 
         {listings.length === 0 ? (
           <p className="py-6 text-sm text-[var(--muted-foreground)]">
@@ -211,7 +211,7 @@ export default async function GearPage({ params }: PageProps) {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="text-lg font-black tracking-[-0.01em] text-[var(--cream)]">
+                    <span className="text-lg font-bold tracking-[-0.01em] text-[var(--cream)]">
                       {formatPrice(priceCents, String(row.currency ?? "USD"))}
                     </span>
                     <a

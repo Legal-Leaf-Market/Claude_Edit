@@ -26,7 +26,7 @@ export default function PartnersIndexPage() {
   return (
     <div className="shell-narrow py-10">
       <p className="eyebrow">Not gear</p>
-      <h1 className="mt-1 font-display text-3xl font-black tracking-[-0.01em] text-[var(--text)]">
+      <h1 className="mt-1 font-display text-3xl font-bold tracking-[-0.01em] text-[var(--text)]">
         Software and services
       </h1>
       <p className="mt-3 max-w-2xl text-base leading-relaxed text-[var(--dim)]">
@@ -45,7 +45,7 @@ export default function PartnersIndexPage() {
           <li key={partner.slug}>
             <Link
               href={`/partners/${partner.slug}`}
-              className="card-face flex h-full flex-col p-5 transition-colors hover:border-[var(--brand-gold)]"
+              className="card-face flex h-full flex-col p-5 transition-colors hover:border-[var(--chrome-dk)]"
             >
               <p className="eyebrow">{partner.kind}</p>
               <p className="mt-1 text-base font-semibold text-[var(--text)]">{partner.name}</p>

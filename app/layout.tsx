@@ -9,17 +9,21 @@ import { THEME_INIT_SCRIPT } from "@/lib/theme"
 import "./globals.css"
 
 /*
- * The three house faces are loaded with the SAME Google Fonts request the
- * sister sites make, byte for byte, and that is deliberate rather than lazy.
- * Nicotia's own CLAUDE.md (section 4) records the reason: a visitor crossing
- * between the family's sites gets a browser cache hit on the font files
- * instead of a second download. next/font/google would self-host these and
- * silently break that, which is why this site does not use it despite being
- * the only one of the four on Next.js.
+ * Two faces, loaded with one request that is byte for byte the one
+ * stompbox.world makes: Chakra Petch carries display, Jost carries UI and the
+ * heavy condensed uppercase the rack panel uses. The hemp family's serif pair
+ * (Fraunces, Cormorant Garamond) is not requested at all any more rather than
+ * left in the URL unused; the sister-site cache-hit argument now points at
+ * stompbox.world, whose audience is the front door for this brand.
+ *
+ * Loaded as a plain stylesheet link rather than through next/font because the
+ * mark and the wordmark are drawn as paths, so nothing structural depends on a
+ * font arriving, and because sharing the sister site's exact request is what
+ * gets the cache hit.
  */
 const HOUSE_FONTS_HREF =
-  "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900" +
-  "&family=Cormorant+Garamond:ital,wght@1,600&family=Jost:wght@300;400;500;600;700&display=swap"
+  "https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700" +
+  "&family=Jost:wght@300;400;500;600;700;800;900&display=swap"
 
 const SITE_NAME = "Gear Avail"
 const SITE_DESCRIPTION =
@@ -75,9 +79,12 @@ export const viewport: Viewport = {
      the browser paint its own dark chrome around a light page for anyone whose
      OS is set to light, which is the seam this is supposed to prevent. */
   colorScheme: "dark light",
+  /* The royal scale's two grounds, so the browser chrome matches the page.
+     These are --bg from app/globals.css, written out because a manifest value
+     cannot resolve a custom property. */
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#100d0a" },
-    { media: "(prefers-color-scheme: light)", color: "#faf6f0" },
+    { media: "(prefers-color-scheme: dark)", color: "#070c1c" },
+    { media: "(prefers-color-scheme: light)", color: "#f0f2f8" },
   ],
   width: "device-width",
   initialScale: 1,

@@ -108,7 +108,7 @@ export default async function DealsPage({ params }: PageProps) {
       </nav>
 
       <header className="mb-8 max-w-3xl">
-        <h1 className="text-3xl font-black tracking-tight text-[var(--cream)]">
+        <h1 className="text-3xl font-bold tracking-tight text-[var(--cream)]">
           Cheap used {name}
         </h1>
         <p className="mt-3 text-base leading-relaxed text-[var(--muted-foreground)]">
@@ -125,7 +125,7 @@ export default async function DealsPage({ params }: PageProps) {
           )}
         </p>
         <p className="mt-3 text-sm text-[var(--muted-foreground)]">
-          <Link href={`/gear/${gear.slug}`} className="text-[var(--amber)] underline-offset-2 hover:underline">
+          <Link href={`/gear/${gear.slug}`} className="text-[var(--accent-text)] underline-offset-2 hover:underline">
             See the full price history and every listing
           </Link>
         </p>

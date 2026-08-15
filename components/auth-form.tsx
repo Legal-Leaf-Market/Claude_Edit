@@ -167,14 +167,14 @@ export function AuthForm({
           {isSignUp ? (
             <>
               Already have an account?{" "}
-              <Link href="/sign-in" className="text-[var(--amber)] underline-offset-2 hover:underline">
+              <Link href="/sign-in" className="text-[var(--accent-text)] underline-offset-2 hover:underline">
                 Sign in
               </Link>
             </>
           ) : (
             <>
               Need an account?{" "}
-              <Link href="/sign-up" className="text-[var(--amber)] underline-offset-2 hover:underline">
+              <Link href="/sign-up" className="text-[var(--accent-text)] underline-offset-2 hover:underline">
                 Create one
               </Link>
             </>

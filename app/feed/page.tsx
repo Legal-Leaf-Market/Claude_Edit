@@ -59,10 +59,10 @@ export default async function FeedPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--amber)]">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent-text)]">
         Everything, newest first
       </p>
-      <h1 className="mt-1 text-3xl font-black tracking-tight text-[var(--cream)]">The Feed</h1>
+      <h1 className="mt-1 text-3xl font-bold tracking-tight text-[var(--cream)]">The Feed</h1>
       <p className="mt-3 max-w-2xl text-base leading-relaxed text-[var(--muted-foreground)]">
         Gear being flipped, gear being hunted, bandmates, lessons, shows, free stuff. All of it in
         one place, ordered by what's newest and nothing else. No algorithm deciding what you see, and
@@ -74,7 +74,7 @@ export default async function FeedPage() {
           <Link
             key={board.slug}
             href={`/boards/${board.slug}`}
-            className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--muted-foreground)] transition-colors hover:border-[var(--amber)]/40 hover:text-[var(--cream)]"
+            className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--muted-foreground)] transition-colors hover:border-[var(--accent-text)]/40 hover:text-[var(--cream)]"
           >
             {board.navLabel}
           </Link>
@@ -99,7 +99,7 @@ export default async function FeedPage() {
                 <li key={post.id}>
                   <Link
                     href={`/posts/${post.id}`}
-                    className="panel block p-4 transition-colors hover:border-[var(--amber)]/40 hover:bg-[var(--secondary)]"
+                    className="panel block p-4 transition-colors hover:border-[var(--accent-text)]/40 hover:bg-[var(--secondary)]"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-full bg-[var(--accent)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--accent-foreground)]">
@@ -114,7 +114,7 @@ export default async function FeedPage() {
                     <div className="mt-2 flex items-baseline justify-between gap-3">
                       <p className="truncate text-sm font-medium text-[var(--cream)]">{post.title}</p>
                       {board?.showPrice && post.asking_price_cents != null && (
-                        <p className="shrink-0 text-sm font-semibold text-[var(--amber)]">
+                        <p className="shrink-0 text-sm font-semibold text-[var(--accent-text)]">
                           {formatPrice(post.asking_price_cents)}
                         </p>
                       )}

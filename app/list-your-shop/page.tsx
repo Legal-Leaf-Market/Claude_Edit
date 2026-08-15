@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function ListYourShopPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
-      <h1 className="text-2xl font-black text-[var(--cream)] sm:text-3xl">
+      <h1 className="text-2xl font-bold text-[var(--cream)] sm:text-3xl">
         Get your shop listed on Gear Avail
       </h1>
       <p className="mt-3 text-base leading-relaxed text-[var(--muted-foreground)]">

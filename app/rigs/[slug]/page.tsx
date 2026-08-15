@@ -96,10 +96,10 @@ export default async function RigPage({ params }: PageProps) {
         </span>
         <div className="min-w-0 flex-1">
           <p className="eyebrow">{rig.genre}</p>
-          <h1 className="mt-1 font-display text-4xl font-black leading-none tracking-[-0.03em] text-[var(--text)]">
+          <h1 className="mt-1 font-display text-4xl font-bold leading-none tracking-[-0.03em] text-[var(--text)]">
             {rig.name}
           </h1>
-          <p className="mt-1.5 font-script text-lg italic" style={{ color: hue }}>
+          <p className="mt-1.5 text-[0.82rem] font-semibold uppercase tracking-[0.16em]" style={{ color: hue }}>
             {rig.context}, {rig.era}
           </p>
         </div>
@@ -127,7 +127,7 @@ export default async function RigPage({ params }: PageProps) {
 
       {/* ---- The chain ---- */}
       <section className="mt-8">
-        <h2 className="font-display text-xl font-black text-[var(--text)]">The chain</h2>
+        <h2 className="font-display text-xl font-bold text-[var(--text)]">The chain</h2>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           Shown in conventional signal order rather than the order the sources list them, so it
           reads the way it would be wired: guitar on the left, amp on the right.
@@ -144,7 +144,7 @@ export default async function RigPage({ params }: PageProps) {
 
       {/* ---- The records ---- */}
       <section className="mt-10">
-        <h2 className="flex items-center gap-2 font-display text-xl font-black text-[var(--text)]">
+        <h2 className="flex items-center gap-2 font-display text-xl font-bold text-[var(--text)]">
           <Disc3 className="h-5 w-5" style={{ color: hue }} aria-hidden="true" />
           Documented on
         </h2>
@@ -217,7 +217,7 @@ function PedalRow({ row, position, isLast }: { row: Row; position: number; isLas
         style={{ borderLeftColor: meta.hue, borderLeftWidth: 3 }}
       >
         <span className="flex w-8 shrink-0 flex-col items-center">
-          <span className="font-display text-sm font-black text-[var(--dim)]">{position}</span>
+          <span className="font-display text-sm font-bold text-[var(--dim)]">{position}</span>
         </span>
 
         <ListingImage
@@ -256,7 +256,7 @@ function PedalRow({ row, position, isLast }: { row: Row; position: number; isLas
             </>
           ) : row.marketPriceCents != null ? (
             <>
-              <p className="font-display text-base font-black text-[var(--dim)]">
+              <p className="font-display text-base font-bold text-[var(--dim)]">
                 ~{formatPrice(row.marketPriceCents)}
               </p>
               <p className="text-xs text-[var(--dim)]">used median, none listed</p>

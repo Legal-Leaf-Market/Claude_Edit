@@ -96,8 +96,11 @@ export default async function HomePage() {
               Browse all gear
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </StompLink>
+            {/* Short on purpose: a .stomp never wraps, and the long "boards
+                behind the records" line overflowed the rack on a phone. The
+                tool card right below carries the long name. */}
             <StompLink href="/rigs" size="lg">
-              The boards behind the records
+              Browse the rigs
             </StompLink>
           </div>
 
@@ -201,7 +204,7 @@ export default async function HomePage() {
             <Link
               key={category.slug}
               href={`/used/${category.slug}`}
-              className="card-face flex items-center gap-3 px-4 py-3.5 text-sm text-[var(--text)] transition-colors hover:border-[var(--copper)]"
+              className="card-face flex items-center gap-3 px-4 py-3.5 text-sm text-[var(--text)] transition-colors hover:border-[var(--chrome-dk)]"
             >
               <span
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
@@ -233,7 +236,7 @@ export default async function HomePage() {
             <Link
               key={store.slug}
               href={`/shop/${store.slug}`}
-              className="card-face flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--text)] transition-colors hover:border-[var(--copper)]"
+              className="card-face flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--text)] transition-colors hover:border-[var(--chrome-dk)]"
             >
               <StoreMark source={store.source} name={store.name} size="sm" />
               <span className="truncate">{store.name}</span>
@@ -253,7 +256,7 @@ export default async function HomePage() {
             <Link
               key={board.slug}
               href={`/boards/${board.slug}`}
-              className="card-face px-4 py-3 text-sm text-[var(--text)] transition-colors hover:border-[var(--copper)]"
+              className="card-face px-4 py-3 text-sm text-[var(--text)] transition-colors hover:border-[var(--chrome-dk)]"
             >
               {board.navLabel}
             </Link>
@@ -270,7 +273,7 @@ export default async function HomePage() {
       <PartnerBanner slug="distrokid" />
 
       <section className="pb-16">
-        <h2 className="mb-4 font-display text-xl font-black tracking-[-0.01em] text-[var(--text)]">
+        <h2 className="mb-4 font-display text-xl font-bold tracking-[-0.01em] text-[var(--text)]">
           How Gear Avail works
         </h2>
         <div className="grid gap-4 sm:grid-cols-3">
@@ -293,7 +296,7 @@ export default async function HomePage() {
       </section>
 
       <section className="pb-16">
-        <h2 className="mb-4 font-display text-xl font-black tracking-[-0.01em] text-[var(--text)]">
+        <h2 className="mb-4 font-display text-xl font-bold tracking-[-0.01em] text-[var(--text)]">
           Get the weekly hunt
         </h2>
         <div className="max-w-2xl">
@@ -317,7 +320,7 @@ function SectionHead({
 }) {
   return (
     <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-      <h2 className="font-display text-xl font-black tracking-[-0.01em] text-[var(--text)]">
+      <h2 className="font-display text-xl font-bold tracking-[-0.01em] text-[var(--text)]">
         {title}
       </h2>
       <Link
@@ -360,7 +363,7 @@ function ToolCard({
         </span>
         <div className="min-w-0">
           <p className="eyebrow">{eyebrow}</p>
-          <h2 className="mt-1 font-display text-xl font-black tracking-[-0.01em] text-[var(--text)]">
+          <h2 className="mt-1 font-display text-xl font-bold tracking-[-0.01em] text-[var(--text)]">
             {title}
           </h2>
         </div>
@@ -409,7 +412,7 @@ function HowItWorks({
       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)]">
         {icon}
       </div>
-      <h3 className="mt-3 font-display text-base font-black text-[var(--text)]">{title}</h3>
+      <h3 className="mt-3 font-display text-base font-bold text-[var(--text)]">{title}</h3>
       <p className="mt-1.5 text-sm leading-relaxed text-[var(--muted-foreground)]">{body}</p>
     </div>
   )

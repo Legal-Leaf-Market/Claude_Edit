@@ -183,7 +183,7 @@ function RigCard({ rig }: { rig: Rig }) {
           {initialsFor(rig)}
         </span>
         <span className="min-w-0">
-          <span className="block font-display text-base font-black leading-tight text-[var(--text)]">
+          <span className="block font-display text-base font-bold leading-tight text-[var(--text)]">
             {rig.name}
           </span>
           <span className="block truncate text-xs text-[var(--muted-foreground)]">
@@ -222,11 +222,11 @@ function RecordIndex() {
           <li key={`${rig.slug}-${record.title}`}>
             <Link
               href={`/rigs/${rig.slug}`}
-              className="card-face flex h-full flex-col gap-1 p-4 transition-colors hover:border-[var(--copper)]"
+              className="card-face flex h-full flex-col gap-1 p-4 transition-colors hover:border-[var(--chrome-dk)]"
             >
               <span className="flex items-baseline justify-between gap-3">
                 <span className="card-title text-[var(--text)]">{record.title}</span>
-                <span className="shrink-0 font-display text-sm font-black text-[var(--dim)]">
+                <span className="shrink-0 font-display text-sm font-bold text-[var(--dim)]">
                   {record.year}
                 </span>
               </span>

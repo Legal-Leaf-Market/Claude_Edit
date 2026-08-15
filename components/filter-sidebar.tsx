@@ -101,7 +101,7 @@ export function FilterSidebar({ facets, found, hide }: Props) {
               className="absolute inset-y-0 left-0 flex w-[85%] max-w-sm flex-col bg-[var(--popover)] shadow-xl"
             >
               <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-                <h2 className="text-sm font-black text-[var(--cream)]">Filters</h2>
+                <h2 className="text-sm font-bold text-[var(--cream)]">Filters</h2>
                 <Button
                   ref={closeButtonRef}
                   variant="ghost"
@@ -185,7 +185,7 @@ function FilterControls({
               router.push(q ? `${pathname}?q=${encodeURIComponent(q)}` : pathname, { scroll: false })
               onNavigate?.()
             }}
-            className="text-xs text-[var(--amber)] underline-offset-2 hover:underline"
+            className="text-xs text-[var(--accent-text)] underline-offset-2 hover:underline"
           >
             Clear all
           </button>
@@ -201,7 +201,7 @@ function FilterControls({
             type="checkbox"
             checked={dealsOnly}
             onChange={(e) => setParam("deals", e.target.checked ? "1" : null)}
-            className="h-4 w-4 accent-[var(--amber)]"
+            className="h-4 w-4 accent-[var(--accent-text)]"
           />
           Below market only
         </label>
@@ -381,7 +381,7 @@ function FacetGroup({
                 type="checkbox"
                 checked={selected.includes(facet.value)}
                 onChange={() => onToggle(facet.value)}
-                className="h-4 w-4 shrink-0 accent-[var(--amber)]"
+                className="h-4 w-4 shrink-0 accent-[var(--accent-text)]"
               />
               {renderMark?.(facet.value)}
               <span className="truncate">{renderLabel ? renderLabel(facet.value) : facet.value}</span>
@@ -394,7 +394,7 @@ function FacetGroup({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="mt-2 text-xs text-[var(--amber)] underline-offset-2 hover:underline"
+          className="mt-2 text-xs text-[var(--accent-text)] underline-offset-2 hover:underline"
         >
           {expanded ? "Show fewer" : `Show all ${values.length}`}
         </button>
