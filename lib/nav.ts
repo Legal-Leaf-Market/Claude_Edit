@@ -160,7 +160,7 @@ export const NAV_SECTIONS: NavSection[] = [
     id: "build",
     label: "Build",
     href: "/pedalboard",
-    match: ["/pedalboard"],
+    match: ["/pedalboard", "/stompbox"],
     columns: [
       {
         title: "The rig builder",
@@ -185,6 +185,41 @@ export const NAV_SECTIONS: NavSection[] = [
           { href: "/pedalboard#power", label: "Power draw", hint: "Estimated total mA and how many isolated outputs" },
           { href: "/pedalboard#cost", label: "What it costs", hint: "Live prices per pedal across every store we track" },
         ],
+      },
+      /*
+       * THE GUIDE, filed under Build rather than under Shop, and the filing is
+       * the honest one for the same reason the partners sit under Community.
+       * Shop means the catalogue: stock, a price, a median to measure it
+       * against. These pages carry none of that on purpose, and putting them
+       * beside the category links would imply they are somewhere to buy from.
+       * They are what you read before you know what to buy, which is the same
+       * moment the builder is for.
+       *
+       * Internal links, not a link out to stompbox.world. The guide is served
+       * from this deployment on both domains (middleware.ts), so sending a
+       * shopper off-site to read it would be shipping them to another origin
+       * to see pages this one is already rendering.
+       */
+      {
+        title: "What the circuits do",
+        links: [
+          {
+            href: "/stompbox/pedals",
+            label: "The circuit guide",
+            hint: "What each kind of pedal actually does to your signal",
+          },
+          {
+            href: "/stompbox/chain",
+            label: "Why the order is the order",
+            hint: "The conventional chain, with the reason behind every position",
+          },
+          {
+            href: "/stompbox/catalog",
+            label: "What pedals go for",
+            hint: "Typical prices across the pedals we have live listings for",
+          },
+        ],
+        more: { href: "/stompbox", label: "All of stompbox.world" },
       },
     ],
   },
@@ -280,6 +315,8 @@ export function footerColumns(): NavColumn[] {
         { href: "/rigs?view=records", label: "By album and track" },
         { href: "/pedalboard", label: "Rig builder" },
         { href: "/pedalboard?preset=starter", label: "The starter board" },
+        { href: "/stompbox", label: "stompbox.world, the circuit guide" },
+        { href: "/stompbox/chain", label: "Signal chain, explained" },
       ],
     },
     {

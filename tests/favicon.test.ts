@@ -34,7 +34,7 @@ const FORK_TINES = "M37 27v14a13 13 0 0 0 26 0V27"
 const FORK_STEM = "M50 54v9"
 
 const gearAvail = read("app/icon.svg")
-const stompbox = read("stompbox.world/app/icon.svg")
+const stompbox = read("app/stompbox/icon.svg")
 
 describe("app/icon.svg", () => {
   it("resolves every colour without the document", () => {

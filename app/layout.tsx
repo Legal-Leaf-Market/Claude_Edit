@@ -1,10 +1,12 @@
 import { Analytics } from "@vercel/analytics/next"
 import type { Metadata, Viewport } from "next"
+import { headers } from "next/headers"
 import Script from "next/script"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { CartProvider } from "@/lib/cart/context"
 import { env } from "@/lib/env"
+import { isStompboxHost } from "@/lib/stompbox/host"
 import { THEME_INIT_SCRIPT } from "@/lib/theme"
 import "./globals.css"
 
@@ -91,7 +93,36 @@ export const viewport: Viewport = {
   maximumScale: 5,
 }
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+/**
+ * THE SHELL BOTH SITES SHARE, AND THE THREE THINGS IT WITHHOLDS FROM ONE.
+ *
+ * One deployment serves gearavail.com and stompbox.world (see middleware.ts),
+ * so this layout wraps every page on both. What it renders is identical apart
+ * from three deliberate omissions on the guide's own domain:
+ *
+ *   - GEAR AVAIL'S HEADER AND FOOTER. app/stompbox/layout.tsx supplies the
+ *     guide's own chrome instead. On gearavail.com/stompbox both appear, which
+ *     is what makes the guide read as a section of the aggregator there and as
+ *     its own site here.
+ *   - THE CART PROVIDER. Nothing on the guide can add to a cart, and a
+ *     localStorage-backed provider on a domain with no way to fill it is state
+ *     nobody can see or clear.
+ *   - THE IMPACT TRACKING TAG. It is Gear Avail's affiliate verification tag
+ *     and it calls `transformLinks()`, which rewrites outbound links on
+ *     whatever page it loads on. The guide carries no affiliate links by
+ *     design (stompbox.world/CLAUDE.md section 2a), so shipping it there would
+ *     put a link rewriter on the one site whose whole claim is that nothing is
+ *     riding on its opinion. That is a rule worth keeping mechanical.
+ *
+ * Reading the host makes this layout dynamic, and therefore every page under
+ * it. That is a real cost and it was taken knowingly: the alternative is two
+ * copies of every route file, one per chrome, and a duplicated route tree is a
+ * far more expensive thing to keep honest than a cache miss. Pages that want
+ * caching set their own `revalidate`.
+ */
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const standalone = isStompboxHost((await headers()).get("host"))
+
   return (
     <html lang="en">
       <head>
@@ -145,9 +176,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           site's own /go and /api/cart/checkout attribution path (section 5,
           CLAUDE.md) rather than assuming the two coexist for free.
         */}
-        <Script id="impact-radius-tag" strategy="beforeInteractive">
-          {`(function(i,m,p,a,c,t){c.ire_o=p;c[p]=c[p]||function(){(c[p].a=c[p].a||[]).push(arguments)};t=a.createElement(m);var z=a.getElementsByTagName(m)[0];t.async=1;t.src=i;z.parentNode.insertBefore(t,z)})('https://utt.impactcdn.com/P-A7529144-7865-4e40-bff1-87bccca16ec61.js','script','impactStat',document,window);impactStat('transformLinks');impactStat('trackImpression');`}
-        </Script>
+        {!standalone && (
+          <Script id="impact-radius-tag" strategy="beforeInteractive">
+            {`(function(i,m,p,a,c,t){c.ire_o=p;c[p]=c[p]||function(){(c[p].a=c[p].a||[]).push(arguments)};t=a.createElement(m);var z=a.getElementsByTagName(m)[0];t.async=1;t.src=i;z.parentNode.insertBefore(t,z)})('https://utt.impactcdn.com/P-A7529144-7865-4e40-bff1-87bccca16ec61.js','script','impactStat',document,window);impactStat('transformLinks');impactStat('trackImpression');`}
+          </Script>
+        )}
         {/* Keyboard users get past the header and filter rail in one tab. */}
         <a
           href="#main"
@@ -155,11 +188,16 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         >
           Skip to content
         </a>
-        <CartProvider>
-          <SiteHeader />
-          <main id="main">{children}</main>
-          <SiteFooter />
-        </CartProvider>
+        {standalone ? (
+          /* The guide brings its own header and footer, in app/stompbox/layout.tsx. */
+          children
+        ) : (
+          <CartProvider>
+            <SiteHeader />
+            <main id="main">{children}</main>
+            <SiteFooter />
+          </CartProvider>
+        )}
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>

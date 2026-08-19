@@ -33,13 +33,15 @@ export const EFFECT_TYPES = [
   "tuner",
   "filter",
   "compressor",
+  "fuzz",
   "drive",
   "eq",
   "pitch",
+  "gate",
+  "volume",
   "modulation",
   "delay",
   "reverb",
-  "volume",
   "looper",
   "utility",
 ] as const
@@ -88,13 +90,28 @@ export const EFFECTS: Record<EffectType, EffectMeta> = {
     hue: "#38bdf8",
     why: "Before the gain stages, so it evens out your picking rather than squashing the sustain a drive just added.",
   },
+  /*
+   * FUZZ IS ITS OWN SLOT, and it is not a nicety. A vintage-style fuzz has a
+   * very low input impedance and is voiced around loading the guitar's pickups
+   * directly, so anything buffered in front of it changes what it hears. That
+   * makes "put the fuzz first" a real placement rule with an electrical cause,
+   * and it cannot be expressed while fuzz and overdrive share one slot.
+   */
+  fuzz: {
+    type: "fuzz",
+    label: "Fuzz",
+    rank: 35,
+    typicalMa: 6,
+    hue: "#f97316",
+    why: "Ahead of the other gain, and for some circuits ahead of everything. A vintage-style fuzz is voiced around loading the pickups directly, so a buffer in front of it changes what it hears.",
+  },
   drive: {
     type: "drive",
-    label: "Drive / fuzz",
+    label: "Overdrive / distortion",
     rank: 40,
     typicalMa: 12,
     hue: "#ef5350",
-    why: "The core of the sound, and everything after it is shaping what the drive produced.",
+    why: "After the fuzz and before anything time based. Distorting and then delaying keeps the repeats clean; delaying and then distorting smears the repeats and the dry note together.",
   },
   eq: {
     type: "eq",
@@ -112,21 +129,35 @@ export const EFFECTS: Record<EffectType, EffectMeta> = {
     hue: "#fb923c",
     why: "Tracks best on a clean, monophonic signal, which argues for early. Most players run it after the drive anyway because that is where it sounds like the record.",
   },
-  modulation: {
-    type: "modulation",
-    label: "Modulation",
-    rank: 60,
-    typicalMa: 30,
-    hue: "#c678b4",
-    why: "After the drive, so the chorus or phaser moves the distorted tone instead of being distorted itself.",
+  /*
+   * A NOISE GATE IS NOT A UTILITY, which is where the keyword table used to
+   * file it. Utilities have no conventional position ("depends entirely on the
+   * job it is doing"), and a gate has a very specific one with a reason: it
+   * goes AFTER the gain, because the gain is what made the noise.
+   */
+  gate: {
+    type: "gate",
+    label: "Noise gate",
+    rank: 58,
+    typicalMa: 20,
+    hue: "#64748b",
+    why: "After the gain, because the gain is what made the noise. A gate in front of a high-gain drive closes on a quiet signal and then hands the silence to something with enormous gain, which amplifies the hiss it was meant to remove.",
   },
   volume: {
     type: "volume",
     label: "Volume",
-    rank: 65,
+    rank: 60,
     typicalMa: 0,
     hue: "#a8a29e",
-    why: "After the gain and before the ambience, so swells keep their drive and the delay tails ring out past the fade.",
+    why: "Position is a genuine choice. Before the drive it changes how hard the drive is pushed. After the drive and before the delay it fades the level while leaving repeats to ring out. At the very end it is a master mute.",
+  },
+  modulation: {
+    type: "modulation",
+    label: "Modulation",
+    rank: 65,
+    typicalMa: 30,
+    hue: "#c678b4",
+    why: "After the gain and before the delay, so the delay repeats a modulated signal rather than modulating an already repeated one. Reversed, the movement is applied to the echoes as a block and smears instead of swirling.",
   },
   delay: {
     type: "delay",
@@ -216,15 +247,22 @@ const TYPE_PATTERNS: [EffectType, RegExp][] = [
     "delay",
     /\b(delay|echo|echoplex|echorec|memory ?man|carbon ?copy|dd-?\d+|dm-?\d+|el ?capistan|timeline|space ?echo|dl4|sdd-?\d+|slapback|tape ?echo)\b/i,
   ],
+  /* Ahead of "drive", or the drive pattern's own `fuzz` and `muff` swallow it. */
+  [
+    "fuzz",
+    /\b(fuzz|big ?muff|muff|tone ?bender|fuzz ?face|face|maestro fz|superfuzz|octavia fuzz|shin-?ei|triangle|ram'?s ?head)\b/i,
+  ],
   [
     "drive",
-    /\b(overdrive|distortion|fuzz|drive|screamer|ts-?\d+|ts808|tube ?screamer|muff|rat|klon|centaur|boost|treble ?boost|rangemaster|blues ?driver|bd-?\d+|ds-?\d+|od-?\d+|shredmaster|governor|plexi|preamp|dirt|gain|face)\b/i,
+    /\b(overdrive|distortion|drive|screamer|ts-?\d+|ts808|tube ?screamer|rat|klon|centaur|boost|treble ?boost|rangemaster|blues ?driver|bd-?\d+|ds-?\d+|od-?\d+|shredmaster|governor|plexi|preamp|dirt|gain)\b/i,
   ],
   ["eq", /\b(eq|equali[sz]er|graphic|parametric|ge-?\d+|band eq)\b/i],
   ["volume", /\b(volume|expression|swell|pedal volume|vp-?\d+)\b/i],
+  /* Ahead of "utility", which is where a gate used to land for want of a slot. */
+  ["gate", /\b(noise ?gate|gate|noise ?suppressor|ns-?\d+|decimator|hush|iso ?gate)\b/i],
   [
     "utility",
-    /\b(buffer|splitter|switcher|junction|di\b|noise ?gate|gate|isolator|loop ?switch|aby|a\/b)\b/i,
+    /\b(buffer|splitter|switcher|junction|di\b|isolator|loop ?switch|aby|a\/b)\b/i,
   ],
 ]
 
@@ -283,6 +321,15 @@ export type ChainAnalysis = {
  * page stays quiet, which is what keeps the notes meaning something when they
  * do appear.
  */
+/**
+ * The gain stages, as one thing.
+ *
+ * Fuzz and overdrive sit in separate slots because their POSITIONS differ (a
+ * vintage fuzz wants the pickups directly, so it goes ahead of the rest), but
+ * every rule about what gain does to a signal applies to both.
+ */
+const GAIN_TYPES = new Set<EffectType>(["fuzz", "drive"])
+
 export function analyzeChain(items: ChainItem[]): ChainAnalysis {
   const notes: ChainNote[] = []
 
@@ -317,7 +364,17 @@ export function analyzeChain(items: ChainItem[]): ChainAnalysis {
     })
   }
 
-  const firstDrive = items.findIndex((i) => i.type === "drive")
+  /*
+   * BOTH GAIN TYPES, and this is the bug that splitting fuzz out of drive
+   * introduced the first time. This rule used to read `i.type === "drive"`,
+   * which was every gain pedal on the board while fuzz shared that slot. The
+   * moment fuzz became its own type, a delay running into a Big Muff stopped
+   * being flagged: nothing threw, the note simply never appeared, and the only
+   * symptom was the planner going quiet about the single muddiest thing a
+   * board can do. Any rule reaching for "the gain" wants this set, never one
+   * member of it.
+   */
+  const firstDrive = items.findIndex((i) => GAIN_TYPES.has(i.type))
   const lastDelayOrReverb = items.reduce(
     (last, item, index) => (item.type === "delay" || item.type === "reverb" ? index : last),
     -1,
