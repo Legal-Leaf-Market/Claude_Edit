@@ -100,6 +100,14 @@
     {
       "path": "/api/cron/ingest-sweetwater",
       "schedule": "48 */6 * * *"
+    },
+    {
+      "path": "/api/cron/ingest-ebay-snapshot",
+      "schedule": "13 * * * *"
+    },
+    {
+      "path": "/api/cron/ingest-ebay-daily",
+      "schedule": "35 7 * * *"
     }
   ]
 }
