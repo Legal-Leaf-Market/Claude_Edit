@@ -326,7 +326,7 @@ export function BoardBuilder({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Brand or model"
-              className="mt-3 w-full rounded-lg border border-[var(--line)] bg-[var(--chip)] px-3 py-2 text-sm text-[var(--text)]"
+              className="plate mt-3 w-full px-3 py-2 text-sm"
               aria-label="Search pedals"
             />
 

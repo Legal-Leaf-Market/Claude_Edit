@@ -499,6 +499,15 @@ Almost nothing else moved, because none of the rest depended on the hue:
   says where the lever is and where the next flip goes, so nothing is hidden
   behind the metaphor. The cream switch tip is a MATERIAL, like the chrome, not
   `--chrome` being used as a fill.
+- **The things you SET are hardware too.** A checkbox is an indicator LED
+  (`.led-check`), a `<select>` is the plate a rotary switch is mounted on
+  (`.rotary`), and a text field is routed INTO the panel (`.plate`). Each keeps
+  its native element and is only repainted with `appearance: none`, so the
+  keyboard, the mobile picker and the screen reader are untouched. `.rotary` is
+  a plate rather than a drawn knob on purpose: the element opens the platform's
+  own menu, and a knob you cannot turn is a worse control than an honest plate.
+  Its ink is fixed rather than `var(--text)`, because the plate is metal and the
+  metal tokens do not flip between themes.
 - **Nothing spins, bounces or glows at idle.** A rack of gear at rest is still.
 - **Two tokens are contrast-critical.** Bright gold is about 1.8:1 on white and
   bright green about 1.9:1, both far under the 4.5:1 body text needs. Anything

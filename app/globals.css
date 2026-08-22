@@ -2470,3 +2470,214 @@
     display: none;
   }
 }
+
+/* ==========================================================================
+   MORE OF THE PANEL: LED CHECKS, ROTARY SELECTORS, ROUTED PLATES
+   --------------------------------------------------------------------------
+   The button language (.stomp, .knob, .lp) covered the things you press. These
+   cover the things you SET: a filter that is on, a sort that is selected, a
+   box you type in. They were the last generic controls on the site, and a
+   rounded grey pill next to a machined footswitch is the thing that gives away
+   that the gear is a costume.
+
+   Every one of these keeps its native element. `appearance: none` repaints a
+   real <input> and a real <select>; it does not replace them with divs. So
+   keyboard operation, focus, the mobile picker and the screen reader all still
+   work exactly as they did, because they are still the same controls.
+
+   The rules from section 16 hold here and are what keep this off the cheese:
+   chrome is an EDGE and stays muted until earned, the LED is the only
+   saturated colour and means the same thing everywhere (this is lit / this is
+   on), travel is 2px, and nothing moves at idle.
+   ========================================================================== */
+
+/*
+ * A CHECKBOX AS AN INDICATOR LED.
+ *
+ * The best fit on the whole site, because the meaning already matches: an LED
+ * means "this is on", and so does a ticked filter. Dark and inert when off,
+ * lit with a real bloom when on, exactly like the LED on an engaged pedal.
+ */
+.led-check {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  cursor: pointer;
+  /* The bezel the lens is seated in. */
+  border: 1.5px solid color-mix(in srgb, var(--chrome) 30%, var(--line-strong));
+  background: radial-gradient(circle at 42% 32%, #26304d 0%, #131a30 55%, #070c1c 100%);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.7);
+  transition:
+    background 140ms ease,
+    box-shadow 140ms ease,
+    border-color 140ms ease;
+}
+
+.led-check:hover {
+  border-color: color-mix(in srgb, var(--chrome) 55%, var(--line-strong));
+}
+
+.led-check:checked {
+  border-color: color-mix(in srgb, var(--brand-led) 60%, var(--line-strong));
+  background: radial-gradient(circle at 42% 32%, #b8ffd8 0%, var(--brand-led) 45%, #0e7a41 100%);
+  /* The bloom is what sells it as a light rather than a green dot. */
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.4),
+    0 0 6px color-mix(in srgb, var(--brand-led) 80%, transparent),
+    0 0 14px color-mix(in srgb, var(--brand-led) 45%, transparent);
+}
+
+.led-check:focus-visible {
+  outline: 2px solid var(--chrome-dk);
+  outline-offset: 3px;
+}
+
+/*
+ * A SELECT AS A PANEL-MOUNTED ROTARY SWITCH.
+ *
+ * Not an attempt at a literal rotary knob: a <select> opens the platform's own
+ * picker, and faking a knob you cannot actually turn would be a worse control
+ * than a good-looking plate with a real menu behind it. So this is the PLATE
+ * the switch is mounted on, with the setting silkscreened in the window and a
+ * pointer at the right, and the native menu does the rest.
+ *
+ * The arrow is drawn in the background rather than as an icon element, so the
+ * element stays exactly one <select> with nothing wrapped around it.
+ */
+.rotary {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 2.25rem;
+  padding: 0 2rem 0 0.8rem;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  /* Silkscreen ink, NOT var(--text). The plate is metal, the metal tokens are
+     the same in both themes on purpose (section 16), so ink that flipped with
+     the theme would put near-black lettering on a dark blue plate on paper.
+     Same fixed value and same reason as .stomp's --stomp-ink. */
+  color: #f2f5f8;
+  border: 1.5px solid color-mix(in srgb, var(--chrome) 34%, var(--line-strong));
+  background:
+    /* The pointer, as two halves of one small triangle. A single angled band
+       reads as a backslash rather than an indicator; the pair meet at a point
+       and read as the mark beside a rotary's current position. */
+    linear-gradient(45deg, transparent 50%, rgba(242, 245, 248, 0.9) 50%) no-repeat
+      right 1.02rem center / 5px 5px,
+    linear-gradient(135deg, rgba(242, 245, 248, 0.9) 50%, transparent 50%) no-repeat
+      right 0.72rem center / 5px 5px,
+    /* the machined plate */
+    linear-gradient(180deg, var(--metal-hi), var(--metal) 55%, var(--metal-lo));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+    0 2px 5px rgba(0, 0, 0, 0.4);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.rotary:hover {
+  border-color: color-mix(in srgb, var(--chrome) 62%, var(--line-strong));
+}
+
+.rotary:focus-visible {
+  outline: 2px solid var(--chrome-dk);
+  outline-offset: 2px;
+}
+
+/* The menu itself is the platform's. Give it a ground that is not white. */
+.rotary option {
+  background: var(--popover, var(--surface));
+  color: var(--text);
+  font-weight: 600;
+}
+
+/*
+ * A TEXT FIELD AS A ROUTED PLATE.
+ *
+ * Inputs on a pedal are holes cut into the enclosure, so this reads as routed
+ * INTO the panel rather than sitting on it: the inset shadow at the top is the
+ * lip of the cut, and the hairline below it is where the light catches the far
+ * edge. The caret is the LED green, which is the one place a saturated colour
+ * belongs in a text field: it is the thing that is live.
+ */
+.plate {
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #05091a, #0a1024);
+  color: var(--text);
+  caret-color: var(--brand-led);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.7),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.plate::placeholder {
+  color: var(--dim);
+}
+
+.plate:focus,
+.plate:focus-visible,
+.plate:focus-within {
+  outline: none;
+  border-color: color-mix(in srgb, var(--chrome) 52%, var(--line-strong));
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.7),
+    0 0 0 2px color-mix(in srgb, var(--chrome-dk) 55%, transparent);
+}
+
+/*
+ * ON PAPER.
+ *
+ * Section 16's rule is that a colour is never defined only inside the light
+ * block or only outside it, and two of these three needed the other half.
+ *
+ * `.rotary` does not, and that is the metal tokens doing their job: an
+ * enclosure is the same object whatever it is standing on, so a machined plate
+ * is the same plate in both themes and only its surroundings flip.
+ *
+ * `.led-check` keeps its dark lens deliberately. An unlit LED is dark on any
+ * panel, so the off state is right as it is; what has to change is the bezel,
+ * because a white ring on white paper is nothing at all.
+ *
+ * `.plate` inverts, because the thing being described is a hole cut into the
+ * panel and the panel is now pale. Same shadow geometry, same LED caret, a
+ * ground that belongs on paper.
+ */
+[data-theme='light'] .led-check {
+  border-color: color-mix(in srgb, var(--chrome-dk) 45%, var(--line-strong));
+  box-shadow: inset 0 1px 2px rgba(16, 22, 43, 0.5);
+}
+
+[data-theme='light'] .led-check:hover {
+  border-color: var(--chrome-dk);
+}
+
+[data-theme='light'] .led-check:checked {
+  border-color: color-mix(in srgb, var(--brand-led-dk) 70%, var(--chrome-dk));
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.5),
+    0 0 5px color-mix(in srgb, var(--brand-led) 55%, transparent);
+}
+
+[data-theme='light'] .plate {
+  background: linear-gradient(180deg, var(--surface-2), #ffffff 70%);
+  box-shadow:
+    inset 0 2px 4px rgba(16, 22, 43, 0.12),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.9);
+}
+
+[data-theme='light'] .plate:focus,
+[data-theme='light'] .plate:focus-visible,
+[data-theme='light'] .plate:focus-within {
+  border-color: var(--chrome-dk);
+  box-shadow:
+    inset 0 2px 4px rgba(16, 22, 43, 0.12),
+    0 0 0 2px color-mix(in srgb, var(--chrome-dk) 40%, transparent);
+}

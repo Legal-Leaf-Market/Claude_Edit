@@ -65,10 +65,12 @@ export function SearchBox({ className = "" }: { className?: string }) {
       <label htmlFor="site-search" className="sr-only">
         Search music gear
       </label>
-      {/* The family's .searchbox: a full pill that borders sage on focus, with
-          the caret in sage too. Focus turning green rather than the accent
-          colour is shared across all four sites. */}
-      <div className="flex items-center gap-[9px] rounded-full border border-[var(--line)] bg-[var(--panel2)] px-4 py-[9px] transition-colors focus-within:border-[var(--sage)]">
+      {/* .plate: the field reads as routed INTO the panel rather than sitting on
+          it, which is what an input jack or a display window on a pedal is. The
+          wrapper carries the class rather than the <input>, so the magnifier and
+          the "/" hint sit inside the cut with the text, and :focus-within lights
+          the whole aperture the way focusing the bare input could not. */}
+      <div className="plate flex items-center gap-[9px] px-4 py-[9px]">
         <Search className="h-4 w-4 shrink-0 text-[var(--dim)]" aria-hidden="true" />
         <input
           ref={inputRef}
@@ -78,7 +80,7 @@ export function SearchBox({ className = "" }: { className?: string }) {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="Stratocaster, Big Muff, SM58, Juno-106..."
-          className="w-full min-w-0 border-0 bg-transparent text-[0.95rem] text-[var(--text)] caret-[var(--sage)] placeholder:text-[var(--dim)] focus:outline-none"
+          className="w-full min-w-0 border-0 bg-transparent text-[0.95rem] text-[var(--text)] placeholder:text-[var(--dim)] focus:outline-none"
         />
         <kbd
           aria-hidden="true"

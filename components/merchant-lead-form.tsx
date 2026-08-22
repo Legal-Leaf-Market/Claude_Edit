@@ -4,8 +4,12 @@ import { useState } from "react"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-const inputClass =
-  "h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm text-[var(--cream)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+/* A field is a hole routed into the panel; a <select> is a plate with a rotary
+   behind it. Both are the shared vocabulary from globals.css rather than a
+   bordered rectangle, so a form does not read as the one part of the site
+   nobody dressed. */
+const inputClass = "plate h-10 w-full px-3 text-sm"
+const selectClass = "rotary h-10 w-full"
 const labelClass = "mb-1.5 block text-sm font-medium text-[var(--cream)]"
 
 export function MerchantLeadForm() {
@@ -113,7 +117,7 @@ export function MerchantLeadForm() {
           <label htmlFor="referredBy" className={labelClass}>
             You are
           </label>
-          <select id="referredBy" name="referredBy" defaultValue="owner" className={inputClass}>
+          <select id="referredBy" name="referredBy" defaultValue="owner" className={selectClass}>
             <option value="owner">The shop owner</option>
             <option value="customer">A customer, suggesting this shop</option>
           </select>
@@ -128,7 +132,7 @@ export function MerchantLeadForm() {
           id="hasOnlineCatalog"
           name="hasOnlineCatalog"
           defaultValue="unsure"
-          className={inputClass}
+          className={selectClass}
         >
           <option value="yes">Yes, we have an online store</option>
           <option value="pos-only">We use a point-of-sale system, but no real website</option>

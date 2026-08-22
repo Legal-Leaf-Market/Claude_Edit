@@ -140,7 +140,7 @@ export function AlertsClient() {
             minLength={2}
             maxLength={200}
             placeholder="Fender Player Stratocaster"
-            className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm text-[var(--cream)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            className="plate h-10 w-full px-3 text-sm"
           />
         </div>
 
@@ -156,7 +156,7 @@ export function AlertsClient() {
               min={1}
               step="1"
               placeholder="700"
-              className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm text-[var(--cream)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+              className="plate h-10 w-full px-3 text-sm"
             />
           </div>
           <div>
@@ -166,7 +166,7 @@ export function AlertsClient() {
             <select
               id="alert-source"
               name="source"
-              className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-2 text-sm text-[var(--cream)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+              className="rotary h-10 w-full"
             >
               <option value="">Any</option>
               <option value="ebay">eBay</option>
@@ -180,7 +180,7 @@ export function AlertsClient() {
             <select
               id="alert-channel"
               name="channel"
-              className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-2 text-sm text-[var(--cream)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+              className="rotary h-10 w-full"
             >
               <option value="email">Email</option>
               <option value="discord">Discord</option>

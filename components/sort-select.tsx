@@ -38,10 +38,13 @@ export function SortSelect() {
               else next.delete("seed")
             })
           }
-          className="h-9 rounded-full border border-[var(--line)] bg-[var(--chip)] px-3 text-sm font-medium text-[var(--cream)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+          /* A panel-mounted rotary selector rather than a rounded pill. It is
+             still a real <select>, so the platform picker and the keyboard are
+             untouched; only the plate it is mounted on is drawn. */
+          className="rotary"
         >
           {SORT_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value} className="bg-[var(--popover)]">
+            <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
@@ -52,7 +55,7 @@ export function SortSelect() {
         <button
           type="button"
           onClick={() => go((next) => next.set("seed", String(newSeed())))}
-          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--chip)] px-4 text-sm font-semibold text-[var(--cream)] transition-colors hover:border-[var(--chrome-dk)] hover:text-[var(--accent-text)]"
+          className="stomp stomp-sm"
         >
           <Shuffle className="h-4 w-4" aria-hidden="true" />
           Shuffle again

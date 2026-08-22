@@ -113,7 +113,7 @@ export function AuthForm({
               id="name"
               name="name"
               autoComplete="name"
-              className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm text-[var(--cream)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+              className="plate h-10 w-full px-3 text-sm"
             />
           </div>
         )}
@@ -128,7 +128,7 @@ export function AuthForm({
             type="email"
             required
             autoComplete="email"
-            className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm text-[var(--cream)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            className="plate h-10 w-full px-3 text-sm"
           />
         </div>
 
@@ -143,7 +143,7 @@ export function AuthForm({
             required
             minLength={isSignUp ? MIN_PASSWORD_LENGTH : undefined}
             autoComplete={isSignUp ? "new-password" : "current-password"}
-            className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm text-[var(--cream)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            className="plate h-10 w-full px-3 text-sm"
           />
           {isSignUp && (
             <p className="mt-1.5 text-xs text-[var(--muted-foreground)]">
