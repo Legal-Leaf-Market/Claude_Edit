@@ -210,7 +210,10 @@ export function BoardBuilder({
                 Empty board. Add a pedal, or load somebody else&rsquo;s rig and start swapping.
               </p>
             ) : (
-              <div className="flex items-end gap-3">
+              /* The camera lives on the stage, not on .deck: .deck is the
+                 scroller, and overflow flattens 3D. See globals.css. */
+              <div className="deck-stage">
+                <div className="deck-row">
                 {ordered.map((item, index) => (
                   <div key={item.key} className="group/pedal relative">
                     <PedalEnclosure
@@ -237,7 +240,8 @@ export function BoardBuilder({
                       <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
                     </button>
                   </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </div>

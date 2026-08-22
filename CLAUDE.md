@@ -1084,7 +1084,12 @@ engine.
 - Do NOT port the pedalboard planner into a game engine. It has to stay
   indexable, keep `/go` in the DOM, share the TypeScript engines with the
   server, and be reachable by a screen reader (section 16). CSS 3D on real
-  DOM elements is fine and keeps all four; a canvas keeps none.
+  DOM elements is fine and keeps all four, and the board uses it: a canvas
+  keeps none of them.
+- Do NOT put the board's `perspective` on `.deck`. `.deck` is the horizontal
+  scroller, and any overflow other than visible makes an element a grouping
+  element, which forces `transform-style: flat` and silently collapses every
+  3D child into the plane. The camera lives on `.deck-stage` inside it.
 - Do NOT let `components/board` or `lib/board` fetch anything. It is ONE
   builder mounted on both domains, and commerce reaches it as a prop from
   whichever page rendered it: `/pedalboard` passes prices and `/go` links,

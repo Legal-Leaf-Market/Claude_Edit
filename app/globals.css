@@ -2317,3 +2317,156 @@
 [data-site="stompbox"] .readouts {
   max-width: 62ch;
 }
+
+
+/* ==========================================================================
+   THE BOARD IN 3D
+   --------------------------------------------------------------------------
+   Real depth on real DOM elements. CSS transforms only: no canvas, no WebGL,
+   no engine. That is not a limitation worked around, it is the requirement.
+   CLAUDE.md section 16 forbids porting the planner into a game engine because
+   the page has to stay indexable, keep /go in the DOM, share its engines with
+   the server, and be reachable by a screen reader. A canvas keeps none of
+   those. Rotating a <button> keeps all four: it is still a button, still in
+   the markup, still tabbable, still read aloud.
+
+   THE PERSPECTIVE SITS ON AN INNER STAGE, NOT ON .deck, and that is a
+   mechanical requirement rather than a preference. .deck is the horizontal
+   scroller, and any overflow other than visible makes an element a grouping
+   element, which forces transform-style: flat and collapses every 3D child
+   into the plane. Perspective declared there would silently do nothing. So the
+   scroller stays the scroller and the stage inside it owns the camera.
+   ========================================================================== */
+
+.deck-stage {
+  /* One vanishing point for the whole row, so the pedals read as objects on a
+     shared surface rather than as separate tilted pictures. Origin above centre
+     because you look DOWN at a board on the floor. */
+  perspective: 1600px;
+  perspective-origin: 50% -10%;
+}
+
+.deck-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  transform: rotateX(13deg);
+  transform-style: preserve-3d;
+  /* Room for the front faces to fold toward the viewer without clipping. */
+  padding-bottom: 1.25rem;
+}
+
+/*
+ * THE ENCLOSURE AS A SOLID.
+ *
+ * The face is the element itself; the front lip is a child folded up toward
+ * the viewer. Only one extra face is drawn, deliberately: at 13 degrees the
+ * sides are edge-on and invisible, so drawing them would cost markup for
+ * pixels nobody sees. The lip is the one that carries the illusion, because it
+ * is the face the tilt actually reveals.
+ */
+.deck-row .enclosure {
+  transform-style: preserve-3d;
+  /* The flat drop shadow is doing the depth job in 2D and fights a real lip.
+     Keep the contact shadow, drop the fake extrusion. */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 14px 22px rgba(0, 0, 0, 0.5);
+  transition:
+    transform 160ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    box-shadow 160ms ease,
+    border-color 170ms ease;
+}
+
+.enclosure-lip {
+  position: absolute;
+  left: -1.5px;
+  right: -1.5px;
+  top: 100%;
+  height: 20px;
+  transform-origin: 50% 0%;
+  transform: rotateX(-90deg);
+  border-radius: 0 0 3px 3px;
+  border: 1.5px solid color-mix(in srgb, var(--chrome) 26%, var(--line-strong));
+  border-top: none;
+  /* Darker than the face: it is the side of the box, turned away from the
+     light that is hitting the top. */
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--metal) 82%, #000),
+    color-mix(in srgb, var(--metal-lo) 70%, #000)
+  );
+  pointer-events: none;
+}
+
+/*
+ * PICKING ONE UP. Hover lifts the pedal off the deck toward the viewer, which
+ * is the Lego move: these get handled constantly. The lift is Z rather than Y
+ * so it reads as coming closer rather than sliding up the board.
+ */
+.deck-row .enclosure:hover,
+.deck-row .enclosure:focus-visible {
+  transform: translateZ(26px) rotateX(-3deg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 26px 38px rgba(0, 0, 0, 0.55);
+}
+
+/* Bypassed sits flat and dim: it is on the board and out of the signal. */
+.deck-row .enclosure[data-engaged="false"] {
+  transform: translateZ(-6px);
+  filter: saturate(0.5) brightness(0.82);
+}
+
+/* --- the hardware, standing proud of the face --- */
+
+.deck-row .enclosure-knobs i {
+  transform: translateZ(4px);
+  /* A dome rather than a disc, lit from where the room's light is. */
+  background: radial-gradient(circle at 42% 26%, #9fb0ee 0%, #4d5da4 42%, #131c38 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 2px 3px rgba(0, 0, 0, 0.5);
+}
+
+.deck-row .enclosure-switch {
+  transform: translateZ(7px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 3px 5px rgba(0, 0, 0, 0.55);
+  transition: transform 70ms ease;
+}
+
+/* Stomping it. The switch travels INTO the enclosure, which is the one bit of
+   motion on this page that is imitating a physical action rather than
+   decorating one. */
+.deck-row .enclosure:active .enclosure-switch {
+  transform: translateZ(1px);
+}
+
+/*
+ * FLAT FOR ANYONE WHO ASKED FOR IT.
+ *
+ * Reduced motion is usually read as "do not animate", and the transitions do
+ * go. The rotation goes too: a persistently tilted plane is a vestibular
+ * trigger for some people even when nothing is moving, and the board is
+ * perfectly usable square on. Nothing about the information changes.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .deck-row {
+    transform: none;
+  }
+  .deck-row .enclosure,
+  .deck-row .enclosure-switch {
+    transition: none;
+  }
+  .deck-row .enclosure:hover,
+  .deck-row .enclosure:focus-visible {
+    transform: none;
+  }
+  .enclosure-lip {
+    display: none;
+  }
+}

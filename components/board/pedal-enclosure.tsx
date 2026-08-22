@@ -53,7 +53,15 @@ export function PedalEnclosure({
         aria-pressed={item.engaged}
         title={`${item.engaged ? "Bypass" : "Engage"} ${item.name}`}
         className="enclosure"
+        data-engaged={item.engaged}
       >
+        {/*
+          The front lip: the side of the box the tilt reveals. A child rather
+          than a pseudo-element because it has to sit in the enclosure's own 3D
+          space, and only ONE face is drawn since at this angle the sides are
+          edge-on and would cost markup for pixels nobody sees.
+        */}
+        <span className="enclosure-lip" aria-hidden="true" />
         {/* Silkscreened position number and slot, the way a board gets labelled
             with tape before a gig. */}
         <span className="enclosure-tag">
