@@ -1,7 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { enclosureSpec, type EnclosureSpec, type Jack } from "@/lib/board/enclosure-3d"
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  enclosureSpec,
+  type EnclosureSpec,
+  type Jack,
+  type Treadle,
+} from "@/lib/board/enclosure-3d"
 import type { BoardItem } from "@/lib/board/model"
 import { SLOT_BY_ID } from "@/lib/stompbox/chain"
 
@@ -37,10 +42,19 @@ import { SLOT_BY_ID } from "@/lib/stompbox/chain"
  *  and costs twelve elements rather than the sixty a smooth one would. */
 const SEGMENTS = 12
 
-/** Millimetres to pixels. One number, applied once, so the spec can stay in
- *  real units and the proportions cannot drift. Sized so a 1590B fills the
- *  stage without its far corner leaving it when the box is turned edge on. */
-const MM = 2.9
+/**
+ * How much of the stage the longest side of the object should take.
+ *
+ * FIT TO FRAME, NOT ONE FIXED SCALE, and the treadle is why. A wah is 254mm
+ * deep against a 1590B's 111.5mm, so a single millimetres-to-pixels factor
+ * either shrinks every stompbox to a chip or runs the wah off three sides of
+ * the panel. Every object is scaled to fill the same frame instead.
+ *
+ * The cost is that a wah no longer LOOKS bigger than a fuzz, and pixels are a
+ * bad place to lose a true fact. So the panel prints the real millimetres
+ * underneath, which says it better than relative size ever did.
+ */
+const FRAME_PX = 268
 
 /** The resting three-quarter view: turned to the right, seen from above. */
 const HOME = { yaw: -26, pitch: 22 }
@@ -161,9 +175,11 @@ export function Pedal3D({
     run()
   }
 
-  const w = spec.width * MM
-  const d = spec.depth * MM
-  const h = spec.height * MM
+  /* One factor per object, derived from its own longest side. */
+  const mm = FRAME_PX / Math.max(spec.depth, spec.width)
+  const w = spec.width * mm
+  const d = spec.depth * mm
+  const h = spec.height * mm
 
   return (
     <div className="p3d">
@@ -171,7 +187,11 @@ export function Pedal3D({
         className="p3d-stage"
         data-dragging={dragging}
         role="img"
-        aria-label={`A representative ${slot.name.toLowerCase()} enclosure for ${item.name}. Drag, or use the arrow keys, to turn it.`}
+        aria-label={
+          `A representative ${
+            spec.shape === "treadle" ? "treadle" : `${slot.name.toLowerCase()} enclosure`
+          } for ${item.name}. Drag, or use the arrow keys, to turn it.`
+        }
         tabIndex={0}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -194,7 +214,11 @@ export function Pedal3D({
           }}
         >
           <div className="p3d-box" style={{ width: w, height: h }}>
-            <Faces spec={spec} w={w} d={d} h={h} />
+            <Faces spec={spec} w={w} d={d} h={h} mm={mm} />
+
+            {/* A wah and a volume pedal are not boxes: two fixed cheeks and a
+                plate that rocks between them. See lib/board/enclosure-3d.ts. */}
+            {spec.treadle ? <TreadleParts spec={spec} tr={spec.treadle} w={w} h={h} mm={mm} yaw={yaw} /> : null}
 
             {/* Knobs and the switch stand on the top face, in the box's own 3D
                 space rather than drawn onto it, which is what makes them
@@ -202,11 +226,11 @@ export function Pedal3D({
             {spec.knobs.map((knob, i) => (
               <Cylinder
                 key={`knob-${i}`}
-                x={knob.x * MM}
-                z={knob.z * MM}
+                x={knob.x * mm}
+                z={knob.z * mm}
                 base={-h / 2}
-                radius={knob.radius * MM}
-                height={knob.height * MM}
+                radius={knob.radius * mm}
+                height={knob.height * mm}
                 className="p3d-knob"
                 pointer={knob.angle}
               />
@@ -215,11 +239,11 @@ export function Pedal3D({
             {spec.switches.map((sw, i) => (
               <Cylinder
                 key={`sw-${i}`}
-                x={sw.x * MM}
-                z={sw.z * MM}
+                x={sw.x * mm}
+                z={sw.z * mm}
                 base={-h / 2}
-                radius={sw.radius * MM}
-                height={sw.height * MM}
+                radius={sw.radius * mm}
+                height={sw.height * mm}
                 className="p3d-switch"
               />
             ))}
@@ -227,11 +251,11 @@ export function Pedal3D({
             {/* The LED, and it is the only saturated colour on the object,
                 which is what it means everywhere else on this site. */}
             <Cylinder
-              x={spec.led.x * MM}
-              z={spec.led.z * MM}
+              x={spec.led.x * mm}
+              z={spec.led.z * mm}
               base={-h / 2}
-              radius={spec.led.radius * MM}
-              height={spec.led.radius * MM * 0.85}
+              radius={spec.led.radius * mm}
+              height={spec.led.radius * mm * 0.85}
               className="p3d-led"
               lit={item.engaged}
             />
@@ -267,8 +291,23 @@ export function Pedal3D({
       */}
       <div className="p3d-truth">
         <p>
-          A representative {slot.name.toLowerCase()} enclosure, drawn from the kind of pedal this
-          is rather than measured from this one. Knob count and layout are typical of the family.
+          {spec.shape === "treadle" ? (
+            <>
+              A representative treadle, drawn from the kind of pedal this is rather than measured
+              from this one. The sweep, the travel and the switch under the toe are typical of the
+              family.
+            </>
+          ) : (
+            <>
+              A representative {slot.name.toLowerCase()} enclosure, drawn from the kind of pedal
+              this is rather than measured from this one. Knob count and layout are typical of the
+              family.
+            </>
+          )}{" "}
+          {/* Every object is scaled to the same frame, so the picture cannot
+              show you that a wah is more than twice the length of a Big Muff.
+              Saying the numbers is a better job of it than pixels were. */}
+          Roughly {Math.round(spec.width)} by {Math.round(spec.depth)}mm on the floor.
         </p>
         {photoUrl && !photoFailed ? (
           <figure className="p3d-photo">
@@ -302,7 +341,19 @@ export function Pedal3D({
  * in front of them would move the origin first and then rotate about the
  * moved point, which is a different and much harder thing to reason about.
  */
-function Faces({ spec, w, d, h }: { spec: EnclosureSpec; w: number; d: number; h: number }) {
+function Faces({
+  spec,
+  w,
+  d,
+  h,
+  mm,
+}: {
+  spec: EnclosureSpec
+  w: number
+  d: number
+  h: number
+  mm: number
+}) {
   const face = (width: number, height: number, transform: string) => ({
     width,
     height,
@@ -355,7 +406,7 @@ function Faces({ spec, w, d, h }: { spec: EnclosureSpec; w: number; d: number; h
         className="p3d-face p3d-side"
         style={{ ...face(w, h, `translateZ(${-d / 2}px) rotateY(180deg)`), background: spec.tint }}
       >
-        <Jacks jacks={spec.jacks} face="back" mm={MM} />
+        <Jacks jacks={spec.jacks} face="back" mm={mm} />
       </span>
 
       {/* RIGHT, the input side. */}
@@ -363,7 +414,7 @@ function Faces({ spec, w, d, h }: { spec: EnclosureSpec; w: number; d: number; h
         className="p3d-face p3d-side"
         style={{ ...face(d, h, `translateX(${w / 2}px) rotateY(90deg)`), background: spec.tint }}
       >
-        <Jacks jacks={spec.jacks} face="right" mm={MM} />
+        <Jacks jacks={spec.jacks} face="right" mm={mm} />
       </span>
 
       {/* LEFT, the output side. */}
@@ -371,7 +422,7 @@ function Faces({ spec, w, d, h }: { spec: EnclosureSpec; w: number; d: number; h
         className="p3d-face p3d-side"
         style={{ ...face(d, h, `translateX(${-w / 2}px) rotateY(-90deg)`), background: spec.tint }}
       >
-        <Jacks jacks={spec.jacks} face="left" mm={MM} />
+        <Jacks jacks={spec.jacks} face="left" mm={mm} />
       </span>
     </>
   )
@@ -399,6 +450,202 @@ function Jacks({ jacks, face, mm }: { jacks: Jack[]; face: Jack["face"]; mm: num
         ))}
     </>
   )
+}
+
+/* --------------------------------------------------------------------- */
+/*  Treadles                                                               */
+/* --------------------------------------------------------------------- */
+
+/**
+ * The two things a treadle has that a box does not.
+ *
+ * THE CHEEKS ARE WHY A WAH IS RECOGNISABLE. Two fixed plates rising from the
+ * chassis toward the heel, with the rocking plate slung between them. Each is
+ * a single element cut to a trapezoid with `clip-path`, which is safe here
+ * only because a cheek is a LEAF: clip-path forces `transform-style: flat` on
+ * whatever carries it, exactly as overflow does, so putting one on anything
+ * with 3D children would quietly collapse the solid.
+ *
+ * THE PLATE ROCKS ABOUT A REAL AXIS. The pivot span sits at the hinge, rotates
+ * there, and the plate's own faces are then placed relative to it. Rotating
+ * the plate about its own centre instead would swing the whole thing through
+ * the chassis rather than tipping it.
+ */
+function TreadleParts({
+  spec,
+  tr,
+  w,
+  h,
+  mm,
+  yaw,
+}: {
+  spec: EnclosureSpec
+  tr: Treadle
+  w: number
+  h: number
+  mm: number
+  /** Needed to order the cheeks front to back. See below. */
+  yaw: number
+}) {
+  const d = spec.depth * mm
+  const heel = tr.cheekHeelHeight * mm
+  const toe = tr.cheekToeHeight * mm
+  const pivotZ = tr.pivotZ * mm
+  const pw = tr.plateWidth * mm
+  const pd = tr.plateDepth * mm
+  const pt = tr.plateThickness * mm
+
+  /*
+   * A cheek face is rotated 90 degrees about Y, so its own x axis runs along
+   * the pedal's z. On the RIGHT cheek local x=0 lands at the heel; on the LEFT
+   * it lands at the toe, because that face is turned the other way. The
+   * trapezoid is mirrored to match, which is the sort of thing that looks like
+   * a typo until you turn the pedal around and see one cheek sloping backwards.
+   */
+  const drop = (1 - toe / heel) * 100
+  const cheek = (side: "left" | "right") => ({
+    width: d,
+    height: heel,
+    marginLeft: -d / 2,
+    marginTop: -heel / 2,
+    transform:
+      `translateX(${side === "right" ? w / 2 : -w / 2}px) ` +
+      `translateY(${-h / 2 - heel / 2}px) ` +
+      `rotateY(${side === "right" ? 90 : -90}deg)`,
+    /* The tint reaches the polygon as currentColor. See CheekShape. */
+    color: spec.tint,
+  })
+
+  return (
+    <>
+      {/*
+        THE FAR CHEEK, THEN THE PLATE, THEN THE NEAR ONE. This ordering is not
+        cosmetic and it is not paranoia.
+
+        The browser does not depth-sort these against each other: it paints
+        them in DOM order. An A/B render proved it, by moving the cheeks after
+        the plate and watching the treadle correctly disappear behind the near
+        wall at both side-on views, having shown straight through it before.
+        Two earlier suspects were ruled out the same way, a nested pivot
+        element and a clip-path, and neither was the cause.
+
+        So this does the sorting itself, which is all a painter's algorithm
+        ever was. Which cheek is nearer follows from the yaw: rotating by theta
+        about Y sends a face at x to a depth of -x sin(theta), so the right
+        cheek comes toward the viewer exactly while sin(theta) is negative.
+      */}
+      {orderedCheeks(yaw).map((side) => (
+        <Fragment key={side}>
+          <span className="p3d-face p3d-cheek" style={cheek(side)} aria-hidden="true">
+            <CheekShape drop={drop} side={side} />
+          </span>
+          {side === farCheek(yaw) ? <PlateFaces tr={tr} h={h} mm={mm} /> : null}
+        </Fragment>
+      ))}
+
+    </>
+  )
+}
+
+/**
+ * The cheek's trapezoid, AS AN SVG POLYGON RATHER THAN A `clip-path`.
+ *
+ * This is not a style preference, it is the fix for a real defect. A clip-path
+ * makes its element a grouping element, which takes it out of the parent's 3D
+ * depth sort: the cheek stopped being tested against the plate and got painted
+ * behind it, so turning the pedal side on showed the treadle straight through
+ * the near wall. An A/B render with and without the clip proved it.
+ *
+ * The same is true of `filter`, which is why the shading below is a second
+ * polygon at low opacity rather than a `brightness()` on the span. Anything
+ * that groups an element is off limits inside this subtree; only properties
+ * that leave it a plain participant in the 3D context are safe.
+ *
+ * `preserveAspectRatio="none"` lets one 100x100 viewBox stretch to whatever
+ * the cheek's real pixel size is, so the geometry stays in the spec.
+ */
+function CheekShape({ drop, side }: { drop: number; side: "left" | "right" }) {
+  const points =
+    side === "right"
+      ? `0,0 100,${drop} 100,100 0,100`
+      : `0,${drop} 100,0 100,100 0,100`
+  return (
+    <svg
+      className="p3d-cheek-svg"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <polygon points={points} fill="currentColor" />
+      {/* The shading a brightness() filter used to do, without the grouping. */}
+      <polygon points={points} fill="#000" opacity="0.22" />
+    </svg>
+  )
+}
+
+/**
+ * The rocking plate, as SIX SIBLINGS rather than a nested subtree.
+ *
+ * The hinge used to be its own rotated element with the plate inside it, which
+ * is the natural way to express "rotate about an axis". It is baked into each
+ * face's transform instead so that every surface of the pedal is a sibling in
+ * one 3D context, which is what lets the ordering above work at all.
+ *
+ * The chain reads outward from the axis: stand at the hinge, tip by the rest
+ * angle, then step back to the plate's own middle. That is a rock rather than
+ * a slide, which is the whole point of a treadle.
+ */
+function PlateFaces({ tr, h, mm }: { tr: Treadle; h: number; mm: number }) {
+  const pw = tr.plateWidth * mm
+  const pd = tr.plateDepth * mm
+  const pt = tr.plateThickness * mm
+  const pivotZ = tr.pivotZ * mm
+
+  return (
+    <>
+      {plateFaces(pw, pd, pt).map(({ key, width, height, local, className }) => (
+        <span
+          key={key}
+          className={`p3d-face ${className}`}
+          aria-hidden="true"
+          style={{
+            width,
+            height,
+            marginLeft: -width / 2,
+            marginTop: -height / 2,
+            transform:
+              `translate3d(0px, ${-h / 2 - tr.pivotY * mm}px, ${pivotZ}px) ` +
+              `rotateX(${-tr.tilt}deg) ` +
+              `translate3d(0px, ${-pt / 2}px, ${-pivotZ}px) ` +
+              local,
+          }}
+        />
+      ))}
+    </>
+  )
+}
+
+/** Which cheek the camera is looking past, at this yaw. */
+function farCheek(yaw: number): "left" | "right" {
+  return Math.sin((yaw * Math.PI) / 180) < 0 ? "left" : "right"
+}
+
+/** Far first, near last, so the near one paints over what it stands in front of. */
+function orderedCheeks(yaw: number): ("left" | "right")[] {
+  const far = farCheek(yaw)
+  return [far, far === "left" ? "right" : "left"]
+}
+
+/** The plate's own six faces, in its local frame. Ribbed side up. */
+function plateFaces(pw: number, pd: number, pt: number) {
+  return [
+    { key: "tread", width: pw, height: pd, local: `translateY(${-pt / 2}px) rotateX(90deg)`, className: "p3d-tread" },
+    { key: "under", width: pw, height: pd, local: `translateY(${pt / 2}px) rotateX(-90deg)`, className: "p3d-plateside" },
+    { key: "heel", width: pw, height: pt, local: `translateZ(${pd / 2}px)`, className: "p3d-plateside" },
+    { key: "toe", width: pw, height: pt, local: `translateZ(${-pd / 2}px) rotateY(180deg)`, className: "p3d-plateside" },
+    { key: "right", width: pd, height: pt, local: `translateX(${pw / 2}px) rotateY(90deg)`, className: "p3d-plateside" },
+    { key: "left", width: pd, height: pt, local: `translateX(${-pw / 2}px) rotateY(-90deg)`, className: "p3d-plateside" },
+  ]
 }
 
 /* --------------------------------------------------------------------- */
