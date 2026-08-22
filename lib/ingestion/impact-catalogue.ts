@@ -1,4 +1,7 @@
+import { and, desc, eq } from "drizzle-orm"
 import { isImpactTrackingUrl } from "@/lib/affiliate/impact"
+import { db } from "@/lib/db"
+import { ingestRuns } from "@/lib/db/schema"
 import { env } from "@/lib/env"
 import { detectDelimiter, parseCsv } from "./csv"
 import {
@@ -805,6 +808,53 @@ export function sliceRows<T>(rows: T[], window: IngestWindow = {}): { slice: T[]
  * retiring rows after a partial pass would expire everything the catalogue
  * still lists but this call had not reached.
  */
+/**
+ * WHERE THE LAST RUN STOPPED, so the next one carries on.
+ *
+ * The route above already promised this ("a caller, or the next scheduled run,
+ * can pick it up") and nothing implemented it: `startPage` defaulted to 1 every
+ * time. On a small catalogue that is invisible, because five pages covers it.
+ * On Anderton's it is a silent, permanent hole: 27,052 products, 5,000 rows a
+ * call, so an unparameterised cron would re-ingest the same first five pages
+ * forever and the remaining 22,000 products would never exist on the site.
+ * Nothing errors, nothing is logged, and the store page just quietly holds a
+ * fifth of the catalogue.
+ *
+ * So the cursor is read back off the last successful run, where this job has
+ * been recording it as `detail.nextPage` all along. Consecutive runs walk the
+ * catalogue and wrap to the start once `done`, which is what makes a plain
+ * cron entry sufficient for a merchant of any size.
+ *
+ * Idempotency is what makes this safe to get wrong: the upsert is keyed on
+ * (source, external_id), so an overlapping or repeated slice costs time and
+ * nothing else.
+ */
+export async function resumePageFor(merchant: ImpactMerchant, jobKind: string): Promise<number> {
+  try {
+    const rows = await db
+      .select({ detail: ingestRuns.detail })
+      .from(ingestRuns)
+      .where(
+        and(
+          eq(ingestRuns.source, merchant.source),
+          eq(ingestRuns.jobKind, jobKind),
+          eq(ingestRuns.status, "ok"),
+        ),
+      )
+      .orderBy(desc(ingestRuns.startedAt))
+      .limit(1)
+
+    const detail = rows[0]?.detail as { nextPage?: number | null; done?: boolean } | null
+    /* Finished last time, or never ran: start at the top and refresh. */
+    if (!detail || detail.done || detail.nextPage == null) return 1
+    return Math.max(1, detail.nextPage)
+  } catch {
+    /* A bookkeeping read must never be the thing that stops an ingest. Starting
+       over costs a duplicate slice; throwing costs the whole run. */
+    return 1
+  }
+}
+
 export async function ingestImpactCatalogue(
   merchant: ImpactMerchant,
   window: { startPage?: number; pages?: number; pageSize?: number } = {},
@@ -816,8 +866,11 @@ export async function ingestImpactCatalogue(
   }
 
   const config = impactApiConfig(merchant)
-  const startPage = Math.max(1, window.startPage ?? 1)
-  const run = await startRun(merchant.source, `${merchant.key}-catalogue-api`)
+  const jobKind = `${merchant.key}-catalogue-api`
+  /* An explicit window wins: the admin buttons and the resume loop both pass
+     one. Without it, carry on from wherever the last successful run stopped. */
+  const startPage = Math.max(1, window.startPage ?? (await resumePageFor(merchant, jobKind)))
+  const run = await startRun(merchant.source, jobKind)
 
   try {
     const { records, nextPage, total, totalPages } = await fetchImpactApiRange(
