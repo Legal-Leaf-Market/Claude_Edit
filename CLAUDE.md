@@ -1074,6 +1074,58 @@ and the mapping (`DECAL_W`, `DECAL_D`) so the two cannot disagree, and they
 are short of the edges because the shell's corners are rounded and a
 full-size square plane pokes its corners out as four bright tabs.
 
+**AND IT HAS TO KNOW THAT FACE IS NOT SQUARE.** The canvas is square and almost
+no face is, so the two axes carry different millimetres per pixel and unscaled
+type comes out stretched. On a roughly square top the error is a few percent
+and passes for a font choice, which is why it survived the fix above. The wah
+is where it showed: its printed heel is 88mm across and 40mm deep, so a glyph
+drawn at 9mm tall came out 2.2 times too wide and "CRY BABY" ran off both edges
+of the plate it was printed on. Height is already right, because the font size
+comes from the depth mapping; only the horizontal is corrected, by exactly the
+ratio between the two mappings.
+
+**THE RENDER IS A PORTRAIT, NOT A RULER.** Every pedal is scaled to fill the
+same frame (`FIT`), because a fixed camera framed for a 129mm DS-1 loses a
+254mm wah off both ends and shrinks a 42mm micro to a chip. The CSS viewer this
+replaced sized itself to the enclosure and the three.js one silently did not,
+which shipped a Cry Baby cropped out of its own dialog. The real millimetres
+are still printed under the canvas, which is where a shopper reads how big the
+thing actually is.
+
+**EVERY BODY STYLE NEEDS A BRANCH IN THE VIEWER, AND A STYLE WITH NO BRANCH
+FAILS SILENTLY.** `boss-compact`, `treadle` and `round` all exist because the
+shape is the whole point: a wah is a chassis with two cheeks and a plate that
+rocks between them, and a Fuzz Face is a lathed dome that is not a box in any
+direction. When the three.js viewer replaced the CSS one, `treadle` had no
+branch and fell through to the box, so a Cry Baby shipped to production as a
+rectangle and nothing errored. `tests/board/pedal-models.test.ts` now fails a
+`treadle` style with no treadle geometry behind it.
+
+**A MATCH TABLE IS A CLAIM ABOUT A SPECIFIC PRODUCT, so it follows the same
+narrowing rule as `matchGuideEntry` and `creditsForGear`.** A loose pattern here
+does not miss, it MISATTRIBUTES: it prints one pedal's name on another pedal's
+body, confidently, on a page somebody is about to spend money from. Every one of
+these was live before it was a test. `micro` under MXR caught a Micro Amp and
+drew it as a Phase 90. `tube screamer` caught the Mini, a different enclosure
+entirely. `big muff` caught the Nano. `chorus` under Boss caught a CE-1, which is
+a mains-powered wedge rather than the compact casting. And `dd-?[23]` gave a DD-2
+the DD-3's silkscreen.
+
+Where a casting genuinely IS shared and only the print differs, the answer is a
+SECOND ENTRY spread from the first (`BOSS_DD2`, `PROCO_RAT2`), never a wider
+pattern: a pattern loose enough to catch both has to print one of them wrong.
+Where the shape is shared but the finish is unverified, as with a TS808, the
+honest generic is the right answer until somebody checks. A test walks the guide
+dataset and the picker catalogue and asserts the printed legend is a substring
+of what the dataset calls the pedal, so the next DD-2 is caught without anybody
+having to think of the pair in advance.
+
+**Match the maker string the DATASET uses, not the one that sounds right.** The
+Fuzz Face's brand pattern was anchored on `arbiter` while both datasets say
+"Dallas Arbiter", so the one round pedal on the site matched nothing at all and
+quietly rendered as a box. Checking the match table against the real data is
+what found it; reading the model file could not have.
+
 **Godot is on the table for one thing only.** A separate 3D "rig room" (cables
 that hang, footswitches you stomp, knobs you hear) is a legitimate toy and a
 shareable. The planner itself stays in the DOM: it is indexable, and
@@ -1210,6 +1262,15 @@ engine.
   generic with extra steps, and the generic is already honest about itself.
 - Do NOT draw a brand's logo on a model. The product name in the site's own
   type says which pedal it is; a redrawn mark is a different act.
+- Do NOT widen a pattern in `lib/board/pedal-models.ts` to catch a sibling
+  product. A loose pattern here does not miss, it prints one pedal's name on
+  another pedal's body. Where the casting really is shared and only the print
+  differs, add a second entry spread from the first (`BOSS_DD2`, `PROCO_RAT2`);
+  where the finish is unverified, let the honest generic take it.
+- Do NOT add a `style` to a pedal model without adding its branch to the body
+  switch in `components/board/pedal-viewer-3d.tsx`. A style with no branch does
+  not error, it silently renders as a box, which is how a Cry Baby shipped as a
+  rectangle.
 - Do NOT let a model claim to be the actual product. A measured one says what
   its shape tells you, a derived one says plainly that it is not this pedal,
   and the photograph beside it is the real one.

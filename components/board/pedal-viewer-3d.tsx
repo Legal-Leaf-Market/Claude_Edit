@@ -49,6 +49,23 @@ const MM = 0.01
 const DECAL_W = 0.88
 const DECAL_D = 0.9
 
+/**
+ * FIT TO FRAME: how much of the view the longest side of the pedal fills.
+ *
+ * The camera is fixed, and the pedals are not remotely the same size: a Cry
+ * Baby is 254mm end to end and an MXR micro is 42mm wide, so a scene framed
+ * for either one loses the other entirely. The CSS viewer this replaced sized
+ * itself to the enclosure and the three.js one silently did not, which shipped
+ * a wah cropped out of its own dialog.
+ *
+ * So the pedal is scaled to a constant footprint rather than shown at true
+ * relative size. Everything that reports a DIMENSION still reports the real
+ * millimetres (the panel prints them under the canvas), which is where a
+ * shopper reads how big the thing actually is; the render is a portrait, not a
+ * ruler.
+ */
+const FIT = 1.25
+
 /* --------------------------------------------------------------------- */
 /*  Materials                                                             */
 /* --------------------------------------------------------------------- */
@@ -114,16 +131,40 @@ function useSilkscreen(model: PedalModel, face: { zMin: number; zMax: number; wi
     /* Type is sized against the face too, so 5mm of print is 5mm of print. */
     const pt = (mm: number) => mm * (px / faceDepth)
 
+    /*
+     * A SQUARE CANVAS ON A FACE THAT IS NOT SQUARE, so the two axes carry
+     * different millimetres per pixel and unscaled type comes out stretched.
+     *
+     * This is the same class of mistake as mapping the decal over the wrong
+     * face, and it hid for exactly as long: on a roughly square top the
+     * distortion is a few percent and reads as a font choice. The wah is where
+     * it became obvious. Its printed heel is 88mm across and 40mm deep, so a
+     * glyph drawn at 9mm tall came out 2.2 times too wide and "CRY BABY"
+     * overflowed both edges of the plate it was printed on.
+     *
+     * Height is already right, because the font size is derived from the depth
+     * mapping. Only the horizontal needs correcting, by exactly the ratio
+     * between the two mappings.
+     */
+    const squash = faceDepth / face.width
+    function print(text: string, xMm: number, zMm: number) {
+      ctx!.save()
+      ctx!.translate(xPx(xMm), zPx(zMm))
+      ctx!.scale(squash, 1)
+      ctx!.fillText(text, 0, 0)
+      ctx!.restore()
+    }
+
     for (const legend of model.legends) {
       ctx.font = `700 ${pt(legend.size)}px ui-sans-serif, system-ui, sans-serif`
-      ctx.fillText(legend.text.toUpperCase(), px / 2, zPx(legend.z))
+      print(legend.text.toUpperCase(), 0, legend.z)
     }
 
     /* Knob labels, printed just below each shaft the way they really are. */
     ctx.font = `600 ${pt(3.4)}px ui-sans-serif, system-ui, sans-serif`
     for (const knob of model.knobs) {
       if (!knob.label) continue
-      ctx.fillText(knob.label.toUpperCase(), xPx(knob.x), zPx(knob.z + knob.radius + 6))
+      print(knob.label.toUpperCase(), knob.x, knob.z + knob.radius + 6)
     }
 
     const texture = new THREE.CanvasTexture(canvas)
@@ -420,11 +461,209 @@ function BossCompactBody({ model }: { model: PedalModel }) {
   )
 }
 
+/**
+ * A TREADLE: a wah or a volume pedal.
+ *
+ * THIS BRANCH IS A REGRESSION FIX AS MUCH AS A FEATURE. The CSS viewer drew
+ * treadles; when the renderer moved to three.js the body switch only had
+ * `boss-compact` and a box, so `style: "treadle"` fell through and a Cry Baby
+ * shipped as a plain rectangle. A discriminated style with no branch for one
+ * of its cases fails silently, which is exactly the shape of bug this file's
+ * comments keep warning about.
+ *
+ * The cheeks are EXTRUDED, not planes. In CSS they had to be flat trapezoids
+ * and read as fins from any angle where you saw their edge; here they are real
+ * walls with thickness, which is most of why the shape now reads.
+ */
+function TreadleBody({ model }: { model: PedalModel }) {
+  const tr = model.treadle!
+  const w = model.width * MM
+  const d = model.depth * MM
+  const h = model.height * MM
+
+  const wall = 7 * MM
+  const heel = tr.cheekHeelHeight * MM
+  const toe = tr.cheekToeHeight * MM
+
+  /*
+   * The cheek profile, in the shape's own plane: x runs from the toe to the
+   * heel and y is height off the top of the chassis. Extruded along its
+   * normal, then stood up on edge, so `wall` really is the thickness of the
+   * casting rather than a fudge factor.
+   */
+  const cheek = useMemo(() => {
+    const shape = new THREE.Shape()
+    shape.moveTo(-d / 2, 0)
+    shape.lineTo(d / 2, 0)
+    shape.lineTo(d / 2, heel)
+    shape.lineTo(-d / 2, toe)
+    shape.closePath()
+    return new THREE.ExtrudeGeometry(shape, { depth: wall, bevelEnabled: false })
+  }, [d, heel, toe, wall])
+
+  /* Only the heel of the chassis is printed: the plate covers the rest. */
+  const texture = useSilkscreen(model, {
+    zMin: model.depth / 2 - 40,
+    zMax: model.depth / 2,
+    width: model.width * DECAL_W,
+  })
+
+  const plateW = tr.plateWidth * MM
+  const plateD = tr.plateDepth * MM
+  const plateT = tr.plateThickness * MM
+
+  return (
+    <>
+      {/* The chassis. */}
+      <RoundedBox args={[w, h, d]} radius={w * 0.045} smoothness={5} castShadow receiveShadow>
+        <meshPhysicalMaterial {...bodyMaterial(model.color)} />
+      </RoundedBox>
+
+      {/* Its printed heel. */}
+      {texture && (
+        <mesh
+          position={[0, h / 2 + 0.0008, model.depth / 2 * MM - 20 * MM]}
+          rotation={[-Math.PI / 2, 0, 0]}
+        >
+          <planeGeometry args={[w * DECAL_W, 40 * MM]} />
+          <meshStandardMaterial map={texture} roughness={0.5} metalness={0.15} />
+        </mesh>
+      )}
+
+      {/* The two fixed cheeks, tall at the heel and low at the toe. */}
+      {[1, -1].map((side) => (
+        <mesh
+          key={side}
+          geometry={cheek}
+          castShadow
+          receiveShadow
+          position={[side * (w / 2 - wall), h / 2, 0]}
+          rotation={[0, Math.PI / 2, 0]}
+        >
+          <meshPhysicalMaterial {...bodyMaterial(model.color)} />
+        </mesh>
+      ))}
+
+      {/*
+        The rocking plate, on a real axle.
+
+        The pivot group sits AT the hinge and rotates there; the plate is then
+        placed relative to it. Rotating the plate about its own centre instead
+        swings it through the chassis rather than tipping it, which is the
+        difference between a treadle and a lid.
+      */}
+      <group
+        position={[0, h / 2 + tr.pivotY * MM, tr.pivotZ * MM]}
+        rotation={[THREE.MathUtils.degToRad(-tr.tilt), 0, 0]}
+      >
+        <RoundedBox
+          args={[plateW, plateT, plateD]}
+          radius={plateT * 0.3}
+          smoothness={4}
+          position={[0, 0, -tr.pivotZ * MM]}
+          castShadow
+        >
+          <meshPhysicalMaterial
+            {...bodyMaterial(model.color)}
+            roughness={0.55}
+            metalness={0.35}
+          />
+        </RoundedBox>
+
+        {/* Grip ribs. The one surface on a pedalboard meant to take weight,
+            and a smooth one reads as a lid. */}
+        {Array.from({ length: 11 }, (_, i) => (
+          <mesh
+            key={i}
+            position={[0, plateT / 2, -tr.pivotZ * MM + (i - 5) * (plateD / 13)]}
+            castShadow
+          >
+            <boxGeometry args={[plateW * 0.86, plateT * 0.14, plateD * 0.022]} />
+            <meshStandardMaterial color="#0d0d10" roughness={0.75} />
+          </mesh>
+        ))}
+      </group>
+    </>
+  )
+}
+
+/**
+ * A ROUND body: a Fuzz Face.
+ *
+ * A 111mm circular casting, which is not a box in any direction and is the one
+ * pedal whose silhouette alone identifies it. Built as a base ring and a
+ * tapered lid rather than a hemisphere, because the real one has a flat area
+ * on top that the printing and the knobs actually sit on.
+ */
+function RoundBody({ model }: { model: PedalModel }) {
+  const r = (model.width / 2) * MM
+  const h = model.height * MM
+  const topR = r * 0.84
+
+  const texture = useSilkscreen(model, {
+    zMin: -model.depth / 2 * DECAL_D,
+    zMax: model.depth / 2 * DECAL_D,
+    width: model.width * DECAL_D,
+  })
+
+  /*
+   * ONE LATHED PROFILE, NOT TWO STACKED CYLINDERS.
+   *
+   * The first pass built the body from a wide cylinder with a narrower one on
+   * top, which puts a hard step right where the casting's whole character is:
+   * the shoulder is a continuous curve, and the step read as two objects
+   * rather than one. A profile revolved about the axis gets the curve for
+   * free, and the silhouette is the only thing that identifies this pedal.
+   *
+   * The wall is straight to just under half height, then a quarter ellipse
+   * turns it in to the flat that the knobs and the printing sit on. Tangent is
+   * vertical where it leaves the wall and horizontal where it meets the flat,
+   * so neither junction shows.
+   */
+  const profile = useMemo(() => {
+    const wall = h * 0.42
+    const points = [new THREE.Vector2(0.0001, 0), new THREE.Vector2(r, 0), new THREE.Vector2(r, wall)]
+    const steps = 14
+    for (let i = 1; i <= steps; i++) {
+      const a = (i / steps) * (Math.PI / 2)
+      points.push(
+        new THREE.Vector2(topR + (r - topR) * Math.cos(a), wall + (h - wall) * Math.sin(a)),
+      )
+    }
+    points.push(new THREE.Vector2(0.0001, h))
+    return new THREE.LatheGeometry(points, 64)
+  }, [r, topR, h])
+
+  return (
+    <>
+      <mesh geometry={profile} position={[0, -h / 2, 0]} castShadow receiveShadow>
+        <meshPhysicalMaterial {...bodyMaterial(model.color)} />
+      </mesh>
+
+      {/* The printed top, clipped to the flat by a circular plane. */}
+      {texture && (
+        <mesh position={[0, h / 2 + 0.0008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[topR * 0.97, 56]} />
+          <meshStandardMaterial map={texture} roughness={0.5} metalness={0.15} />
+        </mesh>
+      )}
+    </>
+  )
+}
+
 /* --------------------------------------------------------------------- */
 /*  The pedal, and the scene around it                                    */
 /* --------------------------------------------------------------------- */
 
-function Pedal({ model, engaged }: { model: PedalModel; engaged: boolean }) {
+function Pedal({
+  model,
+  engaged,
+  fit,
+}: {
+  model: PedalModel
+  engaged: boolean
+  fit: number
+}) {
   const group = useRef<THREE.Group>(null)
   const h = model.height * MM
 
@@ -440,17 +679,26 @@ function Pedal({ model, engaged }: { model: PedalModel; engaged: boolean }) {
      compact reaches the same height as a plain box's top face, which is what
      `height` measures on both. */
   const controlY = h / 2
+  /* A treadle carries no knobs and no button: the plate is the control. */
+  const showControls = model.style !== "treadle"
 
   return (
-    <group ref={group}>
+    <group ref={group} scale={fit}>
+      {/* EVERY style needs a branch. A style with no branch does not error, it
+          silently falls through to the box, which is how the treadle got lost
+          when this viewer replaced the CSS one. */}
       {model.style === "boss-compact" ? (
         <BossCompactBody model={model} />
+      ) : model.style === "treadle" && model.treadle ? (
+        <TreadleBody model={model} />
+      ) : model.style === "round" ? (
+        <RoundBody model={model} />
       ) : (
         <BoxBody model={model} />
       )}
 
       <group position={[0, controlY, 0]}>
-        {model.knobs.map((knob, i) => (
+        {showControls && model.knobs.map((knob, i) => (
           <Knob key={i} knob={knob} />
         ))}
         {model.led && (
@@ -482,6 +730,10 @@ export function PedalViewer3D({
   model: PedalModel
   engaged: boolean
 }) {
+  /* The longest side on the floor decides the scale, so a wah lying along z
+     and a wide 1590BB lying along x both end up filling the same frame. */
+  const fit = FIT / (Math.max(model.width, model.depth) * MM)
+
   return (
     <Canvas
       shadows
@@ -510,10 +762,12 @@ export function PedalViewer3D({
         <directionalLight position={[-2.4, 1.4, -1.2]} intensity={0.7} color="#9fc0ff" />
         <directionalLight position={[0, 0.6, -3]} intensity={0.5} color="#ffffff" />
 
-        <Pedal model={model} engaged={engaged} />
+        <Pedal model={model} engaged={engaged} fit={fit} />
 
         <ContactShadows
-          position={[0, -(model.height * MM) / 2 - 0.002, 0]}
+          /* Under the scaled pedal, not the unscaled one: a shadow floating
+             halfway up a wah is worse than no shadow at all. */
+          position={[0, (-(model.height * MM) / 2) * fit - 0.002, 0]}
           opacity={0.5}
           scale={3}
           blur={2.2}
