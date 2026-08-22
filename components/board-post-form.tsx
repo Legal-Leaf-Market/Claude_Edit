@@ -8,8 +8,12 @@ import { Button } from "@/components/ui/button"
 import { useSession } from "@/lib/auth-client"
 import type { BoardConfig } from "@/lib/boards"
 
-const inputClass =
-  "h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm text-[var(--cream)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+/* A field is a hole routed into the panel; a <select> is a plate with a rotary
+   behind it. Both are the shared vocabulary from globals.css rather than a
+   bordered rectangle, so a form does not read as the one part of the site
+   nobody dressed. */
+const inputClass = "plate h-10 w-full px-3 text-sm"
+const selectClass = "rotary h-10 w-full"
 const labelClass = "mb-1.5 block text-sm font-medium text-[var(--cream)]"
 
 /**
@@ -169,7 +173,7 @@ export function BoardPostForm({ board }: { board: BoardConfig }) {
           <label htmlFor="board-category" className={labelClass}>
             Category
           </label>
-          <select id="board-category" name="category" defaultValue={board.defaultCategory} className={inputClass}>
+          <select id="board-category" name="category" defaultValue={board.defaultCategory} className={selectClass}>
             {board.categories.map((c) => (
               <option key={c.value} value={c.value}>
                 {c.label}

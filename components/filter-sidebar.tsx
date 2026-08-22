@@ -201,7 +201,7 @@ function FilterControls({
             type="checkbox"
             checked={dealsOnly}
             onChange={(e) => setParam("deals", e.target.checked ? "1" : null)}
-            className="h-4 w-4 accent-[var(--accent-text)]"
+            className="led-check"
           />
           Below market only
         </label>
@@ -333,7 +333,7 @@ function PriceInput({
             commit()
           }
         }}
-        className="h-9 w-full rounded-full border border-[var(--line)] bg-[var(--chip)] px-3 text-sm text-[var(--cream)] placeholder:text-[var(--dim)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+        className="plate h-9 w-full px-3 text-sm"
       />
     </label>
   )
@@ -381,7 +381,7 @@ function FacetGroup({
                 type="checkbox"
                 checked={selected.includes(facet.value)}
                 onChange={() => onToggle(facet.value)}
-                className="h-4 w-4 shrink-0 accent-[var(--accent-text)]"
+                className="led-check"
               />
               {renderMark?.(facet.value)}
               <span className="truncate">{renderLabel ? renderLabel(facet.value) : facet.value}</span>

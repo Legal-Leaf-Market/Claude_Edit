@@ -918,8 +918,34 @@ tinted it; redefining it per theme still is.
 icon buttons are knurled knobs (`.knob`), and the theme switch is a Les Paul
 toggle (`.lp`) that CYCLES, because you flip a toggle rather than pick a
 position on one: three states means the furthest any theme can be is two
-flips, and one 54x50 target beats three cramped segments. The rules that keep
-the vocabulary off the cheese, and they are load bearing rather than taste:
+flips, and one 54x50 target beats three cramped segments.
+
+**That covers the things you PRESS. Three more cover the things you SET**, and
+they were added because a rounded grey pill beside a machined footswitch is
+exactly what gives away that the gear is a costume. A checkbox is an indicator
+LED (`.led-check`): the meaning already matched, since an LED means "this is
+on" and so does a ticked filter. A `<select>` is the plate a rotary switch is
+mounted on (`.rotary`), NOT a fake knob, because the element opens the
+platform's own picker and a knob you cannot actually turn is a worse control
+than an honest plate with a real menu behind it. A text field is routed INTO
+the panel (`.plate`), which is what an input jack or a display window on a
+pedal is, with the caret in LED green because the caret is the live thing.
+
+**Every one of them keeps its native element.** `appearance: none` repaints a
+real `<input>` and a real `<select>`; it does not replace them with divs. The
+keyboard, focus, the mobile picker and the screen reader all still work because
+they are still the same controls, and `:focus-visible` keeps its own outline
+rather than inheriting the resting look.
+
+**`.rotary`'s ink is a fixed `#f2f5f8`, not `var(--text)`, and that is the
+metal rule biting.** The plate is metal, metal is the same in both themes on
+purpose, so ink that flipped with the theme would put near-black lettering on a
+dark blue plate on paper. `.stomp` fixes its `--stomp-ink` for the same reason.
+`.led-check` and `.plate` DO carry a light-theme half: an unlit LED is dark on
+any panel so only its bezel changes, and a hole cut in pale paper is pale.
+
+The rules that keep the vocabulary off the cheese, and they are load bearing
+rather than taste:
 
 - the blue is deep and saturated rather than candy-coated; the drab ground is
   what lets the chrome edge and the LED read at all
