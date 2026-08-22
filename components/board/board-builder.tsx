@@ -1,10 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { ArrowLeftRight, Plus, Share2, ShoppingCart, X } from "lucide-react"
+import { ArrowLeftRight, Plus, Rotate3d, Share2, ShoppingCart, X } from "lucide-react"
 import { Stomp } from "@/components/ui/stomp"
 import { PedalEnclosure } from "@/components/board/pedal-enclosure"
 import { AttendantPanel } from "@/components/board/attendant-panel"
+import { PedalInspector } from "@/components/board/pedal-inspector"
 import {
   effectTypeOf,
   itemFromCatalog,
@@ -64,6 +65,10 @@ export function BoardBuilder({
     null,
   )
   const [copied, setCopied] = useState(false)
+  /** Which pedal has been picked up off the board, if any. Stored as a KEY
+   *  rather than the item, so it cannot go stale when the item is toggled or
+   *  swapped underneath it. */
+  const [inspecting, setInspecting] = useState<string | null>(null)
 
   /* Open whatever was in the link, once. Read off window rather than through
      useSearchParams: the hook opts the whole route into dynamic rendering, and
@@ -85,6 +90,10 @@ export function BoardBuilder({
   }, [items])
 
   const ordered = useMemo(() => orderBoard(items), [items])
+
+  /* Resolved from the live board every render, so a pedal removed or swapped
+     while its panel is open takes the panel with it. */
+  const inspectedItem = inspecting ? (ordered.find((i) => i.key === inspecting) ?? null) : null
   const onBoard = useMemo(() => new Set(items.map((i) => i.key)), [items])
   const full = items.length >= MAX_ITEMS
 
@@ -223,22 +232,35 @@ export function BoardBuilder({
                       onRemove={() => remove(item.key)}
                     />
                     {/*
-                      SWAP, on every pedal. This is the control the whole page
-                      is arranged around: the common move is not "remove this"
-                      but "try a different one here".
+                      The two things you do to a pedal that is already on the
+                      board. SWAP is the one the whole page is arranged around,
+                      because the common move is not "remove this" but "try a
+                      different one here"; PICK IT UP takes it off the shelf and
+                      turns it over, which is the other half of being in a shop.
                     */}
-                    <button
-                      type="button"
-                      className="knob knob-sm absolute -bottom-3 left-1/2 -translate-x-1/2 opacity-0 transition-opacity group-hover/pedal:opacity-100 focus-visible:opacity-100"
-                      onClick={() => {
-                        setQuery("")
-                        setPicking({ slot: item.slot, replacing: item.key })
-                      }}
-                      aria-label={`Swap ${item.name} for another ${slotLabel(item.slot).toLowerCase()}`}
-                      title={`Swap for another ${slotLabel(item.slot).toLowerCase()}`}
-                    >
-                      <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
-                    </button>
+                    <div className="absolute -bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 opacity-0 transition-opacity group-hover/pedal:opacity-100 focus-within:opacity-100">
+                      <button
+                        type="button"
+                        className="knob knob-sm"
+                        onClick={() => {
+                          setQuery("")
+                          setPicking({ slot: item.slot, replacing: item.key })
+                        }}
+                        aria-label={`Swap ${item.name} for another ${slotLabel(item.slot).toLowerCase()}`}
+                        title={`Swap for another ${slotLabel(item.slot).toLowerCase()}`}
+                      >
+                        <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        className="knob knob-sm"
+                        onClick={() => setInspecting(item.key)}
+                        aria-label={`Pick up ${item.name} and turn it over`}
+                        title="Pick it up and turn it over"
+                      >
+                        <Rotate3d className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    </div>
                   </div>
                   ))}
                 </div>
@@ -430,6 +452,24 @@ export function BoardBuilder({
       {/*  The attendant                                                     */}
       {/* ------------------------------------------------------------------ */}
       <AttendantPanel items={ordered} />
+
+      {/*
+        The pedal, picked up off the board.
+
+        Keyed on the item so switching from one pedal to another resets the
+        viewer's angle instead of carrying the last one's rotation over, and
+        looked up out of `ordered` so removing a pedal while its panel is open
+        closes the panel rather than leaving a dialog about something that is
+        no longer on the board.
+      */}
+      {inspectedItem ? (
+        <PedalInspector
+          key={inspectedItem.key}
+          item={inspectedItem}
+          commerce={commerce[inspectedItem.key]}
+          onClose={() => setInspecting(null)}
+        />
+      ) : null}
     </div>
   )
 }

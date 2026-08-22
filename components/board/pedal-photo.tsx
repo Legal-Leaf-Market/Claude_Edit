@@ -1,18 +1,24 @@
 "use client"
 
-import Image from "next/image"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 
 /**
  * A catalogue pedal's photo, with a drawn enclosure standing in when there
  * isn't one.
  *
- * WHY THIS IS A CLIENT COMPONENT for what is otherwise a static image. The
- * URLs come from another service over HTTP, and a merchant deleting a product
- * photo is an ordinary thing that happens without anybody here noticing. A
- * bare next/image renders a broken-image glyph in that case, which looks worse
- * on a shelf than no photo at all, so onError swaps in the fallback. That
- * needs a state hook, and a hook needs a client component.
+ * A PLAIN <img>, NOT next/image, AND THAT IS THE BUG FIX RATHER THAN A
+ * PREFERENCE. This used to render through the optimizer, whose allowlist in
+ * next.config.mjs held eBay and Reverb only. Every product photo in the live
+ * catalogue is on cdn.shopify.com, so the optimizer answered 400
+ * INVALID_IMAGE_OPTIMIZE_REQUEST for the whole shelf, onError fired, and the
+ * board drew the fallback enclosure for every pedal on it. Nothing threw and
+ * no test failed: it looked exactly like a catalogue with no photographs.
+ *
+ * The hosts are allowlisted now, but that is the smaller half. A list that has
+ * to grow every time a merchant is added cannot be what decides whether a
+ * picture appears, because the failure is silent and the next merchant will
+ * reintroduce it. So this takes the same route components/listing-image.tsx
+ * always did, and the optimizer is a bonus rather than a dependency.
  *
  * OBJECT-CONTAIN, NEVER COVER. These are cut-out product shots at wildly
  * different aspect ratios from a dozen different storefronts. Cropping them to
@@ -21,20 +27,20 @@ import { useState } from "react"
  */
 export function PedalPhoto({ src, alt }: { src: string | null; alt: string }) {
   const [failed, setFailed] = useState(false)
+  const checkAlreadyFailed = useAlreadyFailed(setFailed)
 
   return (
     <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[var(--radius-md)] bg-[var(--chip)]">
       {src && !failed ? (
-        <Image
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          ref={checkAlreadyFailed}
           src={src}
           alt={alt}
-          fill
-          /* Three across at the widest, two on a tablet, one on a phone. Told
-             to the optimizer so it does not ship a 1500px product shot to a
-             card that is never wider than a third of a 1400px shell. */
-          sizes="(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 90vw"
-          className="object-contain p-3 transition-transform duration-200 group-hover:scale-[1.03]"
+          loading="lazy"
+          decoding="async"
           onError={() => setFailed(true)}
+          className="absolute inset-0 h-full w-full object-contain p-3 transition-transform duration-200 group-hover:scale-[1.03]"
         />
       ) : (
         <EnclosureGlyph />
@@ -47,24 +53,26 @@ export function PedalPhoto({ src, alt }: { src: string | null; alt: string }) {
  * The same photo at parts-bin size.
  *
  * A separate component rather than a size prop on the one above, because the
- * two want different things: the card gets next/image and its optimizer,
- * which is worth it for a 4:3 panel, and a 36px chip does not. What they DO
- * share is the fallback, which is the part that matters: a bin of forty
- * broken-image glyphs is worse than a bin of forty drawn enclosures.
+ * two want different padding and rounding. What they share is the part that
+ * matters: the fallback, because a bin of forty broken-image glyphs is worse
+ * than a bin of forty drawn enclosures.
  */
 export function PedalThumb({ src, alt }: { src: string | null; alt: string }) {
   const [failed, setFailed] = useState(false)
+  const checkAlreadyFailed = useAlreadyFailed(setFailed)
 
   return (
     <span className="flex h-9 w-9 flex-none items-center justify-center overflow-hidden rounded-[6px] bg-[var(--chip)]">
       {src && !failed ? (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
+          ref={checkAlreadyFailed}
           src={src}
           alt={alt}
           loading="lazy"
-          className="h-full w-full object-contain p-0.5"
+          decoding="async"
           onError={() => setFailed(true)}
+          className="h-full w-full object-contain p-0.5"
         />
       ) : (
         <EnclosureGlyph />
@@ -74,11 +82,32 @@ export function PedalThumb({ src, alt }: { src: string | null; alt: string }) {
 }
 
 /**
+ * onError alone is not enough, and this is lifted from listing-image.tsx
+ * rather than reinvented.
+ *
+ * On a server-rendered page the browser starts fetching images from the HTML
+ * it was served, so a dead URL can fail BEFORE React hydrates. The error event
+ * fires with no listener attached and is lost, leaving an empty box that never
+ * falls back. Expired marketplace CDN URLs make that the common case here, not
+ * an edge case. This ref runs at attach time and asks the element whether it
+ * has already finished loading with no intrinsic width, which is what a failed
+ * image looks like after the fact.
+ */
+function useAlreadyFailed(setFailed: (v: boolean) => void) {
+  return useCallback(
+    (node: HTMLImageElement | null) => {
+      if (node?.complete && node.naturalWidth === 0) setFailed(true)
+    },
+    [setFailed],
+  )
+}
+
+/**
  * The stand-in: this site's own enclosure, drawn rather than photographed.
  *
  * Deliberately quiet. It is saying "no photo", not competing with the pedals
  * either side of it that do have one, so it sits at low opacity in the line
- * colour rather than in brass.
+ * colour rather than in the accent.
  */
 function EnclosureGlyph() {
   return (

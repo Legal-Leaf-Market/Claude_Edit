@@ -1,7 +1,6 @@
 "use client"
 
-import Image from "next/image"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import type { BoardItem } from "@/lib/board/model"
 import { SLOT_BY_ID } from "@/lib/stompbox/chain"
 
@@ -40,6 +39,13 @@ export function PedalEnclosure({
 }) {
   const [photoFailed, setPhotoFailed] = useState(false)
   const showPhoto = Boolean(item.imageUrl) && !photoFailed
+
+  /* A dead URL can finish failing before React hydrates, so onError alone
+     misses it and the face stays empty instead of falling back. Same check,
+     and the same reason, as components/listing-image.tsx. */
+  const checkAlreadyFailed = useCallback((node: HTMLImageElement | null) => {
+    if (node?.complete && node.naturalWidth === 0) setPhotoFailed(true)
+  }, [])
   const slot = SLOT_BY_ID[item.slot]
 
   return (
@@ -70,12 +76,20 @@ export function PedalEnclosure({
 
         <span className="enclosure-face">
           {showPhoto ? (
-            <Image
+            /* A plain <img>, not next/image. The optimizer's allowlist held
+               eBay and Reverb while the whole live catalogue is on
+               cdn.shopify.com, so it 400d every photo and this face drew the
+               silkscreen fallback for every pedal on the board. The hosts are
+               allowlisted now, but a list that grows per merchant must not be
+               what decides whether a picture appears. */
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              ref={checkAlreadyFailed}
               src={item.imageUrl as string}
               alt=""
-              fill
-              sizes="140px"
-              className="object-contain p-1.5"
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-contain p-1.5"
               onError={() => setPhotoFailed(true)}
             />
           ) : (
