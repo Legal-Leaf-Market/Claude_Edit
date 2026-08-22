@@ -1028,54 +1028,51 @@ under the 4.5:1 a price or a sentence needs. Anything printing a price or
 accent-coloured body text uses `--money` and `--accent-text`, never `--chrome`
 or `--sage`, or it reads in one theme and vanishes in the other.
 
-**THE PEDAL YOU CAN PICK UP IS REAL GEOMETRY, AND IT IS STILL DOM.**
-`components/board/pedal-3d.tsx` builds an actual solid: six faces around one
-origin in `preserve-3d`, knobs and a footswitch as extruded cylinders standing
-proud of the top, jacks cut into the sides, a base plate with four feet
-underneath. Drag it, or use the arrow keys, and the far faces go away because
-they are actually facing away. It rests at a three-quarter view and never spins
-at idle, which is the same rule as everything else here.
+**THE PEDAL YOU CAN PICK UP IS A REAL THREE.JS SCENE.**
+`components/board/pedal-viewer-3d.tsx`, driven by
+`lib/board/pedal-models.ts`. It replaced a version built from divs in
+`preserve-3d`, which was a genuine solid and still read as a diagram: a
+painted gradient cannot do a specular highlight travelling across a curved
+knob, and that highlight is most of what makes an object look real. The old
+one is DELETED rather than kept beside the new one, because two renderers for
+one concept is section 7's rule broken and the dead one is the one that
+drifts.
 
-**Its geometry is DATA, in `lib/board/enclosure-3d.ts`, and it is under test.**
-Millimetres at life size (a 1590B is 111.5 x 59.5 x 31), knob count per family,
-one scale factor applied at the end. `tests/board/enclosure-3d.test.ts` holds
-the claims that only show up in a screenshot otherwise: that two knobs in a row
-never overlap (the first draft spaced three knobs 15.75mm apart and made them
-18mm wide, and the row rendered as one lump), that the silkscreen never lands
-under the footswitch, and that no tint reaches for `--signal`.
+**WHY NOT A GAME ENGINE, given the owner offered.** The canvas has to sit in a
+dialog on a page whose DOM board, `/go` links, indexability and screen-reader
+path all survive untouched. three.js is about 150KB and mounts inside the
+existing React tree; Godot would ship tens of megabytes of WASM and its own
+export pipeline for the same job. Godot stays reserved for the separate rig
+room below, where physics and sound would actually earn it.
 
-**It is PROCEDURAL AND SAYS SO ON ITSELF.** There is no legitimate source of
-per-product 3D models for a catalogue this size and hand-modelling does not
-scale past one, so the box is derived from the slot and the panel states in
-words that it is a representative enclosure rather than a likeness, with the
-real product photograph beside it when there is one. That sentence is not
-decoration: passing a generated box off as a scan of somebody's actual pedal is
-the same act as publishing a market price from two listings.
+**THE CANVAS EXISTS ONLY INSIDE THE DIALOG, and that is what keeps section
+16's four guarantees.** The row of pedals is real DOM buttons, the outbound
+link is an anchor, and the renderer is behind a `dynamic(..., { ssr: false })`
+so a shopper who never picks a pedal up never downloads it.
 
-**NOT EVERY PEDAL IS A BOX. A wah and a volume pedal are TREADLES**, and the
-spec carries a `shape` for it: a shallow chassis, two FIXED side cheeks tall at
-the heel, and a plate that rocks between them about a real axle, toe up because
-that is how they are sprung. No knobs at all, because the only adjustment is
-the angle of your foot. `KNOBS_BY_SLOT` had said as much about volume pedals in
-a comment for a while, in a file that went on drawing them with a footswitch.
+**THE NAMED PEDALS ARE MEASURED; EVERYTHING ELSE IS DERIVED AND SAYS SO.**
+`lib/board/pedal-models.ts` carries one hand-authored entry per pedal worth
+modelling, in millimetres off the real thing. A Boss compact is the reason the
+file exists: it is not a 1590B with different paint but its own casting, 73mm
+wide, with the knobs on a raised rear shelf and a HINGED TREAD PLATE over the
+front two thirds, held by a thumbscrew at the toe. It also has no round
+footswitch at all, because the plate is the switch. Get that wrong and no
+guitarist believes the picture. Anything with no entry falls back to the
+slot-derived generic through `genericModel()`, which goes through the same
+renderer and states in its own words that it is not this pedal.
 
-**WHICH ONES ARE TREADLES IS A NAME MATCH, SO IT IS AN ALLOWLIST.** A volume
-pedal always is, by definition. A filter only is when its name says wah, and
-`NOT_TREADLE_NAMES` is checked first because an auto-wah, an envelope filter
-and a "dynamic wah" all carry the word and are all boxes with knobs. Same
-discipline, and the same reason, as `matchGuideEntry` and `creditsForGear`:
-unsure falls back to the box, because a box is the generic and a treadle is a
-specific claim.
+**THE SILKSCREEN IS SET IN THE SITE'S OWN TYPE, NEVER A REDRAWN LOGO.** Naming
+the product is what a parts list does and what every merchant photograph on
+this site already does; reproducing a brand's mark as artwork is a different
+act, and only one of the two is needed to say which pedal this is.
 
-**EVERY OBJECT IS SCALED TO THE SAME FRAME, and the panel prints the real
-millimetres because of it.** One fixed millimetres-to-pixels factor cannot
-serve both a 254mm wah and a 111.5mm 1590B; fitting each to the frame loses the
-true relative size, so the footprint is stated in words rather than implied by
-pixels.
-
-The label still matters, because a generic is still sometimes wrong about a
-specific pedal: the filter slot covers envelope filters that really are boxes,
-and the treadle covers wahs that differ from a GCB-95.
+**A TEXTURE HAS TO KNOW WHICH FACE IT IS FOR.** The decal is mapped over the
+plane it is painted on, not over the pedal: the first pass mapped a DS-1's
+full 129mm and painted the result onto its 52mm rear shelf, so every legend
+arrived squashed into a third of its width. The same constants size the plane
+and the mapping (`DECAL_W`, `DECAL_D`) so the two cannot disagree, and they
+are short of the edges because the shell's corners are rounded and a
+full-size square plane pokes its corners out as four bright tabs.
 
 **Godot is on the table for one thing only.** A separate 3D "rig room" (cables
 that hang, footswitches you stomp, knobs you hear) is a legitimate toy and a
@@ -1202,24 +1199,20 @@ engine.
   server, and be reachable by a screen reader (section 16). CSS 3D on real
   DOM elements is fine and keeps all four, and the board uses it: a canvas
   keeps none of them.
-- Do NOT set an `overflow` other than `visible` anywhere inside the 3D pedal's
-  subtree. It makes that element a grouping element, which forces
-  `transform-style: flat` and silently collapses the solid back into a picture
-  of a solid. The dialog scrolls on `.p3d-panel`, outside the geometry.
-- Do NOT assume the browser depth-sorts the 3D pedal's faces. IT PAINTS THEM IN
-  DOM ORDER. That is why the treadle emits its far cheek, then the plate, then
-  the near cheek, ordered from the current yaw: with the cheeks written first
-  the plate drew straight through the wall in front of it at both side-on
-  views. Three suspects were ruled out by A/B render before the real cause was
-  found (a nested pivot element, a `clip-path`, and a `filter`), so measure
-  rather than reason about this one. Anything else added to that subtree that
-  can occlude has to be ordered the same way.
-- Do NOT put a `clip-path` or a `filter` on anything in the 3D pedal that has
-  3D children. Both group an element exactly as `overflow` does. The cheeks'
-  trapezoid is an SVG polygon and their shading is a second polygon for this
-  reason, not for tidiness.
-- Do NOT let the 3D pedal claim to be the actual product. It is generated from
-  the slot, the panel says so, and the photograph beside it is the real one.
+- Do NOT reintroduce a second pedal renderer. There is one, in three.js, and
+  it serves both the measured models and the derived generic; the CSS
+  `preserve-3d` version was deleted for exactly this reason (section 16).
+- Do NOT render a canvas anywhere but inside the pick-it-up dialog. The board
+  itself is DOM buttons and an anchor, which is what keeps the page indexable,
+  tabbable, screen-reader reachable and able to carry `/go`.
+- Do NOT guess a pedal's dimensions into `lib/board/pedal-models.ts`. It is
+  worth having only because it is measurements; an eyeballed entry is the
+  generic with extra steps, and the generic is already honest about itself.
+- Do NOT draw a brand's logo on a model. The product name in the site's own
+  type says which pedal it is; a redrawn mark is a different act.
+- Do NOT let a model claim to be the actual product. A measured one says what
+  its shape tells you, a derived one says plainly that it is not this pedal,
+  and the photograph beside it is the real one.
 - Do NOT put the board's `perspective` on `.deck`. `.deck` is the horizontal
   scroller, and any overflow other than visible makes an element a grouping
   element, which forces `transform-style: flat` and silently collapses every
