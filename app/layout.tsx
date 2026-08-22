@@ -198,7 +198,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             <SiteFooter />
           </CartProvider>
         )}
-        {process.env.NODE_ENV === "production" && <Analytics />}
+        <Analytics />
       </body>
     </html>
   )
