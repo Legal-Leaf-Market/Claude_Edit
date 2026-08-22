@@ -28,7 +28,9 @@ describe("inferEffectType", () => {
     expect(inferEffectType("Dunlop", "Cry Baby Wah")).toBe("filter")
     expect(inferEffectType("MXR", "Dyna Comp")).toBe("compressor")
     expect(inferEffectType("Ibanez", "TS9 Tube Screamer")).toBe("drive")
-    expect(inferEffectType("Electro-Harmonix", "Big Muff Pi")).toBe("drive")
+    // Fuzz, not drive. The two shared a slot until the planner adopted the
+    // guide's order; a Big Muff is the canonical thing that moved.
+    expect(inferEffectType("Electro-Harmonix", "Big Muff Pi")).toBe("fuzz")
     expect(inferEffectType("MXR", "Phase 90")).toBe("modulation")
     expect(inferEffectType("Boss", "DD-3 Digital Delay")).toBe("delay")
     expect(inferEffectType("Strymon", "Blue Sky Reverb")).toBe("reverb")
@@ -40,8 +42,9 @@ describe("inferEffectType", () => {
    * The ordering of TYPE_PATTERNS is load bearing and easy to break by adding
    * a new pattern in the wrong place. "Deluxe Memory Man" is the canonical
    * trap: it is a delay whose name contains no word a naive delay pattern
-   * would match, while "Big Muff" is a drive that a loose modulation pattern
-   * could steal if "muff" ever ended up after something broad.
+   * would match, while "Big Muff" is a fuzz that a loose modulation pattern
+   * could steal if "muff" ever ended up after something broad, and that the
+   * drive pattern itself would steal if fuzz did not come first.
    */
   it("resolves names that several patterns could claim", () => {
     expect(inferEffectType("Electro-Harmonix", "Deluxe Memory Man")).toBe("delay")
@@ -76,8 +79,11 @@ describe("EFFECTS", () => {
   })
 
   it("orders the canonical chain the way every source describes it", () => {
-    const canonical = ["tuner", "filter", "compressor", "drive"]
-    expect(EFFECT_ORDER.slice(0, 4)).toEqual(canonical)
+    // Fuzz sits between the compressor and the rest of the gain now, which is
+    // the guide's order and the one tests/stompbox/chain-agreement.test.ts
+    // holds both files to.
+    const canonical = ["tuner", "filter", "compressor", "fuzz", "drive"]
+    expect(EFFECT_ORDER.slice(0, 5)).toEqual(canonical)
     expect(EFFECT_ORDER.indexOf("delay")).toBeLessThan(EFFECT_ORDER.indexOf("reverb"))
     expect(EFFECT_ORDER.indexOf("modulation")).toBeLessThan(EFFECT_ORDER.indexOf("delay"))
     expect(EFFECT_ORDER.at(-1)).toBe("utility")

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next"
+import { headers } from "next/headers"
 import { sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { env } from "@/lib/env"
@@ -7,6 +8,10 @@ import { PARTNERS } from "@/lib/partners"
 import { STORES } from "@/lib/stores"
 import { BOARDS } from "@/lib/boards"
 import { RIGS } from "@/lib/rigs"
+import { isStompboxHost } from "@/lib/stompbox/host"
+import { STATIC_ROUTES as STOMPBOX_ROUTES } from "@/lib/stompbox/nav"
+import { PEDALS } from "@/lib/stompbox/pedals"
+import { SITE_URL as STOMPBOX_URL } from "@/lib/stompbox/site"
 
 /**
  * Sitemap.
@@ -19,7 +24,39 @@ import { RIGS } from "@/lib/rigs"
 export const revalidate = 3600
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  /*
+   * THE GUIDE'S OWN SITEMAP, on the guide's own domain. Same reasoning as
+   * robots.txt: the file exists only at a host root and is asked for by a
+   * fixed name, so middleware leaves it alone and the host is read here.
+   *
+   * Built from the nav tree and the dataset rather than hand-listed, so a page
+   * added to one and forgotten in the other cannot happen.
+   */
+  if (isStompboxHost((await headers()).get("host"))) {
+    return [
+      ...STOMPBOX_ROUTES.map((route) => ({
+        url: `${STOMPBOX_URL}${route === "/" ? "" : route}`,
+        changeFrequency: "monthly" as const,
+        priority: route === "/" ? 1 : 0.8,
+      })),
+      ...PEDALS.map((pedal) => ({
+        url: `${STOMPBOX_URL}/pedals/${pedal.slug}`,
+        changeFrequency: "yearly" as const,
+        priority: 0.6,
+      })),
+    ]
+  }
+
   const base = env.site.url.replace(/\/+$/, "")
+
+  /*
+   * gearavail.com/stompbox/* IS DELIBERATELY NOT LISTED HERE, and it is not an
+   * oversight. Every one of those pages declares stompbox.world as its
+   * canonical (app/stompbox/layout.tsx), and a sitemap is a list of URLs you
+   * are asking to have indexed: putting non-canonical mirrors in it asks a
+   * crawler to index pages that then tell it to go somewhere else. The section
+   * is reachable from the nav on every page, which is how it should be found.
+   */
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${base}/`, changeFrequency: "hourly", priority: 1 },

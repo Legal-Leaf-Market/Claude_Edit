@@ -86,6 +86,13 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
         <i />
         <i />
       </span>
+      {/*
+        The hardware, bottom up: the hex nut torqued flat to the panel, the
+        threaded bushing rising out of it, then the bat handle that pivots.
+        Drawn in that order so the handle sits in front of the collar.
+      */}
+      <span className="lp-nut" aria-hidden="true" />
+      <span className="lp-bushing" aria-hidden="true" />
       <span className="lp-arm" aria-hidden="true">
         <span className="lp-tip" />
       </span>

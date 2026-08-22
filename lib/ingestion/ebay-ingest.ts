@@ -148,6 +148,29 @@ function preflight(): string | null {
   if (env.ebay.categoryIds.length === 0) {
     return "EBAY_CATEGORY_IDS is empty; nothing to ingest."
   }
+  /*
+   * CONFIGURED BUT STILL POINTED AT SANDBOX, which is a state worth shouting
+   * about now that these jobs run on a schedule rather than by hand.
+   *
+   * It is NOT a skip: sandbox is a legitimate place to exercise the parser, and
+   * blocking it would make the feed untestable before EPN approval lands. It is
+   * a warning because the failure it produces is silent in the worst way. A
+   * token is set, so the job runs; the base URL still defaults to sandbox, so
+   * it pulls a catalogue nobody can buy from; and the run reports "ok" with
+   * almost nothing in it. From the outside that is indistinguishable from a
+   * quiet market, which is the exact confusion CLAUDE.md section 10 says the
+   * freshness column exists to prevent.
+   *
+   * /api/health reports the same thing as `ebay: "sandbox"`, but health is
+   * something you go and look at. This lands in the logs of the job itself.
+   */
+  if (env.ebay.isSandbox) {
+    console.warn(
+      "[ebay] EBAY_OAUTH_TOKEN is set but EBAY_FEED_BASE_URL is still the SANDBOX default. " +
+        "This run will pull sandbox data and report ok with nothing usable in it. " +
+        "Set EBAY_FEED_BASE_URL per environment once a production keyset is approved.",
+    )
+  }
   return null
 }
 

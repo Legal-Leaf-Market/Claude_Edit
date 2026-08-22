@@ -4,6 +4,7 @@ import { BOARDS } from "@/lib/boards"
 import { indexableCategories } from "@/lib/categories"
 import { PARTNERS } from "@/lib/partners"
 import { RIGS } from "@/lib/rigs"
+import { STATIC_ROUTES as STOMPBOX_NAV_ROUTES } from "@/lib/stompbox/nav"
 import { SORT_OPTIONS } from "@/lib/search/types"
 import { STORES } from "@/lib/stores"
 
@@ -41,9 +42,24 @@ const STATIC_ROUTES = new Set([
   "/unsubscribe",
 ])
 
+/*
+ * The guide's routes, as the aggregator addresses them.
+ *
+ * Derived from the guide's own nav tree rather than typed out again, which is
+ * the same rule this file exists to enforce one level down: `lib/stompbox/nav.ts`
+ * is THE list on stompbox.world, and every route it names is served here under
+ * `/stompbox` by the host rewrite in middleware.ts. A page added there and
+ * linked to from the aggregator's mega menu therefore cannot 404 here without
+ * this set noticing.
+ */
+const STOMPBOX_ROUTES = new Set(
+  STOMPBOX_NAV_ROUTES.map((route) => (route === "/" ? "/stompbox" : `/stompbox${route}`)),
+)
+
 function isKnownRoute(href: string): boolean {
   const path = href.split("?")[0].split("#")[0]
   if (STATIC_ROUTES.has(path)) return true
+  if (STOMPBOX_ROUTES.has(path)) return true
   if (indexableCategories().some((c) => path === `/used/${c.slug}`)) return true
   if (STORES.some((s) => path === `/shop/${s.slug}`)) return true
   if (BOARDS.some((b) => path === `/boards/${b.slug}`)) return true

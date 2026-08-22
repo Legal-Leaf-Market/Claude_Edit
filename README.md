@@ -175,12 +175,43 @@ only, and the footer says so.
 
 ---
 
+## Two domains, one deployment
+
+This repo builds one Next app that serves two sites:
+
+| | |
+|---|---|
+| `gearavail.com` | the aggregator |
+| `gearavail.com/stompbox/*` | the pedal guide, as a section |
+| `stompbox.world` | the same guide, standing alone |
+
+`middleware.ts` rewrites the stompbox host's `/:path*` onto `/stompbox/:path*`,
+and `lib/stompbox/host.ts` decides every difference between the two: which
+chrome renders, where the canonical points (always stompbox.world), and what
+prefix internal links need. `STOMPBOX.md` is the guide's own operating notes and
+section 20 of `CLAUDE.md` covers the routing.
+
+To see the standalone shape locally, point `stompbox.world` at `127.0.0.1` in
+`/etc/hosts`, or send the header directly:
+
+```bash
+curl -s -H "Host: stompbox.world" localhost:3000/pedals
+```
+
+---
+
 ## Deployment
 
 Vercel is the assumed target, matching the sister sites. Set the environment
 variables from `.env.example`, point `DATABASE_URL` at Neon or Supabase, and
 the cron entries in `vercel.json` handle ingestion. Add `REDIS_URL` and run
 `npm run worker` somewhere long-lived if you want queued ingestion instead.
+
+**Attach both domains to the one Vercel project.** The guide used to be a
+separate project (`stompbox-world`) building from the same repo; it is not any
+more, and that project plus the deploy webhook that called its
+`/api/revalidate` both need deleting by hand. Nothing in this repo can do it,
+and nothing here will notice if it is not done.
 
 Before going live, two things gate real data: the eBay Partner Network
 production application (the slowest item in the project by a wide margin) and

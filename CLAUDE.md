@@ -237,6 +237,7 @@ app/
   rigs/                     Artist rigs, and the records each is documented on
   pedalboard/               The rig builder (chain check, power, live pricing)
   alerts/, sign-in/, sign-up/
+  stompbox/               THE GUIDE. /stompbox/* here, / on stompbox.world (section 20)
   api/
     health                  Freshness and config, read this first when confused
     ask                     The Groq assistant. 503s when unconfigured
@@ -244,8 +245,11 @@ app/
     auth/[...all]           Better Auth
     cron/*                  Ingest per source, refresh-deals, weekly-digest.
                             All fail closed on CRON_SECRET
-    catalog/pedals          The pedal shelf published to stompbox.world (section 20)
+    catalog/pedals          The pedal shelf, published (section 20)
+middleware.ts             Rewrites the stompbox.world host onto /stompbox (section 20)
 lib/
+  stompbox/host.ts          WHICH SITE a request is for. Every host difference
+  stompbox/                 The guide's dataset, chain, catalogue projection
   env.ts                    Every integration exposes isConfigured; nothing throws
   nav.ts                    THE nav tree. Header, mobile sheet and footer all read it
   theme.ts                  Light/dark/system, and the no-flash init script
@@ -264,6 +268,7 @@ lib/
   canonical/resolve.ts      Four-tier entity resolution (section 4)
   canonical/model-parse.ts  Brand/model/category from keyword-soup titles
   catalog/live-models.ts    ONE definition of what a category has in stock (section 20)
+  pedalboard/chain.ts       The planner's chain. Its ORDER is the guide's (section 20)
   deals/pricing.ts          Rolling median, deal threshold
   search/                   Typesense with a real Postgres fallback (section 6)
   queue/                    BullMQ; the OTHER way to run ingestion (section 7)
@@ -595,6 +600,9 @@ process, and the accident is far likelier.
 | `ADMIN_PASSCODE` | `/admin/operating-model`. Unset = nobody can sign in, ever. See section 12. |
 | `INSTAGRAM_HANDLE` / `INSTAGRAM_POST_URLS` | Homepage and footer follow strip. Handle defaults to `stomp_box_world`, which is a DIFFERENT account from `stompbox.world`: the older grid matched the domain, this is the one being populated, and they read alike enough to get merged by anyone tidying up. Unset post URLs render a plain follow callout instead of embeds. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | "Continue with Google" on sign-in/sign-up. Unset means email and password only. |
+| `NEXT_PUBLIC_STOMPBOX_URL` | Canonical origin of the GUIDE (section 20), defaulting to `https://stompbox.world`. **Renamed out of `NEXT_PUBLIC_SITE_URL` deliberately**: with one deployment serving two domains, "the site URL" is ambiguous and pointing it at gearavail.com is the obvious thing to do to a variable with that name. That would repoint every canonical tag on the guide at the aggregator, and nothing would fail. `SITE_URL` is the aggregator's origin and is a different variable. |
+| `NEXT_PUBLIC_STOMPBOX_HOST` | One extra Host that serves the STANDALONE guide rather than the aggregator. `stompbox.world` and `www.stompbox.world` are always recognised; this exists so a Vercel preview URL can be pointed at the standalone shape without editing `lib/stompbox/host.ts`. Unset is normal. |
+| `GEAR_AVAIL_URL` | Origin the guide uses for absolute links back into the catalogue. The guide is served on a different domain, so `/gear/[slug]` cannot be relative there. Falls back to `SITE_URL`, then to production. |
 | `YOUTUBE_API_KEY` | Anderton's TV metadata and comments, via the YouTube Data API v3. The reasoning, including why transcripts are off limits, is in the `youtube` block of `lib/env.ts`. Unset means the reader no-ops. |
 
 | `IMPACT_ACCOUNT_SID` / `IMPACT_AUTH_TOKEN` | Impact's partner REST API (`api.impact.com/Mediapartners/{sid}/Catalogs/{id}/Items`, HTTP Basic, JSON, paginated), which is the OTHER way into Anderton's and the ONLY way into the other seven merchants. Both credentials are on Impact's API settings page and both are shared by every advertiser on the account. **Prefer this over the FTP block where it works**: ordinary HTTPS with no control connection or passive ports, and a slice is a page rather than a re-download of the whole catalogue per chunk. |
@@ -849,7 +857,18 @@ its Instagram account is the front door for most people who will ever see
 either site, and the aggregator now wears that design rather than its own. So
 neither "match the hemp sites" nor "the old comments say grey and brass" is a
 reason to change any of this; the reasons are on the record here and in
-`stompbox.world/CLAUDE.md` section 5, and the two files describe one system.
+`STOMPBOX.md` section 5.
+
+**THE TWO FILES NOW DESCRIBE ONE SYSTEM BECAUSE THERE IS ONE STYLESHEET.** They
+described one system by agreement before, in two `globals.css` files that had to
+be kept in step by hand. The merge (section 20) collapsed them, and the notable
+thing is how little there was to reconcile: every token was already identical,
+value for value, and of the twenty-one shared component classes exactly one
+differed behaviourally. That one is `.readouts`, which the guide caps at the
+prose measure because its hero is left aligned and the aggregator does not
+because its hero is not, and it is kept per-site under `[data-site="stompbox"]`
+rather than resolved, because both are right about their own page. Everything
+else that looked like a difference was a reworded comment.
 
 **What the system is:**
 
@@ -1064,7 +1083,22 @@ engine.
   the call sites instead, the way the move to blue did.
 - Do NOT port the pedalboard planner into a game engine. It has to stay
   indexable, keep `/go` in the DOM, share the TypeScript engines with the
-  server, and be reachable by a screen reader (section 16).
+  server, and be reachable by a screen reader (section 16). CSS 3D on real
+  DOM elements is fine and keeps all four, and the board uses it: a canvas
+  keeps none of them.
+- Do NOT put the board's `perspective` on `.deck`. `.deck` is the horizontal
+  scroller, and any overflow other than visible makes an element a grouping
+  element, which forces `transform-style: flat` and silently collapses every
+  3D child into the plane. The camera lives on `.deck-stage` inside it.
+- Do NOT let `components/board` or `lib/board` fetch anything. It is ONE
+  builder mounted on both domains, and commerce reaches it as a prop from
+  whichever page rendered it: `/pedalboard` passes prices and `/go` links,
+  `/stompbox/board` passes none. `tests/stompbox/boundary.test.ts` walks that
+  tree for the same reason it walks the guide's.
+- Do NOT widen `matchGuideEntry()` in `lib/board/model.ts`. It is brand-scoped,
+  whole-word and floored at three characters, and a looser match prints a
+  confident paragraph about the WRONG circuit on a page somebody is about to
+  spend money from. Same rule, and the same reason, as `creditsForGear`.
 - Do NOT answer "what is in stock in this category" with a second query. There
   is one, `liveModels()`, and the last time two existed the published shelf
   stocked itself with sold-out gear (section 20).
@@ -1072,6 +1106,29 @@ engine.
   `/api/catalog/pedals`. The medians are ours; the feed rows are not.
 - Do NOT blend the new and used medians into one unlabelled number on the way
   out of this site. Send both, and say which one the headline is.
+- Do NOT import ingestion, admin, affiliate, queue, auth, mail, cart or
+  `lib/db` from anywhere under `app/stompbox`, `components/stompbox` or
+  `lib/stompbox`. `lib/stompbox/catalog.ts` is the one sanctioned crossing, and
+  `tests/stompbox/boundary.test.ts` is all that stands where a separate Vercel
+  project with no credentials used to (section 20).
+- Do NOT republish a per-listing price, a merchant name or a deep link on the
+  guide. It is still a second domain, and a function call redistributes a feed
+  row exactly as much as an HTTP response did (section 20).
+- Do NOT let the guide's signal-chain order and the planner's drift apart. They
+  are two files for a real reason (one carries prose, the other milliamps and a
+  keyword table) and `tests/stompbox/chain-agreement.test.ts` holds their ORDER
+  identical. The guide is canonical; a volume pedal goes before modulation.
+- Do NOT reach for one gain type when a rule means "the gain". Fuzz and drive
+  are separate slots because their positions differ, and `GAIN_TYPES` exists
+  because splitting them silently stopped the planner flagging a delay running
+  into a Big Muff.
+- Do NOT set `NEXT_PUBLIC_STOMPBOX_URL` to gearavail.com. It is the guide's
+  canonical origin, the aggregator's is `SITE_URL`, and the variable was
+  renamed out of `NEXT_PUBLIC_SITE_URL` precisely because one deployment
+  serving two domains makes "the site URL" ambiguous (section 20).
+- Do NOT list `gearavail.com/stompbox/*` in the sitemap. Those pages declare
+  stompbox.world as canonical, and a sitemap is a list of URLs asking to be
+  indexed (section 20).
 - Do NOT point the test suite at a database you care about; it truncates.
 
 ---
@@ -1129,81 +1186,121 @@ a tracker that credits nobody, which is the rule every network here follows.
 
 ---
 
-## 20. The pedal shelf published to stompbox.world
+## 20. stompbox.world: one deployment, two domains
 
-`lib/catalog/live-models.ts`, `/api/catalog/pedals`. The sister site
-(`stompbox.world/`, its own Vercel project in this repo) is a hand-written
-guide to what pedal circuits do, and it now carries the pedal slice of this
-catalogue. It holds no database client and no credential: it reads that one
-endpoint over HTTP and renders it. One connection string, one ingestion path,
-one taxonomy.
+**THE TWO SITES ARE ONE NEXT APP NOW.** They were two Vercel projects building
+from this one repo (`musictime` and `stompbox-world`), and the guide read the
+pedal shelf from `/api/catalog/pedals` over HTTP because it held no database
+client and no credential. That is over. One app serves both domains:
 
-**`/used/effects-pedals` IS THE DEFINITION, and the endpoint used to disagree
-with it.** That page joins `canonical_gear` to ACTIVE listings, so a model with
-nothing live in it is simply not on it. The endpoint ran its own SELECT over
-`canonical_gear` alone and ordered by `price_sample_size`, so it published
-models whose listings had all ended and ranked them ABOVE models a shopper
-could buy. That is not a rounding error: the price sample deliberately counts
-listings that ended inside the last 90 days (section 8), which is right for
-measuring a market and wrong for stocking a shelf, so the staler a model was
-the higher it sorted. The sister site printed the result under "most listed
-first". Both surfaces read `liveModels()` now, and the join is the definition:
-no active listing, no row. Section 7's "never fork the logic", applied to a
-query rather than to a trigger.
+```
+middleware.ts             stompbox.world/:path*  ->  /stompbox/:path*
+lib/stompbox/host.ts      THE host rules. Every difference is decided here
+app/stompbox/             the guide. /stompbox/* on Gear Avail, / on its own domain
+app/stompbox/layout.tsx   standalone chrome vs embedded, and the canonical
+lib/stompbox/             the dataset, the chain, the catalogue projection
+components/stompbox/      the guide's own components
+```
+
+The guide keeps its domain and its identity; Gear Avail carries the same pages
+as a section under `/stompbox`. **A rewrite, not a redirect**, so the reader on
+stompbox.world sees `stompbox.world/pedals` and never the prefix.
+
+**THE CANONICAL IS ALWAYS stompbox.world, ON BOTH HOSTS.** The same pages at two
+URLs is duplicate content unless one is named as home, and the guide is the
+brand with the audience the whole design follows (section 16). So
+`gearavail.com/stompbox/*` is a labelled mirror that declares where the original
+lives, and it is deliberately **not** in this site's sitemap: a sitemap asks for
+URLs to be indexed, and asking for a page that then points elsewhere is asking
+twice for one page. It is reachable from the nav, which is how it should be
+found.
+
+**WHAT THE MERGE DELETED, and it is the reason it happened.** This section used
+to end with a warning that a deploy of this project could ship stale numbers on
+the other domain with nothing in this repository showing it: both projects built
+from the same commit at the same time, the guide prerendered its catalogue page
+by fetching this project's endpoint during its build, and a commit touching both
+raced itself and baked in a response from the deployment being replaced. That
+shipped once and read like a failed deploy rather than a cache. **One deployment
+cannot race itself.** The fetch, its cache tag, `stompbox.world/api/revalidate`
+and the Vercel webhook that called it are all gone. `lib/stompbox/catalog.ts`
+calls `liveModels()` in process.
+
+**Somebody has to delete the `stompbox-world` Vercel project and move the domain
+onto this one.** Nothing in this repo can do it, and until it happens that
+project is still building the old tree from this repo's history and still
+answering on the domain. The webhook that pointed at its `/api/revalidate`
+should go with it.
+
+**WHAT THE CREDENTIAL BOUNDARY BECAME, and it is a real downgrade.** The guide
+could not reach the database because it had no connection string. That was
+physics, and `stompbox.world/CLAUDE.md` stated it as a flat fact. Every
+credential in this process is now in reach of every module in it, so the
+boundary is a rule instead: nothing under `app/stompbox`, `components/stompbox`
+or `lib/stompbox` may import ingestion, admin, affiliate, queue, auth, mail,
+cart or `lib/db`. **`lib/stompbox/catalog.ts` is the ONE sanctioned crossing**
+and `tests/stompbox/boundary.test.ts` walks the tree and fails on any other.
+That test is the whole of what replaced a guarantee, so do not weaken it to make
+an import convenient: project the data through the catalogue module the way the
+pedal shelf is projected.
+
+**`/used/effects-pedals` IS THE DEFINITION.** That page joins `canonical_gear`
+to ACTIVE listings, so a model with nothing live in it is simply not on it. The
+old endpoint ran its own SELECT over `canonical_gear` alone and ordered by
+`price_sample_size`, so it published models whose listings had all ended and
+ranked them ABOVE models a shopper could buy: the price sample deliberately
+counts listings that ended inside the last 90 days (section 8), which is right
+for measuring a market and wrong for stocking a shelf, so the staler a model was
+the higher it sorted, under a heading that said "most listed first". Everything
+reads `liveModels()` now and the join is the definition: no active listing, no
+row. Section 7's "never fork the logic", applied to a query.
 
 **The order is live listing count**, which is what both pages claim it is.
 
-**New and used cross the wire separately**, each with its own sample size, plus
-`marketPriceClass` naming which market the headline number measures. The old
-response was `COALESCE(avg_used, avg_new)` gated on the USED sample size, which
-is section 8 broken twice in one line: it withheld the price of every new-only
-pedal (its used sample is zero), and anything it did publish arrived on a card
-labelled "typical used" whether or not it was. The used-first rule lives in
-`headlineMarket()` and is called, not restated.
+**New and used stay separate**, each with its own sample size, plus
+`marketPriceClass` naming which market the headline measures. The old response
+was `COALESCE(avg_used, avg_new)` gated on the USED sample size, which is section
+8 broken twice in one line: it withheld the price of every new-only pedal, and
+anything it did publish arrived labelled "typical used" whether or not it was.
+The used-first rule lives in `headlineMarket()` and is called, not restated.
 
-**`minSample` is `MIN_SAMPLE_SIZE`, not a number typed into the route.** It
-read 3 while the real floor was 5, and the sister site printed that 3 in a
-sentence explaining its own honesty policy.
+**`minSample` is `MIN_SAMPLE_SIZE`, never a number typed into a route.** It read
+3 while the real floor was 5, and the guide printed that 3 in a sentence
+explaining its own honesty policy.
 
-**The projection is where the redistribution rule is enforced.**
-`liveModels()` returns the cheapest live asking price because this site's own
-pages print it; the endpoint drops it. Merchant names, deep links and
-per-listing prices carry partner terms that differ per feed, and republishing
-them from a second domain is the quiet redistribution those terms restrict. The
-medians are our own aggregate, computed from listings we ingested, and are ours
-to publish. A shopper who wants to buy is sent to `/gear/[slug]`, where the
-attribution and the click accounting already work. There is a test asserting
-the response carries no per-listing price.
+**THE REDISTRIBUTION RULE SURVIVES THE MERGE UNCHANGED, and this is the one most
+likely to be undone by accident now.** `liveModels()` returns the cheapest live
+asking price because this site's own pages print it; the projection in
+`lib/stompbox/catalog.ts` drops it, along with merchant names and deep links.
+The reason was never the transport: those carry partner terms that differ per
+feed, **stompbox.world is still a second domain**, and serving them there is the
+same act whether they arrive over a socket or a function call. A spread of the
+model into the row would silently reintroduce every one of them, which is why
+the test asserts on the KEYS rather than on one field. The medians are our own
+aggregate and are ours to publish. A reader who wants to buy is sent to
+`/gear/[slug]`, where attribution and click accounting already work.
 
-**No region filter, deliberately.** Section 15 hides stores that cannot ship to
-a given shopper, from a geo guess or a cookie. A cached endpoint feeding a
-statically built sister site has neither, so it answers for an UNKNOWN region,
-which section 15 already defines as showing everything. The filtering happens
-when the shopper arrives here.
+**`/api/catalog/pedals` is kept.** Nothing in this repo reads it any more, but it
+is a published endpoint on a live domain and deleting it breaks whatever else
+learned to call it. It answers from the same `liveModels()`.
 
-**Nothing over there may throw.** The endpoint answers 503 with a reason rather
-than 500, and the sister site degrades to the guide it already was and prints
-the reason. A bare 503 reads as "the sister site is down", which is the wrong
-thing to go looking at when the real cause is a query that no longer matches
-the schema, and that confusion has already cost a day once.
+**No region filter on the guide, deliberately.** Section 15 hides stores that
+cannot ship to a given shopper, from a geo guess or a cookie. The guide prints
+medians rather than listings and has no store to hide, so there is nothing to
+filter; section 15 already defines an UNKNOWN region as showing everything. The
+filtering happens when the shopper arrives at a Gear Avail listing.
 
-**A DEPLOY OF THIS PROJECT CAN SHIP STALE NUMBERS ON THE OTHER DOMAIN, and
-nothing in this repository will show it.** Both Vercel projects build from the
-same commit at the same time, and stompbox.world prerenders its catalogue page
-by fetching this endpoint during its build, so a commit that changes both can
-race itself: the sister site's build finishes first and bakes in a response
-from the deployment being replaced. The change that made the endpoint read the
-live shelf shipped exactly that, and the page sat there stating the previous
-version's numbers, which reads like a failed deploy rather than a cache.
+**Nothing on the guide may throw.** A failed catalogue query degrades to the
+guide it already was and prints the reason. A bare error reads as "the site is
+down", which is the wrong thing to go looking at when the real cause is a query
+that no longer matches the schema, and that confusion has already cost a day
+once.
 
-It corrects itself within fifteen minutes, and stompbox.world now also exposes
-`POST /api/revalidate` for Vercel to call when THIS project's production
-deployment succeeds, which closes the window. **No code here implements that,
-and none should.** The caller is Vercel's own webhook, configured once in the
-team dashboard, so Gear Avail still knows nothing about its sister site and the
-dependency keeps running one way. The setup and the reasoning are in
-`stompbox.world/CLAUDE.md` section 2b.
-
-The practical consequence for anyone shipping a change to this endpoint: check
-what stompbox.world is actually rendering afterwards, rather than assuming a
-green deploy means the published slice is current over there.
+**READING THE HOST MAKES THE GUIDE'S PAGES DYNAMIC.** They were statically
+prerendered as their own project. The chrome, the canonical and the link prefix
+all depend on which domain asked, so the subtree renders per request and leans
+on the CDN and each page's own `revalidate` instead. The alternative was two
+copies of every route file, one per chrome, and a duplicated route tree is a far
+more expensive thing to keep honest than a cache miss. Crawlers get fully
+server-rendered HTML either way, so nothing about the SEO argument in section 16
+changes.
