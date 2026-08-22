@@ -574,6 +574,30 @@ Never fork the logic between them. Add work to the job function.
    the number of instruments in `scripts/seed.ts`. If they differ, the resolver
    is splitting or merging and the counts are the fastest way to see it.
 
+**MERGE PULL REQUESTS WITH A MERGE COMMIT, NEVER A SQUASH.** This is a workflow
+rule rather than a taste in history, and it cost three cycles to learn.
+
+Work here happens on ONE long-lived branch that is reused across many changes.
+A squash merge rewrites that branch's commits into a single new commit on
+`main` with no parent link back to them, so the moment it lands the branch and
+`main` share no history at all. The next pull request off the same branch then
+re-proposes the ENTIRE tree as new work: GitHub reported `mergeable_state:
+dirty` and 291 changed files for a diff that was genuinely eleven, and every
+file the two sides had both touched came up as an add/add conflict. It happened
+three times in a row before anybody named the cause.
+
+The recovery, if it happens again: verify `main`'s tree is identical to the
+branch's pre-merge commit (`git diff --stat <that commit> origin/main` must be
+empty), merge `origin/main` back into the branch, resolve every conflict to the
+branch side, and confirm the tree did not move. That is safe ONLY because the
+squash means the two sides hold the same content; do not reach for it as a
+general conflict strategy.
+
+A merge commit keeps the parent link, the branch stays a true ancestor of
+`main`, and the next pull request is clean without any of the above. The repo's
+own default merge method should be set to match, but the setting is not the
+mechanism: whoever calls the merge picks the method, so pick `merge`.
+
 ---
 
 ## 11. Environment variables
@@ -1239,6 +1263,10 @@ engine.
 - Do NOT list `gearavail.com/stompbox/*` in the sitemap. Those pages declare
   stompbox.world as canonical, and a sitemap is a list of URLs asking to be
   indexed (section 20).
+- Do NOT squash-merge a pull request. Work here reuses one long-lived branch,
+  and a squash leaves it sharing no history with `main`, so the next pull
+  request re-proposes the whole tree and conflicts on every file both sides
+  touched. Merge commits, every time (section 10).
 - Do NOT point the test suite at a database you care about; it truncates.
 
 ---
