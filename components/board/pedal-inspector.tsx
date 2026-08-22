@@ -1,8 +1,10 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
+import dynamic from "next/dynamic"
 import { X } from "lucide-react"
-import { Pedal3D } from "@/components/board/pedal-3d"
+import { enclosureSpec } from "@/lib/board/enclosure-3d"
+import { genericModel, modelFor } from "@/lib/board/pedal-models"
 import { remarksForItem } from "@/lib/board/attendant"
 import { slotLabel, type BoardItem, type ItemCommerce } from "@/lib/board/model"
 
@@ -21,6 +23,26 @@ import { slotLabel, type BoardItem, type ItemCommerce } from "@/lib/board/model"
  * than a page: stompbox.world is still a second domain, and a per-listing
  * price is still a feed row.
  */
+/**
+ * WebGL loads only when a pedal is picked up.
+ *
+ * `ssr: false` because three.js has no business running on the server, and
+ * because keeping the canvas behind a dynamic import means the board page
+ * never ships it: the row of pedals is DOM, the outbound link is an anchor,
+ * and a shopper who never opens this dialog never downloads a renderer.
+ */
+const PedalViewer3D = dynamic(
+  () => import("@/components/board/pedal-viewer-3d").then((m) => m.PedalViewer3D),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p3d-loading">
+        <span>Warming up the bench...</span>
+      </div>
+    ),
+  },
+)
+
 export function PedalInspector({
   item,
   commerce,
@@ -44,6 +66,15 @@ export function PedalInspector({
   }, [onClose])
 
   const remarks = remarksForItem(item)
+
+  /*
+   * A MEASURED MODEL IF WE HAVE ONE, THE DERIVED GENERIC OTHERWISE, and both
+   * go through the same renderer. `modelFor` only matches the handful of
+   * pedals somebody has actually measured; everything else is sized from its
+   * slot and says so in its own note.
+   */
+  const model = useMemo(() => modelFor(item) ?? genericModel(item, enclosureSpec(item)), [item])
+  const measured = useMemo(() => modelFor(item) !== null, [item])
 
   return (
     <div className="p3d-scrim">
@@ -77,7 +108,43 @@ export function PedalInspector({
         </div>
 
         <div className="grid gap-5 p-5 lg:grid-cols-[1.15fr_1fr]">
-          <Pedal3D item={item} photoUrl={item.imageUrl} />
+          <div className="p3d">
+            <div className="p3d-stage p3d-stage-gl">
+              <PedalViewer3D model={model} engaged={item.engaged} />
+            </div>
+
+            <p className="p3d-hint">
+              Drag to turn it over. Scroll to move in closer.
+            </p>
+
+            {/*
+              WHICH KIND OF MODEL THIS IS, in words, every time.
+
+              A measured pedal says what its shape tells you; a derived one
+              says plainly that it is not this pedal. The distinction is the
+              same one section 8 makes about a market price: showing a
+              confident picture of something you have not actually measured is
+              the invention, not the drawing.
+            */}
+            <div className="p3d-truth">
+              <p>
+                {model.note} Roughly {Math.round(model.width)} by {Math.round(model.depth)}mm on
+                the floor.
+              </p>
+              {item.imageUrl ? (
+                <figure className="p3d-photo">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={item.imageUrl}
+                    alt={`${item.name}, as photographed by the shop selling it`}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <figcaption>{measured ? "The real one" : "The actual product"}</figcaption>
+                </figure>
+              ) : null}
+            </div>
+          </div>
 
           <div className="space-y-4">
             <div>

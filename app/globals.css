@@ -2683,23 +2683,22 @@
 }
 
 /* ==========================================================================
-   A PEDAL YOU CAN PICK UP: REAL GEOMETRY, MADE OF ELEMENTS
+   THE PEDAL VIEWER
    --------------------------------------------------------------------------
-   The board's 3D pass tilted a plane. This is a solid: six faces around a
-   shared origin, with knobs and a footswitch as extruded cylinders standing
-   on the top one and jacks cut into the sides. Turn it and the far faces go
-   away, because they are actually facing away.
+   The pedal you pick up is a real three.js scene now, in
+   `components/board/pedal-viewer-3d.tsx`, driven by measured per-product
+   models in `lib/board/pedal-models.ts`. What used to live here was the same
+   idea built from divs in `preserve-3d`: a genuine solid that still read as a
+   diagram, because a painted gradient cannot do a specular highlight
+   travelling across a curved knob.
 
-   EVERY RULE THAT KEPT THE PLANNER OUT OF A GAME ENGINE APPLIES HERE AND IS
-   KEPT. These are real elements, so the object has an accessible name, the
-   page is still indexable, and a /go link can sit beside it in the same DOM.
-   A canvas would have bought smoother shading and given up all three.
+   It has been deleted rather than left beside the new one. Two renderers for
+   one concept is section 7's "never fork the logic", and the dead one is the
+   one that drifts.
 
-   THE ONE THING TO KNOW BEFORE EDITING: an `overflow` other than `visible`
-   anywhere in this subtree makes that element a grouping element, which forces
-   `transform-style: flat` and silently collapses every face into one plane.
-   It is the same trap section 16 records for `.deck`, and here it would not
-   error, it would just quietly turn the solid back into a picture of a solid.
+   What is left below is only the frame the canvas sits in and the panel
+   around it: the geometry, the materials and the lighting are all in the
+   component, where they can be reasoned about together.
    ========================================================================== */
 
 .p3d {
@@ -2738,239 +2737,6 @@
 
 /* The room's shadow, not the pedal's. Outside the pivot so it stays on the
    floor when the box rolls over. */
-.p3d-shadow {
-  position: absolute;
-  top: 62%;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.5), transparent 70%);
-  filter: blur(9px);
-  pointer-events: none;
-}
-
-.p3d-pivot,
-.p3d-box,
-.p3d-cyl {
-  transform-style: preserve-3d;
-}
-
-.p3d-pivot {
-  position: relative;
-}
-
-.p3d-box {
-  position: relative;
-}
-
-/*
- * Faces are centred on the box origin by margin, never by translate.
- *
- * A `translate(-50%, -50%)` in front of the face's own transform would move
- * the origin and THEN rotate about the moved point, which is a different
- * solid. The component sets the margins from each face's own size so the
- * transform it writes is pure geometry.
- */
-.p3d-face {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* Both sides of every face are drawn: you can look inside nothing here, and
-     hiding backfaces makes a box briefly disappear as it passes edge-on. */
-  backface-visibility: visible;
-}
-
-.p3d-top {
-  border-radius: 3px;
-  /* The lit face. It has to be clearly brighter than its own sides or the
-     solid reads as a flat shape with a line drawn across it. */
-  filter: brightness(1.16);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
-    inset 0 0 30px rgba(0, 0, 0, 0.22);
-}
-
-/* Silkscreen. Fixed ink for the same reason .rotary's is fixed: this is a
-   painted metal surface and it does not flip with the page theme. */
-.p3d-legend {
-  position: absolute;
-  left: 0;
-  right: 0;
-  /* `top` comes from the spec; this pulls the block back onto that line. */
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 0 8px;
-  text-align: center;
-  color: rgba(242, 245, 248, 0.92);
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.55);
-}
-
-.p3d-legend b {
-  font-family: var(--display);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  line-height: 1.1;
-}
-
-.p3d-legend i {
-  font-style: normal;
-  font-size: 7px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  opacity: 0.62;
-}
-
-.p3d-side {
-  filter: brightness(0.52);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-}
-
-.p3d-bottom {
-  background: linear-gradient(180deg, #0b1020, #05080f);
-  border-radius: 3px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-}
-
-/* Four rubber feet, which is what a base plate has and what tells you you are
-   genuinely looking at the underside. */
-.p3d-plate {
-  position: absolute;
-  inset: 11%;
-}
-
-.p3d-plate i {
-  position: absolute;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 38% 32%, #2a3350, #0a0e1c 70%);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-
-.p3d-plate i:nth-child(1) { left: 0; top: 0; }
-.p3d-plate i:nth-child(2) { right: 0; top: 0; }
-.p3d-plate i:nth-child(3) { left: 0; bottom: 0; }
-.p3d-plate i:nth-child(4) { right: 0; bottom: 0; }
-
-/* A socket, cut into whichever face carries it. */
-.p3d-jack {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 40%, #05070f 38%, #1b2440 62%, #0a0f1e 100%);
-  box-shadow:
-    inset 0 1px 2px rgba(0, 0, 0, 0.9),
-    0 0 0 1px rgba(255, 255, 255, 0.12);
-}
-
-.p3d-jack[data-kind='power'] {
-  background: radial-gradient(circle at 50% 40%, #05070f 46%, #141c33 70%, #090e1c 100%);
-}
-
-/* --- cylinders: knobs, the footswitch, the LED ------------------------- */
-
-.p3d-cyl {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 0;
-  height: 0;
-}
-
-.p3d-cyl-side,
-.p3d-cyl-cap {
-  position: absolute;
-  left: 0;
-  top: 0;
-  backface-visibility: visible;
-}
-
-.p3d-knob .p3d-cyl-side {
-  background: linear-gradient(180deg, #39415c, #171d2f);
-}
-
-.p3d-knob .p3d-cyl-cap {
-  border-radius: 50%;
-  background: radial-gradient(circle at 38% 30%, #4a5470, #232a41 62%, #10141f 100%);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
-}
-
-/* The indicator line. A knob whose setting you cannot read is a cylinder. */
-.p3d-pointer {
-  position: absolute;
-  left: 50%;
-  top: 8%;
-  width: 2px;
-  height: 42%;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: rgba(242, 245, 248, 0.9);
-  transform-origin: 50% 100%;
-}
-
-/*
- * The footswitch is BRUSHED STEEL, not a white dome.
- *
- * The first pass rendered it near-white and it dominated the whole object,
- * which is chrome being used as a fill: section 16 bans that everywhere except
- * silkscreen ink inside a drawn mark. A real switch cap is dull metal that
- * catches one highlight, so the cap keeps a bright edge and a much darker
- * body, and the LED goes back to being the only thing on the pedal that
- * actually shines.
- */
-.p3d-switch .p3d-cyl-side {
-  background: linear-gradient(180deg, #79839a, #333a4c);
-}
-
-.p3d-switch .p3d-cyl-cap {
-  border-radius: 50%;
-  /* Dulled again after a render: it was still the brightest thing on the
-     panel, and the LED has to be. A switch cap catches one soft highlight; it
-     does not glow. */
-  background: radial-gradient(circle at 38% 30%, #9aa4b8, #5b6478 50%, #2e3546 100%);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.26);
-}
-
-/* Knurling belongs on a knob you grip and not on a cap you stamp on, so the
-   switch's strips are shaded far more gently than the knobs' are. */
-.p3d-switch .p3d-cyl-side {
-  filter: none !important;
-  background: linear-gradient(90deg, #4a5265, #79839a 42%, #39404f);
-}
-
-/* The LED is the only saturated colour on the object, and it means what it
-   means everywhere else: this one is in the signal. */
-.p3d-led .p3d-cyl-side {
-  background: #1d2334;
-}
-
-.p3d-led .p3d-cyl-cap {
-  border-radius: 50%;
-  background: radial-gradient(circle at 42% 34%, #2b3348, #12172a 70%);
-}
-
-.p3d-led[data-lit='true'] .p3d-cyl-side {
-  background: color-mix(in srgb, var(--brand-led) 55%, #0b3d22);
-}
-
-.p3d-led[data-lit='true'] .p3d-cyl-cap {
-  background: radial-gradient(circle at 42% 34%, #d6ffe8, var(--brand-led) 48%, #0e7a41 100%);
-  box-shadow:
-    0 0 7px color-mix(in srgb, var(--brand-led) 85%, transparent),
-    0 0 18px color-mix(in srgb, var(--brand-led) 50%, transparent);
-}
-
-.p3d-cyl-floor {
-  filter: brightness(0.4);
-}
-
 /* --- the panel around it ----------------------------------------------- */
 
 .p3d-controls {
@@ -3031,14 +2797,6 @@
  * as a smear. Flattening to the top face alone leaves a labelled plan view of
  * the pedal, which is a worse picture and a perfectly honest one.
  */
-@supports not (transform-style: preserve-3d) {
-  .p3d-side,
-  .p3d-bottom,
-  .p3d-cyl-side,
-  .p3d-cyl-floor {
-    display: none;
-  }
-}
 
 /*
  * The pedal, off the shelf and in your hands.
@@ -3078,67 +2836,52 @@
   outline-offset: 2px;
 }
 
-/*
- * A TREADLE: two fixed cheeks and a plate that rocks between them.
- *
- * The cheeks carry `clip-path` to cut the trapezoid that gives a wah its
- * profile, and that is only safe because a cheek is a LEAF. clip-path forces
- * `transform-style: flat` on the element it sits on, exactly as `overflow`
- * does, so putting one on anything with 3D children would silently collapse
- * the solid. Same trap as `.deck`, different property.
- */
-/*
- * NO filter AND NO clip-path HERE, and that is load bearing rather than tidy.
- *
- * Both make an element a grouping element, which drops it out of the parent's
- * 3D depth sort. With a clip-path the cheek stopped occluding the treadle
- * plate it stands in front of, and the pedal turned side on showed its own
- * insides. The trapezoid is an SVG polygon inside the span now, and the
- * shading is a second polygon rather than brightness().
- */
-.p3d-cheek {
-  background: none;
-}
 
-.p3d-cheek-svg {
-  width: 100%;
-  height: 100%;
+/*
+ * THE WEBGL STAGE.
+ *
+ * The CSS-3D pedal is gone from the dialog and this is what replaced it: a
+ * real scene with a camera you orbit. Everything the old `.p3d-stage` did for
+ * pointer handling now belongs to OrbitControls, so this rule is only the
+ * frame the canvas sits in.
+ *
+ * The canvas needs an explicit height. A WebGL canvas has no intrinsic size,
+ * so a stage sized only by `min-height` collapses to nothing the moment its
+ * content stops being DOM, and the symptom is a panel that looks like it
+ * failed to load.
+ */
+.p3d-stage-gl {
   display: block;
+  height: 420px;
+  padding: 0;
+  overflow: hidden;
+  cursor: grab;
 }
 
-/*
- * There is deliberately NO hinge element.
- *
- * Wrapping the plate in its own rotated span is the obvious way to express a
- * pivot and it broke the depth sorting: a nested preserve-3d subtree is sorted
- * against its siblings as ONE unit, so the plate was tested at the hinge point
- * and drew over the near cheek it sits behind. The hinge is baked into each
- * plate face's own transform instead, in components/board/pedal-3d.tsx, which
- * keeps every surface a sibling in a single 3D context.
- */
-
-/*
- * The foot plate. RIBBED, because every treadle ever made is: it is the one
- * surface on a pedalboard you are meant to put weight on, and a smooth one
- * would read as a lid. Drawn as a gradient rather than as geometry because
- * twenty raised ribs is twenty elements per pedal for a texture.
- */
-.p3d-tread {
-  border-radius: 2px;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.09) 0 2px,
-      transparent 2px 9px
-    ),
-    linear-gradient(180deg, #2c3346, #171c2b);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.14),
-    0 3px 10px rgba(0, 0, 0, 0.5);
+.p3d-stage-gl:active {
+  cursor: grabbing;
 }
 
-.p3d-plateside {
-  background: linear-gradient(180deg, #232a3c, #10141f);
-  filter: brightness(0.9);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+.p3d-stage-gl canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: inherit;
+  /* Focus has to be reachable: OrbitControls listens on the canvas. */
+  outline-offset: -2px;
+}
+
+/* While the renderer is being fetched. Deliberately quiet: it is a few
+   hundred milliseconds, and a spinner would be the only thing on this site
+   that moves at idle. */
+.p3d-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 420px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface-2), var(--bg2));
+  font-size: 0.78rem;
+  color: var(--dim);
 }
