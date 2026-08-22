@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
 import { headers } from "next/headers"
 import Link from "next/link"
-import { BoardBuilder } from "@/components/stompbox/board-builder"
+import { BoardBuilder } from "@/components/board/board-builder"
+import { decodeBoard, resolveBoard } from "@/lib/board/share"
+import { FEATURED_RIG_SLUGS, RIG_BY_SLUG } from "@/lib/rigs"
 import { fetchCatalog } from "@/lib/stompbox/catalog"
 import { sbHref, stompboxBase } from "@/lib/stompbox/host"
 
@@ -34,9 +36,51 @@ export const metadata: Metadata = {
  */
 export const revalidate = 900
 
-export default async function BoardPage() {
+export default async function BoardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const base = stompboxBase((await headers()).get("host"))
   const { pedals } = await fetchCatalog(200)
+
+  /*
+   * RESOLVE THE SHARED BOARD ON THE SERVER, exactly as /pedalboard does.
+   *
+   * This page used to leave it to a client effect, on the reasoning that a
+   * visitor's board is not the page's indexable content. That was right when
+   * this route was statically prerendered and had no other choice. It reads
+   * the Host header now, so it is already dynamic and the searchParams cost
+   * nothing, and leaving it client-only had a real consequence: a shared link
+   * arrived with an empty deck and no advice in the HTML, so the two mounts of
+   * the same component behaved differently and the guide's version was the
+   * worse one. A board in the markup also works before hydration and for a
+   * reader who never gets JavaScript at all.
+   */
+  const params = await searchParams
+  const initial = resolveBoard(
+    decodeBoard(typeof params.b === "string" ? params.b : undefined),
+    pedals,
+  )
+
+  /*
+   * ARTIST RIGS BELONG HERE TOO, and they are not the commerce half.
+   *
+   * `lib/rigs/data.ts` is hand-written editorial with sourced album and track
+   * attribution: no feed row, no price, no merchant, nothing partner terms
+   * restrict. So the rule that keeps prices off this domain has nothing to say
+   * about it, and a guide about what circuits do is arguably where documented
+   * boards belong most. The builder swaps each one for real stock only where
+   * the page it is mounted on supplied any.
+   */
+  const rigs = FEATURED_RIG_SLUGS.map((slug) => RIG_BY_SLUG.get(slug))
+    .filter((rig): rig is NonNullable<typeof rig> => Boolean(rig))
+    .map((rig) => ({
+      slug: rig.slug,
+      name: rig.name,
+      context: rig.context,
+      pedals: rig.pedals.map((p) => `${p.brand} ${p.model}`),
+    }))
 
   return (
     <main className="mx-auto w-full max-w-6xl px-5 py-12 sm:py-16">
@@ -59,7 +103,14 @@ export default async function BoardPage() {
       </p>
 
       <div className="mt-10">
-        <BoardBuilder catalog={pedals} />
+        {/*
+          NO COMMERCE PROP, and that is the whole difference between this page
+          and /pedalboard. Same component, same attendant, same engines; the
+          guide simply passes no prices, no merchants and no buy links, because
+          it is a second domain and those rows are not ours to republish there
+          (CLAUDE.md section 20).
+        */}
+        <BoardBuilder catalog={pedals} initial={initial} rigs={rigs} />
       </div>
     </main>
   )

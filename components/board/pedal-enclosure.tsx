@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import { useState } from "react"
-import type { BoardItem } from "@/lib/stompbox/board"
+import type { BoardItem } from "@/lib/board/model"
 import { SLOT_BY_ID } from "@/lib/stompbox/chain"
 
 /**

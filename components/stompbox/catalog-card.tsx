@@ -1,4 +1,4 @@
-import { PedalPhoto } from "@/components/stompbox/pedal-photo"
+import { PedalPhoto } from "@/components/board/pedal-photo"
 import {
   formatMarketPrice,
   gearAvailProductUrl,

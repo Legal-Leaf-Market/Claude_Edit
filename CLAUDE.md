@@ -1083,7 +1083,17 @@ engine.
   the call sites instead, the way the move to blue did.
 - Do NOT port the pedalboard planner into a game engine. It has to stay
   indexable, keep `/go` in the DOM, share the TypeScript engines with the
-  server, and be reachable by a screen reader (section 16).
+  server, and be reachable by a screen reader (section 16). CSS 3D on real
+  DOM elements is fine and keeps all four; a canvas keeps none.
+- Do NOT let `components/board` or `lib/board` fetch anything. It is ONE
+  builder mounted on both domains, and commerce reaches it as a prop from
+  whichever page rendered it: `/pedalboard` passes prices and `/go` links,
+  `/stompbox/board` passes none. `tests/stompbox/boundary.test.ts` walks that
+  tree for the same reason it walks the guide's.
+- Do NOT widen `matchGuideEntry()` in `lib/board/model.ts`. It is brand-scoped,
+  whole-word and floored at three characters, and a looser match prints a
+  confident paragraph about the WRONG circuit on a page somebody is about to
+  spend money from. Same rule, and the same reason, as `creditsForGear`.
 - Do NOT answer "what is in stock in this category" with a second query. There
   is one, `liveModels()`, and the last time two existed the published shelf
   stocked itself with sold-out gear (section 20).

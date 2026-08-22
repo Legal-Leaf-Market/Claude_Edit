@@ -37,8 +37,28 @@ import { describe, expect, it } from "vitest"
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url))
 
-/** The guide's tree: everything the standalone domain can reach. */
-const GUIDE_DIRS = ["app/stompbox", "components/stompbox", "lib/stompbox"]
+/**
+ * The guide's tree, plus the SHARED board tree.
+ *
+ * `lib/board` and `components/board` are new and are not the guide's, but the
+ * guide mounts them: /stompbox/board renders the same builder /pedalboard does.
+ * That reopens the hole from the side this walk was not watching, because the
+ * check is on DIRECT imports: a shared component that pulled in `lib/db` would
+ * put the database one hop from the standalone domain and nothing here would
+ * notice.
+ *
+ * So the shared tree obeys the same rule, which is also what forces its design:
+ * commerce reaches the builder as a PROP passed by whichever page rendered it,
+ * never as something the builder fetches. The aggregator's page hands it prices
+ * and buy links; the guide's page hands it none.
+ */
+const GUIDE_DIRS = [
+  "app/stompbox",
+  "components/stompbox",
+  "lib/stompbox",
+  "lib/board",
+  "components/board",
+]
 
 /**
  * Import prefixes the guide must never reach for, and what each one would drag
@@ -83,7 +103,7 @@ function importsOf(source: string): string[] {
 
 describe("the guide cannot reach the aggregator's credentials", () => {
   it("finds the guide's files, so a broken walk cannot pass silently", () => {
-    expect(FILES.length).toBeGreaterThan(15)
+    expect(FILES.length).toBeGreaterThan(18)
   })
 
   it("imports nothing from the ingestion, admin, auth or affiliate trees", () => {
