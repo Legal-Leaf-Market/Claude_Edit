@@ -416,6 +416,15 @@ history of two instruments and every deal badge computed from it.
   never blocks the shopper, the destination clears the same allowlist, and the
   redirect is a 302 with `no-store`. Its click rows carry a null `listing_id`,
   which is what tells partner traffic apart from marketplace traffic later.
+- **A page that supplies commerce must supply it for everything the shopper can
+  reach, not just for what the URL arrived with.** `/pedalboard` priced only the
+  pedals already in the `?b=` parameter, so a pedal PICKED OUT in the builder
+  had no price, no store and no `/go` link, and the panel said "not listed"
+  about a pedal that was in stock. Arriving from a shared link worked and using
+  the builder did not, which is exactly backwards, and nothing failed: the money
+  path was simply absent. It now prices the whole picker catalogue server-side
+  in one query and hands it over as a prop, which is also the only fix available
+  given the builder is forbidden to fetch (section 20).
 - **Click logging failures are swallowed on purpose.** A click we cannot bill
   for is a rounding error; a shopper who cannot reach the listing is the
   product failing at the one moment that matters.
@@ -995,6 +1004,33 @@ under the 4.5:1 a price or a sentence needs. Anything printing a price or
 accent-coloured body text uses `--money` and `--accent-text`, never `--chrome`
 or `--sage`, or it reads in one theme and vanishes in the other.
 
+**THE PEDAL YOU CAN PICK UP IS REAL GEOMETRY, AND IT IS STILL DOM.**
+`components/board/pedal-3d.tsx` builds an actual solid: six faces around one
+origin in `preserve-3d`, knobs and a footswitch as extruded cylinders standing
+proud of the top, jacks cut into the sides, a base plate with four feet
+underneath. Drag it, or use the arrow keys, and the far faces go away because
+they are actually facing away. It rests at a three-quarter view and never spins
+at idle, which is the same rule as everything else here.
+
+**Its geometry is DATA, in `lib/board/enclosure-3d.ts`, and it is under test.**
+Millimetres at life size (a 1590B is 111.5 x 59.5 x 31), knob count per family,
+one scale factor applied at the end. `tests/board/enclosure-3d.test.ts` holds
+the claims that only show up in a screenshot otherwise: that two knobs in a row
+never overlap (the first draft spaced three knobs 15.75mm apart and made them
+18mm wide, and the row rendered as one lump), that the silkscreen never lands
+under the footswitch, and that no tint reaches for `--signal`.
+
+**It is PROCEDURAL AND SAYS SO ON ITSELF.** There is no legitimate source of
+per-product 3D models for a catalogue this size and hand-modelling does not
+scale past one, so the box is derived from the slot and the panel states in
+words that it is a representative enclosure rather than a likeness, with the
+real product photograph beside it when there is one. That sentence is not
+decoration: passing a generated box off as a scan of somebody's actual pedal is
+the same act as publishing a market price from two listings. It also means the
+generic is sometimes plainly wrong about a specific pedal (a Cry Baby is a
+treadle, and the filter slot draws it with three knobs), which the label covers
+and a silent claim to accuracy would not.
+
 **Godot is on the table for one thing only.** A separate 3D "rig room" (cables
 that hang, footswitches you stomp, knobs you hear) is a legitimate toy and a
 shareable. The planner itself stays in the DOM: it is indexable, and
@@ -1041,6 +1077,14 @@ engine.
   their own terms say anything to the contrary.
 - Do NOT change `EBAY_FEED_BASE_URL`'s sandbox default.
 - Do NOT link the UI directly to `raw_url`; everything goes through `/go`.
+- Do NOT let `next.config.mjs`'s `images.remotePatterns` decide whether a photo
+  appears. It listed eBay and Reverb only while the entire live catalogue sits
+  on `cdn.shopify.com`, so the optimizer answered 400 for every product shot and
+  the board drew its "no photo" enclosure for every pedal on it, silently. The
+  hosts are correct now, but a list that has to grow per merchant is the wrong
+  thing to depend on: user-facing images go through a plain `<img>`
+  (`components/listing-image.tsx`, `components/board/pedal-photo.tsx`) with the
+  already-failed ref check, and the optimizer is a bonus.
 - Do NOT let an `inferred*` field win over an explicit one.
 - Do NOT unscope MPN or fuzzy matching from the brand.
 - Do NOT publish a market price below `MIN_SAMPLE_SIZE`.
@@ -1112,6 +1156,12 @@ engine.
   server, and be reachable by a screen reader (section 16). CSS 3D on real
   DOM elements is fine and keeps all four, and the board uses it: a canvas
   keeps none of them.
+- Do NOT set an `overflow` other than `visible` anywhere inside the 3D pedal's
+  subtree. It makes that element a grouping element, which forces
+  `transform-style: flat` and silently collapses the solid back into a picture
+  of a solid. The dialog scrolls on `.p3d-panel`, outside the geometry.
+- Do NOT let the 3D pedal claim to be the actual product. It is generated from
+  the slot, the panel says so, and the photograph beside it is the real one.
 - Do NOT put the board's `perspective` on `.deck`. `.deck` is the horizontal
   scroller, and any overflow other than visible makes an element a grouping
   element, which forces `transform-style: flat` and silently collapses every

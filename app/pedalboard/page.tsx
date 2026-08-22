@@ -58,16 +58,28 @@ export default async function PedalboardPage({
   }))
 
   /*
-   * Commerce for whatever the link already contains, so a shared board arrives
-   * priced rather than filling in after a round trip. Only the pedals actually
-   * on the board are looked up: pricing all two hundred in the picker would be
-   * a large query for rows nobody has chosen yet.
+   * COMMERCE FOR THE WHOLE SHELF, NOT JUST FOR THE LINK.
+   *
+   * This used to price only the pedals already in the `?b=` parameter, on the
+   * reasoning that pricing all two hundred would be a large query for rows
+   * nobody had chosen yet. That reasoning was wrong in a way that broke the
+   * only part of this page that earns anything: a pedal PICKED OUT in the
+   * browser was never in `initial`, so it had no price, no store and no /go
+   * link, and the "Buying this board" panel said "not listed" about a pedal
+   * that was in stock. Arriving from a shared link worked; using the builder
+   * did not, which is exactly backwards.
+   *
+   * The fix has to keep the builder from fetching, because `components/board`
+   * is mounted on both domains and `tests/stompbox/boundary.test.ts` forbids
+   * it reaching for anything. So the page prices the entire universe the
+   * picker can offer, once, on the server, and hands it over as a prop. That
+   * is one query against a slug list this page already has in memory, on a
+   * route that revalidates every fifteen minutes.
    */
+  const details = await pedalBoardDetails(catalog.map((entry) => entry.slug))
+
   const tokens = decodeBoard(raw)
   const initial = resolveBoard(tokens, catalog)
-  const details = initial.length
-    ? await pedalBoardDetails(initial.map((item) => item.catalogSlug).filter((s): s is string => !!s))
-    : []
 
   const commerce: BoardCommerce = {}
   for (const entry of details) {
