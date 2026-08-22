@@ -210,9 +210,13 @@ further. **One deployment cannot race itself**, so the fetch, its cache tag, the
 route, the two webhook secrets and the fifteen minute self-healing window are
 all gone. `lib/stompbox/catalog.ts` calls `liveModels()` in process.
 
-**Somebody still has to delete the webhook and the old Vercel project.** Neither
-lives in this repo, so nothing here can do it and nothing here will notice it
-was not done.
+**The domain has moved; the old Vercel project has not been deleted.** As of
+22 Aug 2026 `stompbox.world` is served by the `musictime` deployment, so the
+`stompbox-world` project is unreachable, but it is still linked to the
+repository and still fires a build on every push, failing each time on a Root
+Directory that the merge deleted. Neither it nor the webhook lives in this
+repo, so nothing here can remove them and nothing here will notice they are
+still there. See the aggregator's section 20.
 
 ---
 
