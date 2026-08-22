@@ -1364,11 +1364,25 @@ cannot race itself.** The fetch, its cache tag, `stompbox.world/api/revalidate`
 and the Vercel webhook that called it are all gone. `lib/stompbox/catalog.ts`
 calls `liveModels()` in process.
 
-**Somebody has to delete the `stompbox-world` Vercel project and move the domain
-onto this one.** Nothing in this repo can do it, and until it happens that
-project is still building the old tree from this repo's history and still
-answering on the domain. The webhook that pointed at its `/api/revalidate`
-should go with it.
+**THE DOMAIN HAS MOVED. THE OLD PROJECT HAS NOT BEEN DELETED, and it is now
+failing a build on every push.** Checked against Vercel on 22 Aug 2026:
+`stompbox.world` and `www.stompbox.world` are aliases on the `musictime`
+deployment, and the `stompbox-world` project holds nothing but its two
+generated `.vercel.app` names, so deleting it cannot take the guide down.
+
+What it is still doing is worse than nothing. It stays linked to this
+repository, so every push to any branch fires a build there, and every one of
+them dies in about two seconds on:
+
+```
+The specified Root Directory "stompbox.world" does not exist.
+```
+
+That directory was what the merge removed. So the project is burning a build
+per push and putting a red check beside every commit, for a deployment nobody
+can reach. Delete it in the Vercel dashboard (Settings, then Delete Project);
+nothing in this repo can, and no tool the agent has can either. The webhook
+that pointed at its `/api/revalidate` should go with it.
 
 **WHAT THE CREDENTIAL BOUNDARY BECAME, and it is a real downgrade.** The guide
 could not reach the database because it had no connection string. That was
