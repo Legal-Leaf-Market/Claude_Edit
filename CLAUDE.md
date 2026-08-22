@@ -1026,10 +1026,32 @@ scale past one, so the box is derived from the slot and the panel states in
 words that it is a representative enclosure rather than a likeness, with the
 real product photograph beside it when there is one. That sentence is not
 decoration: passing a generated box off as a scan of somebody's actual pedal is
-the same act as publishing a market price from two listings. It also means the
-generic is sometimes plainly wrong about a specific pedal (a Cry Baby is a
-treadle, and the filter slot draws it with three knobs), which the label covers
-and a silent claim to accuracy would not.
+the same act as publishing a market price from two listings.
+
+**NOT EVERY PEDAL IS A BOX. A wah and a volume pedal are TREADLES**, and the
+spec carries a `shape` for it: a shallow chassis, two FIXED side cheeks tall at
+the heel, and a plate that rocks between them about a real axle, toe up because
+that is how they are sprung. No knobs at all, because the only adjustment is
+the angle of your foot. `KNOBS_BY_SLOT` had said as much about volume pedals in
+a comment for a while, in a file that went on drawing them with a footswitch.
+
+**WHICH ONES ARE TREADLES IS A NAME MATCH, SO IT IS AN ALLOWLIST.** A volume
+pedal always is, by definition. A filter only is when its name says wah, and
+`NOT_TREADLE_NAMES` is checked first because an auto-wah, an envelope filter
+and a "dynamic wah" all carry the word and are all boxes with knobs. Same
+discipline, and the same reason, as `matchGuideEntry` and `creditsForGear`:
+unsure falls back to the box, because a box is the generic and a treadle is a
+specific claim.
+
+**EVERY OBJECT IS SCALED TO THE SAME FRAME, and the panel prints the real
+millimetres because of it.** One fixed millimetres-to-pixels factor cannot
+serve both a 254mm wah and a 111.5mm 1590B; fitting each to the frame loses the
+true relative size, so the footprint is stated in words rather than implied by
+pixels.
+
+The label still matters, because a generic is still sometimes wrong about a
+specific pedal: the filter slot covers envelope filters that really are boxes,
+and the treadle covers wahs that differ from a GCB-95.
 
 **Godot is on the table for one thing only.** A separate 3D "rig room" (cables
 that hang, footswitches you stomp, knobs you hear) is a legitimate toy and a
@@ -1160,6 +1182,18 @@ engine.
   subtree. It makes that element a grouping element, which forces
   `transform-style: flat` and silently collapses the solid back into a picture
   of a solid. The dialog scrolls on `.p3d-panel`, outside the geometry.
+- Do NOT assume the browser depth-sorts the 3D pedal's faces. IT PAINTS THEM IN
+  DOM ORDER. That is why the treadle emits its far cheek, then the plate, then
+  the near cheek, ordered from the current yaw: with the cheeks written first
+  the plate drew straight through the wall in front of it at both side-on
+  views. Three suspects were ruled out by A/B render before the real cause was
+  found (a nested pivot element, a `clip-path`, and a `filter`), so measure
+  rather than reason about this one. Anything else added to that subtree that
+  can occlude has to be ordered the same way.
+- Do NOT put a `clip-path` or a `filter` on anything in the 3D pedal that has
+  3D children. Both group an element exactly as `overflow` does. The cheeks'
+  trapezoid is an SVG polygon and their shading is a second polygon for this
+  reason, not for tidiness.
 - Do NOT let the 3D pedal claim to be the actual product. It is generated from
   the slot, the panel says so, and the photograph beside it is the real one.
 - Do NOT put the board's `perspective` on `.deck`. `.deck` is the horizontal

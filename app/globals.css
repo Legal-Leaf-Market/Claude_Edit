@@ -3077,3 +3077,68 @@
   outline: 2px solid var(--chrome-dk);
   outline-offset: 2px;
 }
+
+/*
+ * A TREADLE: two fixed cheeks and a plate that rocks between them.
+ *
+ * The cheeks carry `clip-path` to cut the trapezoid that gives a wah its
+ * profile, and that is only safe because a cheek is a LEAF. clip-path forces
+ * `transform-style: flat` on the element it sits on, exactly as `overflow`
+ * does, so putting one on anything with 3D children would silently collapse
+ * the solid. Same trap as `.deck`, different property.
+ */
+/*
+ * NO filter AND NO clip-path HERE, and that is load bearing rather than tidy.
+ *
+ * Both make an element a grouping element, which drops it out of the parent's
+ * 3D depth sort. With a clip-path the cheek stopped occluding the treadle
+ * plate it stands in front of, and the pedal turned side on showed its own
+ * insides. The trapezoid is an SVG polygon inside the span now, and the
+ * shading is a second polygon rather than brightness().
+ */
+.p3d-cheek {
+  background: none;
+}
+
+.p3d-cheek-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/*
+ * There is deliberately NO hinge element.
+ *
+ * Wrapping the plate in its own rotated span is the obvious way to express a
+ * pivot and it broke the depth sorting: a nested preserve-3d subtree is sorted
+ * against its siblings as ONE unit, so the plate was tested at the hinge point
+ * and drew over the near cheek it sits behind. The hinge is baked into each
+ * plate face's own transform instead, in components/board/pedal-3d.tsx, which
+ * keeps every surface a sibling in a single 3D context.
+ */
+
+/*
+ * The foot plate. RIBBED, because every treadle ever made is: it is the one
+ * surface on a pedalboard you are meant to put weight on, and a smooth one
+ * would read as a lid. Drawn as a gradient rather than as geometry because
+ * twenty raised ribs is twenty elements per pedal for a texture.
+ */
+.p3d-tread {
+  border-radius: 2px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.09) 0 2px,
+      transparent 2px 9px
+    ),
+    linear-gradient(180deg, #2c3346, #171c2b);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+    0 3px 10px rgba(0, 0, 0, 0.5);
+}
+
+.p3d-plateside {
+  background: linear-gradient(180deg, #232a3c, #10141f);
+  filter: brightness(0.9);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}

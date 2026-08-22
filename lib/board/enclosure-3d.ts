@@ -32,11 +32,26 @@ import type { BoardItem } from "@/lib/board/model"
 
 /** A right-handed millimetre box. X across, Y up, Z toward the player. */
 export type EnclosureSpec = {
+  /**
+   * WHAT KIND OF OBJECT THIS IS, and it is not always a box.
+   *
+   * A wah and a volume pedal are TREADLES: a shallow chassis with two fixed
+   * side cheeks and a plate you rock with your foot, no knobs on top at all.
+   * Drawing one as a stompbox with three knobs was wrong in a way the
+   * "representative enclosure" label covered but did not excuse, because the
+   * shape is the one thing about a wah that everybody already knows.
+   *
+   * `box` stays the default for everything else, and anything the treadle test
+   * is unsure about falls back to it. That direction matters: an envelope
+   * filter drawn as a box is right, and a box drawn as a treadle is absurd.
+   */
+  shape: "box" | "treadle"
   /** Left to right, as the player looks down at it. */
   width: number
-  /** Toward the player. The long axis of a stompbox. */
+  /** Toward the player. The long axis of a stompbox. On a treadle this is the
+   *  chassis, and the cheeks and plate below are measured against it. */
   depth: number
-  /** Off the floor. */
+  /** Off the floor. On a treadle this is the shallow base only. */
   height: number
   /** Face tint, as a CSS colour. Always a token so both themes resolve it. */
   tint: string
@@ -61,6 +76,53 @@ export type EnclosureSpec = {
    * that pushed it there.
    */
   legendZ: number
+  /** Present only when `shape` is "treadle". Null for a box. */
+  treadle: Treadle | null
+}
+
+/**
+ * A rocking foot pedal.
+ *
+ * Three parts, and the middle one is what makes the silhouette: a shallow
+ * chassis (the `width`/`depth`/`height` above), two FIXED side cheeks that
+ * rise toward the heel, and a plate that rocks between them about a pivot.
+ * The cheeks are the reason a wah is recognisable from across a room, and they
+ * are also why this cannot be faked by tilting the lid of a box.
+ */
+export type Treadle = {
+  /** The rocking plate. Narrower than the chassis so it sits between the
+   *  cheeks rather than on top of them. */
+  plateWidth: number
+  plateDepth: number
+  plateThickness: number
+  /**
+   * Where the rocking axis sits, in mm from the middle of the chassis.
+   *
+   * Behind centre, toward the heel, which is where the real ones put it: the
+   * toe has to travel further than the heel because the toe is what operates
+   * the sweep and the switch under it.
+   */
+  pivotZ: number
+  /**
+   * How high the rocking axis sits above the TOP OF THE CHASSIS, in mm.
+   *
+   * This is the number that decides whether the thing reads as a wah or as a
+   * phone lying in a tray. The first pass hinged the plate at chassis level,
+   * which dropped it to the bottom of a 49mm trough between the cheeks. On the
+   * real pedal the plate's heel end is nearly flush with the top of the cheeks
+   * and only the toe rises clear of them, so the axle sits well up the cheek.
+   */
+  pivotY: number
+  /**
+   * Degrees the TOE end is lifted, at rest.
+   *
+   * Toe up rather than toe down, because a wah is sprung that way: you press
+   * the toe down to click it on, so the resting object has its toe in the air.
+   */
+  tilt: number
+  /** The fixed side cheeks, tall at the heel and low at the toe. */
+  cheekHeelHeight: number
+  cheekToeHeight: number
 }
 
 export type Knob = {
@@ -151,6 +213,89 @@ const TINT_BY_SLOT: Record<SlotId, string> = {
   reverb: "color-mix(in srgb, var(--metal) 68%, var(--accent-text))",
 }
 
+/* --------------------------------------------------------------------- */
+/*  Which pedals are treadles                                             */
+/* --------------------------------------------------------------------- */
+
+/**
+ * Names that mean "this is a thing you rock with your foot".
+ *
+ * SAME DISCIPLINE AS `matchGuideEntry` AND `creditsForGear`, and for the same
+ * reason: a loose match here draws confidently wrong hardware on a page
+ * somebody is about to spend money from. So this is an ALLOWLIST of strong
+ * signals rather than a clever rule, and anything it is unsure about stays a
+ * box, because a box is the honest generic and a treadle is a specific claim.
+ */
+const TREADLE_NAMES = [/\bcry\s*baby\b/i, /\bwah[\s-]?wah\b/i, /\bwah\b/i]
+
+/**
+ * Names that contain "wah" and are emphatically NOT treadles.
+ *
+ * This list is the whole reason the rule above is safe. An auto-wah, an
+ * envelope filter and a "dynamic wah" are all boxes with knobs that happen to
+ * carry the word, and they live in the same `filter` slot as the real thing.
+ * Checked BEFORE the allowlist, so the more specific name always wins.
+ */
+const NOT_TREADLE_NAMES = [
+  /\bauto[\s-]?wah\b/i,
+  /\benvelope\b/i,
+  /\bdynamic\s+wah\b/i,
+  /\bwah\s*probe\b/i,
+  /\bq-?tron\b/i,
+  /\bmu-?tron\b/i,
+  /\bbass\s*balls\b/i,
+]
+
+/**
+ * Is this a treadle?
+ *
+ * A VOLUME PEDAL ALWAYS IS, by definition rather than by name: the slot is
+ * occupied by volume pedals, a volume pedal is a treadle, and `KNOBS_BY_SLOT`
+ * already gave it zero knobs for exactly this reason. The comment there said
+ * "it is a treadle and the only adjustment is your foot" while the renderer
+ * went on drawing a box, which is the kind of gap worth closing.
+ *
+ * A FILTER IS ONLY ONE IF ITS NAME SAYS SO. That slot holds both wahs and
+ * envelope filters, and nothing else in the data tells them apart, so the name
+ * is the only evidence there is and it is treated as weak evidence.
+ */
+export function isTreadle(item: BoardItem): boolean {
+  if (item.slot === "volume") return true
+  if (item.slot !== "filter") return false
+
+  const name = `${item.maker ?? ""} ${item.name}`
+  if (NOT_TREADLE_NAMES.some((pattern) => pattern.test(name))) return false
+  return TREADLE_NAMES.some((pattern) => pattern.test(name))
+}
+
+/**
+ * A Dunlop GCB-95, near enough, in millimetres.
+ *
+ * The plate is narrower than the chassis so it rocks BETWEEN the cheeks, and
+ * the pivot sits behind centre so the toe travels further than the heel, both
+ * of which are how the real thing is built rather than styling.
+ */
+const TREADLE_BODY = { width: 100, depth: 254, height: 26 }
+const TREADLE: Treadle = {
+  plateWidth: 86,
+  plateDepth: 218,
+  plateThickness: 12,
+  pivotZ: 18,
+  pivotY: 30,
+  /*
+   * Nine degrees, not twelve, and the cheeks come down with it.
+   *
+   * These four numbers are checked against the real pedal rather than picked
+   * to look right: 26 of chassis plus 37 of cheek puts the heel at 63mm, which
+   * is a GCB-95's rear height, and the toe of the plate then lands at about
+   * 82mm off the floor, which is its tallest point. Twelve degrees threw the
+   * toe to 98mm and made it look like a ramp.
+   */
+  tilt: 9,
+  cheekHeelHeight: 37,
+  cheekToeHeight: 10,
+}
+
 /** A 1590B, and the 1590BB the wider layouts need. */
 const STANDARD = { width: 59.5, depth: 111.5, height: 31 }
 const WIDE = { width: 92, depth: 118.5, height: 34 }
@@ -214,6 +359,8 @@ function layOutKnobs(count: number, width: number, depth: number): Knob[] {
  * can assert that a delay is wider than a fuzz without touching the DOM.
  */
 export function enclosureSpec(item: BoardItem): EnclosureSpec {
+  if (isTreadle(item)) return treadleSpec(item)
+
   const knobCount = KNOBS_BY_SLOT[item.slot] ?? 3
   const body = knobCount >= 4 ? WIDE : STANDARD
 
@@ -221,6 +368,8 @@ export function enclosureSpec(item: BoardItem): EnclosureSpec {
 
   return {
     ...body,
+    shape: "box",
+    treadle: null,
     tint: TINT_BY_SLOT[item.slot] ?? "var(--metal)",
     knobs,
     switches: [
@@ -252,5 +401,57 @@ export function enclosureSpec(item: BoardItem): EnclosureSpec {
     legendZ: knobs.length
       ? ((knobs[knobs.length - 1].z + 14) + (body.depth / 2 - 40 - 8)) / 2
       : -6,
+  }
+}
+
+/**
+ * A wah or a volume pedal.
+ *
+ * NO KNOBS AT ALL, which is the point: the only adjustment is the angle of
+ * your foot. The switch is the one under the toe that a wah clicks on with,
+ * so it sits at the very front of the chassis where the plate comes down on
+ * it, and it is drawn small because on a real pedal you never see it.
+ *
+ * The jacks move to the HEEL end rather than sitting mid-side, because the
+ * cheeks occupy the middle of both sides and there is nowhere else for them
+ * to go. That is true of the real ones for the same reason.
+ */
+function treadleSpec(item: BoardItem): EnclosureSpec {
+  const body = TREADLE_BODY
+
+  return {
+    ...body,
+    shape: "treadle",
+    treadle: TREADLE,
+    tint: TINT_BY_SLOT[item.slot] ?? "var(--metal)",
+    knobs: [],
+    switches: [
+      {
+        x: 0,
+        /* Under the toe, at the far end, where the plate bottoms out on it. */
+        z: -body.depth / 2 + 16,
+        radius: 5,
+        height: 4,
+      },
+    ],
+    jacks: [
+      /* Toward the heel on both sides, clear of the cheeks. */
+      { face: "right", offset: 84, radius: 6, kind: "audio" },
+      { face: "left", offset: 84, radius: 6, kind: "audio" },
+      { face: "back", offset: 0, radius: 4.5, kind: "power" },
+    ],
+    led: {
+      x: 0,
+      /* At the toe, in the gap the lifted plate leaves open, which is the one
+         place on a treadle you can actually see a light from standing up. */
+      z: -body.depth / 2 + 34,
+      radius: 2.5,
+    },
+    legend: item.name,
+    sublegend: item.maker,
+    /* On the heel of the chassis, behind the plate. The top of a treadle is
+       the plate, and the plate is where your boot goes, so nothing is printed
+       there. */
+    legendZ: body.depth / 2 - 14,
   }
 }
