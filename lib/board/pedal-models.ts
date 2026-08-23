@@ -91,8 +91,34 @@ export type PedalModel = {
   /** Ink on the body. */
   ink: string
   knobs: ModelKnob[]
-  /** Where the footswitch sits, mm from the middle. */
-  footswitch: { x: number; z: number; radius: number } | null
+  /**
+   * EVERY FOOTSWITCH, not one.
+   *
+   * This was a single switch or null, which was true of the pedals modelled
+   * first and false of most of what people buy now: a Strymon compact has two,
+   * a Boss 200 has two, a DL4 has four. A field that can only hold one does not
+   * fail when a second is needed, it silently draws a two-switch pedal with one
+   * switch, so the shape is the list and a plain stompbox is a list of one.
+   *
+   * An empty list is a real state and means the pedal has no switch at all: a
+   * treadle has none, and neither does a Boss compact, where the hinged plate
+   * IS the switch.
+   */
+  footswitches: { x: number; z: number; radius: number }[]
+  /**
+   * Mini toggle switches, which are what most boutique pedals put a mode on.
+   *
+   * A different piece of hardware from a footswitch and from a knob: a small
+   * bat lever you flick with a finger, never with a foot. Drawing one as a
+   * tiny knob is the same kind of lie as drawing a Boss plate as a button.
+   */
+  toggles?: { x: number; z: number }[]
+  /**
+   * A display window, for the pedals that have one. A dark inset rectangle,
+   * because what it shows depends on what the pedal is doing and inventing a
+   * reading is the same class of thing as inventing a price.
+   */
+  screen?: { x: number; z: number; width: number; depth: number }
   led: { x: number; z: number; color: string } | null
   /** Lines printed on the face, top to bottom, with their z in mm. */
   legends: { text: string; z: number; size: number }[]
@@ -159,7 +185,7 @@ const BOSS_DS1: PedalModel = {
   ],
   /* Kept for the record even though the viewer draws no button on a Boss
      compact: the plate is the switch. See the note in pedal-viewer-3d. */
-  footswitch: { x: 0, z: 34, radius: 11 },
+  footswitches: [{ x: 0, z: 34, radius: 11 }],
   led: { x: 0, z: -61, color: "#ff2b2b" },
   /* Both on the rear shelf, which runs from the back edge to the hinge at
      z = -12. Anything printed forward of that lands on the tread plate, which
@@ -186,7 +212,7 @@ const MXR_MICRO: PedalModel = {
   ink: "#1c1c1c",
   knobs: [{ x: 0, z: -28, radius: 11, height: 15, style: "chicken-head", label: "Speed", angle: -55 }],
   /* An MXR switch cap is about 12mm across, not 20. */
-  footswitch: { x: 0, z: 34, radius: 6.5 },
+  footswitches: [{ x: 0, z: 34, radius: 6.5 }],
   led: { x: 0, z: -48, color: "#ff4d2b" },
   legends: [{ text: "Phase 90", z: 8, size: 6 }],
   note: "The 1590B: 66 by 111mm of folded aluminium, and the shape most people mean by the word pedal.",
@@ -206,7 +232,7 @@ const TC_HOF_MINI: PedalModel = {
   color: "#7fd4c4",
   ink: "#14322c",
   knobs: [{ x: 0, z: -26, radius: 9, height: 13, style: "dome", label: "Decay", angle: 15 }],
-  footswitch: { x: 0, z: 26, radius: 6.5 },
+  footswitches: [{ x: 0, z: 26, radius: 6.5 }],
   led: { x: 0, z: -42, color: "#3ad46a" },
   legends: [{ text: "Hall of Fame", z: 6, size: 4 }],
   note: "A mini enclosure, 48mm across. Almost the whole top face is switch, which is why the single knob sits so high on it.",
@@ -229,7 +255,7 @@ const EHX_BIG_MUFF: PedalModel = {
     { x: 0, z: -34, radius: 12, height: 16, style: "skirted", label: "Tone", angle: 50 },
     { x: 46, z: -34, radius: 12, height: 16, style: "skirted", label: "Sustain", angle: 110 },
   ],
-  footswitch: { x: 0, z: 38, radius: 7 },
+  footswitches: [{ x: 0, z: 38, radius: 7 }],
   led: { x: -56, z: 20, color: "#ff2b2b" },
   legends: [{ text: "Big Muff Pi", z: 6, size: 10 }],
   note: "146mm across, which is why it is called the board hog: three full-size knobs sit in a row with room to spare, and it takes the width of two ordinary pedals.",
@@ -272,7 +298,7 @@ const IBANEZ_TS9: PedalModel = {
     { x: 0, z: -48, radius: 8, height: 13, style: "skirted", label: "Tone", angle: 30 },
     { x: 23, z: -42, radius: 8, height: 13, style: "skirted", label: "Level", angle: 85 },
   ],
-  footswitch: { x: 0, z: 32, radius: 11 },
+  footswitches: [{ x: 0, z: 32, radius: 11 }],
   led: { x: 0, z: -58, color: "#ff3b1f" },
   legends: [{ text: "TS9", z: -20, size: 7 }],
   treadPlate: { depth: 74, hingeZ: -10, thumbscrew: false },
@@ -308,7 +334,7 @@ const DUNLOP_FUZZ_FACE: PedalModel = {
     { x: -28, z: -22, radius: 10, height: 14, style: "skirted", label: "Volume", angle: -35 },
     { x: 28, z: -22, radius: 10, height: 14, style: "skirted", label: "Fuzz", angle: 75 },
   ],
-  footswitch: { x: 0, z: 26, radius: 11 },
+  footswitches: [{ x: 0, z: 26, radius: 11 }],
   led: null,
   legends: [{ text: "Fuzz Face", z: 2, size: 6 }],
   note: "A 111mm circular casting with a domed lid, which is why it sits on a board like nothing else. The original had no indicator at all, and this one does not either.",
@@ -333,7 +359,7 @@ const PROCO_RAT: PedalModel = {
     { x: 0, z: -22, radius: 12, height: 16, style: "skirted", label: "Filter", angle: 20 },
     { x: 38, z: -22, radius: 12, height: 16, style: "skirted", label: "Volume", angle: 70 },
   ],
-  footswitch: { x: 0, z: 26, radius: 8 },
+  footswitches: [{ x: 0, z: 26, radius: 8 }],
   led: { x: -48, z: 6, color: "#ff2b2b" },
   legends: [{ text: "RAT", z: 8, size: 11 }],
   note: "Wider than it is deep, which is unusual and is why a RAT sits sideways on most boards. Three big knobs in a row and very little else.",
@@ -372,7 +398,7 @@ const KLON_CENTAUR: PedalModel = {
     { x: 0, z: -24, radius: 10, height: 14, style: "skirted", label: "Treble", angle: 25 },
     { x: 36, z: -24, radius: 10, height: 14, style: "skirted", label: "Output", angle: 80 },
   ],
-  footswitch: { x: 0, z: 28, radius: 8 },
+  footswitches: [{ x: 0, z: 28, radius: 8 }],
   led: { x: 0, z: -42, color: "#ff6a1f" },
   legends: [{ text: "Centaur", z: 6, size: 7 }],
   note: "A wide, low gold box. The horse on the real one is a drawing we deliberately do not reproduce; the shape and the finish are what identify it here.",
@@ -391,7 +417,7 @@ const MXR_DYNA_COMP: PedalModel = {
     { x: -16, z: -30, radius: 9, height: 13, style: "skirted", label: "Output", angle: -30 },
     { x: 16, z: -30, radius: 9, height: 13, style: "skirted", label: "Sensitivity", angle: 55 },
   ],
-  footswitch: { x: 0, z: 34, radius: 6.5 },
+  footswitches: [{ x: 0, z: 34, radius: 6.5 }],
   led: { x: 0, z: -48, color: "#ff4d2b" },
   legends: [{ text: "Dyna Comp", z: 8, size: 5.5 }],
   note: "The same 1590B as a Phase 90 in a different colour, which is exactly why MXR could ship so many pedals so fast.",
@@ -410,7 +436,7 @@ const EHX_SMALL_STONE: PedalModel = {
   color: "#1d1d1f",
   ink: "#e8e8e6",
   knobs: [{ x: 24, z: -38, radius: 11, height: 15, style: "skirted", label: "Rate", angle: -20 }],
-  footswitch: { x: -22, z: 34, radius: 9 },
+  footswitches: [{ x: -22, z: 34, radius: 9 }],
   /* Beside the switch, which is where the reissue puts it, and clear of the
      one label on the face: at x = 24 it sat directly under the word RATE. */
   led: { x: -22, z: 22, color: "#ff2b2b" },
@@ -439,7 +465,7 @@ const EHX_MEMORY_MAN: PedalModel = {
     { x: 34, z: -34, radius: 10, height: 14, style: "skirted", label: "Delay", angle: 80 },
     { x: 68, z: -34, radius: 10, height: 14, style: "skirted", label: "Depth", angle: 115 },
   ],
-  footswitch: { x: 0, z: 40, radius: 9 },
+  footswitches: [{ x: 0, z: 40, radius: 9 }],
   led: { x: 0, z: -52, color: "#ff2b2b" },
   legends: [{ text: "Deluxe Memory Man", z: -8, size: 7 }],
   note: "190mm across and five knobs in a row: the biggest thing most players ever put on a board, and the reason its power supply is its own problem.",
@@ -459,7 +485,7 @@ const BOSS_DD: PedalModel = {
     { x: 0, z: -52, radius: 7.5, height: 13, style: "skirted", label: "F.Back", angle: 25 },
     { x: 24, z: -46, radius: 7.5, height: 13, style: "skirted", label: "Time", angle: 85 },
   ],
-  footswitch: { x: 0, z: 34, radius: 11 },
+  footswitches: [{ x: 0, z: 34, radius: 11 }],
   led: { x: 0, z: -61, color: "#ff2b2b" },
   legends: [
     { text: "DD-3", z: -22, size: 8 },
@@ -505,7 +531,7 @@ const BOSS_CE: PedalModel = {
     { x: -18, z: -48, radius: 8, height: 13, style: "skirted", label: "Rate", angle: -25 },
     { x: 18, z: -48, radius: 8, height: 13, style: "skirted", label: "Depth", angle: 60 },
   ],
-  footswitch: { x: 0, z: 34, radius: 11 },
+  footswitches: [{ x: 0, z: 34, radius: 11 }],
   led: { x: 0, z: -61, color: "#ff2b2b" },
   legends: [
     { text: "CE-2", z: -24, size: 8 },
@@ -529,7 +555,7 @@ const BOSS_BD2: PedalModel = {
     { x: 0, z: -50, radius: 8.5, height: 14, style: "skirted", label: "Tone", angle: 35 },
     { x: 22, z: -44, radius: 8.5, height: 14, style: "skirted", label: "Gain", angle: 90 },
   ],
-  footswitch: { x: 0, z: 34, radius: 11 },
+  footswitches: [{ x: 0, z: 34, radius: 11 }],
   led: { x: 0, z: -61, color: "#ff2b2b" },
   legends: [
     { text: "BD-2", z: -22, size: 8 },
@@ -561,7 +587,7 @@ const DUNLOP_CRY_BABY: PedalModel = {
   color: "#17171a",
   ink: "#e6e6e6",
   knobs: [],
-  footswitch: null,
+  footswitches: [],
   led: null,
   legends: [{ text: "Cry Baby", z: 112, size: 9 }],
   treadle: {
@@ -652,7 +678,7 @@ function bossCompact(spec: {
     /* The shelf runs from the back edge to the hinge, so the knobs sit on it
        and the print sits in front of them, clear of both. */
     knobs: knobRow(spec.controls, { faceWidth: 73, z: -45, arc: 6, radius: 7.5 }),
-    footswitch: { x: 0, z: 34, radius: 11 },
+    footswitches: [{ x: 0, z: 34, radius: 11 }],
     led: { x: 0, z: -61, color: "#ff2b2b" },
     legends: [
       { text: spec.print[0], z: -23, size: 8 },
@@ -683,12 +709,106 @@ function mxrCompact(spec: {
     color: spec.color,
     ink: spec.ink,
     knobs: knobRow(spec.controls, { faceWidth: 60, z: -30, arc: 4 }),
-    footswitch: { x: 0, z: 34, radius: 6.5 },
+    footswitches: [{ x: 0, z: 34, radius: 6.5 }],
     led: { x: 0, z: -48, color: "#ff4d2b" },
     legends: [{ text: spec.print, z: 8, size: spec.printSize ?? 6 }],
     note: spec.note,
   }
 }
+
+/**
+ * A Strymon compact: the two-footswitch pedal most modern boards have on them.
+ *
+ * THE REASON THE SWITCH FIELD IS A LIST. 102 x 114mm, three big knobs across
+ * the top, two small ones and a three-position toggle under them, and TWO
+ * footswitches along the front. Before this the model could hold one switch,
+ * so a Strymon would have rendered with a single switch dead centre: not an
+ * error, just a picture of a pedal that does not exist.
+ */
+function strymonCompact(spec: {
+  model: RegExp
+  name: string
+  color: string
+  ink: string
+  big: [string, string, string]
+  small: [string, string]
+  print: string
+  note: string
+}): PedalModel {
+  return {
+    match: { brand: /^strymon$/i, model: spec.model },
+    name: spec.name,
+    maker: "Strymon",
+    style: "box",
+    ...enc("strymon-compact"),
+    color: spec.color,
+    ink: spec.ink,
+    knobs: [
+      ...knobRow(spec.big, { faceWidth: 102, z: -42, arc: 3, radius: 11 }),
+      /*
+       * THE SECOND ROW NESTLES BETWEEN THE FIRST, which is what the real pedal
+       * does and is not decoration: it is the only place it fits.
+       *
+       * The first attempt put both small knobs directly in front of two of the
+       * big ones, which planted them on the words TIME and REPEATS. Moving
+       * them forward could not fix it either, because a knob standing 10mm off
+       * the face hides roughly 20mm behind itself at this camera angle, and
+       * there is not 20mm of clear shelf to find. Offsetting them in x is what
+       * works, and it is what Strymon actually did.
+       *
+       * 13mm is not arbitrary: it is what clears the WIDEST label in the top
+       * row, which is the Flint's "Intensity". A longer control name than that
+       * would collide again, and the test says so by name rather than leaving
+       * it to somebody looking at a render.
+       */
+      { x: -13, z: -8, radius: 6.5, height: 9.5, style: "skirted" as const, label: spec.small[0], angle: -20 },
+      { x: 13, z: -8, radius: 6.5, height: 9.5, style: "skirted" as const, label: spec.small[1], angle: 40 },
+    ],
+    toggles: [{ x: 34, z: 4 }],
+    /* Both switches on the front edge, far enough apart to hit one without
+       the other, which is the whole reason a pedal this wide exists. */
+    footswitches: [
+      { x: -26, z: 40, radius: 9 },
+      { x: 26, z: 40, radius: 9 },
+    ],
+    led: { x: 0, z: 30, color: "#ff4d2b" },
+    legends: [{ text: spec.print, z: 18, size: 7 }],
+    note: spec.note,
+  }
+}
+
+const STRYMON_EL_CAPISTAN = strymonCompact({
+  model: /\bel\s*capistan\b/i,
+  name: "El Capistan",
+  color: "#1d5c4a",
+  ink: "#eef4f1",
+  big: ["Time", "Mix", "Repeats"],
+  small: ["Wow", "Flutter"],
+  print: "El Capistan",
+  note: "A tape echo modelled in DSP, in the Strymon compact box: two footswitches, so the second one can tap the tempo without taking the delay out.",
+})
+
+const STRYMON_BLUESKY = strymonCompact({
+  model: /\bblue\s*sky\b/i,
+  name: "blueSky",
+  color: "#7fb6dd",
+  ink: "#12222e",
+  big: ["Decay", "Mix", "Tone"],
+  small: ["Pre-Delay", "Mod"],
+  print: "blueSky",
+  note: "The pale blue one, and the reverb a lot of boards settled on. Same casting and the same pair of switches as the rest of the Strymon compacts.",
+})
+
+const STRYMON_FLINT = strymonCompact({
+  model: /\bflint\b/i,
+  name: "Flint",
+  color: "#2b3f63",
+  ink: "#e8eef7",
+  big: ["Intensity", "Speed", "Mix"],
+  small: ["Decay", "Colour"],
+  print: "Flint",
+  note: "Tremolo and reverb in one box, which is why it has two footswitches doing two different jobs rather than one plus a tap.",
+})
 
 /* --------------------------------------------------------------------- */
 /*  The rest of the Boss compact line                                     */
@@ -764,6 +884,68 @@ const BOSS_DD8 = bossCompact({
   note: "The current compact delay, in magenta rather than the DD-3's white. Same casting, forty years apart.",
 })
 
+const BOSS_DS2 = bossCompact({
+  model: /\bds-?2\b/i,
+  name: "DS-2 Turbo Distortion",
+  color: "#e05a2b",
+  controls: ["Tone", "Level", "Dist", "Turbo"],
+  print: ["DS-2", "Turbo Distortion"],
+  note: "A DS-1 with a second, hotter voicing on a fourth control, which is a selector rather than a sweep even though it is shaped like a knob.",
+})
+
+const BOSS_OC3 = bossCompact({
+  model: /\boc-?3\b/i,
+  name: "OC-3 Super Octave",
+  color: "#e6e8ea",
+  controls: ["Direct", "Oct 1", "Oct 2", "Mode"],
+  print: ["OC-3", "Super Octave"],
+  note: "The first Boss octave that tracked polyphonically, which is why it has a Mode control at all rather than just two octave levels.",
+})
+
+const BOSS_PH3 = bossCompact({
+  model: /\bph-?3\b/i,
+  name: "PH-3 Phase Shifter",
+  color: "#6fbf73",
+  ink: "#14240f",
+  controls: ["Rate", "Depth", "Res", "Stage"],
+  print: ["PH-3", "Phase Shifter"],
+  note: "Stage is the knob that makes this more than one pedal: four, eight, ten and twelve stages of phasing off one control.",
+})
+
+/*
+ * A TUNER, WHICH IS THE FIRST PEDAL HERE WITH A SCREEN AND NO KNOBS.
+ *
+ * The face is almost entirely a display window. Nothing is written in it, for
+ * the reason `Screen` gives: what a tuner shows depends on what you are
+ * playing, and drawing a plausible needle is inventing a reading.
+ */
+const BOSS_TU3: PedalModel = {
+  ...bossCompact({
+    model: /\btu-?3\b/i,
+    name: "TU-3 Chromatic Tuner",
+    color: "#d9dde1",
+    controls: [],
+    print: ["TU-3", "Chromatic Tuner"],
+    note: "The Boss casting with the controls replaced by a window: no knobs at all, because the only thing to set is a mode button and the rest is read rather than adjusted.",
+  }),
+  screen: { x: 0, z: -40, width: 46, depth: 20 },
+  /* The tuner's own indicator, not the bypass LED, and it sits beside the
+     window rather than at the back where a compact usually carries one. */
+  led: { x: 0, z: -60, color: "#ff2b2b" },
+}
+
+/** A TU-2, which is a TU-3 with the previous number on it. Same rule as the DD-2. */
+const BOSS_TU2: PedalModel = {
+  ...BOSS_TU3,
+  match: { brand: /^boss$/i, model: /\btu-?2\b/i },
+  name: "TU-2 Chromatic Tuner",
+  legends: [
+    { text: "TU-2", z: -23, size: 8 },
+    { text: "Chromatic Tuner", z: -15.5, size: 4.2 },
+  ],
+  note: "The tuner that was on almost every board before the TU-3 replaced it, in the same casting with the same window and one number different.",
+}
+
 /* --------------------------------------------------------------------- */
 /*  The rest of the MXR compacts                                          */
 /* --------------------------------------------------------------------- */
@@ -805,6 +987,54 @@ const MXR_CARBON_COPY = mxrCompact({
   note: "A genuine bucket-brigade analogue delay in the MXR box, in the dark green everybody knows. Three knobs, and the modulation is a switch rather than a control.",
 })
 
+/*
+ * THE MINI BOX, which is a different pedal shape rather than a smaller one.
+ *
+ * 42mm across leaves room for one knob and nothing else in a row, so what a
+ * mini actually does is move the modes onto toggles. Drawing those as tiny
+ * knobs would say the pedal is adjustable where it is switched.
+ */
+const MXR_PHASE_95: PedalModel = {
+  match: { brand: /^(mxr|dunlop)$/i, model: /\bphase\s*95\b|\bm290\b/i },
+  name: "Phase 95",
+  maker: "MXR",
+  style: "box",
+  ...enc("mxr-mini"),
+  color: "#f47b20",
+  ink: "#1c1c1c",
+  knobs: [{ x: 0, z: -30, radius: 8, height: 12, style: "chicken-head", label: "", angle: -50 }],
+  toggles: [
+    { x: -9, z: -13 },
+    { x: 9, z: -13 },
+  ],
+  footswitches: [{ x: 0, z: 28, radius: 6 }],
+  led: { x: 0, z: -42, color: "#ff4d2b" },
+  legends: [{ text: "Phase 95", z: 8, size: 4.5 }],
+  note: "Four phasers in a mini box: two toggles pick between the 45 and the 90 circuits and between script and block voicings, because there is no room for four knobs.",
+}
+
+const IBANEZ_TS_MINI: PedalModel = {
+  match: { brand: /^ibanez$/i, model: /\btube\s*screamer\b.*\bmini\b|\bts\s*mini\b/i },
+  name: "Tube Screamer Mini",
+  maker: "Ibanez",
+  style: "box",
+  ...enc("mxr-mini"),
+  color: "#2f9b4e",
+  ink: "#0f2415",
+  knobs: [
+    { x: -11, z: -32, radius: 4.5, height: 7, style: "dome", label: "", angle: -30 },
+    { x: 11, z: -32, radius: 4.5, height: 7, style: "dome", label: "", angle: 25 },
+    { x: 0, z: -20, radius: 4.5, height: 7, style: "dome", label: "", angle: 70 },
+  ],
+  footswitches: [{ x: 0, z: 28, radius: 6 }],
+  led: { x: 0, z: -6, color: "#ff4d2b" },
+  legends: [
+    { text: "Tube Screamer", z: 8, size: 3.4 },
+    { text: "Mini", z: 14, size: 3.4 },
+  ],
+  note: "The Tube Screamer circuit in a mini box, and a completely different enclosure from a TS9: three knobs in a triangle because 42mm will not take them in a row.",
+}
+
 /* --------------------------------------------------------------------- */
 /*  Three more Electro-Harmonix, in the two boxes it actually ships        */
 /* --------------------------------------------------------------------- */
@@ -818,7 +1048,7 @@ const EHX_ELECTRIC_MISTRESS = {
   color: "#b9bcc0",
   ink: "#17171a",
   knobs: knobRow(["Rate", "Range", "Color"], { faceWidth: 146, z: -34, arc: 5 }),
-  footswitch: { x: 0, z: 38, radius: 7 },
+  footswitches: [{ x: 0, z: 38, radius: 7 }],
   led: { x: 0, z: 8, color: "#ff2b2b" },
   legends: [{ text: "Electric Mistress", z: -8, size: 8 }],
   note: "The same 146mm box as a Big Muff, in brushed silver. A filter-matrix flanger with a Range control, which is the knob that parks it as a fixed comb filter.",
@@ -833,7 +1063,7 @@ const EHX_SOUL_FOOD = {
   color: "#d7d9dc",
   ink: "#17171a",
   knobs: knobRow(["Drive", "Treble", "Volume"], { faceWidth: 70, z: -32, arc: 4 }),
-  footswitch: { x: 0, z: 32, radius: 8 },
+  footswitches: [{ x: 0, z: 32, radius: 8 }],
   led: { x: 0, z: -50, color: "#ff2b2b" },
   legends: [{ text: "Soul Food", z: -4, size: 7 }],
   note: "The Nano box, 70mm across. A transparent overdrive in the Klon lineage at a fraction of the price, which is most of why it sold.",
@@ -848,10 +1078,88 @@ const EHX_MICRO_POG = {
   color: "#8d9298",
   ink: "#17171a",
   knobs: knobRow(["Dry", "Sub Oct", "Oct Up"], { faceWidth: 89, z: -34, arc: 5 }),
-  footswitch: { x: 0, z: 34, radius: 8 },
+  footswitches: [{ x: 0, z: 34, radius: 8 }],
   led: { x: 0, z: -14, color: "#ff2b2b" },
   legends: [{ text: "Micro POG", z: 6, size: 7 }],
   note: "Polyphonic octaves in the XO box: three knobs that are really three faders, one for the dry signal and one for each octave.",
+}
+
+const EHX_NANO_BIG_MUFF: PedalModel = {
+  match: { brand: /^electro-?harmonix$/i, model: /\bnano\b.*\bbig\s*muff\b|\bbig\s*muff\b.*\bnano\b/i },
+  name: "Nano Big Muff Pi",
+  maker: "Electro-Harmonix",
+  style: "box",
+  ...enc("ehx-nano"),
+  color: "#171719",
+  ink: "#f0f0ee",
+  knobs: knobRow(["Volume", "Tone", "Sustain"], { faceWidth: 70, z: -32, arc: 4 }),
+  footswitches: [{ x: 0, z: 32, radius: 8 }],
+  led: { x: 0, z: 14, color: "#ff2b2b" },
+  legends: [{ text: "Big Muff Pi", z: -4, size: 6 }],
+  note: "The same circuit as the 146mm board hog in a 70mm box, which is the whole product: half the width, none of the argument about whether it fits.",
+}
+
+const EHX_SMALL_CLONE: PedalModel = {
+  match: { brand: /^electro-?harmonix$/i, model: /\bsmall\s*clone\b/i },
+  name: "Small Clone",
+  maker: "Electro-Harmonix",
+  style: "box",
+  ...enc("ehx-nano"),
+  color: "#2f6fb5",
+  ink: "#eef3f9",
+  knobs: [{ x: 0, z: -32, radius: 11, height: 15, style: "skirted", label: "Rate", angle: -25 }],
+  toggles: [{ x: 22, z: -8 }],
+  footswitches: [{ x: 0, z: 32, radius: 8 }],
+  led: { x: -22, z: -8, color: "#ff2b2b" },
+  legends: [{ text: "Small Clone", z: 10, size: 6 }],
+  note: "One knob for rate and a two-position depth toggle, which is the entire control set and the reason it sounds like one thing rather than a chorus you have to dial in.",
+}
+
+const EHX_HOLY_GRAIL: PedalModel = {
+  match: { brand: /^electro-?harmonix$/i, model: /\bholy\s*grail\b/i },
+  name: "Holy Grail",
+  maker: "Electro-Harmonix",
+  style: "box",
+  ...enc("ehx-xo"),
+  color: "#b9bcc0",
+  ink: "#17171a",
+  knobs: [
+    { x: -18, z: -34, radius: 11, height: 15, style: "skirted", label: "Reverb", angle: -20 },
+    { x: 18, z: -34, radius: 9, height: 13, style: "chicken-head", label: "Mode", angle: 60 },
+  ],
+  footswitches: [{ x: 0, z: 34, radius: 8 }],
+  led: { x: 0, z: -12, color: "#ff2b2b" },
+  legends: [{ text: "Holy Grail", z: 6, size: 7 }],
+  note: "Spring, hall and flerb off one selector, with a single amount control beside it. The XO box, and about as few decisions as a reverb can offer.",
+}
+
+/*
+ * TWO MORE TREADLES, which takes that body to five users.
+ *
+ * The V846 is the grey hammertone one and the WH10 is the odd one out: a
+ * plastic-bodied wah rather than a cast chassis, in the same footprint the
+ * planner's table gives every treadle.
+ */
+const VOX_V846: PedalModel = {
+  ...DUNLOP_CRY_BABY,
+  match: { brand: /^vox$/i, model: /\bv846\b/i },
+  name: "V846 Wah",
+  maker: "Vox",
+  color: "#6b6d70",
+  ink: "#f0f0ee",
+  legends: [{ text: "Vox", z: 112, size: 11 }],
+  note: "The grey hammertone one, and the wah the reissues are all measured against. Same chassis as every treadle since, in the finish the originals wore.",
+}
+
+const IBANEZ_WH10: PedalModel = {
+  ...DUNLOP_CRY_BABY,
+  match: { brand: /^ibanez$/i, model: /\bwh-?10\b/i },
+  name: "WH10 Wah",
+  maker: "Ibanez",
+  color: "#1a1a1e",
+  ink: "#e6e6e6",
+  legends: [{ text: "WH10", z: 112, size: 10 }],
+  note: "The plastic-bodied one, which is why originals are so often found cracked. A different material from every other treadle here and the same footprint.",
 }
 
 /* --------------------------------------------------------------------- */
@@ -867,7 +1175,7 @@ const EQD_PLUMES = {
   color: "#b6a4d8",
   ink: "#1a1620",
   knobs: knobRow(["Level", "Tone", "Gain"], { faceWidth: 64, z: -32, arc: 4 }),
-  footswitch: { x: 0, z: 36, radius: 8 },
+  footswitches: [{ x: 0, z: 36, radius: 8 }],
   led: { x: 0, z: 10, color: "#ff4d2b" },
   legends: [{ text: "Plumes", z: -6, size: 7 }],
   note: "A Hammond 1590B, which is the box most boutique pedals are built in: 64 by 121mm, and the reason a shelf of them all take the same space on a board.",
@@ -888,7 +1196,7 @@ const WAMPLER_TUMNUS = {
     { x: 9.5, z: -30, radius: 5.5, height: 8, style: "dome" as const, label: "", angle: 20 },
     { x: 0, z: -17, radius: 5.5, height: 8, style: "dome" as const, label: "", angle: 70 },
   ],
-  footswitch: { x: 0, z: 28, radius: 6 },
+  footswitches: [{ x: 0, z: 28, radius: 6 }],
   led: { x: 0, z: -3, color: "#ff4d2b" },
   legends: [{ text: "Tumnus", z: 10, size: 4.5 }],
   note: "A Hammond 1590A at 39mm across, which is as small as a pedal gets before the jacks stop fitting. A Klon circuit in a box a fifth of the size.",
@@ -931,7 +1239,7 @@ const EB_VOLUME: PedalModel = {
   color: "#1a1a1c",
   ink: "#e6e6e6",
   knobs: [],
-  footswitch: null,
+  footswitches: [],
   led: null,
   legends: [{ text: "Ernie Ball", z: 112, size: 7 }],
   treadle: {
@@ -945,6 +1253,65 @@ const EB_VOLUME: PedalModel = {
     cheekToeHeight: 10,
   },
   note: "A volume pedal is a treadle with a pot in it and nothing else: no knobs, no indicator, and no bypass switch, because heel down already is off.",
+}
+
+/* --------------------------------------------------------------------- */
+/*  Three more 1590Bs, which is what the boutique shelf is made of         */
+/* --------------------------------------------------------------------- */
+
+/*
+ * ALL THREE HAVE A TOGGLE, and that is the point of grouping them.
+ *
+ * The boutique answer to "this pedal should do two things" is a mini toggle
+ * rather than a second knob, so a shelf of 1590Bs is mostly three knobs and a
+ * bat lever. Drawing the lever as a small knob would say the mode is a sweep.
+ */
+const JHS_MORNING_GLORY: PedalModel = {
+  match: { brand: /^jhs(\s*pedals)?$/i, model: /\bmorning\s*glory\b/i },
+  name: "Morning Glory",
+  maker: "JHS Pedals",
+  style: "box",
+  ...enc("1590B"),
+  color: "#eceff2",
+  ink: "#16223a",
+  knobs: knobRow(["Volume", "Tone", "Drive"], { faceWidth: 64, z: -32, arc: 4 }),
+  toggles: [{ x: -22, z: 8 }],
+  footswitches: [{ x: 0, z: 36, radius: 8 }],
+  led: { x: 22, z: 8, color: "#ff4d2b" },
+  legends: [{ text: "Morning Glory", z: 20, size: 5 }],
+  note: "A transparent overdrive in the standard 1590B, with a bright-cut toggle between the knobs and the switch where a fourth control would otherwise go.",
+}
+
+const WALRUS_JULIA: PedalModel = {
+  match: { brand: /^walrus(\s*audio)?$/i, model: /\bjulia\b/i },
+  name: "Julia",
+  maker: "Walrus Audio",
+  style: "box",
+  ...enc("1590B"),
+  color: "#1f6f74",
+  ink: "#eef6f6",
+  knobs: knobRow(["Rate", "Depth", "Lag", "D-V"], { faceWidth: 64, z: -30, arc: 3, radius: 5.5 }),
+  toggles: [{ x: -22, z: 8 }],
+  footswitches: [{ x: 0, z: 36, radius: 8 }],
+  led: { x: 22, z: 8, color: "#3ad46a" },
+  legends: [{ text: "Julia", z: 20, size: 6 }],
+  note: "Chorus and vibrato off one blend control, which is what the D-V knob does: all the way over is vibrato, in the middle is chorus.",
+}
+
+const KEELEY_COMPRESSOR_PLUS: PedalModel = {
+  match: { brand: /^keeley$/i, model: /\bcompressor\b/i },
+  name: "Compressor Plus",
+  maker: "Keeley",
+  style: "box",
+  ...enc("1590B"),
+  color: "#1b3a63",
+  ink: "#eef3f9",
+  knobs: knobRow(["Sustain", "Level", "Tone"], { faceWidth: 64, z: -32, arc: 4 }),
+  toggles: [{ x: -22, z: 8 }],
+  footswitches: [{ x: 0, z: 36, radius: 8 }],
+  led: { x: 22, z: 8, color: "#ff4d2b" },
+  legends: [{ text: "Compressor", z: 20, size: 5 }],
+  note: "The studio-style optical compressor most boards ended up with, in a 1590B, with a single-coil and humbucker toggle rather than an input trim.",
 }
 
 /** Every pedal modelled by hand, most specific first. */
@@ -970,27 +1337,47 @@ export const PEDAL_MODELS: PedalModel[] = [
   BOSS_CS3,
   BOSS_RV6,
   BOSS_BD2,
+  BOSS_DS2,
+  BOSS_OC3,
+  BOSS_PH3,
+  BOSS_TU3,
+  BOSS_TU2,
   /* The Ibanez housing borrowed the Boss mechanism, so it sits with them. */
   IBANEZ_TS9,
+  /* The Mini is a mini box and nothing like the TS9, which is exactly why it
+     used to be wrong to let one pattern catch both. */
+  IBANEZ_TS_MINI,
 
   /* Electro-Harmonix, in the three boxes it actually ships. */
+  /* The Nano first: its pattern is the specific one, and the big one's is
+     written to refuse it either way. */
+  EHX_NANO_BIG_MUFF,
   EHX_BIG_MUFF,
   EHX_ELECTRIC_MISTRESS,
   EHX_SMALL_STONE,
   EHX_MICRO_POG,
   EHX_SOUL_FOOD,
+  EHX_SMALL_CLONE,
+  EHX_HOLY_GRAIL,
   EHX_MEMORY_MAN,
 
   /* Treadles. Two wahs and a volume pedal, which is a treadle with nothing
      in it: the second and third users of that body, which is what stops the
      shape being a thing only one pedal has ever proved. */
   DUNLOP_CRY_BABY,
+  /* The V846 before the general Vox pattern, which would otherwise take it. */
+  VOX_V846,
   VOX_WAH,
+  IBANEZ_WH10,
   EB_VOLUME,
 
   /* MXR's folded box, and the one round pedal on the site. */
   DUNLOP_FUZZ_FACE,
   MXR_DYNA_COMP,
+  /* The 95 before the 90: "Phase 9" is a prefix of neither, but keeping the
+     more specific number first is the habit that stops the next pair going
+     wrong. */
+  MXR_PHASE_95,
   MXR_MICRO,
   MXR_MICRO_AMP,
   MXR_DISTORTION_PLUS,
@@ -1003,6 +1390,16 @@ export const PEDAL_MODELS: PedalModel[] = [
   TC_HOF_MINI,
   EQD_PLUMES,
   WAMPLER_TUMNUS,
+
+  /* Two footswitches, which the model could not carry until this batch. */
+  STRYMON_EL_CAPISTAN,
+  STRYMON_BLUESKY,
+  STRYMON_FLINT,
+
+  /* The boutique 1590B shelf, all toggle-and-three-knobs. */
+  JHS_MORNING_GLORY,
+  WALRUS_JULIA,
+  KEELEY_COMPRESSOR_PLUS,
 ]
 
 /**
@@ -1075,9 +1472,9 @@ export function genericModel(item: BoardItem, spec: GenericSpec): PedalModel {
       label: "",
       angle: knob.angle,
     })),
-    footswitch: spec.switches[0]
-      ? { x: spec.switches[0].x, z: spec.switches[0].z, radius: spec.switches[0].radius }
-      : null,
+    /* The derived generic carries whatever switches its slot says it has,
+       which for every box is one and for a treadle is the one under the toe. */
+    footswitches: spec.switches.map((sw) => ({ x: sw.x, z: sw.z, radius: sw.radius })),
     led: { x: spec.led.x, z: spec.led.z, color: "#24e07a" },
     legends: [
       { text: item.name, z: spec.legendZ, size: 5 },
