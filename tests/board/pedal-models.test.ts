@@ -59,7 +59,6 @@ describe("matching a pedal to a measured model", () => {
 
   it("never hands one product's body and name to another", () => {
     /* Same brand, same casting in some cases, different pedal in all of them. */
-    expect(found("Ibanez", "TS808 Tube Screamer")).toBeNull()
     expect(found("Electro-Harmonix", "Little Big Muff")).toBeNull()
     /* A CE-1 is a mains-powered wedge, not the compact casting. */
     expect(found("Boss", "CE-1 Chorus Ensemble")).toBeNull()
@@ -82,6 +81,21 @@ describe("matching a pedal to a measured model", () => {
     const muff = found("Electro-Harmonix", "Big Muff Pi")
     expect(nano?.name).toBe("Nano Big Muff Pi")
     expect(nano!.width).toBeLessThan(muff!.width)
+  })
+
+  it("gives the TS808 the TS9's casting and its own number", () => {
+    /*
+     * The 808 used to fall to the generic because the finish was unverified.
+     * The catalogue settles the shape, giving both the same 74 x 124 x 53 from
+     * Ibanez, so the casting is confirmed shared rather than assumed and the
+     * only thing left to keep apart is the print.
+     */
+    const ts808 = found("Ibanez", "TS808 Tube Screamer")
+    const ts9 = found("Ibanez", "TS9 Tube Screamer")
+    expect(ts808?.legends[0].text).toBe("TS808")
+    expect(ts9?.legends[0].text).toBe("TS9")
+    expect(ts808?.width).toBe(ts9?.width)
+    expect(ts808?.depth).toBe(ts9?.depth)
   })
 
   it("gives the Micro Amp its own entry rather than the Phase 90's", () => {
@@ -436,6 +450,33 @@ describe("against the two datasets that actually reach the viewer", () => {
     for (const pedal of CATALOG_PEDALS) {
       expect(() => modelFor(item({ maker: pedal.brand, name: pedal.model }))).not.toThrow()
     }
+  })
+
+  it("leaves no model in the table that nothing can reach", () => {
+    /*
+     * A MODEL NOBODY CAN MATCH IS WORSE THAN NO MODEL, because it looks like
+     * coverage. Every entry here was written for a real product, so every
+     * entry should be findable from the name that product goes by in one of
+     * the two datasets.
+     *
+     * The Walrus Slö is why this exists. Its pattern ended in `\b`, and
+     * JavaScript's word boundary is ASCII-only, so there is no boundary after
+     * the "ö" in "Slö Reverb": the model sat in the table, fully written, and
+     * matched nothing at all. The Fuzz Face had done the same thing when its
+     * brand pattern did not allow for "Dallas Arbiter".
+     */
+    const reachable = new Set<string>()
+    for (const pedal of CATALOG_PEDALS) {
+      const model = modelFor(item({ maker: pedal.brand, name: pedal.model }))
+      if (model) reachable.add(model.name)
+    }
+    for (const pedal of GUIDE_PEDALS) {
+      const model = modelFor(item({ maker: pedal.maker, name: pedal.name }))
+      if (model) reachable.add(model.name)
+    }
+
+    const orphans = PEDAL_MODELS.filter((m) => !reachable.has(m.name)).map((m) => m.name)
+    expect(orphans, "modelled but unreachable from either dataset").toEqual([])
   })
 
   it("finds a measured model for the pedals people came here for", () => {

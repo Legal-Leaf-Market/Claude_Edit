@@ -1208,6 +1208,16 @@ Insetting both equally cost 2.5mm at the only end short of room, which is what
 ran "SUPER CHORUS" off the front of the plate it was printed on. The plane and
 the texture mapping are built from the same two numbers so they cannot disagree.
 
+**A MODEL NOTHING CAN REACH IS WORSE THAN NO MODEL, because it looks like
+coverage.** Every entry is written for a real product, so every entry has to be
+findable from the name that product goes by in one of the two datasets, and a
+test walks the table asserting it. Two had already failed that silently. The
+Walrus Slö's pattern ended in `\b`, and JavaScript's word boundary is ASCII
+only, so there is no boundary after the "ö" in "Slö Reverb" and the model
+matched nothing at all. The Hall of Fame Mini was one of the first three
+written and had never been reachable, because the planner's catalogue does not
+carry that product; the fix there was adding the pedal, not deleting the model.
+
 **Match the maker string the DATASET uses, not the one that sounds right.** The
 Fuzz Face's brand pattern was anchored on `arbiter` while both datasets say
 "Dallas Arbiter", so the one round pedal on the site matched nothing at all and
@@ -1350,6 +1360,11 @@ engine.
   generic with extra steps, and the generic is already honest about itself.
 - Do NOT draw a brand's logo on a model. The product name in the site's own
   type says which pedal it is; a redrawn mark is a different act.
+- Do NOT leave a model in the table that neither dataset can reach. It reads
+  as coverage and renders for nobody; either the pattern is wrong or the
+  product belongs in the planner's catalogue.
+- Do NOT end a model pattern in `\b` after a non-ASCII letter. JavaScript's
+  word boundary is ASCII only, so `\bslö\b` matches nothing at all.
 - Do NOT widen a pattern in `lib/board/pedal-models.ts` to catch a sibling
   product. A loose pattern here does not miss, it prints one pedal's name on
   another pedal's body. Where the casting really is shared and only the print
