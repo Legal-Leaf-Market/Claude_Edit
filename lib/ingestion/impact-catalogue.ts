@@ -413,6 +413,15 @@ export function parseImpactCatalogue(text: string, merchant: ImpactMerchant): Pa
  */
 const IMPACT_API_BASE = "https://api.impact.com"
 
+/**
+ * A page size no paginated API refuses, used only as the fallback above.
+ *
+ * Not a claim about Impact's limit: it is the number to drop to when the
+ * limit turns out to be lower than what we asked for, chosen because 100 is
+ * the smallest common cap and a page that size is still worth a round trip.
+ */
+const SAFE_PAGE_SIZE = 100
+
 function impactAuthHeader(sid: string, token: string): string {
   return `Basic ${Buffer.from(`${sid}:${token}`).toString("base64")}`
 }
@@ -490,8 +499,47 @@ function toInt(value: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+/**
+ * The body of a failed response, when it is short enough to be a message.
+ *
+ * WHY THIS IS BOUNDED AND SNIFFED rather than just concatenated. Impact answers
+ * an auth failure with an HTML error page in some deployments, and pasting a
+ * page of markup into a log buries the one useful fact in it. But a 400 from a
+ * JSON API is the opposite case: the body is the only place that says WHICH
+ * parameter it did not like, and without it the message is "400 Bad Request"
+ * and nobody can act on it.
+ *
+ * So: take the body when it is short and not markup, collapse its whitespace,
+ * and cap it. Anything else is dropped and the status stands on its own.
+ */
+async function errorBody(response: Response): Promise<string> {
+  try {
+    const raw = (await response.text()).trim()
+    if (!raw) return ""
+    if (raw.startsWith("<")) return ""
+    const flat = raw.replace(/\s+/g, " ")
+    return flat.length > 400 ? `${flat.slice(0, 400)}...` : flat
+  } catch {
+    /* A body that will not read is not worth failing differently over: the
+       status is still the thing being reported. */
+    return ""
+  }
+}
+
+/**
+ * The request that failed, with the credential removed.
+ *
+ * The account sid is half of the HTTP Basic pair and it sits in the PATH of
+ * every one of these URLs, so a log line quoting the URL verbatim publishes it.
+ * Everything else about the request is exactly what somebody diagnosing this
+ * needs to see, which is why the URL is worth including at all.
+ */
+export function redactImpactUrl(url: string): string {
+  return url.replace(/(\/Mediapartners\/)[^/?#]+/i, "$1***")
+}
+
 /** Turn a non-2xx into the one sentence that says what to go and change. */
-function apiError(status: number, statusText: string, catalogId: string): Error {
+function apiError(status: number, statusText: string, catalogId: string, extra = ""): Error {
   const detail =
     status === 401
       ? "The AccountSid or AuthToken was rejected. Both come from the Impact platform's API settings."
@@ -499,13 +547,18 @@ function apiError(status: number, statusText: string, catalogId: string): Error 
         ? "Authenticated, but this account is not permitted to read that catalogue. Check the catalogue id belongs to a programme this partner account has joined."
         : status === 404
           ? `No catalogue ${catalogId} for this account. The id is on the product catalogue page in the Impact platform, and the admin catalogue list will read the real ones off the account.`
-          : ""
-  /*
-   * Name the status rather than the body. Impact answers an auth failure with
-   * an HTML page in some deployments, and dumping that into an admin panel
-   * buries the one useful fact in markup.
-   */
-  return new Error(`Impact API returned ${status} ${statusText}. ${detail}`.trim())
+          : status === 400
+            ? /*
+               * A 400 IS THE INFORMATIVE ONE, and it took a production outage
+               * to notice this branch was empty. Impact checks credentials
+               * before it checks anything else, so a 400 rather than a 401
+               * means the account is fine and the REQUEST is what it rejected:
+               * a parameter out of range, or a catalogue it will not serve in
+               * this state. The body says which, so the body is reported.
+               */
+              "The credentials were accepted and the request itself was rejected, so this is a parameter rather than an access problem."
+            : ""
+  return new Error(`Impact API returned ${status} ${statusText}. ${detail} ${extra}`.trim())
 }
 
 /**
@@ -532,14 +585,57 @@ export async function fetchImpactApiPage(
     url.searchParams.set("PageSize", String(pageSize))
   }
 
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     headers: {
       authorization: impactAuthHeader(config.accountSid, config.authToken),
       accept: "application/json",
     },
   })
 
-  if (!response.ok) throw apiError(response.status, response.statusText, config.catalogId)
+  /*
+   * ONE RETRY AT A SMALLER PAGE, AND ONLY ON A 400.
+   *
+   * Impact does not publish a maximum PageSize for this endpoint and we cannot
+   * ask it from a test, so this asks the only way that settles it: request the
+   * page we want, and if the API rejects the REQUEST rather than the caller,
+   * ask again for a page small enough that no sane API refuses it.
+   *
+   * Narrow on purpose. A 400 is the one status that means "your credentials
+   * are fine and this request is not", so it is the only one where a different
+   * request could help; a 401, 403 or 404 gets no second attempt because a
+   * smaller page cannot fix any of them. And it happens once, not in a loop.
+   *
+   * It says so in the log when it works, because the point is not to paper
+   * over the limit but to find out what it is: a run that reports falling back
+   * is a run that tells somebody what to set `PageSize` to permanently.
+   */
+  if (response.status === 400 && typeof pathOrPage === "number" && pageSize > SAFE_PAGE_SIZE) {
+    const firstBody = await errorBody(response)
+    url.searchParams.set("PageSize", String(SAFE_PAGE_SIZE))
+    response = await fetch(url, {
+      headers: {
+        authorization: impactAuthHeader(config.accountSid, config.authToken),
+        accept: "application/json",
+      },
+    })
+    if (response.ok) {
+      console.warn(
+        `[impact] catalogue ${config.catalogId}: PageSize ${pageSize} was rejected ` +
+          `(${firstBody || "no reason given"}), ${SAFE_PAGE_SIZE} was accepted. ` +
+          `Set the page size to ${SAFE_PAGE_SIZE} to stop paying for the first call.`,
+      )
+      pageSize = SAFE_PAGE_SIZE
+    }
+  }
+
+  if (!response.ok) {
+    throw apiError(
+      response.status,
+      response.statusText,
+      config.catalogId,
+      `Asked for ${redactImpactUrl(url.toString())}. ${await errorBody(response)}`.trim(),
+    )
+  }
 
   const body = (await response.json()) as Record<string, unknown>
   const found = findItemsArray(body)
@@ -606,7 +702,14 @@ export async function listImpactCatalogs(
     },
   })
 
-  if (!response.ok) throw apiError(response.status, response.statusText, "(list)")
+  if (!response.ok) {
+    throw apiError(
+      response.status,
+      response.statusText,
+      "(list)",
+      `Asked for ${redactImpactUrl(url.toString())}. ${await errorBody(response)}`.trim(),
+    )
+  }
 
   const body = (await response.json()) as Record<string, unknown>
   const found = findItemsArray(body)
