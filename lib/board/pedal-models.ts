@@ -1572,7 +1572,19 @@ const KEELEY_COMPRESSOR_PLUS: PedalModel = {
 /* --------------------------------------------------------------------- */
 
 const WALRUS_SLO: PedalModel = {
-  match: { brand: /^walrus(\s*audio)?$/i, model: /\bsl(o|ö)\b/i },
+  match: {
+    brand: /^walrus(\s*audio)?$/i,
+    /*
+     * NO TRAILING \b, BECAUSE THE NAME ENDS IN A NON-ASCII LETTER.
+     *
+     * JavaScript's \b is ASCII-only unless the pattern is unicode-aware, so
+     * "ö" counts as a non-word character: in "Slö Reverb" there is no boundary
+     * between the "ö" and the space, and `\bsl(o|ö)\b` matched nothing at all.
+     * The model was in the table and unreachable, exactly as the Fuzz Face was
+     * when its brand pattern did not allow for "Dallas".
+     */
+    model: /\bsl(o|ö)(?![a-z])/i,
+  },
   name: "Slö",
   maker: "Walrus Audio",
   style: "box",
@@ -1951,6 +1963,260 @@ const TC_POLYTUNE_3: PedalModel = {
   note: "Almost the whole face is display, because a tuner has nothing to set and everything to read. Strum all six strings and it shows all six at once, which is what the poly means.",
 }
 
+/* --------------------------------------------------------------------- */
+/*  The last of the pedals the catalogue has maker's figures for           */
+/* --------------------------------------------------------------------- */
+
+/**
+ * A TS808, which is a TS9 in a different green.
+ *
+ * The catalogue gives both the same 74 x 124 x 53 from Ibanez, so the casting
+ * is confirmed shared rather than assumed. Same rule as the DD-2 and the RAT 2:
+ * one entry each, because the print is what tells them apart and a pattern
+ * loose enough to catch both would have to get one wrong.
+ */
+const IBANEZ_TS808: PedalModel = {
+  ...IBANEZ_TS9,
+  match: { brand: /^ibanez$/i, model: /\bts-?808\b/i },
+  name: "TS808 Tube Screamer",
+  color: "#4c8f4a",
+  /* The TS9's own shelf positions, not the Boss factory's: this housing puts
+     its knobs at -42 and -48, so the print sits at -20 rather than -23. */
+  legends: [{ text: "TS808", z: -20, size: 7 }],
+  note: "The original, in the olive green the reissues copy. Same Ibanez casting as a TS9 to the millimetre; what differs is the output section and the number on the shelf.",
+}
+
+/*
+ * A Z.VEX FUZZ FACTORY, and the shape is the fact worth having: 102 x 64,
+ * WIDER than it is deep, which almost nothing else here is. Five knobs across
+ * a face that shallow is why it looks like nothing else on a board.
+ */
+const ZVEX_FUZZ_FACTORY: PedalModel = {
+  match: { brand: /^z\.?\s*vex$/i, model: /\bfuzz\s*factory\b/i },
+  name: "Fuzz Factory",
+  maker: "Z.Vex",
+  style: "box",
+  ...catalogDims("zvex-fuzz-factory"),
+  /* The hand-painted ones are all different, so this is the plain enclosure
+     rather than any particular painting: inventing one artist's design would
+     be a claim about a specific unit. */
+  color: "#e6e1d4",
+  ink: "#1a1a1c",
+  knobs: knobRow(["Volume", "Gate", "Comp", "Drive", "Stab"], {
+    faceWidth: 102,
+    z: -18,
+    arc: 2,
+    radius: 6.5,
+  }),
+  footswitches: [{ x: 0, z: 22, radius: 7 }],
+  led: null,
+  legends: [{ text: "Fuzz Factory", z: 4, size: 4.5 }],
+  note: "Wider than it is deep, which almost nothing else is, with five knobs across a 64mm depth. Every one is hand-painted, so no two look alike and this is the bare enclosure.",
+}
+
+const EVENTIDE_H9: PedalModel = {
+  match: { brand: /^eventide$/i, model: /\bh9\b/i },
+  name: "H9",
+  maker: "Eventide",
+  style: "box",
+  ...catalogDims("eventide-h9"),
+  color: "#3a3d42",
+  ink: "#e8ebef",
+  knobs: [{ x: 34, z: -34, radius: 11, height: 15, style: "skirted", label: "", angle: -30 }],
+  screen: { x: -14, z: -34, width: 44, depth: 20 },
+  footswitches: [
+    { x: -24, z: 40, radius: 8 },
+    { x: 24, z: 40, radius: 8 },
+  ],
+  led: null,
+  legends: [{ text: "H9", z: 6, size: 11 }],
+  note: "One knob and a screen, because everything else is set from a phone. An unusual answer to a pedal with hundreds of algorithms in it, and the reason the face is nearly empty.",
+}
+
+const TC_DITTO: PedalModel = {
+  match: { brand: /^tc\s*electronic$/i, model: /\bditto\b/i },
+  name: "Ditto Looper",
+  maker: "TC Electronic",
+  style: "box",
+  ...catalogDims("tc-ditto"),
+  color: "#c6ccd2",
+  ink: "#1a1c20",
+  knobs: [{ x: 0, z: -26, radius: 9, height: 13, style: "dome", label: "", angle: 10 }],
+  footswitches: [{ x: 0, z: 26, radius: 6.5 }],
+  led: { x: 0, z: -6, color: "#3ad46a" },
+  legends: [{ text: "Ditto", z: 8, size: 4.5 }],
+  note: "One knob, one switch, and nothing else at all: the looper that sold on having no menu. 47mm across, which is the narrowest thing modelled here.",
+}
+
+/** The TC 72mm box, which the Hall of Fame 2 and the Flashback 2 both use. */
+function tcCompact(spec: {
+  model: RegExp
+  name: string
+  color: string
+  controls: [string, string, string, string]
+  print: string
+  note: string
+}): PedalModel {
+  return {
+    match: { brand: /^tc\s*electronic$/i, model: spec.model },
+    name: spec.name,
+    maker: "TC Electronic",
+    style: "box",
+    ...catalogDims("tc-hall-of-fame-2"),
+    color: spec.color,
+    ink: "#0f2018",
+    knobs: knobRow(spec.controls, { faceWidth: 72, z: -34, arc: 3, radius: 6.5 }),
+    footswitches: [{ x: 0, z: 34, radius: 8 }],
+    led: { x: 0, z: 4, color: "#3ad46a" },
+    legends: [{ text: spec.print, z: 16, size: 5 }],
+    note: spec.note,
+  }
+}
+
+const TC_HOF_2 = tcCompact({
+  model: /\bhall\s*of\s*fame\s*2\b|\bhof\s*2\b/i,
+  name: "Hall of Fame 2",
+  color: "#3fa88a",
+  controls: ["Decay", "Tone", "Level", "Type"],
+  print: "Hall of Fame 2",
+  note: "The full-size Hall of Fame rather than the mini: four knobs and a mode selector, in the 72mm box TC uses for most of its line.",
+})
+
+const TC_FLASHBACK_2 = tcCompact({
+  model: /\bflashback\s*2\b/i,
+  name: "Flashback 2 Delay",
+  color: "#2f7f68",
+  controls: ["Delay", "F.Back", "Level", "Type"],
+  print: "Flashback 2",
+  note: "The delay in the same 72mm box as the Hall of Fame 2, and the one that learns a strumming pattern rather than a tempo.",
+})
+
+const SOURCE_AUDIO_NEMESIS: PedalModel = {
+  match: { brand: /^source\s*audio$/i, model: /\bnemesis\b/i },
+  name: "Nemesis Delay",
+  maker: "Source Audio",
+  style: "box",
+  ...catalogDims("source-audio-nemesis"),
+  color: "#1f3350",
+  ink: "#e6ecf5",
+  knobs: knobRow(["Time", "Mix", "F.Back", "Depth"], {
+    faceWidth: 114,
+    z: -18,
+    arc: 2,
+    radius: 7,
+  }),
+  footswitches: [
+    { x: -30, z: 22, radius: 7 },
+    { x: 30, z: 22, radius: 7 },
+  ],
+  led: { x: -46, z: 4, color: "#3ad46a" },
+  legends: [{ text: "Nemesis", z: 4, size: 5 }],
+  note: "114 x 70, wider than it is deep, with two switches on a face that shallow. Twelve delay engines and a mode selector, all of it set from the four knobs.",
+}
+
+const UA_GOLDEN: PedalModel = {
+  match: { brand: /^universal\s*audio$/i, model: /\bgolden\b/i },
+  name: "UAFX Golden Reverberator",
+  maker: "Universal Audio",
+  style: "box",
+  ...catalogDims("universal-audio-golden"),
+  color: "#c9ccd0",
+  ink: "#17171a",
+  knobs: knobRow(["Decay", "Pre-Dly", "Mix", "Bass", "Treble"], {
+    faceWidth: 96,
+    z: -42,
+    arc: 3,
+    radius: 6,
+  }),
+  /* Forward of the knob labels, not between the rows: a 10mm lever buries
+     print about 20mm behind it and the labels sit at -33. */
+  toggles: [{ x: 0, z: -2 }],
+  footswitches: [
+    { x: -24, z: 46, radius: 8 },
+    { x: 24, z: 46, radius: 8 },
+  ],
+  led: { x: -34, z: 20, color: "#ff4d2b" },
+  legends: [{ text: "Golden", z: 20, size: 6 }],
+  note: "Three spring and plate reverbs on one selector, in a two-switch box the size of a Strymon compact. The brushed lid is the family look across the whole UAFX line.",
+}
+
+/*
+ * A VOLUME PEDAL THAT IS NOT FULL SIZE, and the treadle body's sixth user.
+ *
+ * 70 x 172 against a wah's 102 x 254, which is most of the reason people buy
+ * it: a full-size treadle takes the end of a board and this one does not.
+ */
+const DUNLOP_VOLUME_MINI: PedalModel = {
+  match: { brand: /^(jim\s*)?dunlop$/i, model: /\bvolume\b.*\bmini\b|\bdvp4\b/i },
+  name: "Volume (X) Mini",
+  maker: "Dunlop",
+  style: "treadle",
+  ...catalogDims("dunlop-volume-x-mini"),
+  /* Chassis only, as with every treadle here. */
+  height: 24,
+  color: "#1a1a1c",
+  ink: "#e6e6e6",
+  knobs: [],
+  footswitches: [],
+  led: null,
+  legends: [{ text: "Dunlop", z: 72, size: 7 }],
+  treadle: {
+    plateWidth: 56,
+    plateDepth: 146,
+    plateThickness: 11,
+    pivotZ: 12,
+    pivotY: 26,
+    tilt: 9,
+    cheekHeelHeight: 32,
+    cheekToeHeight: 9,
+  },
+  note: "A treadle at two thirds scale: 70 x 172 rather than a wah's 102 x 254, which is the whole product. It rocks the same way and takes far less of the board.",
+}
+
+/**
+ * An MXR in the big box, which is a third MXR size and not the compact.
+ *
+ * 121 x 145, the same enclosure as the 10-Band EQ, and the reason a Flanger
+ * never sat beside a Phase 90 as neatly as people expected.
+ */
+const MXR_FLANGER: PedalModel = {
+  match: { brand: /^(mxr|dunlop)$/i, model: /^flanger$|\bm117\b/i },
+  name: "Flanger",
+  maker: "MXR",
+  style: "box",
+  ...catalogDims("mxr-flanger"),
+  color: "#f47b20",
+  ink: "#1c1c1c",
+  knobs: knobRow(["Manual", "Width", "Speed", "Regen"], {
+    faceWidth: 121,
+    z: -44,
+    arc: 3,
+    radius: 10,
+  }),
+  footswitches: [{ x: 0, z: 50, radius: 9 }],
+  led: { x: -44, z: 14, color: "#ff4d2b" },
+  legends: [{ text: "Flanger", z: 14, size: 9 }],
+  note: "The big MXR box at 121 x 145, not the compact: a third size in the same orange, and the reason this one never lined up with a Phase 90 on a board.",
+}
+
+const ROSS_COMPRESSOR: PedalModel = {
+  match: { brand: /^ross$/i, model: /\bcompressor\b/i },
+  name: "Compressor",
+  maker: "Ross",
+  style: "box",
+  ...catalogDims("ross-compressor"),
+  color: "#9aa4ab",
+  ink: "#1a1c1e",
+  knobs: [
+    { x: -22, z: -30, radius: 10, height: 14, style: "skirted", label: "Sustain", angle: -25 },
+    { x: 22, z: -30, radius: 10, height: 14, style: "skirted", label: "Level", angle: 55 },
+  ],
+  footswitches: [{ x: 0, z: 34, radius: 8 }],
+  led: null,
+  legends: [{ text: "Compressor", z: 6, size: 6 }],
+  note: "The grey box every modern compressor is a copy of, with two knobs and no indicator at all. The catalogue's figures for it are an estimate rather than a published spec.",
+}
+
 /** Every pedal modelled by hand, most specific first. */
 export const PEDAL_MODELS: PedalModel[] = [
   /*
@@ -1990,6 +2256,9 @@ export const PEDAL_MODELS: PedalModel[] = [
   BOSS_RV500,
   BOSS_RC5,
   /* The Ibanez housing borrowed the Boss mechanism, so it sits with them. */
+  /* The 808 first: its number is the specific one, and the TS9's pattern is
+     written to refuse it either way. */
+  IBANEZ_TS808,
   IBANEZ_TS9,
   /* The Mini is a mini box and nothing like the TS9, which is exactly why it
      used to be wrong to let one pattern catch both. */
@@ -2014,8 +2283,9 @@ export const PEDAL_MODELS: PedalModel[] = [
      in it: the second and third users of that body, which is what stops the
      shape being a thing only one pedal has ever proved. */
   DUNLOP_CRY_BABY,
-  /* Not a wah at all, and the treadle body's fifth user. */
+  /* Not a wah at all, and the treadle body's fifth and sixth users. */
   DIGITECH_WHAMMY,
+  DUNLOP_VOLUME_MINI,
   /* The V846 before the general Vox pattern, which would otherwise take it. */
   VOX_V846,
   VOX_WAH,
@@ -2034,6 +2304,7 @@ export const PEDAL_MODELS: PedalModel[] = [
   MXR_DISTORTION_PLUS,
   MXR_CARBON_COPY,
   MXR_TEN_BAND,
+  MXR_FLANGER,
 
   /* Everything with a body of its own. */
   PROCO_RAT,
@@ -2066,7 +2337,17 @@ export const PEDAL_MODELS: PedalModel[] = [
   WAMPLER_TUMNUS_DELUXE,
   CHASE_BLISS_MOOD,
   TC_POLYTUNE_3,
+  /* The 2s before the Mini, whose pattern requires the word and would not take
+     them, but the order says which is the specific one. */
+  TC_HOF_2,
+  TC_FLASHBACK_2,
+  TC_DITTO,
   LINE6_DL4,
+  ZVEX_FUZZ_FACTORY,
+  EVENTIDE_H9,
+  SOURCE_AUDIO_NEMESIS,
+  UA_GOLDEN,
+  ROSS_COMPRESSOR,
 ]
 
 /**

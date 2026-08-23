@@ -957,6 +957,21 @@ export const PEDALS: PedalSpec[] = [
     weightG: 200,
   },
   {
+    /*
+     * The mini, which is a different product from the Hall of Fame 2 below and
+     * a different enclosure: one knob, and the whole top face is switch. In the
+     * same mini pattern the MXR and Ibanez minis use.
+     */
+    id: "tc-hall-of-fame-mini",
+    brand: "TC Electronic",
+    model: "Hall of Fame Mini",
+    type: "reverb",
+    enclosure: "mxr-mini",
+    dims: box("mxr-mini"),
+    power: dc(100, "maker"),
+    weightG: 180,
+  },
+  {
     id: "tc-hall-of-fame-2",
     brand: "TC Electronic",
     model: "Hall of Fame 2",
