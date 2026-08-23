@@ -1159,6 +1159,20 @@ them with a provenance marker per figure, because the layout engine needs it.
 plan and in the picture of it. Only a pedal with no standard box (a Klon, a
 Fuzz Face, a Deluxe Memory Man) still carries hand-measured numbers.
 
+**AND THE CROSS-CHECK COVERS PEDALS WITH NO STANDARD BOX TOO.** A Whammy, a
+DL4 and a PolyTune have no Hammond number, so `enc()` has nothing to read, but
+the catalogue still measures them because the layout engine has to place them.
+`catalogDims()` reads those, which means no pedal's size is asserted in only
+one file. Widening that check is what caught the RAT: hand-typed here as 124 x
+92 with a note explaining why it is wider than it is deep, against ProCo's own
+89 x 114, which is the other way round. The note was a confident paragraph
+about a shape the pedal does not have.
+
+Where NEITHER file has a measurement, the answer is still one number rather
+than two: the Deluxe Memory Man's figures are marked `estimate` in the
+catalogue and this file now reads them, so a real measurement corrects one
+place.
+
 That is not tidiness: **the two tables had already drifted, and the drift was
 the Big Muff and the Small Stone exchanged.** Hand-typed, the Big Muff came out
 89mm wide and the Small Stone 145. The famous board hog rendered as the narrow

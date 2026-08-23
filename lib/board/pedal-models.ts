@@ -1,4 +1,5 @@
 import { ENCLOSURES } from "@/lib/pedalboard/catalog/enclosures"
+import { PEDALS as CATALOG_PEDALS } from "@/lib/pedalboard/catalog/pedals"
 import type { EnclosureId } from "@/lib/pedalboard/catalog/types"
 import type { BoardItem } from "@/lib/board/model"
 
@@ -60,6 +61,25 @@ import type { BoardItem } from "@/lib/board/model"
 function enc(id: EnclosureId): { width: number; depth: number; height: number } {
   const { widthMm, depthMm, heightMm } = ENCLOSURES[id].dims
   return { width: widthMm, depth: depthMm, height: heightMm }
+}
+
+/**
+ * The dimensions of one catalogue pedal, for the ones built in no standard box.
+ *
+ * A Whammy, a DL4 and a PolyTune have no Hammond number, so `enc()` has nothing
+ * to read. They are not un-measured though: the planner's catalogue carries
+ * their figures with the same provenance marker, because the layout engine
+ * needs to place them. This reads those, so "do not type a dimension" holds for
+ * every pedal rather than only the ones in a named box.
+ *
+ * Throws on an unknown id rather than returning a default, for the reason the
+ * Impact catalogue ids do: a silent fallback here is a pedal quietly rendered
+ * at somebody else's size.
+ */
+function catalogDims(id: string): { width: number; depth: number; height: number } {
+  const pedal = CATALOG_PEDALS.find((p) => p.id === id)
+  if (!pedal) throw new Error(`No catalogue pedal "${id}" to take dimensions from`)
+  return { width: pedal.dims.widthMm, depth: pedal.dims.depthMm, height: pedal.dims.heightMm }
 }
 
 /** Body styles that need genuinely different geometry, not different numbers. */
@@ -306,9 +326,7 @@ const IBANEZ_TS9: PedalModel = {
   name: "TS9 Tube Screamer",
   maker: "Ibanez",
   style: "boss-compact",
-  width: 75,
-  depth: 124,
-  height: 53,
+  ...catalogDims("ibanez-ts9"),
   color: "#2f8f3f",
   ink: "#f4f4f0",
   knobs: [
@@ -342,10 +360,12 @@ const DUNLOP_FUZZ_FACE: PedalModel = {
   name: "Fuzz Face",
   maker: "Dunlop",
   style: "round",
-  /* Width and depth are the diameter; height is the dome at its centre. */
-  width: 111,
-  depth: 111,
-  height: 55,
+  /* Width and depth are the diameter and height is the dome at its centre,
+     which is why the round body reads them the way a box does. The planner
+     marks these an estimate; taking them from there rather than typing a
+     second guess means there is one number to correct when somebody measures
+     a real one. */
+  ...catalogDims("dallas-arbiter-fuzz-face"),
   color: "#0f3f8f",
   ink: "#f0f0ee",
   knobs: [
@@ -367,20 +387,23 @@ const PROCO_RAT: PedalModel = {
   name: "RAT",
   maker: "ProCo",
   style: "box",
-  width: 124,
-  depth: 92,
-  height: 51,
+  /*
+   * THE MAKER'S FIGURES, AND THEY ARE NOT WHAT THIS ENTRY USED TO SAY.
+   *
+   * Hand-typed, it read 124 x 92: wider than deep, with a note explaining that
+   * this was unusual and was why a RAT sits sideways on a board. The planner
+   * carries ProCo's own 89 x 114, which is the other way round, so the note
+   * was a confident paragraph about a shape the pedal does not have. Widening
+   * the cross-check to pedals with no standard enclosure is what caught it.
+   */
+  ...catalogDims("proco-rat"),
   color: "#141414",
   ink: "#efefef",
-  knobs: [
-    { x: -38, z: -22, radius: 12, height: 16, style: "skirted", label: "Distortion", angle: -40 },
-    { x: 0, z: -22, radius: 12, height: 16, style: "skirted", label: "Filter", angle: 20 },
-    { x: 38, z: -22, radius: 12, height: 16, style: "skirted", label: "Volume", angle: 70 },
-  ],
+  knobs: knobRow(["Distortion", "Filter", "Volume"], { faceWidth: 89, z: -30, arc: 4 }),
   footswitches: [{ x: 0, z: 26, radius: 8 }],
   led: { x: -48, z: 6, color: "#ff2b2b" },
   legends: [{ text: "RAT", z: 8, size: 11 }],
-  note: "Wider than it is deep, which is unusual and is why a RAT sits sideways on most boards. Three big knobs in a row and very little else.",
+  note: "Three big knobs in a row across an 89mm face and very little else, in flat black. The filter control works backwards from a tone knob, which is the one thing everybody has to be told.",
 }
 
 /**
@@ -471,18 +494,24 @@ const EHX_MEMORY_MAN: PedalModel = {
   name: "Deluxe Memory Man",
   maker: "Electro-Harmonix",
   style: "box",
-  width: 190,
-  depth: 120,
-  height: 60,
+  /*
+   * FROM THE CATALOGUE, THOUGH THE CATALOGUE CALLS IT AN ESTIMATE.
+   *
+   * This is the one pedal here where neither file had a measurement: the
+   * planner marks its figures `estimate` and this one carried a hand-typed
+   * 190mm wide that agreed with nothing. Two independent guesses is strictly
+   * worse than one, and the catalogue's at least says what it is, so this
+   * reads that and the cross-check holds them together like everything else.
+   * If somebody measures a real one, it gets corrected in ONE place.
+   */
+  ...catalogDims("ehx-deluxe-memory-man"),
   color: "#c9ccd1",
   ink: "#17171a",
-  knobs: [
-    { x: -68, z: -34, radius: 10, height: 14, style: "skirted", label: "Level", angle: -35 },
-    { x: -34, z: -34, radius: 10, height: 14, style: "skirted", label: "Blend", angle: 10 },
-    { x: 0, z: -34, radius: 10, height: 14, style: "skirted", label: "Feedback", angle: 45 },
-    { x: 34, z: -34, radius: 10, height: 14, style: "skirted", label: "Delay", angle: 80 },
-    { x: 68, z: -34, radius: 10, height: 14, style: "skirted", label: "Depth", angle: 115 },
-  ],
+  knobs: knobRow(["Level", "Blend", "Feedback", "Delay", "Depth"], {
+    faceWidth: 152,
+    z: -34,
+    arc: 3,
+  }),
   footswitches: [{ x: 0, z: 40, radius: 9 }],
   led: { x: 0, z: -52, color: "#ff2b2b" },
   legends: [{ text: "Deluxe Memory Man", z: -8, size: 7 }],
@@ -1303,7 +1332,7 @@ const EHX_MICRO_POG = {
   ink: "#17171a",
   knobs: knobRow(["Dry", "Sub Oct", "Oct Up"], { faceWidth: 89, z: -34, arc: 5 }),
   footswitches: [{ x: 0, z: 34, radius: 8 }],
-  led: { x: 0, z: -14, color: "#ff2b2b" },
+  led: { x: -34, z: 6, color: "#ff2b2b" },
   legends: [{ text: "Micro POG", z: 6, size: 7 }],
   note: "Polyphonic octaves in the XO box: three knobs that are really three faders, one for the dry signal and one for each octave.",
 }
@@ -1609,6 +1638,319 @@ const XOTIC_EP_BOOSTER: PedalModel = {
   note: "A 1590A with one control on the face and two dip switches inside it, which is the whole design: set it once and leave it on.",
 }
 
+/* --------------------------------------------------------------------- */
+/*  The big digital boxes, and the last two treadles                       */
+/* --------------------------------------------------------------------- */
+
+/*
+ * A WHAMMY IS A TREADLE, and it is the one that proves the body is general.
+ *
+ * 133 x 197mm from the planner's own figures: shorter than a wah and half
+ * again as wide, because the chassis has to carry a display and a mode knob
+ * beside the plate. Every other treadle here is a wah-shaped 102 x 254.
+ */
+const DIGITECH_WHAMMY: PedalModel = {
+  match: { brand: /^digitech$/i, model: /\bwhammy\b/i },
+  name: "Whammy",
+  maker: "DigiTech",
+  style: "treadle",
+  ...catalogDims("digitech-whammy"),
+  /* Chassis only, as with every treadle: the table's height is the pedal
+     standing at rest with the plate up. */
+  height: 30,
+  color: "#b2201f",
+  ink: "#f4f4f2",
+  knobs: [],
+  footswitches: [],
+  led: null,
+  legends: [{ text: "Whammy", z: 84, size: 10 }],
+  treadle: {
+    plateWidth: 74,
+    plateDepth: 168,
+    plateThickness: 12,
+    pivotZ: 14,
+    pivotY: 32,
+    tilt: 9,
+    cheekHeelHeight: 40,
+    cheekToeHeight: 11,
+  },
+  note: "A treadle that is not a wah: shorter and much wider, because the mode selector and the display sit on the chassis beside the plate rather than under your foot.",
+}
+
+/**
+ * A Line 6 DL4: 305mm across and FOUR footswitches.
+ *
+ * The widest thing modelled here by a long way, and the reason the switch
+ * field had to become a list: three presets and a tap, in a row, on a box that
+ * takes the width of four ordinary pedals.
+ */
+const LINE6_DL4: PedalModel = {
+  match: { brand: /^line\s*6$/i, model: /\bdl-?4\b/i },
+  name: "DL4 Delay Modeler",
+  maker: "Line 6",
+  style: "box",
+  ...catalogDims("line-6-dl4"),
+  color: "#2f7d4f",
+  ink: "#eef5f0",
+  knobs: [
+    ...knobRow(["Delay", "Repeats", "Tweak", "Tweez", "Mix"], {
+      faceWidth: 250,
+      z: -52,
+      arc: 3,
+      radius: 13,
+    }),
+    /* Out on the far left where the real one is, and clear of the row: at
+       -110 its 15mm body ran into the 13mm knob beside it. */
+    { x: -128, z: -52, radius: 15, height: 20, style: "chicken-head", label: "Model", angle: -40 },
+  ],
+  footswitches: [
+    { x: -105, z: 52, radius: 11 },
+    { x: -35, z: 52, radius: 11 },
+    { x: 35, z: 52, radius: 11 },
+    { x: 105, z: 52, radius: 11 },
+  ],
+  /* Beside the name, not inside it: at x = 0 the indicator landed in the
+     middle of the "L". */
+  led: { x: -70, z: 12, color: "#ff4d2b" },
+  legends: [{ text: "DL4", z: 12, size: 14 }],
+  note: "305mm across and four footswitches: three presets and a tap. The green box that sat on the left of a great many boards, and the reason a pedal needs a switch list rather than a switch.",
+}
+
+/**
+ * A Boss 500: the biggest thing Boss puts in a stompbox format.
+ *
+ * 170 x 138mm, three switches and a real display, which is what a pedal with
+ * a full preset library and stereo routing needs.
+ */
+function boss500(spec: {
+  model: RegExp
+  name: string
+  controls: [string, string, string, string]
+  print: [string, string]
+  note: string
+}): PedalModel {
+  return {
+    match: { brand: /^boss$/i, model: spec.model },
+    name: spec.name,
+    maker: "Boss",
+    style: "box",
+    ...enc("boss-500"),
+    color: "#20242a",
+    ink: "#e8ebef",
+    knobs: knobRow(spec.controls, { faceWidth: 150, z: -48, arc: 3, radius: 11 }),
+    screen: { x: 0, z: -14, width: 62, depth: 20 },
+    footswitches: [
+      { x: -55, z: 48, radius: 10 },
+      { x: 0, z: 48, radius: 10 },
+      { x: 55, z: 48, radius: 10 },
+    ],
+    led: { x: -68, z: 16, color: "#ff2b2b" },
+    legends: [
+      { text: spec.print[0], z: 16, size: 9 },
+      { text: spec.print[1], z: 26, size: 4.5 },
+    ],
+    note: spec.note,
+  }
+}
+
+const BOSS_DD500 = boss500({
+  model: /\bdd-?500\b/i,
+  name: "DD-500 Digital Delay",
+  controls: ["E.Level", "F.Back", "Time", "Mode"],
+  print: ["DD-500", "Digital Delay"],
+  note: "170mm across, three switches and a display: the compact's job with a preset library behind it, which is the whole reason a delay grows to this size.",
+})
+
+const BOSS_RV500 = boss500({
+  model: /\brv-?500\b/i,
+  name: "RV-500 Reverb",
+  controls: ["E.Level", "Time", "Tone", "Mode"],
+  print: ["RV-500", "Reverb"],
+  note: "The same 170mm box as the DD-500. Twenty-one reverb modes and stereo routing, which is what the screen and the third footswitch are for.",
+})
+
+const BOSS_RC5: PedalModel = {
+  ...bossCompact({
+    model: /\brc-?5\b/i,
+    name: "RC-5 Loop Station",
+    color: "#d3d7da",
+    controls: ["Memory", "Level"],
+    print: ["RC-5", "Loop Station"],
+    note: "A looper in the compact casting, which means the tread plate is still the switch and the display has to share the shelf with two knobs.",
+  }),
+  screen: { x: 0, z: -38, width: 34, depth: 17 },
+}
+
+/* --------------------------------------------------------------------- */
+/*  Two more racks of faders                                              */
+/* --------------------------------------------------------------------- */
+
+/*
+ * THE SECOND AND THIRD FADER PEDALS, which is what makes the control worth
+ * having: a GE-7 alone could have been a special case.
+ */
+const MXR_TEN_BAND: PedalModel = {
+  match: { brand: /^(mxr|dunlop)$/i, model: /\b10-?\s*band\b|\bm108\b/i },
+  name: "10-Band EQ",
+  maker: "MXR",
+  style: "box",
+  ...catalogDims("mxr-10-band-eq"),
+  color: "#161719",
+  ink: "#eceff2",
+  knobs: [],
+  sliders: Array.from({ length: 12 }, (_, i) => ({
+    x: -55 + i * 10,
+    z: -34,
+    travel: 30,
+    at: 0.5,
+  })),
+  footswitches: [{ x: 0, z: 52, radius: 9 }],
+  led: { x: -52, z: 20, color: "#ff4d2b" },
+  legends: [{ text: "10 Band EQ", z: 20, size: 8 }],
+  note: "Twelve faders across 121mm: ten bands plus volume and gain. The widest row of controls on any pedal here, and unreadable as anything but an EQ.",
+}
+
+const EHX_MICRO_SYNTH: PedalModel = {
+  match: { brand: /^electro-?harmonix$/i, model: /\bmicro\s*synth(esizer)?\b/i },
+  name: "Micro Synth",
+  maker: "Electro-Harmonix",
+  style: "box",
+  ...enc("ehx-large"),
+  color: "#b9bcc0",
+  ink: "#17171a",
+  knobs: [],
+  sliders: Array.from({ length: 10 }, (_, i) => ({
+    x: -58 + i * 13,
+    z: -30,
+    travel: 26,
+    at: 0.5,
+  })),
+  footswitches: [{ x: 0, z: 42, radius: 8 }],
+  led: { x: -58, z: 16, color: "#ff2b2b" },
+  legends: [{ text: "Micro Synth", z: 16, size: 8 }],
+  note: "Ten faders in the 146mm box, which is the only way an analogue synthesiser's worth of controls fits on a pedal: attack, filter sweep and three voices, all set by eye.",
+}
+
+/* --------------------------------------------------------------------- */
+/*  Four more boutique boxes, and a tuner with a face full of screen       */
+/* --------------------------------------------------------------------- */
+
+const EHX_POG2: PedalModel = {
+  match: { brand: /^electro-?harmonix$/i, model: /\bpog\s*2\b/i },
+  name: "POG2",
+  maker: "Electro-Harmonix",
+  style: "box",
+  ...enc("ehx-large"),
+  color: "#26282c",
+  ink: "#eceff2",
+  knobs: knobRow(["Dry", "Sub", "Oct Up", "Detune", "Filter"], {
+    faceWidth: 146,
+    z: -34,
+    arc: 4,
+    radius: 9,
+  }),
+  footswitches: [{ x: 0, z: 40, radius: 8 }],
+  led: { x: -58, z: 12, color: "#ff2b2b" },
+  legends: [{ text: "POG2", z: 12, size: 10 }],
+  note: "Five knobs across the 146mm box and eight presets underneath them: polyphonic octaves with enough control to build an organ out of a guitar.",
+}
+
+const WAMPLER_TUMNUS_DELUXE: PedalModel = {
+  match: { brand: /^wampler$/i, model: /\btumnus\s*deluxe\b/i },
+  name: "Tumnus Deluxe",
+  maker: "Wampler",
+  style: "box",
+  ...enc("125B"),
+  color: "#b99539",
+  ink: "#211a08",
+  knobs: knobRow(["Level", "Gain", "Bass", "Treble"], {
+    faceWidth: 66,
+    z: -32,
+    arc: 3,
+    radius: 5.5,
+  }),
+  toggles: [{ x: -22, z: 8 }],
+  footswitches: [{ x: 0, z: 38, radius: 8 }],
+  led: { x: 22, z: 8, color: "#ff4d2b" },
+  legends: [{ text: "Tumnus Deluxe", z: 20, size: 4.2 }],
+  note: "The mini grown into a 125B so the tone control can be a real two-band EQ. Same circuit and the same gold, four knobs instead of three.",
+}
+
+const JHS_THREE_SERIES_HALL: PedalModel = {
+  match: { brand: /^jhs(\s*pedals)?$/i, model: /\b3\s*series\b.*\bhall\b/i },
+  name: "3 Series Hall Reverb",
+  maker: "JHS Pedals",
+  style: "box",
+  ...enc("1590B"),
+  color: "#d9dcdf",
+  ink: "#1a1a1c",
+  knobs: knobRow(["Verb", "Decay", "Mix"], { faceWidth: 64, z: -32, arc: 4 }),
+  toggles: [{ x: -22, z: 8 }],
+  footswitches: [{ x: 0, z: 36, radius: 8 }],
+  led: { x: 22, z: 8, color: "#ff4d2b" },
+  legends: [{ text: "3 Series Hall", z: 20, size: 4.5 }],
+  note: "The cheap line in the standard 1590B: three knobs, one toggle, and deliberately nothing else, which is the entire pitch of the series.",
+}
+
+const XOTIC_SP_COMPRESSOR: PedalModel = {
+  match: { brand: /^xotic$/i, model: /\bsp\s*compressor\b/i },
+  name: "SP Compressor",
+  maker: "Xotic",
+  style: "box",
+  ...enc("1590A"),
+  color: "#dfe2e5",
+  ink: "#1a1a1c",
+  knobs: [{ x: 0, z: -28, radius: 6, height: 9, style: "dome", label: "", angle: -20 }],
+  toggles: [{ x: 0, z: -10 }],
+  footswitches: [{ x: 0, z: 28, radius: 6 }],
+  led: { x: -13, z: -10, color: "#ff4d2b" },
+  legends: [{ text: "SP Comp", z: 10, size: 3.6 }],
+  note: "A studio compressor in a 1590A. One blend knob and a three-position toggle on the face, with the rest on dip switches inside, which is the Xotic pattern.",
+}
+
+const CHASE_BLISS_MOOD: PedalModel = {
+  match: { brand: /^chase\s*bliss(\s*audio)?$/i, model: /\bmood\b/i },
+  name: "Mood",
+  maker: "Chase Bliss Audio",
+  style: "box",
+  ...enc("1590B"),
+  color: "#9ec6c4",
+  ink: "#14201f",
+  knobs: knobRow(["Time", "Length", "Modify", "Clock"], {
+    faceWidth: 64,
+    z: -32,
+    arc: 3,
+    radius: 5.5,
+  }),
+  toggles: [
+    { x: -16, z: 10 },
+    { x: 16, z: 10 },
+  ],
+  footswitches: [
+    { x: -16, z: 38, radius: 7 },
+    { x: 16, z: 38, radius: 7 },
+  ],
+  led: { x: 0, z: 10, color: "#3ad46a" },
+  legends: [{ text: "Mood", z: 24, size: 6 }],
+  note: "Two footswitches and two toggles on a 1590B, with sixteen dip switches on the back that are the real control set. Everything about it is a decision you make once.",
+}
+
+const TC_POLYTUNE_3: PedalModel = {
+  match: { brand: /^tc\s*electronic$/i, model: /\bpoly\s*tune\b/i },
+  name: "PolyTune 3",
+  maker: "TC Electronic",
+  style: "box",
+  ...catalogDims("tc-polytune-3"),
+  color: "#1b1d20",
+  ink: "#e8ebef",
+  knobs: [],
+  screen: { x: 0, z: -22, width: 52, depth: 34 },
+  footswitches: [{ x: 0, z: 40, radius: 8 }],
+  led: null,
+  legends: [{ text: "PolyTune", z: 14, size: 6 }],
+  note: "Almost the whole face is display, because a tuner has nothing to set and everything to read. Strum all six strings and it shows all six at once, which is what the poly means.",
+}
+
 /** Every pedal modelled by hand, most specific first. */
 export const PEDAL_MODELS: PedalModel[] = [
   /*
@@ -1644,6 +1986,9 @@ export const PEDAL_MODELS: PedalModel[] = [
      Boss model numbers so it reads better beside them. */
   BOSS_DD200,
   BOSS_RV200,
+  BOSS_DD500,
+  BOSS_RV500,
+  BOSS_RC5,
   /* The Ibanez housing borrowed the Boss mechanism, so it sits with them. */
   IBANEZ_TS9,
   /* The Mini is a mini box and nothing like the TS9, which is exactly why it
@@ -1661,12 +2006,16 @@ export const PEDAL_MODELS: PedalModel[] = [
   EHX_SOUL_FOOD,
   EHX_SMALL_CLONE,
   EHX_HOLY_GRAIL,
+  EHX_POG2,
+  EHX_MICRO_SYNTH,
   EHX_MEMORY_MAN,
 
   /* Treadles. Two wahs and a volume pedal, which is a treadle with nothing
      in it: the second and third users of that body, which is what stops the
      shape being a thing only one pedal has ever proved. */
   DUNLOP_CRY_BABY,
+  /* Not a wah at all, and the treadle body's fifth user. */
+  DIGITECH_WHAMMY,
   /* The V846 before the general Vox pattern, which would otherwise take it. */
   VOX_V846,
   VOX_WAH,
@@ -1684,6 +2033,7 @@ export const PEDAL_MODELS: PedalModel[] = [
   MXR_MICRO_AMP,
   MXR_DISTORTION_PLUS,
   MXR_CARBON_COPY,
+  MXR_TEN_BAND,
 
   /* Everything with a body of its own. */
   PROCO_RAT,
@@ -1711,6 +2061,12 @@ export const PEDAL_MODELS: PedalModel[] = [
   EQD_DISPATCH_MASTER,
   ORIGIN_CALI76,
   XOTIC_EP_BOOSTER,
+  XOTIC_SP_COMPRESSOR,
+  JHS_THREE_SERIES_HALL,
+  WAMPLER_TUMNUS_DELUXE,
+  CHASE_BLISS_MOOD,
+  TC_POLYTUNE_3,
+  LINE6_DL4,
 ]
 
 /**
