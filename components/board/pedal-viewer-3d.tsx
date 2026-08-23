@@ -273,8 +273,66 @@ function Knob({ knob }: { knob: ModelKnob }) {
             <boxGeometry args={[r * 0.12, h * 0.02, r * 0.7]} />
             <meshStandardMaterial color="#f2f2f2" roughness={0.4} />
           </mesh>
+
+          {/*
+            THE SECOND SHAFT, on a dual-concentric control.
+
+            Two pots through one hole, and the small one is a separate part
+            turned independently of the big one, so it gets its own pointer at
+            its own angle. Drawing the pair as one knob quietly deletes a
+            control the pedal has: a Metal Zone carries five, on three holes.
+          */}
+          {knob.style === "stacked" && (
+            <group rotation={[0, THREE.MathUtils.degToRad(70), 0]}>
+              <mesh castShadow position={[0, h * 1.34, 0]}>
+                <cylinderGeometry args={[r * 0.4, r * 0.46, h * 0.56, 24]} />
+                <meshStandardMaterial {...plastic} roughness={0.3} />
+              </mesh>
+              <mesh position={[0, h * 1.63, -r * 0.2]}>
+                <boxGeometry args={[r * 0.09, h * 0.02, r * 0.38]} />
+                <meshStandardMaterial color="#f2f2f2" roughness={0.4} />
+              </mesh>
+            </group>
+          )}
         </>
       )}
+    </group>
+  )
+}
+
+/**
+ * A slide fader: a slot cut in the face with a cap travelling along it.
+ *
+ * The one control here that moves in a straight line, and the reason a graphic
+ * EQ is recognisable from across a room. Seven knobs in a row would be seven
+ * knobs in a row; seven caps at different heights is a curve you can read.
+ *
+ * `at` is where the cap sits, 0 at the bottom of the slot and 1 at the top.
+ */
+function Slider({ x, z, travel, at }: { x: number; z: number; travel: number; at: number }) {
+  const len = travel * MM
+  const capW = 5.5 * MM
+  const capH = 3 * MM
+  /* Along z, because a fader on a pedal travels toward the player. */
+  const pos = (0.5 - at) * len
+
+  return (
+    <group position={[x * MM, 0, z * MM]}>
+      {/* The slot, sunk into the face. */}
+      <mesh position={[0, 0.0016, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[2.2 * MM, len]} />
+        <meshStandardMaterial color="#15171b" roughness={0.75} />
+      </mesh>
+      {/* The cap, straddling it. */}
+      <mesh castShadow position={[0, capH / 2, pos]}>
+        <boxGeometry args={[capW, capH, 3.4 * MM]} />
+        <meshStandardMaterial color="#1b1d21" roughness={0.4} />
+      </mesh>
+      {/* The white index line across the cap, which is what you read. */}
+      <mesh position={[0, capH + 0.0002, pos]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[capW * 0.9, 0.7 * MM]} />
+        <meshStandardMaterial color="#eef1f4" roughness={0.4} />
+      </mesh>
     </group>
   )
 }
@@ -809,6 +867,7 @@ function Pedal({
         ))}
         {showControls &&
           model.toggles?.map((toggle, i) => <Toggle key={i} x={toggle.x} z={toggle.z} />)}
+        {showControls && model.sliders?.map((fader, i) => <Slider key={i} {...fader} />)}
         {model.screen && <Screen {...model.screen} />}
         {model.led && (
           <Led x={model.led.x} z={model.led.z} color={model.led.color} on={engaged} />

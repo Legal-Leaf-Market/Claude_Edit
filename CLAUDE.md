@@ -1131,6 +1131,16 @@ says the mode is a sweep, and an optional `screen`, which is a dark window with
 NOTHING written in it, because what a tuner reads depends on what you are
 playing and drawing a plausible needle is inventing a measurement.
 
+**A FADER AND A STACKED KNOB ARE HARDWARE, NOT A KNOB DRAWN DIFFERENTLY.** A
+graphic EQ is eight faders and a Boss high-gain pedal is five controls on three
+holes, and both exist for one reason: the face is 73mm wide, so a circuit
+wanting more controls than that will hold in a row gets DIFFERENT hardware
+rather than smaller knobs. Seven knobs in a row is seven knobs in a row; seven
+caps at different heights is a curve you can read across a room, which is the
+whole point of a GE-7. A stacked pair drawn as one knob quietly deletes a
+control the pedal has. A fader's footprint in the clearance test is its whole
+SLOT rather than its cap, because print across a slot is print across a hole.
+
 **A TALL CONTROL HIDES PRINT BEHIND IT, and that is geometry rather than
 taste.** The camera sits 27 degrees above the deck, so a part standing h off the
 face hides about 2h of shelf behind itself: a 10mm toggle buries a label 20mm
@@ -1347,6 +1357,12 @@ engine.
   will bury the print in the render, which is the one thing a reader sees.
 - Do NOT write anything inside a modelled screen. An unlit window is the
   honest state and is what the pedal looks like unplugged.
+- Do NOT draw a fader as a small knob or a dual-concentric pair as one knob.
+  Both are what the pedal uses because a row of knobs will not fit, and both
+  are how it is recognised: a GE-7 is its eight caps and nothing else.
+- Do NOT set a modelled fader anywhere but flat unless the maker ships it that
+  way. A curve here is somebody's EQ setting presented as the product's, which
+  is the same class of invention as a guessed dimension.
 - Do NOT let a model claim to be the actual product. A measured one says what
   its shape tells you, a derived one says plainly that it is not this pedal,
   and the photograph beside it is the real one.
