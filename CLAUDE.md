@@ -1120,6 +1120,49 @@ dataset and the picker catalogue and asserts the printed legend is a substring
 of what the dataset calls the pedal, so the next DD-2 is caught without anybody
 having to think of the pair in advance.
 
+**THE DIMENSIONS ARE NOT TYPED HERE ANY MORE; THEY COME FROM THE PLANNER'S OWN
+ENCLOSURE TABLE.** Most pedals are built in a standard box, and
+`lib/pedalboard/catalog/enclosures.ts` already names and measures every one of
+them with a provenance marker per figure, because the layout engine needs it.
+`enc()` in the model file reads that table, so a pedal is the same size in the
+plan and in the picture of it. Only a pedal with no standard box (a Klon, a
+Fuzz Face, a Deluxe Memory Man) still carries hand-measured numbers.
+
+That is not tidiness: **the two tables had already drifted, and the drift was
+the Big Muff and the Small Stone exchanged.** Hand-typed, the Big Muff came out
+89mm wide and the Small Stone 145. The famous board hog rendered as the narrow
+one and nothing failed, because nothing was comparing the files. A test compares
+them now, and exempts exactly one figure: a treadle's HEIGHT, because the table
+means the whole pedal standing at rest and the model means the chassis the plate
+rocks on. The footprint is held either way.
+
+**A FAMILY IS ONE CASTING IN A COLOUR, so it is a factory rather than thirteen
+copies.** `bossCompact()` and `mxrCompact()` take the paint, the controls and
+the print, and derive everything else; `knobRow()` lays a row out from the count
+so the pitch cannot collide, which is the arithmetic the knob-overlap test was
+written for after the first hand-typed row rendered as one lump.
+
+**PRINT COLLIDING WITH PRINT IS INVISIBLE TO A GEOMETRY TEST**, because nothing
+intersects: two bits of type land on the same square millimetre of the decal and
+the canvas draws them over each other. "BIG MUFF PI" went straight through the
+word TONE, and the Small Stone's indicator LED sat in the middle of RATE. Both
+are held now, legend against knob label and LED against every piece of print,
+and the LED case matters because a solid over a decal is not a collision any
+geometry check can see.
+
+**THE TYPE IS CENTRED ON ITS z (`textBaseline = "middle"`), and it was not.** On
+the canvas default a legend hangs above its z by three quarters of its cap
+height rather than straddling it, so every number in the model file meant
+something 3mm behind where it read. Centring it is what lets the clearance test
+do arithmetic on the same numbers the file states.
+
+**THE BOSS SHELF DECAL IS INSET AT THE BACK AND FLUSH AT THE FRONT.** The back
+edge is the casting's rounded corner and needs the standoff; the front edge is
+the straight step the tread plate hinges against, and the plate covers it.
+Insetting both equally cost 2.5mm at the only end short of room, which is what
+ran "SUPER CHORUS" off the front of the plate it was printed on. The plane and
+the texture mapping are built from the same two numbers so they cannot disagree.
+
 **Match the maker string the DATASET uses, not the one that sounds right.** The
 Fuzz Face's brand pattern was anchored on `arbiter` while both datasets say
 "Dallas Arbiter", so the one round pedal on the site matched nothing at all and
@@ -1271,6 +1314,13 @@ engine.
   switch in `components/board/pedal-viewer-3d.tsx`. A style with no branch does
   not error, it silently renders as a box, which is how a Cry Baby shipped as a
   rectangle.
+- Do NOT hand-type a dimension into `lib/board/pedal-models.ts` for a pedal
+  that has a standard enclosure. Use `enc()`, which reads the planner's own
+  measured table: typing them is what put the Big Muff and the Small Stone in
+  each other's boxes, and a test now holds the two files together.
+- Do NOT write a per-pedal entry longhand for a family that shares a casting.
+  `bossCompact()` and `mxrCompact()` exist so a new colour is the paint, the
+  controls and the print, and `knobRow()` derives a row that cannot collide.
 - Do NOT let a model claim to be the actual product. A measured one says what
   its shape tells you, a derived one says plainly that it is not this pedal,
   and the photograph beside it is the real one.

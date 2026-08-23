@@ -114,6 +114,18 @@ function useSilkscreen(model: PedalModel, face: { zMin: number; zMax: number; wi
     ctx.fillRect(0, 0, px, px)
     ctx.fillStyle = model.ink
     ctx.textAlign = "center"
+    /*
+     * MIDDLE, NOT THE DEFAULT ALPHABETIC BASELINE.
+     *
+     * Every z in `pedal-models.ts` is a position on the face, measured the
+     * same way as a knob's. On the default baseline a legend hangs ABOVE its
+     * z by three quarters of its cap height instead of straddling it, so a
+     * 9mm name sat 3.4mm further back than the number said and crept into the
+     * knob labels behind it. Centring the type makes the number mean what it
+     * looks like it means, which is also what lets the clearance test in
+     * `tests/board/pedal-models.test.ts` do arithmetic on it.
+     */
+    ctx.textBaseline = "middle"
 
     /*
      * Millimetres to texture pixels, mapped over THE FACE THIS TEXTURE IS
@@ -387,14 +399,25 @@ function BossCompactBody({ model }: { model: PedalModel }) {
   const shelfH = h - chassisH
   const shelfDepth = d / 2 + hingeZ
 
-  /* ONLY the rear shelf is printed, and only the inset part of it. */
+  /*
+   * ONLY THE REAR SHELF IS PRINTED, AND THE INSET IS ASYMMETRIC.
+   *
+   * The back edge is the rounded corner of the casting, so the decal has to
+   * stand off it or its corners poke out as two bright tabs, the same reason
+   * `DECAL_D` exists at all. The FRONT edge is not a corner: it is the straight
+   * step the tread plate hinges against, and the plate covers whatever the
+   * decal does there. Insetting both ends equally cost 2.5mm of shelf at the
+   * only end that is short of room, and it showed: with the type centred on its
+   * z, "SUPER CHORUS" ran off the front of the plate it was printed on.
+   */
   const shelfBack = -model.depth / 2
   const shelfFront = plate.hingeZ
-  const shelfMid = (shelfBack + shelfFront) / 2
-  const shelfHalf = ((shelfFront - shelfBack) / 2) * DECAL_D
+  const shelfRun = shelfFront - shelfBack
+  const printBack = shelfBack + shelfRun * (1 - DECAL_D)
+  const printFront = shelfFront - shelfRun * 0.01
   const texture = useSilkscreen(model, {
-    zMin: shelfMid - shelfHalf,
-    zMax: shelfMid + shelfHalf,
+    zMin: printBack,
+    zMax: printFront,
     width: model.width * DECAL_W,
   })
 
@@ -424,13 +447,19 @@ function BossCompactBody({ model }: { model: PedalModel }) {
         <meshPhysicalMaterial {...bodyMaterial(model.color)} />
       </RoundedBox>
 
-      {/* The shelf's printed face. */}
+      {/* The shelf's printed face. Sized and placed from the SAME two numbers
+          the texture is mapped over, so the plane and the mapping cannot
+          disagree about where the print goes. */}
       {texture && (
         <mesh
-          position={[0, -h / 2 + chassisH + shelfH + 0.0008, -d / 2 + shelfDepth / 2]}
+          position={[
+            0,
+            -h / 2 + chassisH + shelfH + 0.0008,
+            ((printBack + printFront) / 2) * MM,
+          ]}
           rotation={[-Math.PI / 2, 0, 0]}
         >
-          <planeGeometry args={[w * DECAL_W, shelfDepth * DECAL_D]} />
+          <planeGeometry args={[w * DECAL_W, (printFront - printBack) * MM]} />
           <meshStandardMaterial map={texture} roughness={0.5} metalness={0.15} />
         </mesh>
       )}
