@@ -198,14 +198,21 @@ describe("every measured model, as geometry", () => {
     /* Every bit of print on the face, wherever it came from. */
     function printedOn(model: (typeof PEDAL_MODELS)[number]) {
       return [
-        ...model.legends.map((l) => ({ text: l.text, x: 0, z: l.z, size: l.size })),
+        ...model.legends.map((l) => ({
+          text: l.text,
+          x: 0,
+          z: l.z,
+          size: l.size,
+          owner: "legend",
+        })),
         ...model.knobs
           .filter((k) => k.label)
-          .map((k) => ({
+          .map((k, i) => ({
             text: k.label,
             x: k.x,
             z: k.z + k.radius + LABEL_OFFSET,
             size: LABEL_SIZE,
+            owner: `knob:${i}`,
           })),
       ]
     }
@@ -222,9 +229,18 @@ describe("every measured model, as geometry", () => {
          print exactly the way an indicator does. Both go through the same
          check, sized for the larger of the two. */
       const solids = [
-        ...(model.led ? [{ what: "LED", x: model.led.x, z: model.led.z, r: 3, tall: 2 }] : []),
+        ...(model.led
+          ? [{ what: "LED", x: model.led.x, z: model.led.z, r: 3, tall: 2, owner: "led" }]
+          : []),
         /* A bat lever stands about 10mm off the face and leans back. */
-        ...(model.toggles ?? []).map((t) => ({ what: "toggle", x: t.x, z: t.z, r: 3, tall: 10 })),
+        ...(model.toggles ?? []).map((t) => ({
+          what: "toggle",
+          x: t.x,
+          z: t.z,
+          r: 3,
+          tall: 10,
+          owner: "toggle",
+        })),
         /*
          * AND THE KNOBS, against every label but their OWN. A second row of
          * controls sits in front of the first row's labels, which is how a
@@ -244,21 +260,29 @@ describe("every measured model, as geometry", () => {
           r: 3,
           tall: 3,
           halfTravel: f.travel / 2,
+          owner: "fader",
         })),
-        ...model.knobs.map((k) => ({
+        ...model.knobs.map((k, i) => ({
           what: `${k.label || "a"} knob`,
           x: k.x,
           z: k.z,
           r: k.radius,
           tall: k.height,
+          owner: `knob:${i}`,
         })),
       ]
       for (const solid of solids) {
         for (const print of printedOn(model)) {
-          /* A knob's own label is printed right under it on purpose. */
-          if (print.x === solid.x && Math.abs(print.z - solid.z) < solid.r + LABEL_OFFSET + 1) {
-            continue
-          }
+          /*
+           * A KNOB AND ITS OWN LABEL, and nothing else.
+           *
+           * This used to skip on POSITION: same x, close in z. Every legend is
+           * centred at x = 0, so any control sitting at x = 0 got a free pass
+           * against the pedal's name, and a DL4 shipped with its indicator
+           * inside the "L". Matching on identity is what the exemption always
+           * meant.
+           */
+          if (print.owner === solid.owner) continue
           /* Print that merely fails to intersect still reads as a part stuck
              to a letter, so this is the part's radius plus real air. */
           /*
@@ -441,12 +465,17 @@ describe("against the two datasets that actually reach the viewer", () => {
     let checked = 0
 
     for (const pedal of CATALOG_PEDALS) {
-      if (!pedal.enclosure) continue
       const model = modelFor(item({ maker: pedal.brand, name: pedal.model }))
       if (!model) continue
 
-      const box = ENCLOSURES[pedal.enclosure].dims
-      const where = `${pedal.brand} ${pedal.model} (${pedal.enclosure})`
+      /*
+       * EVERY MATCHED PEDAL, not only the ones in a named box. A Whammy, a DL4
+       * and a PolyTune have no Hammond number but the catalogue still measures
+       * them, because the layout engine has to place them, so there is no
+       * pedal here whose size is only asserted in one file.
+       */
+      const box = pedal.enclosure ? ENCLOSURES[pedal.enclosure].dims : pedal.dims
+      const where = `${pedal.brand} ${pedal.model} (${pedal.enclosure ?? "own figures"})`
       expect(model.width, `${where} width`).toBe(box.widthMm)
       expect(model.depth, `${where} depth`).toBe(box.depthMm)
 
