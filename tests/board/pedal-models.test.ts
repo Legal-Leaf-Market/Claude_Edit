@@ -59,12 +59,29 @@ describe("matching a pedal to a measured model", () => {
 
   it("never hands one product's body and name to another", () => {
     /* Same brand, same casting in some cases, different pedal in all of them. */
-    expect(found("Ibanez", "Tube Screamer Mini")).toBeNull()
     expect(found("Ibanez", "TS808 Tube Screamer")).toBeNull()
-    expect(found("Electro-Harmonix", "Nano Big Muff Pi")).toBeNull()
     expect(found("Electro-Harmonix", "Little Big Muff")).toBeNull()
     /* A CE-1 is a mains-powered wedge, not the compact casting. */
     expect(found("Boss", "CE-1 Chorus Ensemble")).toBeNull()
+  })
+
+  it("gives the small versions their own box rather than the big one's", () => {
+    /*
+     * The other half of the near-miss rule, and the better half. Narrowing a
+     * pattern so a Tube Screamer Mini or a Nano Big Muff falls to the generic
+     * is honest; modelling the box it is actually built in is right. What must
+     * never happen is the one that used to: the small one wearing the big
+     * one's dimensions.
+     */
+    const mini = found("Ibanez", "Tube Screamer Mini")
+    const ts9 = found("Ibanez", "TS9 Tube Screamer")
+    expect(mini?.name).toBe("Tube Screamer Mini")
+    expect(mini!.width).toBeLessThan(ts9!.width)
+
+    const nano = found("Electro-Harmonix", "Nano Big Muff Pi")
+    const muff = found("Electro-Harmonix", "Big Muff Pi")
+    expect(nano?.name).toBe("Nano Big Muff Pi")
+    expect(nano!.width).toBeLessThan(muff!.width)
   })
 
   it("gives the Micro Amp its own entry rather than the Phase 90's", () => {
@@ -128,14 +145,17 @@ describe("every measured model, as geometry", () => {
           model.depth / 2,
         )
       }
-      if (model.footswitch) {
-        const sw = model.footswitch
+      for (const sw of model.footswitches) {
         expect(Math.abs(sw.x) + sw.radius, `${model.name} switch`).toBeLessThanOrEqual(
           model.width / 2,
         )
         expect(Math.abs(sw.z) + sw.radius, `${model.name} switch`).toBeLessThanOrEqual(
           model.depth / 2,
         )
+      }
+      for (const toggle of model.toggles ?? []) {
+        expect(Math.abs(toggle.x) + 3, `${model.name} toggle`).toBeLessThanOrEqual(model.width / 2)
+        expect(Math.abs(toggle.z) + 3, `${model.name} toggle`).toBeLessThanOrEqual(model.depth / 2)
       }
     }
   })
@@ -198,15 +218,58 @@ describe("every measured model, as geometry", () => {
      * knob tests measure.
      */
     for (const model of PEDAL_MODELS) {
-      if (model.led) {
+      /* A toggle is a 6mm bushing with a lever standing out of it, so it hides
+         print exactly the way an indicator does. Both go through the same
+         check, sized for the larger of the two. */
+      const solids = [
+        ...(model.led ? [{ what: "LED", x: model.led.x, z: model.led.z, r: 3, tall: 2 }] : []),
+        /* A bat lever stands about 10mm off the face and leans back. */
+        ...(model.toggles ?? []).map((t) => ({ what: "toggle", x: t.x, z: t.z, r: 3, tall: 10 })),
+        /*
+         * AND THE KNOBS, against every label but their OWN. A second row of
+         * controls sits in front of the first row's labels, which is how a
+         * Strymon came out with its small knobs planted on the words TIME and
+         * REPEATS: no two knobs overlapped, no knob left the face, and the
+         * print was still buried under a lump of plastic.
+         */
+        ...model.knobs.map((k) => ({
+          what: `${k.label || "a"} knob`,
+          x: k.x,
+          z: k.z,
+          r: k.radius,
+          tall: k.height,
+        })),
+      ]
+      for (const solid of solids) {
         for (const print of printedOn(model)) {
-          /* `Led` draws a 1.8mm-radius dome, and print that merely fails to
-             intersect it still reads as a dot stuck to a letter. */
-          const LED_R = 1.8
+          /* A knob's own label is printed right under it on purpose. */
+          if (print.x === solid.x && Math.abs(print.z - solid.z) < solid.r + LABEL_OFFSET + 1) {
+            continue
+          }
+          /* Print that merely fails to intersect still reads as a part stuck
+             to a letter, so this is the part's radius plus real air. */
+          /*
+           * MORE ROOM BEHIND A CONTROL THAN IN FRONT OF IT, because the viewer
+           * looks down at the pedal from in front. A part that stands 10mm off
+           * the face projects several millimetres up-screen, which is toward
+           * the BACK of the pedal, so it hides print that is nowhere near it in
+           * plan. Three separate models were fixed by eye for this before the
+           * rule was written down: the reader sees a picture, not a plan.
+           */
+          const behind = print.z < solid.z
+          /*
+           * The factor is the camera's, not a guess. `PedalViewer3D` sits at
+           * [1.35, 1.15, 1.85], which is 27 degrees above the deck, so a part
+           * standing h off the face hides h / tan(27) behind it: very nearly
+           * twice its height. That is why every knob label on every real pedal
+           * here is printed in FRONT of its knob and never behind it.
+           */
+          const HIDES_BEHIND = 2
+          const room = solid.r + (behind ? solid.tall * HIDES_BEHIND : 2)
           const far =
-            Math.abs(model.led.x - print.x) > print.text.length * print.size * 0.35 + LED_R ||
-            Math.abs(model.led.z - print.z) > print.size / 2 + LED_R + 3
-          expect(far, `${model.name}: the LED sits on "${print.text}"`).toBe(true)
+            Math.abs(solid.x - print.x) > print.text.length * print.size * 0.35 + solid.r ||
+            Math.abs(solid.z - print.z) > print.size / 2 + room
+          expect(far, `${model.name}: the ${solid.what} sits on "${print.text}"`).toBe(true)
         }
       }
     }

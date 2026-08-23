@@ -1120,6 +1120,27 @@ dataset and the picker catalogue and asserts the printed legend is a substring
 of what the dataset calls the pedal, so the next DD-2 is caught without anybody
 having to think of the pair in advance.
 
+**A MODEL CARRIES A LIST OF FOOTSWITCHES, NOT ONE.** It used to be a single
+switch or null, which is true of the pedals modelled first and false of most of
+what people buy now: a Strymon compact has two, a Boss 200 has two, a DL4 has
+four. A field that holds one does not fail when a second is needed; it draws a
+two-switch pedal with one switch. Two more pieces of hardware exist for the
+same reason: a `toggles` list, because the boutique answer to "this pedal does
+two things" is a bat lever rather than a knob and drawing one as a small knob
+says the mode is a sweep, and an optional `screen`, which is a dark window with
+NOTHING written in it, because what a tuner reads depends on what you are
+playing and drawing a plausible needle is inventing a measurement.
+
+**A TALL CONTROL HIDES PRINT BEHIND IT, and that is geometry rather than
+taste.** The camera sits 27 degrees above the deck, so a part standing h off the
+face hides about 2h of shelf behind itself: a 10mm toggle buries a label 20mm
+back, in plan nowhere near it. Three separate models were fixed by eye for this
+before anybody wrote the rule down, so the clearance test is asymmetric now and
+takes the factor from the camera position rather than from a guess. It is also
+why every knob label on every real pedal here is printed in FRONT of its knob,
+and why the Strymon's second row of knobs is offset in x rather than moved
+forward: there is not 20mm of clear shelf to find on a 114mm pedal.
+
 **THE DIMENSIONS ARE NOT TYPED HERE ANY MORE; THEY COME FROM THE PLANNER'S OWN
 ENCLOSURE TABLE.** Most pedals are built in a standard box, and
 `lib/pedalboard/catalog/enclosures.ts` already names and measures every one of
@@ -1321,6 +1342,11 @@ engine.
 - Do NOT write a per-pedal entry longhand for a family that shares a casting.
   `bossCompact()` and `mxrCompact()` exist so a new colour is the paint, the
   controls and the print, and `knobRow()` derives a row that cannot collide.
+- Do NOT put a knob, a toggle or an indicator less than about twice its own
+  height behind another control's label. It will not overlap in plan and it
+  will bury the print in the render, which is the one thing a reader sees.
+- Do NOT write anything inside a modelled screen. An unlit window is the
+  honest state and is what the pedal looks like unplugged.
 - Do NOT let a model claim to be the actual product. A measured one says what
   its shape tells you, a derived one says plainly that it is not this pedal,
   and the photograph beside it is the real one.

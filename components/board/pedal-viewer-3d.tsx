@@ -279,6 +279,83 @@ function Knob({ knob }: { knob: ModelKnob }) {
   )
 }
 
+/**
+ * A mini toggle: a threaded bushing with a bat lever leaning out of it.
+ *
+ * Deliberately NOT a small knob. A toggle is the one control on a pedal you
+ * are certain you cannot set to a value in between, and the lever leaning to
+ * one side is the whole of how you read it across a room.
+ */
+function Toggle({ x, z }: { x: number; z: number }) {
+  const r = 3 * MM
+  return (
+    <group position={[x * MM, 0, z * MM]}>
+      {/* The hex bushing it is nutted through. */}
+      <mesh castShadow position={[0, r * 0.3, 0]}>
+        <cylinderGeometry args={[r, r, r * 0.6, 6]} />
+        <meshStandardMaterial color="#9aa0a8" roughness={0.4} metalness={0.85} />
+      </mesh>
+      {/* The bat, tipped back the way a toggle at rest actually sits. */}
+      <group rotation={[-0.5, 0, 0]}>
+        <mesh castShadow position={[0, r * 1.5, 0]}>
+          <cylinderGeometry args={[r * 0.32, r * 0.42, r * 2.2, 12]} />
+          <meshStandardMaterial color="#c8cdd4" roughness={0.25} metalness={0.9} />
+        </mesh>
+        <mesh castShadow position={[0, r * 2.6, 0]}>
+          <sphereGeometry args={[r * 0.4, 14, 12]} />
+          <meshStandardMaterial color="#c8cdd4" roughness={0.25} metalness={0.9} />
+        </mesh>
+      </group>
+    </group>
+  )
+}
+
+/**
+ * A display window: a dark recessed rectangle, and nothing written in it.
+ *
+ * What a screen SHOWS depends on what the pedal is doing, and printing a
+ * plausible reading on it would be inventing a measurement in exactly the way
+ * section 8 forbids everywhere else. An unlit window is the honest state and
+ * is also what the pedal looks like unplugged, which is how it arrives.
+ */
+function Screen({
+  x,
+  z,
+  width,
+  depth,
+}: {
+  x: number
+  z: number
+  width: number
+  depth: number
+}) {
+  return (
+    <group position={[x * MM, 0, z * MM]}>
+      {/*
+        ABOVE THE DECAL, NOT UNDER IT. The printed face sits 0.8mm proud of the
+        body, so a window at 0.4mm is behind the paint: the first pass drew a
+        tuner with no display at all and nothing failed, because the screen was
+        rendering correctly underneath a plane painted over it.
+      */}
+      <mesh position={[0, 0.0016, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[(width + 3) * MM, (depth + 3) * MM]} />
+        <meshStandardMaterial color="#2a2d33" roughness={0.6} metalness={0.3} />
+      </mesh>
+      {/* The glass, a hair above the bezel so it reads as set into it. */}
+      <mesh position={[0, 0.0018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[width * MM, depth * MM]} />
+        <meshPhysicalMaterial
+          color="#0b0e12"
+          roughness={0.12}
+          metalness={0}
+          clearcoat={1}
+          clearcoatRoughness={0.05}
+        />
+      </mesh>
+    </group>
+  )
+}
+
 /** The footswitch: a threaded collar with a stomped metal cap on top. */
 function Footswitch({ x, z, radius }: { x: number; z: number; radius: number }) {
   const r = radius * MM
@@ -730,6 +807,9 @@ function Pedal({
         {showControls && model.knobs.map((knob, i) => (
           <Knob key={i} knob={knob} />
         ))}
+        {showControls &&
+          model.toggles?.map((toggle, i) => <Toggle key={i} x={toggle.x} z={toggle.z} />)}
+        {model.screen && <Screen {...model.screen} />}
         {model.led && (
           <Led x={model.led.x} z={model.led.z} color={model.led.color} on={engaged} />
         )}
@@ -743,9 +823,11 @@ function Pedal({
         pedal nobody has ever seen. The same is true of the Ibanez housing,
         which borrowed the mechanism.
       */}
-      {model.footswitch && model.style !== "boss-compact" && (
+      {model.style !== "boss-compact" && (
         <group position={[0, h / 2, 0]}>
-          <Footswitch {...model.footswitch} />
+          {model.footswitches.map((sw, i) => (
+            <Footswitch key={i} {...sw} />
+          ))}
         </group>
       )}
     </group>
