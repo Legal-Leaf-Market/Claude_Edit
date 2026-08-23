@@ -4,6 +4,7 @@ import { enclosureSpec } from "@/lib/board/enclosure-3d"
 import type { BoardItem } from "@/lib/board/model"
 import { PEDALS as GUIDE_PEDALS } from "@/lib/stompbox/pedals"
 import { PEDALS as CATALOG_PEDALS } from "@/lib/pedalboard/catalog/pedals"
+import { ENCLOSURES } from "@/lib/pedalboard/catalog/enclosures"
 
 /**
  * WHAT A MEASURED MODEL CLAIMS, and the near misses that make the claim false.
@@ -58,13 +59,28 @@ describe("matching a pedal to a measured model", () => {
 
   it("never hands one product's body and name to another", () => {
     /* Same brand, same casting in some cases, different pedal in all of them. */
-    expect(found("MXR", "Micro Amp")).toBeNull()
     expect(found("Ibanez", "Tube Screamer Mini")).toBeNull()
     expect(found("Ibanez", "TS808 Tube Screamer")).toBeNull()
     expect(found("Electro-Harmonix", "Nano Big Muff Pi")).toBeNull()
     expect(found("Electro-Harmonix", "Little Big Muff")).toBeNull()
     /* A CE-1 is a mains-powered wedge, not the compact casting. */
     expect(found("Boss", "CE-1 Chorus Ensemble")).toBeNull()
+  })
+
+  it("gives the Micro Amp its own entry rather than the Phase 90's", () => {
+    /*
+     * This pair is why the near-miss rule exists. `micro` under MXR used to
+     * catch a Micro Amp and render it orange with a chicken-head knob and
+     * "PHASE 90" across the face. Narrowing the Phase 90 dropped it to the
+     * generic, which was honest; giving it its own entry is the real fix, and
+     * the assertion worth keeping is that the two never swap.
+     */
+    const microAmp = found("MXR", "Micro Amp")
+    const phase90 = found("MXR", "Phase 90")
+    expect(microAmp?.name).toBe("Micro Amp")
+    expect(phase90?.name).toBe("Phase 90")
+    expect(microAmp?.color).not.toBe(phase90?.color)
+    expect(microAmp?.knobs).toHaveLength(1)
   })
 
   it("keeps the brand scope, so a clone never borrows the original's body", () => {
@@ -144,6 +160,79 @@ describe("every measured model, as geometry", () => {
     }
   })
 
+  it("keeps the printed name clear of the knob labels", () => {
+    /*
+     * PRINT COLLIDING WITH PRINT, which the geometry tests cannot see because
+     * nothing intersects: two bits of type land on the same square millimetre
+     * of the decal and the canvas draws them over each other. On a Big Muff
+     * that put "BIG MUFF PI" straight through the word TONE.
+     *
+     * The knob label is printed just in front of its shaft, which is the one
+     * place it can go, so the legend is what has to move. Both are measured
+     * from the same origin as everything else in the file.
+     */
+    const LABEL_OFFSET = 6
+    /* `useSilkscreen` sets every knob label at this cap height. */
+    const LABEL_SIZE = 3.4
+
+    /* Every bit of print on the face, wherever it came from. */
+    function printedOn(model: (typeof PEDAL_MODELS)[number]) {
+      return [
+        ...model.legends.map((l) => ({ text: l.text, x: 0, z: l.z, size: l.size })),
+        ...model.knobs
+          .filter((k) => k.label)
+          .map((k) => ({
+            text: k.label,
+            x: k.x,
+            z: k.z + k.radius + LABEL_OFFSET,
+            size: LABEL_SIZE,
+          })),
+      ]
+    }
+
+    /*
+     * AND THE PARTS THAT SIT ON TOP OF THE PRINT. An LED is a solid, so no
+     * clearance test on the geometry sees it land on a word: the Small Stone
+     * put its indicator through the middle of "RATE" and every existing check
+     * passed, because a 2mm dot and a decal do not intersect in any way the
+     * knob tests measure.
+     */
+    for (const model of PEDAL_MODELS) {
+      if (model.led) {
+        for (const print of printedOn(model)) {
+          /* `Led` draws a 1.8mm-radius dome, and print that merely fails to
+             intersect it still reads as a dot stuck to a letter. */
+          const LED_R = 1.8
+          const far =
+            Math.abs(model.led.x - print.x) > print.text.length * print.size * 0.35 + LED_R ||
+            Math.abs(model.led.z - print.z) > print.size / 2 + LED_R + 3
+          expect(far, `${model.name}: the LED sits on "${print.text}"`).toBe(true)
+        }
+      }
+    }
+
+    for (const model of PEDAL_MODELS) {
+      for (const legend of model.legends) {
+        for (const knob of model.knobs) {
+          if (!knob.label) continue
+          const labelZ = knob.z + knob.radius + LABEL_OFFSET
+          /*
+           * HALF OF EACH, PLUS REAL AIR. The first version of this counted
+           * only half the legend and passed the Big Muff at an 8mm gap, which
+           * the render showed as the two words touching: the label has a cap
+           * height of its own, and print that merely fails to intersect still
+           * reads as a mistake.
+           */
+          const clear = legend.size / 2 + LABEL_SIZE / 2 + 1.5
+          expect(
+            Math.abs(legend.z - labelZ),
+            `${model.name}: "${legend.text}" is printed over the ${knob.label} label`,
+          ).toBeGreaterThan(clear)
+        }
+      }
+    }
+  })
+
   it("gives a treadle its treadle, and nothing else one", () => {
     for (const model of PEDAL_MODELS) {
       if (model.style === "treadle") {
@@ -199,6 +288,51 @@ describe("against the two datasets that actually reach the viewer", () => {
     expect(matched.length).toBeGreaterThanOrEqual(12)
   })
 
+  it("is the same size as the planner thinks it is", () => {
+    /*
+     * THE TEST THAT WOULD HAVE CAUGHT THE SWAP.
+     *
+     * The planner lays boards out from `lib/pedalboard/catalog`, which names a
+     * standard enclosure per pedal and measures each one in a table with a
+     * provenance marker. This file used to hand-type its own numbers, and the
+     * two drifted: the Big Muff came out 89mm wide and the Small Stone 145,
+     * which is the pair of them exchanged. The famous board hog rendered as
+     * the narrow one and nothing failed, because nothing compared the files.
+     *
+     * `enc()` now reads that table, so this holds the invariant rather than
+     * catching a typo: a pedal cannot be one size in the plan and another in
+     * the picture of it.
+     */
+    let checked = 0
+
+    for (const pedal of CATALOG_PEDALS) {
+      if (!pedal.enclosure) continue
+      const model = modelFor(item({ maker: pedal.brand, name: pedal.model }))
+      if (!model) continue
+
+      const box = ENCLOSURES[pedal.enclosure].dims
+      const where = `${pedal.brand} ${pedal.model} (${pedal.enclosure})`
+      expect(model.width, `${where} width`).toBe(box.widthMm)
+      expect(model.depth, `${where} depth`).toBe(box.depthMm)
+
+      /*
+       * HEIGHT IS EXEMPT FOR A TREADLE, and only for a treadle, because the
+       * two files are measuring different things there. The table's 64mm is
+       * the whole pedal with the plate standing at rest; `height` here is the
+       * chassis the plate rocks on top of, which is much shallower. Asserting
+       * them equal would force the chassis to swallow its own treadle.
+       */
+      if (model.style !== "treadle") {
+        expect(model.height, `${where} height`).toBe(box.heightMm)
+      }
+      checked++
+    }
+
+    /* A floor, so a rename that stops every pedal matching cannot turn this
+       into a test that walks nothing and passes. */
+    expect(checked).toBeGreaterThanOrEqual(20)
+  })
+
   it("prints a name the pedal in the dataset actually wears", () => {
     /*
      * The sharpest version of the near-miss rule. For every dataset entry that
@@ -213,8 +347,12 @@ describe("against the two datasets that actually reach the viewer", () => {
       const model = modelFor(item({ maker: pedal.brand, name: pedal.model }))
       if (!model) continue
       const printed = flat(model.legends[0].text)
+      /* Brand AND model, because plenty of pedals print the maker's name and
+         nothing else: a Vox wah wears "VOX" while the dataset calls it a
+         V847. What this still forbids is the case it was written for, a DD-2
+         wearing "DD-3", since neither string contains the other's number. */
       expect(
-        flat(pedal.model).includes(printed),
+        flat(`${pedal.brand} ${pedal.model}`).includes(printed),
         `${pedal.brand} ${pedal.model} renders with "${model.legends[0].text}" on its face`,
       ).toBe(true)
     }
