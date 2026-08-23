@@ -232,6 +232,19 @@ describe("every measured model, as geometry", () => {
          * REPEATS: no two knobs overlapped, no knob left the face, and the
          * print was still buried under a lump of plastic.
          */
+        /*
+         * A FADER IS A SLOT, NOT A POINT. The cap stands 3mm proud, but the
+         * thing print must stay out of is the whole travel: a legend across a
+         * GE-7's slots is a name written over eight holes.
+         */
+        ...(model.sliders ?? []).map((f) => ({
+          what: "fader",
+          x: f.x,
+          z: f.z,
+          r: 3,
+          tall: 3,
+          halfTravel: f.travel / 2,
+        })),
         ...model.knobs.map((k) => ({
           what: `${k.label || "a"} knob`,
           x: k.x,
@@ -257,6 +270,8 @@ describe("every measured model, as geometry", () => {
            * rule was written down: the reader sees a picture, not a plan.
            */
           const behind = print.z < solid.z
+          /* A fader's footprint runs the length of its slot. */
+          const reach = "halfTravel" in solid ? (solid.halfTravel as number) : 0
           /*
            * The factor is the camera's, not a guess. `PedalViewer3D` sits at
            * [1.35, 1.15, 1.85], which is 27 degrees above the deck, so a part
@@ -265,7 +280,7 @@ describe("every measured model, as geometry", () => {
            * here is printed in FRONT of its knob and never behind it.
            */
           const HIDES_BEHIND = 2
-          const room = solid.r + (behind ? solid.tall * HIDES_BEHIND : 2)
+          const room = reach + solid.r + (behind ? solid.tall * HIDES_BEHIND : 2)
           const far =
             Math.abs(solid.x - print.x) > print.text.length * print.size * 0.35 + solid.r ||
             Math.abs(solid.z - print.z) > print.size / 2 + room
@@ -292,6 +307,63 @@ describe("every measured model, as geometry", () => {
             `${model.name}: "${legend.text}" is printed over the ${knob.label} label`,
           ).toBeGreaterThan(clear)
         }
+      }
+    }
+  })
+
+  it("keeps the faders and the screen on the face too", () => {
+    /*
+     * The newest two controls, held to the same rule as the knobs. A GE-7's
+     * eight faders across a 73mm face is the tightest row on any pedal here,
+     * so it is exactly where an off-by-one puts a cap over the edge.
+     */
+    for (const model of PEDAL_MODELS) {
+      const faders = model.sliders ?? []
+      for (const fader of faders) {
+        expect(Math.abs(fader.x) + 3, `${model.name} fader`).toBeLessThanOrEqual(model.width / 2)
+        expect(
+          Math.abs(fader.z) + fader.travel / 2,
+          `${model.name} fader travel`,
+        ).toBeLessThanOrEqual(model.depth / 2)
+        /* 0 is the bottom of the slot and 1 the top; outside that the cap is
+           drawn off the end of its own track. */
+        expect(fader.at, `${model.name} fader position`).toBeGreaterThanOrEqual(0)
+        expect(fader.at, `${model.name} fader position`).toBeLessThanOrEqual(1)
+      }
+
+      const sorted = [...faders].sort((a, b) => a.x - b.x)
+      for (let i = 1; i < sorted.length; i++) {
+        expect(
+          sorted[i].x - sorted[i - 1].x,
+          `${model.name}: faders ${i - 1} and ${i} share a slot`,
+        ).toBeGreaterThan(5.5)
+      }
+
+      if (model.screen) {
+        const sc = model.screen
+        expect(Math.abs(sc.x) + sc.width / 2, `${model.name} screen`).toBeLessThanOrEqual(
+          model.width / 2,
+        )
+        expect(Math.abs(sc.z) + sc.depth / 2, `${model.name} screen`).toBeLessThanOrEqual(
+          model.depth / 2,
+        )
+      }
+    }
+  })
+
+  it("does not print underneath a screen", () => {
+    /* A window is opaque and covers a rectangle rather than a dot, so it is
+       the one solid the round-footprint check above cannot model. */
+    for (const model of PEDAL_MODELS) {
+      const sc = model.screen
+      if (!sc) continue
+      for (const legend of model.legends) {
+        const overlapsX = Math.abs(legend.z - sc.z) < sc.depth / 2 + legend.size / 2
+        const clearInX = Math.abs(0 - sc.x) > sc.width / 2 + legend.text.length * legend.size * 0.35
+        expect(
+          !overlapsX || clearInX,
+          `${model.name}: "${legend.text}" is printed under the screen`,
+        ).toBe(true)
       }
     }
   })

@@ -73,7 +73,16 @@ export type BodyStyle =
   /** A Fuzz Face: a shallow dome on a circular base, not a box at all. */
   | "round"
 
-export type KnobStyle = "dome" | "chicken-head" | "skirted" | "mini"
+/**
+ * STACKED IS A SECOND SHAFT, NOT A TALLER KNOB.
+ *
+ * A dual-concentric control is two pots on one hole: a big skirted knob with a
+ * smaller one sitting on its shaft, each turning independently. Boss put the
+ * whole high-gain line on them because five controls will not fit across 73mm
+ * any other way, and drawing one as a single knob loses a control the pedal
+ * actually has.
+ */
+export type KnobStyle = "dome" | "chicken-head" | "skirted" | "mini" | "stacked"
 
 export type PedalModel = {
   /** Matched against the board item. See `modelFor`. */
@@ -105,6 +114,15 @@ export type PedalModel = {
    * IS the switch.
    */
   footswitches: { x: number; z: number; radius: number }[]
+  /**
+   * Slide faders, which a graphic EQ is nothing but.
+   *
+   * A different control again: a lever that travels in a slot rather than one
+   * that turns. `travel` is the length of the slot and `at` is where the cap is
+   * sitting, 0 at the bottom of the slot and 1 at the top. A GE-7 drawn with
+   * seven knobs would not be recognisable as a GE-7 at all.
+   */
+  sliders?: { x: number; z: number; travel: number; at: number }[]
   /**
    * Mini toggle switches, which are what most boutique pedals put a mode on.
    *
@@ -810,6 +828,140 @@ const STRYMON_FLINT = strymonCompact({
   note: "Tremolo and reverb in one box, which is why it has two footswitches doing two different jobs rather than one plus a tap.",
 })
 
+/**
+ * A Strymon large: three footswitches, a display, and seven knobs.
+ *
+ * 171 x 133mm, nearly two Boss compacts side by side, and the third switch is
+ * what the size is for: two to move through banks and one to engage. The
+ * screen carries nothing, as ever, because what it shows is the preset you
+ * happen to be on.
+ */
+function strymonLarge(spec: {
+  model: RegExp
+  name: string
+  color: string
+  ink: string
+  top: [string, string, string, string]
+  second: [string, string, string]
+  print: string
+  note: string
+}): PedalModel {
+  return {
+    match: { brand: /^strymon$/i, model: spec.model },
+    name: spec.name,
+    maker: "Strymon",
+    style: "box",
+    ...enc("strymon-large"),
+    color: spec.color,
+    ink: spec.ink,
+    knobs: [
+      ...knobRow(spec.top, { faceWidth: 171, z: -48, arc: 2, radius: 11 }),
+      /* Offset between the first row rather than in line with it, for the
+         reason the compact's second row is: a knob hides the print behind it,
+         and there is no forward room to buy on a 133mm face. */
+      /* 128 is not a face width, it is the pitch that lands these three
+         BETWEEN the four above: their columns are at +/-57.7 and +/-19.2, so
+         the midpoints are 0 and +/-38.5. Anything else buries a top label. */
+      ...knobRow(spec.second, { faceWidth: 128, z: -16, radius: 9 }),
+    ],
+    footswitches: [
+      { x: -58, z: 48, radius: 9 },
+      { x: 0, z: 48, radius: 9 },
+      { x: 58, z: 48, radius: 9 },
+    ],
+    screen: { x: 60, z: 14, width: 40, depth: 16 },
+    led: { x: -66, z: 14, color: "#ff4d2b" },
+    legends: [{ text: spec.print, z: 14, size: 9 }],
+    note: spec.note,
+  }
+}
+
+const STRYMON_TIMELINE = strymonLarge({
+  model: /\btime\s*line\b/i,
+  name: "TimeLine",
+  color: "#b9c9ae",
+  ink: "#1d2418",
+  top: ["Time", "Repeats", "Mix", "Filter"],
+  second: ["Grit", "Speed", "Depth"],
+  print: "TimeLine",
+  note: "171mm across and three footswitches: two to move through banks and one to engage, which is what a pedal with two hundred presets needs and a compact cannot offer.",
+})
+
+const STRYMON_BIGSKY = strymonLarge({
+  model: /\bbig\s*sky\b/i,
+  name: "BigSky",
+  color: "#aebccd",
+  ink: "#161e2a",
+  top: ["Decay", "Pre-Dly", "Mix", "Tone"],
+  second: ["Param", "Mod", "Type"],
+  print: "BigSky",
+  note: "The large box in pale blue. Twelve reverb machines behind one Type selector, which is why two of its knobs do a different job on each machine.",
+})
+
+const STRYMON_MOBIUS = strymonLarge({
+  model: /\bmobius\b/i,
+  name: "Mobius",
+  color: "#bdb4c9",
+  ink: "#1f1a26",
+  top: ["Speed", "Depth", "Level", "Param"],
+  second: ["Mix", "Low", "Type"],
+  print: "Mobius",
+  note: "Twelve modulation machines in the large box. Several of its knobs are deliberately unnamed on the face, because what they do changes with the machine.",
+})
+
+/**
+ * A Boss 200: the compact grown up, with a screen and a second switch.
+ *
+ * 101 x 138mm, and no tread plate at all: the 200 series went back to ordinary
+ * round footswitches, two of them, with the display sitting between the knobs
+ * and the switches.
+ */
+function boss200(spec: {
+  model: RegExp
+  name: string
+  controls: [string, string, string, string]
+  print: [string, string]
+  note: string
+}): PedalModel {
+  return {
+    match: { brand: /^boss$/i, model: spec.model },
+    name: spec.name,
+    maker: "Boss",
+    style: "box",
+    ...enc("boss-200"),
+    color: "#1e2126",
+    ink: "#e8ebef",
+    knobs: knobRow(spec.controls, { faceWidth: 101, z: -46, arc: 3, radius: 9 }),
+    screen: { x: 0, z: -12, width: 44, depth: 16 },
+    footswitches: [
+      { x: -26, z: 46, radius: 9 },
+      { x: 26, z: 46, radius: 9 },
+    ],
+    led: { x: -42, z: 14, color: "#ff2b2b" },
+    legends: [
+      { text: spec.print[0], z: 14, size: 8 },
+      { text: spec.print[1], z: 23, size: 4.2 },
+    ],
+    note: spec.note,
+  }
+}
+
+const BOSS_DD200 = boss200({
+  model: /\bdd-?200\b/i,
+  name: "DD-200 Digital Delay",
+  controls: ["E.Level", "F.Back", "Time", "Mode"],
+  print: ["DD-200", "Digital Delay"],
+  note: "The compact's circuit in a bigger box with somewhere to keep presets: two footswitches and a screen, and no tread plate, because the 200 series went back to ordinary switches.",
+})
+
+const BOSS_RV200 = boss200({
+  model: /\brv-?200\b/i,
+  name: "RV-200 Reverb",
+  controls: ["E.Level", "Time", "Tone", "Mode"],
+  print: ["RV-200", "Reverb"],
+  note: "The same 101mm box as the DD-200 and the same pair of switches. Twelve reverb modes on the fourth knob, with the screen naming whichever one you land on.",
+})
+
 /* --------------------------------------------------------------------- */
 /*  The rest of the Boss compact line                                     */
 /* --------------------------------------------------------------------- */
@@ -945,6 +1097,78 @@ const BOSS_TU2: PedalModel = {
   ],
   note: "The tuner that was on almost every board before the TU-3 replaced it, in the same casting with the same window and one number different.",
 }
+
+/*
+ * THE TWO CONTROLS THE BOSS LINE NEEDED THAT NOTHING ELSE HERE HAS.
+ *
+ * A graphic EQ is eight faders, and a high-gain Boss is five controls on three
+ * holes. Both are the same point: the face is 73mm wide, so when a circuit
+ * wants more controls than that will hold in a row, the answer is different
+ * hardware rather than smaller knobs.
+ */
+
+/** Turn one knob of a factory row into a dual-concentric pair. */
+function stack(model: PedalModel, index: number): PedalModel {
+  return {
+    ...model,
+    knobs: model.knobs.map((k, i) => (i === index ? { ...k, style: "stacked" as const } : k)),
+  }
+}
+
+const BOSS_GE7: PedalModel = {
+  ...bossCompact({
+    model: /\bge-?7\b/i,
+    name: "GE-7 Equalizer",
+    color: "#d7dadd",
+    controls: [],
+    print: ["GE-7", "Equalizer"],
+    note: "Seven bands and a level, all of them faders rather than knobs, which is what makes the curve you have dialled in readable at a glance and is the whole point of a graphic EQ.",
+  }),
+  /*
+   * ALL EIGHT SET FLAT, which is where a pedal out of the box sits.
+   *
+   * A curve drawn here would be somebody's EQ setting presented as the
+   * product's, and this file does not invent settings any more than it invents
+   * dimensions. Flat is the honest state and is also what the pedal looks like
+   * before anybody has touched it.
+   */
+  sliders: [
+    { x: -30, z: -42, travel: 18, at: 0.5 },
+    { x: -21.5, z: -42, travel: 18, at: 0.5 },
+    { x: -13, z: -42, travel: 18, at: 0.5 },
+    { x: -4.5, z: -42, travel: 18, at: 0.5 },
+    { x: 4, z: -42, travel: 18, at: 0.5 },
+    { x: 12.5, z: -42, travel: 18, at: 0.5 },
+    { x: 21, z: -42, travel: 18, at: 0.5 },
+    { x: 30, z: -42, travel: 18, at: 0.5 },
+  ],
+}
+
+const BOSS_MT2 = stack(
+  bossCompact({
+    model: /\bmt-?2\b|\bmetal\s*zone\b/i,
+    name: "MT-2 Metal Zone",
+    color: "#232529",
+    ink: "#e9ecef",
+    controls: ["Level", "EQ", "Dist"],
+    print: ["MT-2", "Metal Zone"],
+    note: "Five controls on three holes: the middle one is a dual-concentric pair for the mid frequency and its level, which is the only way a parametric mid fits on a 73mm face.",
+  }),
+  1,
+)
+
+const BOSS_HM2 = stack(
+  bossCompact({
+    model: /\bhm-?2\b/i,
+    name: "HM-2 Heavy Metal",
+    color: "#1c1f24",
+    ink: "#e9ecef",
+    controls: ["Level", "Colour", "Dist"],
+    print: ["HM-2", "Heavy Metal"],
+    note: "The Swedish chainsaw. A stacked pair for the two colour controls, and the reason a whole genre is described by the phrase all knobs to the right.",
+  }),
+  1,
+)
 
 /* --------------------------------------------------------------------- */
 /*  The rest of the MXR compacts                                          */
@@ -1314,6 +1538,77 @@ const KEELEY_COMPRESSOR_PLUS: PedalModel = {
   note: "The studio-style optical compressor most boards ended up with, in a 1590B, with a single-coil and humbucker toggle rather than an input trim.",
 }
 
+/* --------------------------------------------------------------------- */
+/*  Four more off the boutique shelf                                      */
+/* --------------------------------------------------------------------- */
+
+const WALRUS_SLO: PedalModel = {
+  match: { brand: /^walrus(\s*audio)?$/i, model: /\bsl(o|ö)\b/i },
+  name: "Slö",
+  maker: "Walrus Audio",
+  style: "box",
+  ...enc("1590B"),
+  color: "#8fa6c4",
+  ink: "#141c28",
+  knobs: knobRow(["Decay", "Filter", "Mix"], { faceWidth: 64, z: -32, arc: 4 }),
+  toggles: [{ x: -22, z: 8 }],
+  footswitches: [{ x: 0, z: 36, radius: 8 }],
+  led: { x: 22, z: 8, color: "#3ad46a" },
+  legends: [{ text: "Slö", z: 20, size: 7 }],
+  note: "A 1590B again, with the mode toggle picking between three reverb programmes. The dark, rise and dream settings are the whole product and there is no knob for them.",
+}
+
+const EQD_DISPATCH_MASTER: PedalModel = {
+  match: { brand: /^earthquaker(\s*devices)?$/i, model: /\bdispatch\s*master\b/i },
+  name: "Dispatch Master",
+  maker: "EarthQuaker Devices",
+  style: "box",
+  ...enc("125B"),
+  color: "#e7e3d8",
+  ink: "#1a1a1c",
+  knobs: knobRow(["Time", "Repeats", "Mix", "Reverb"], { faceWidth: 66, z: -32, arc: 3, radius: 5.5 }),
+  footswitches: [{ x: 0, z: 38, radius: 8 }],
+  led: { x: 0, z: 6, color: "#ff4d2b" },
+  legends: [{ text: "Dispatch Master", z: 20, size: 4.5 }],
+  note: "Delay and reverb on one switch in a 125B, which is a 1590B with more room inside. Four knobs across 66mm is as many as that width takes.",
+}
+
+const ORIGIN_CALI76: PedalModel = {
+  match: { brand: /^origin(\s*effects)?$/i, model: /\bcali\s*-?76\b/i },
+  name: "Cali76 Compact",
+  maker: "Origin Effects",
+  style: "box",
+  ...enc("125B"),
+  color: "#b4b8bd",
+  ink: "#17171a",
+  knobs: knobRow(["In", "Out", "Dry", "Ratio"], { faceWidth: 66, z: -32, arc: 3, radius: 5.5 }),
+  footswitches: [{ x: 0, z: 38, radius: 8 }],
+  led: { x: 0, z: 6, color: "#ff4d2b" },
+  legends: [{ text: "Cali76", z: 20, size: 6 }],
+  note: "A studio FET compressor shrunk into a 125B, with a dry blend so the compression sits under the signal rather than on top of it.",
+}
+
+/*
+ * A PEDAL WITH NO KNOB AT ALL, which is worth having for the same reason the
+ * treadle is: the shape is the product. Everything an EP Booster does is set
+ * on dip switches inside the box, so the face carries a switch, an indicator
+ * and nothing else.
+ */
+const XOTIC_EP_BOOSTER: PedalModel = {
+  match: { brand: /^xotic$/i, model: /\bep\s*booster\b/i },
+  name: "EP Booster",
+  maker: "Xotic",
+  style: "box",
+  ...enc("1590A"),
+  color: "#e8e4d6",
+  ink: "#1a1a1c",
+  knobs: [{ x: 0, z: -28, radius: 6, height: 9, style: "dome", label: "", angle: -20 }],
+  footswitches: [{ x: 0, z: 28, radius: 6 }],
+  led: { x: 0, z: -8, color: "#ff4d2b" },
+  legends: [{ text: "EP Booster", z: 8, size: 3.6 }],
+  note: "A 1590A with one control on the face and two dip switches inside it, which is the whole design: set it once and leave it on.",
+}
+
 /** Every pedal modelled by hand, most specific first. */
 export const PEDAL_MODELS: PedalModel[] = [
   /*
@@ -1342,6 +1637,13 @@ export const PEDAL_MODELS: PedalModel[] = [
   BOSS_PH3,
   BOSS_TU3,
   BOSS_TU2,
+  BOSS_GE7,
+  BOSS_MT2,
+  BOSS_HM2,
+  /* The 200 series is a different enclosure entirely, but its patterns are
+     Boss model numbers so it reads better beside them. */
+  BOSS_DD200,
+  BOSS_RV200,
   /* The Ibanez housing borrowed the Boss mechanism, so it sits with them. */
   IBANEZ_TS9,
   /* The Mini is a mini box and nothing like the TS9, which is exactly why it
@@ -1396,10 +1698,19 @@ export const PEDAL_MODELS: PedalModel[] = [
   STRYMON_BLUESKY,
   STRYMON_FLINT,
 
+  /* Three footswitches and a screen: the largest things modelled here. */
+  STRYMON_TIMELINE,
+  STRYMON_BIGSKY,
+  STRYMON_MOBIUS,
+
   /* The boutique 1590B shelf, all toggle-and-three-knobs. */
   JHS_MORNING_GLORY,
   WALRUS_JULIA,
+  WALRUS_SLO,
   KEELEY_COMPRESSOR_PLUS,
+  EQD_DISPATCH_MASTER,
+  ORIGIN_CALI76,
+  XOTIC_EP_BOOSTER,
 ]
 
 /**
