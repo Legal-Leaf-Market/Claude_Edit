@@ -161,3 +161,41 @@ describe("the capture state is not public", () => {
     expect(post).toContain("passcodeMatches")
   })
 })
+
+describe("the bookmarklet anchors survive React", () => {
+  /*
+   * A BUG THAT SHIPPED AND WAS REPORTED AS "neither bookmarklet will pull up".
+   *
+   * React 19 BLOCKS a `javascript:` URL passed as an href prop. Not a warning
+   * any more: the attribute is simply not rendered. Both anchors went out with
+   * no usable href, so dragging one produced a dead bookmark and clicking it
+   * did nothing, with no error anywhere saying why.
+   *
+   * The attribute has to be set on the DOM node directly, which React does not
+   * sanitise. The sister site's install page always did exactly that; this one
+   * used JSX and walked into the sanitiser.
+   */
+  const client = readFileSync(
+    new URL("../../components/capture/collect-client.tsx", import.meta.url),
+    "utf-8",
+  )
+
+  it("sets the bookmarklet href on the node rather than through a prop", () => {
+    expect(client).toContain('setAttribute("href"')
+  })
+
+  it("passes no href prop for either bookmarklet anchor", () => {
+    /*
+     * The specific regression: any `href={...}` on those two anchors is React
+     * stripping a javascript: URL again, silently.
+     */
+    expect(client).not.toMatch(/href=\{loaderUrl/)
+    expect(client).not.toMatch(/href=\{inlineUrl/)
+  })
+
+  it("still builds both bookmarklet URLs", () => {
+    expect(client).toContain('"javascript:"')
+    expect(client).toContain("loaderRef")
+    expect(client).toContain("inlineRef")
+  })
+})

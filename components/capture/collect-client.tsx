@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { CaptureTarget } from "@/lib/capture/targets"
 
 /**
@@ -133,7 +133,6 @@ function RelayTab() {
 /* -------------------------------------------------------------------------- */
 
 function InstallPage({ targets }: { targets: CaptureTarget[] }) {
-  const [loaderUrl, setLoaderUrl] = useState("#")
   const [inlineUrl, setInlineUrl] = useState<string | null>(null)
   const [inlineNote, setInlineNote] = useState("Building...")
   const [build, setBuild] = useState<string | null>(null)
@@ -144,6 +143,22 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
   const [pasteMessage, setPasteMessage] = useState("")
   const [copied, setCopied] = useState("")
   const [needsSignIn, setNeedsSignIn] = useState(false)
+
+  /*
+   * REACT 19 BLOCKS `javascript:` IN AN href PROP, and that is not a warning
+   * any more: the attribute is simply not rendered. Both bookmarklets shipped
+   * with no usable href at all, so dragging one produced a dead bookmark and
+   * clicking it did nothing, with no error anywhere to say why.
+   *
+   * The attribute has to be set on the DOM node directly, which React does not
+   * sanitise. The sister site's install page has always done exactly this
+   * (`$("bm").setAttribute("href", CODE)`); this one used JSX and walked
+   * straight into the sanitiser.
+   *
+   * A ref rather than document.getElementById so it cannot race hydration.
+   */
+  const loaderRef = useRef<HTMLAnchorElement>(null)
+  const inlineRef = useRef<HTMLAnchorElement>(null)
 
   const load = useCallback(async () => {
     try {
@@ -181,18 +196,18 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
      * at all. Waiting for the flag the collector sets is what turns silence
      * into a sentence.
      */
-    setLoaderUrl(
+    const loaderHref =
       "javascript:" +
-        encodeURIComponent(
+      encodeURIComponent(
           `(function(){var d=document,s=d.createElement('script');` +
             `s.src='${src}?'+Date.now();` +
             `s.onerror=function(){alert('Could not load the collector.');};` +
             `d.body.appendChild(s);` +
             `setTimeout(function(){if(!window.__GEAR_COLLECTOR__){alert('The collector did not run. ` +
             `This shop blocks scripts from other origins. Use the self-contained bookmarklet or the ` +
-            `console method on the install page.');}},2500);})()`,
-        ),
-    )
+          `console method on the install page.');}},2500);})()`,
+      )
+    loaderRef.current?.setAttribute("href", loaderHref)
 
     /*
      * The self-contained build, assembled from the live source. The preamble is
@@ -214,6 +229,7 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
          */
         const url = "javascript:" + encodeURIComponent(`(function(){${preamble}${source}})();`)
         setInlineUrl(url)
+        inlineRef.current?.setAttribute("href", url)
         setInlineNote(
           `Ready, ${Math.round(url.length / 1024)} KB. Long bookmarks are fine in Chrome, Edge and ` +
             `Firefox; Safari can refuse very long ones, and the console method is the fallback there.`,
@@ -290,12 +306,15 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
       <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">1 &middot; Install</h2>
       <div className="mt-3 rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
         <p className="text-sm text-[var(--muted-foreground)]">Drag this to your bookmarks bar:</p>
+        {/* No href prop: see the comment on loaderRef. React 19 would strip it. */}
         <a
+          ref={loaderRef}
           className="stomp mt-2 inline-block"
-          href={loaderUrl}
           onClick={(event) => {
             event.preventDefault()
-            alert("Drag this to your bookmarks bar. Clicking it here would run it on this page, which has no catalogue to read.")
+            alert(
+              "Drag this to your bookmarks bar. Clicking it here would run it on this page, which has no catalogue to read.",
+            )
           }}
         >
           Grab catalogue
@@ -308,11 +327,16 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
           Drag this one instead:
         </p>
         <a
+          ref={inlineRef}
           className="stomp mt-2 inline-block"
-          href={inlineUrl ?? "#"}
+          style={inlineUrl ? undefined : { opacity: 0.5 }}
           onClick={(event) => {
             event.preventDefault()
-            alert("Drag this to your bookmarks bar.")
+            alert(
+              inlineUrl
+                ? "Drag this to your bookmarks bar."
+                : "Still building this one. Wait for the line below to say Ready.",
+            )
           }}
         >
           Grab catalogue (self-contained)
