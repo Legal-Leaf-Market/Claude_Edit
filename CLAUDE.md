@@ -638,7 +638,7 @@ process, and the accident is far likelier.
 | `GEAR_AVAIL_URL` | Origin the guide uses for absolute links back into the catalogue. The guide is served on a different domain, so `/gear/[slug]` cannot be relative there. Falls back to `SITE_URL`, then to production. |
 | `YOUTUBE_API_KEY` | Anderton's TV metadata and comments, via the YouTube Data API v3. The reasoning, including why transcripts are off limits, is in the `youtube` block of `lib/env.ts`. Unset means the reader no-ops. |
 
-| `IMPACT_ACCOUNT_SID` / `IMPACT_AUTH_TOKEN` | Impact's partner REST API (`api.impact.com/Mediapartners/{sid}/Catalogs/{id}/Items`, HTTP Basic, JSON, paginated), which is the OTHER way into Anderton's and the ONLY way into the other seven merchants. Both credentials are on Impact's API settings page and both are shared by every advertiser on the account. **Prefer this over the FTP block where it works**: ordinary HTTPS with no control connection or passive ports, and a slice is a page rather than a re-download of the whole catalogue per chunk. |
+| `IMPACT_ACCOUNT_SID` / `IMPACT_AUTH_TOKEN` | Impact's partner REST API (`api.impact.com/Mediapartners/{sid}/Catalogs/{id}/Items`, HTTP Basic, JSON, paginated), which is the OTHER way into Anderton's and the ONLY way into the other seven merchants. Both credentials are on Impact's API settings page and both are shared by every advertiser on the account. **Prefer this over the FTP block where it works**: ordinary HTTPS with no control connection or passive ports, and a slice is a page rather than a re-download of the whole catalogue per chunk. **It does NOT work for Anderton's**, and that is settled rather than suspected: see the note below the table. |
 | `IMPACT_ANDERTONS_CATALOG_ID` | Defaults to 30480 (campaign 43829, 27,052 products) because somebody read it off the platform and it is not a secret. |
 | `IMPACT_AMERICANMUSICAL_CATALOG_ID`, `IMPACT_MUSICIANSFRIEND_CATALOG_ID`, `IMPACT_NATIVEINSTRUMENTS_CATALOG_ID`, `IMPACT_FENDER_CATALOG_ID`, `IMPACT_UNIVERSALAUDIO_CATALOG_ID`, `IMPACT_DONNER_CATALOG_ID`, `IMPACT_PLUGINALLIANCE_CATALOG_ID` | One per Impact merchant, ALL UNSET BY DEFAULT AND NEVER GUESSED. A wrong id does not fail safely: it either 404s or returns another advertiser's products under this merchant's name, which poisons the store page and every median built from it. Read the real ones with `{"mode":"list"}` on `/api/admin/impact`, surfaced as a button. Unset means that merchant's job no-ops, same as Sweetwater. |
 | `IMPACT_MARTINIC_LINK` / `IMPACT_DISTROKID_LINK` | Whole tracked links, pasted from Impact's "create your links" step, for the two focus-page partners (section 19). Never built here: an Impact deep link needs `/c/<publisherId>/<campaignId>/<adId>`. A value that is not on an Impact tracking host is IGNORED with a warning rather than used, and unset means the page links to the merchant's own site untracked. |
@@ -673,6 +673,37 @@ is skipped; the only symptom is `/go` handing out affiliate links where the
 merchant's own page belongs. Header matching collapses spaces and underscores
 but cannot split `OriginalUrl` into two words, so both spellings have to be in
 the table.
+
+**ANDERTON'S CANNOT BE READ THROUGH THE IMPACT API, AND THAT IS THE
+ADVERTISER'S SETTING RATHER THAN OUR CONFIGURATION.** Asked for catalogue 30480
+the API answers, verbatim:
+
+```
+400 Bad Request
+{"Status":"ERROR","Message":"The requested catalog has not been made available
+ via API by the Advertiser."}
+```
+
+Three things fall out of that one line, and each had been an open question.
+The credentials are FINE: Impact checks the Basic pair first, so a 400 rather
+than a 401 clears them. The catalogue id 30480 is RIGHT: a wrong one is a 404,
+and this reply names the catalogue it will not serve. And the page size was
+never the problem, which is worth recording because it was the obvious suspect
+and it was wrong.
+
+So the FTP drop is not merely the older path for this merchant, it is the ONLY
+path, and the question section 1 leaves open (whether a serverless function can
+hold the connection) is the question that actually matters for Anderton's.
+
+`ingestImpactCatalogue` records this as SKIPPED rather than failed, next to the
+merchants whose catalogue id is simply unset, because it is the same shape of
+thing: nothing here is misconfigured, no retry helps, and the fix is a setting
+in somebody else's account. It ran as a 500 every three hours for two weeks
+before anybody could see why, which is the whole argument for the change.
+
+**Do not assume the other seven are API-enabled either.** Each advertiser makes
+that choice separately, so a catalogue id read off the account is necessary and
+not sufficient: the id can be right and the answer still be this.
 
 **Debugging the Anderton's FTP pull.** Two admin buttons, both behind
 `ADMIN_PASSCODE`. "Pull the Anderton's catalogue" does the work; "Diagnose the
@@ -1301,6 +1332,12 @@ engine.
   feed down to the paying brands is ranking by payout at the row level.
 - Do NOT bind the Impact catalogue by column position. It is brand-configured
   and the order is not stable; bind by header name and fail loudly.
+- Do NOT treat an Impact catalogue id as proof the API will serve it. The
+  advertiser enables API delivery separately, and Anderton's has not: the id is
+  correct and the answer is still a 400 saying so (section 11).
+- Do NOT let a merchant-side configuration state be recorded as a failed run.
+  It is a warning nobody can clear and a cron burned on something that cannot
+  succeed; `skipped` with the reason is the honest status.
 - Do NOT guess an Impact catalogue id, or default one that has not been read
   off the account. A wrong id returns another advertiser's products under this
   merchant's name, which is worse than a 404 because nothing fails (section 1).

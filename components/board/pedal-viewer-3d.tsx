@@ -1,7 +1,7 @@
 "use client"
 
-import { Suspense, useMemo, useRef } from "react"
-import { Canvas, useFrame, type ThreeElements } from "@react-three/fiber"
+import { Suspense, useEffect, useMemo, useRef } from "react"
+import { Canvas, useFrame, useThree, type ThreeElements } from "@react-three/fiber"
 import { OrbitControls, RoundedBox, ContactShadows } from "@react-three/drei"
 import * as THREE from "three"
 import type { ModelKnob, PedalModel } from "@/lib/board/pedal-models"
@@ -79,7 +79,106 @@ const FIT = 1.25
  * "toy".
  */
 function bodyMaterial(color: string) {
-  return { color, roughness: 0.42, metalness: 0.28, clearcoat: 0.25 }
+  /*
+   * POWDER COAT OVER DIE-CAST, which is two surfaces rather than one: a slightly
+   * rough painted layer with a thin gloss on top of it. `clearcoat` is what
+   * separates a pedal from a plastic toy, because the highlight that travels
+   * across the lid as you turn it lives in the coat and not in the paint.
+   *
+   * Low metalness on purpose. The casting underneath is aluminium but you never
+   * see it: what you see is paint, and paint is a dielectric. Raising this to
+   * look "metal" is the single easiest way to make the whole thing read as tin.
+   */
+  return {
+    color,
+    roughness: 0.38,
+    metalness: 0.05,
+    clearcoat: 0.85,
+    clearcoatRoughness: 0.18,
+    envMapIntensity: 1.1,
+  }
+}
+
+/**
+ * A STUDIO, BUILT IN CODE RATHER THAN FETCHED.
+ *
+ * The single biggest difference between a CAD render and a photograph is that
+ * real objects reflect a room. Without an environment map every curved surface
+ * gets its shading from three lamps and nothing else, which is exactly the flat,
+ * plasticky look that says "computer drawing" no matter how good the geometry.
+ *
+ * The usual answer is to load an HDRI, and every helper that does it fetches
+ * from a CDN. This site's CSP forbids that, and a pedal should not wait on a
+ * network round trip to look like itself. So the room is drawn: a dark floor, a
+ * lighter ceiling, and two soft rectangular highlights standing in for
+ * softboxes, run through PMREM so roughness blurs the reflection properly.
+ *
+ * It is a few kilobytes of canvas and it is what puts a moving highlight on the
+ * lid, a bright line along the chamfer, and a believable sheen on chrome.
+ */
+function useStudioEnvironment(): THREE.Texture | null {
+  const { gl } = useThree()
+
+  return useMemo(() => {
+    const w = 512
+    const h = 256
+    const canvas = document.createElement("canvas")
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return null
+
+    /* Floor to ceiling, dark to light, the way a room actually is. */
+    const sky = ctx.createLinearGradient(0, 0, 0, h)
+    sky.addColorStop(0, "#e8edf5")
+    sky.addColorStop(0.45, "#8e98a8")
+    sky.addColorStop(0.62, "#3b4250")
+    sky.addColorStop(1, "#0d1016")
+    ctx.fillStyle = sky
+    ctx.fillRect(0, 0, w, h)
+
+    /* Two softboxes, above and slightly to either side, with soft edges: a hard
+       rectangle reflects as a hard rectangle and reads as a bug. */
+    for (const [cx, cy, rx, ry, a] of [
+      [w * 0.28, h * 0.2, w * 0.16, h * 0.13, 1],
+      [w * 0.74, h * 0.26, w * 0.12, h * 0.1, 0.72],
+    ] as const) {
+      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry))
+      glow.addColorStop(0, `rgba(255,255,255,${a})`)
+      glow.addColorStop(1, "rgba(255,255,255,0)")
+      ctx.fillStyle = glow
+      ctx.beginPath()
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
+    const equirect = new THREE.CanvasTexture(canvas)
+    equirect.mapping = THREE.EquirectangularReflectionMapping
+    equirect.colorSpace = THREE.SRGBColorSpace
+
+    /* PMREM is what makes a rough surface blur its reflection instead of
+       mirroring the room; without it every material looks like chrome. */
+    const pmrem = new THREE.PMREMGenerator(gl)
+    const target = pmrem.fromEquirectangular(equirect)
+    pmrem.dispose()
+    equirect.dispose()
+    return target.texture
+  }, [gl])
+}
+
+/** Applies the studio to the whole scene, so every material picks it up. */
+function Studio() {
+  const env = useStudioEnvironment()
+  const { scene } = useThree()
+
+  useEffect(() => {
+    scene.environment = env
+    return () => {
+      scene.environment = null
+    }
+  }, [scene, env])
+
+  return null
 }
 
 /* --------------------------------------------------------------------- */
@@ -411,6 +510,77 @@ function Screen({
         />
       </mesh>
     </group>
+  )
+}
+
+/**
+ * THE JACKS, WHICH EVERY PEDAL HAS AND THIS ONE DID NOT.
+ *
+ * A quarter-inch socket is a nickel collar standing a couple of millimetres
+ * proud of the wall with a black hole in it, and there are three: input on the
+ * right as you face the pedal, output on the left, and DC in the top edge. They
+ * are the most-photographed detail on any pedal after the face, because they
+ * are what you look at when you are working out whether it fits your board.
+ *
+ * Their absence is why the earlier renders read as unfinished from the side:
+ * every wall was a blank painted panel, which is a thing no pedal has ever been.
+ */
+function Jack({
+  x,
+  y,
+  z,
+  facing,
+  radius = 5,
+}: {
+  x: number
+  y: number
+  z: number
+  /** Which wall it is set into, as a rotation about Y. */
+  facing: number
+  radius?: number
+}) {
+  const r = radius * MM
+  return (
+    <group position={[x * MM, y * MM, z * MM]} rotation={[0, facing, 0]}>
+      {/* The nut, hex on a real one and near enough round at this size. */}
+      <mesh castShadow rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[r, r, 2.2 * MM, 20]} />
+        <meshPhysicalMaterial
+          color="#b9bec6"
+          roughness={0.28}
+          metalness={0.95}
+          clearcoat={0.4}
+        />
+      </mesh>
+      {/* The bore. Dark, and set back, so it reads as a hole rather than a disc. */}
+      <mesh position={[1.4 * MM, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[r * 0.56, r * 0.56, 1.2 * MM, 20]} />
+        <meshStandardMaterial color="#0a0b0d" roughness={0.9} />
+      </mesh>
+    </group>
+  )
+}
+
+/**
+ * Where a pedal's sockets go, derived rather than declared per model.
+ *
+ * Output left, input right, power in the back wall: the arrangement almost
+ * every pedal uses, and the one a player assumes when they look at a picture.
+ * Deriving it means every one of the models gets jacks without ninety entries
+ * each growing three more fields, and a pedal whose real layout differs is a
+ * detail this is not claiming to know.
+ */
+function Jacks({ model }: { model: PedalModel }) {
+  const halfW = model.width / 2
+  const halfD = model.depth / 2
+  /* Up the wall, not on the seam: a socket sits above the base plate. */
+  const y = model.height * 0.12
+  return (
+    <>
+      <Jack x={-halfW} y={y} z={-model.depth * 0.12} facing={Math.PI} />
+      <Jack x={halfW} y={y} z={-model.depth * 0.12} facing={0} />
+      <Jack x={0} y={y} z={-halfD} facing={Math.PI / 2} radius={4} />
+    </>
   )
 }
 
@@ -889,6 +1059,10 @@ function Pedal({
           ))}
         </group>
       )}
+
+      {/* A treadle's sockets are in its cheeks rather than in a wall, and a
+          round body has no wall to speak of, so neither gets the derived set. */}
+      {model.style !== "treadle" && model.style !== "round" && <Jacks model={model} />}
     </group>
   )
 }
@@ -914,9 +1088,14 @@ export function PedalViewer3D({
       style={{ background: "transparent" }}
     >
       <Suspense fallback={null}>
-        {/* Three-point-ish: a key with shadow, a cool fill, and a rim to pick
-            out the top edge of the casting against a dark panel. */}
-        <ambientLight intensity={0.55} />
+        <Studio />
+        {/*
+          The lamps are still here, and they do less than they used to. With a
+          room to reflect, their job is shadow and shape rather than all of the
+          shading, so the ambient comes down: leaving it where it was with an
+          environment map on top washes the highlights flat.
+        */}
+        <ambientLight intensity={0.22} />
         <directionalLight
           position={[2.2, 3.4, 1.8]}
           intensity={2.1}

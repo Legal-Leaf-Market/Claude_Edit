@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { fetchImpactApiPage, redactImpactUrl } from "@/lib/ingestion/impact-catalogue"
+import {
+  ImpactCatalogueNotApiEnabled,
+  fetchImpactApiPage,
+  redactImpactUrl,
+} from "@/lib/ingestion/impact-catalogue"
 
 /**
  * WHAT A FAILED IMPACT CALL IS ALLOWED TO TELL YOU, AND WHAT IT IS NOT.
@@ -146,6 +150,52 @@ describe("finding the page size the API will actually serve", () => {
     const fetchSpy = reply(400, "{}")
     await expect(fetchImpactApiPage(config, 1, 100)).rejects.toThrow()
     expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("a catalogue the advertiser has not published to the API", () => {
+  /*
+   * The real Anderton's reply, verbatim off the production log of 24 August.
+   * It is what settled three questions at once: the credentials were fine, the
+   * catalogue id 30480 was right, and the page size was never the problem.
+   */
+  const REAL_BODY = JSON.stringify({
+    Status: "ERROR",
+    Message: "The requested catalog has not been made available via API by the Advertiser.",
+  })
+
+  it("is its own error type, not a generic failure", async () => {
+    reply(400, REAL_BODY)
+    const error = await fetchImpactApiPage(config, 1, 100).catch((e: Error) => e)
+    expect(error).toBeInstanceOf(ImpactCatalogueNotApiEnabled)
+  })
+
+  it("says which catalogue and what the two ways out are", async () => {
+    reply(400, REAL_BODY)
+    const error = await fetchImpactApiPage(config, 1, 100).catch((e: Error) => e)
+    expect(String(error)).toContain("30480")
+    expect(String(error)).toMatch(/enable API delivery/)
+    expect(String(error)).toMatch(/FTP/)
+  })
+
+  it("still hides the account sid", async () => {
+    reply(400, REAL_BODY)
+    const error = await fetchImpactApiPage(config, 1, 100).catch((e: Error) => e)
+    expect(String(error)).not.toContain(config.accountSid)
+  })
+
+  it("does not mistake an ordinary 400 for it", async () => {
+    reply(400, JSON.stringify({ Message: "PageSize exceeds the maximum" }))
+    const error = await fetchImpactApiPage(config, 1, 100).catch((e: Error) => e)
+    expect(error).not.toBeInstanceOf(ImpactCatalogueNotApiEnabled)
+  })
+
+  it("does not mistake the same words on another status for it", async () => {
+    /* The match is deliberately scoped to 400. A 500 carrying similar prose is
+       an outage, and an outage must stay loud. */
+    reply(500, REAL_BODY, "Internal Server Error")
+    const error = await fetchImpactApiPage(config, 1, 100).catch((e: Error) => e)
+    expect(error).not.toBeInstanceOf(ImpactCatalogueNotApiEnabled)
   })
 })
 
