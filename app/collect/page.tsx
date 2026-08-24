@@ -33,12 +33,32 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default function CollectPage() {
+export default async function CollectPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   /*
-   * The target list is passed in from the server rather than imported by the
-   * client component, for the same reason the Impact merchants are on the admin
-   * page: it keeps the client tree free of a module that could grow a server
-   * import later, and it renders in the HTML for an operator whose JS is slow.
+   * WHICH SHAPE THIS PAGE IS, DECIDED ON THE SERVER.
+   *
+   * It was decided in an effect, which meant the component returned null on
+   * the first render and the whole page arrived as an empty document that
+   * filled in after hydration. For an operator tool that is merely ugly; what
+   * made it worth fixing is that it also made a comment here false, since
+   * nothing was in the HTML at all.
+   *
+   * The relay tab is a URL, so the server can read it. ?receive=1 is a
+   * different screen entirely rather than a variation on this one: it has no
+   * install instructions and no target list, only a line saying whether the
+   * capture arrived, which is the line the operator is watching.
    */
-  return <CollectClient targets={CAPTURE_TARGETS} />
+  const params = await searchParams
+  const isRelay = params.receive === "1"
+
+  /*
+   * The targets come from the server rather than being imported by the client
+   * component, the same way the Impact merchants reach the admin page: it keeps
+   * a module that could grow a server import later out of the client tree.
+   */
+  return <CollectClient isRelay={isRelay} targets={CAPTURE_TARGETS} />
 }
