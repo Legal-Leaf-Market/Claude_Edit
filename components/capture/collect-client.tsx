@@ -382,7 +382,61 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
       </div>
 
       <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">
-        1 &middot; Install, whichever of these works for you
+        1 &middot; Install it as a DevTools snippet (do this one)
+      </h2>
+      <div className="mt-3 rounded-[12px] border border-[var(--chrome-dk)] bg-[var(--surface)] p-4">
+        <p className="max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+          <strong className="text-[var(--text)]">
+            This is the method that cannot be blocked, and it is the one to use.
+          </strong>{" "}
+          A bookmarklet that injects a script is refused by any shop with a strict{" "}
+          <code>script-src</code>, and refused SILENTLY, because a blocked script fires no error
+          event. That is why a bookmark can work on one site and do nothing at all on the next, with
+          no clue as to why. Code run from DevTools is not subject to the page&apos;s policy, so this
+          works everywhere.
+        </p>
+        <p className="mt-2 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+          It is also less work after the first time: a snippet is SAVED, so it is one double-click on
+          any page forever after, with no bookmarks bar, no dragging, and no paste.
+        </p>
+
+        <ol className="mt-3 list-decimal space-y-2 pl-6 text-sm leading-relaxed text-[var(--muted-foreground)]">
+          <li>Press the button below to copy the collector.</li>
+          <li>
+            On any page, press <kbd className="font-mono text-[var(--text)]">F12</kbd> to open
+            DevTools.
+          </li>
+          <li>
+            Go to <strong className="text-[var(--text)]">Sources</strong> &rarr;{" "}
+            <strong className="text-[var(--text)]">Snippets</strong>. In Chrome it is behind the{" "}
+            <strong className="text-[var(--text)]">&raquo;</strong> chevron in the left pane if you
+            cannot see it.
+          </li>
+          <li>
+            <strong className="text-[var(--text)]">+ New snippet</strong>, paste, and save with{" "}
+            <kbd className="font-mono text-[var(--text)]">Ctrl/Cmd + S</kbd>. Name it whatever you
+            like.
+          </li>
+          <li>
+            Now, on a merchant&apos;s category page: open DevTools, right-click the snippet and{" "}
+            <strong className="text-[var(--text)]">Run</strong> (or{" "}
+            <kbd className="font-mono text-[var(--text)]">Ctrl/Cmd + Enter</kbd> with it open). The
+            panel appears.
+          </li>
+        </ol>
+
+        <button type="button" className="stomp mt-3" onClick={() => void copySource()}>
+          Copy collector source
+        </button>
+        {copied && <p className="mt-2 text-sm text-[var(--muted-foreground)]">{copied}</p>}
+        <p className="mt-3 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+          Re-copy it after any change here: a saved snippet is a snapshot, exactly like a
+          self-contained bookmarklet, and the panel prints its build so you can tell.
+        </p>
+      </div>
+
+      <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">
+        2 &middot; Or a bookmarklet, if you prefer
       </h2>
       <p className="mt-2 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
         Three ways in, and they run the identical program. If dragging is not working for you, the
@@ -461,7 +515,7 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
         )}
       </div>
 
-      <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">2 &middot; Capture</h2>
+      <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">3 &middot; Capture</h2>
       <ol className="mt-3 list-decimal space-y-2 pl-6 text-sm leading-relaxed text-[var(--muted-foreground)]">
         <li>
           Open a category page and <strong className="text-[var(--text)]">let it finish loading</strong>.
@@ -483,7 +537,7 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
       </p>
 
       <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">
-        3 &middot; Where to point it
+        4 &middot; Where to point it
       </h2>
       <p className="mt-2 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
         Open a category, let it load, then press the bookmark and hit{" "}
@@ -529,7 +583,7 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
         ))}
       </div>
 
-      <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">4 &middot; What has landed</h2>
+      <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">5 &middot; What has landed</h2>
       <div className="mt-3 rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
         {needsSignIn ? (
           <p className="text-sm text-[var(--muted-foreground)]">
@@ -577,18 +631,19 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
         </button>
       </div>
 
-      <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">Console method</h2>
+      <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">
+        One-off console paste
+      </h2>
       <div className="mt-3 rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
-        <p className="text-sm leading-relaxed text-[var(--muted-foreground)]">
-          Open the page, press F12, Console, paste, Enter. Some sites block pasting until you type{" "}
-          <code>allow pasting</code> first. This copies the whole script rather than a one-line
-          loader on purpose: a loader still has to fetch from another origin, which is exactly what
-          a strict policy forbids. Pasted source has nothing left to block.
+        <p className="max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+          The same source, pasted straight into the console instead of saved as a snippet. Fine for
+          one page; the snippet above is better for anything repeated, because it survives closing
+          the tab and does not make you fight the paste warning every time. Chrome blocks pasting
+          into the console until you type <code>allow pasting</code> once.
         </p>
         <button type="button" className="stomp mt-3" onClick={() => void copySource()}>
           Copy collector source
         </button>
-        {copied && <p className="mt-2 text-sm text-[var(--muted-foreground)]">{copied}</p>}
       </div>
 
       <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">Paste a capture</h2>
