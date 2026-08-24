@@ -69,7 +69,16 @@ built for that site's own frontend rather than published for this use.
   new-inventory retailers, not peer marketplaces.
 - **Small independent sellers, via public Shopify storefront JSON
   (`/products.json`)**, on a per-merchant basis, the same pattern the sister
-  sites use. Only for merchants confirmed to be enrolled in an affiliate
+  sites use. **Every one of them is now a row in `lib/storefronts.ts`, not a
+  module**: there were twelve near-identical `*-shopify.ts` files whose only
+  real difference was a base URL, and adding a store meant editing sixteen
+  files. Section 7's "never fork the logic", applied to merchants. Two fields
+  on that row carry what used to be prose. `permission` records WHY we may read
+  the catalogue and when somebody checked; `affiliate` records whether the
+  traffic earns anything, and **is deliberately not an input to anything else**,
+  because gating ingestion on payout is ranking by commission performed before
+  a shopper sees a result. `/api/admin/storefront-probe`, surfaced as a button,
+  is how a candidate gets checked without doing it by hand. Only for merchants confirmed to be enrolled in an affiliate
   program (GoAffPro or similar) that explicitly wants publisher-driven
   traffic, not a blanket license to hit any Shopify store's JSON endpoint.
   Verify the endpoint is actually public and check the individual merchant's
@@ -260,6 +269,9 @@ lib/
   ingestion/ebay-feed.ts    Transport + TSV parsing (section 3)
   ingestion/ebay-ingest.ts  The three eBay jobs
   ingestion/reverb-awin.ts  Awin feed only. Never the Reverb API (section 2)
+  storefronts.ts            THE STOREFRONT REGISTRY. A store is one row here
+  ingestion/storefront-merchants.ts  The half that runs them. One reader, two platforms
+  ingestion/storefront-probe.ts  Does this shop want to be read? (section 2)
   ingestion/andertons-impact.ts  Impact FTP drop, header-bound. Worker only
   ingestion/impact-catalogue.ts  ONE reader for all eight Impact merchants
   ingestion/impact-merchants.ts  The merchant registry. Carries no commission
@@ -1296,9 +1308,25 @@ engine.
 - Do NOT add a new data source without first confirming a legitimate feed or
   partner API exists for it. A retailer having a website is not a source.
 - Do NOT treat "it's a Shopify store with `/products.json` public" as a
-  blanket license. Check per merchant: is the endpoint actually enabled, is
-  the merchant enrolled in an affiliate program that wants the traffic, and do
-  their own terms say anything to the contrary.
+  blanket license. Check per merchant, and check it with
+  `/api/admin/storefront-probe` rather than by eye: does the store publish an
+  agents.md sanctioning read-only catalogue access, does robots.txt refuse it,
+  and does the endpoint answer. Paste the findings into the row's
+  `permission.note`. An endpoint answering is not a permission; everything
+  section 2 rejects would also have answered.
+- Do NOT gate INGESTION on whether a store pays us. Permission decides whether
+  a store is read; enrollment decides only whether `affiliate_url` is a real
+  link or null. Merging them makes the catalogue a shopper searches the subset
+  of the world that pays, which is ranking by commission performed one step
+  earlier, and `lib/stores.ts` already had to unlearn the same mistake for the
+  /shop pages. It cuts the other way too: a store that pays well but publishes
+  no permission is still not readable.
+- Do NOT add a second `explicit-decision` row to `lib/storefronts.ts` by
+  copying Squaver's. That basis is one store's call about one store, recorded
+  precisely so it does not become precedent, and a test pins the list to it.
+- Do NOT write a per-store ingestion module. A storefront is a row in
+  `lib/storefronts.ts` and there is one reader per platform; twelve modules is
+  section 7 broken twelve ways, and it cost sixteen edit sites per new store.
 - Do NOT change `EBAY_FEED_BASE_URL`'s sandbox default.
 - Do NOT link the UI directly to `raw_url`; everything goes through `/go`.
 - Do NOT let `next.config.mjs`'s `images.remotePatterns` decide whether a photo

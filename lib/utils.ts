@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { storefrontMerchant } from "@/lib/storefronts"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -51,18 +52,13 @@ export function sourceLabel(source: string): string {
   if (source === "zzounds") return "zZounds"
   if (source === "fullcompass") return "Full Compass Systems"
   if (source === "pinevillemusic") return "Pineville Music"
-  if (source === "folkcraft") return "Folkcraft Instruments"
-  if (source === "acousticguitar") return "Acoustic Guitar"
-  if (source === "jamstik") return "Jamstik"
-  if (source === "jacksonaudio") return "Jackson Audio"
-  if (source === "eminencedigital") return "Eminence Digital"
-  if (source === "hazeguitar") return "Haze Guitar"
-  if (source === "eartguitar") return "EART Guitar"
-  if (source === "playwithauthority") return "Play With Authority"
-  if (source === "puresmusic") return "Pures Music"
-  if (source === "squaver") return "Squaver"
-  if (source === "easonmusicstore") return "Eason Music Store"
-  if (source === "gokalimba") return "Go Kalimba"
+  /*
+   * Independent storefronts carry their own label on their registry row, so
+   * this reads it rather than restating twelve of them. A store added as one
+   * row must not need a second edit here to stop showing up as "gokalimba".
+   */
+  const storefront = storefrontMerchant(source)
+  if (storefront) return storefront.label
   if (source === "andertons") return "Andertons Music Company"
   if (source === "americanmusical") return "American Musical Supply"
   if (source === "musiciansfriend") return "Musician's Friend"

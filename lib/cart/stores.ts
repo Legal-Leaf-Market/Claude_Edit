@@ -1,4 +1,4 @@
-import { env } from "@/lib/env"
+import { storefrontMerchant } from "@/lib/storefronts"
 import type { Source } from "@/lib/db/schema"
 
 /**
@@ -25,59 +25,25 @@ export type StoreCartConfig = {
 }
 
 export function storeCartConfig(source: Source): StoreCartConfig {
-  switch (source) {
-    case "folkcraft":
-      return { platform: "shopify", baseUrl: "https://folkcraft.com", ...env.goaffpro.folkcraft }
-    case "acousticguitar":
-      return {
-        platform: "shopify",
-        baseUrl: "https://store.acousticguitar.com",
-        ...env.goaffpro.acousticGuitar,
-      }
-    case "jamstik":
-      return { platform: "shopify", baseUrl: "https://www.jamstik.com", ...env.goaffpro.jamstik }
-    case "jacksonaudio":
-      return { platform: "shopify", baseUrl: "https://jackson.audio", ...env.goaffpro.jacksonAudio }
-    case "eminencedigital":
-      return {
-        platform: "shopify",
-        baseUrl: "https://eminence-digital.com",
-        ...env.goaffpro.eminenceDigital,
-      }
-    case "hazeguitar":
-      return {
-        platform: "shopify",
-        baseUrl: "https://www.hazeguitar.com.au",
-        ...env.goaffpro.hazeGuitar,
-      }
-    case "eartguitar":
-      return { platform: "shopify", baseUrl: "https://eartguitar.com", ...env.goaffpro.eartGuitar }
-    case "playwithauthority":
-      return {
-        platform: "shopify",
-        baseUrl: "https://www.playwithauthority.com",
-        ...env.goaffpro.playWithAuthority,
-      }
-    case "puresmusic":
-      return { platform: "shopify", baseUrl: "https://www.puresmusic.com", ...env.goaffpro.puresMusic }
-    case "easonmusicstore":
-      return {
-        platform: "shopify",
-        baseUrl: "https://www.easonmusicstore.com",
-        ...env.goaffpro.easonMusicStore,
-      }
-    case "gokalimba":
-      return { platform: "shopify", baseUrl: "https://www.gokalimba.com", ...env.goaffpro.goKalimba }
-    case "squaver":
-      return {
-        platform: "woocommerce",
-        baseUrl: "https://squaver.in",
-        cartPath: "/cart/",
-        ...env.goaffpro.squaver,
-      }
-    default:
-      // eBay, Reverb, Sweetwater, Gear4music, and the CJ trio: no platform
-      // this module knows how to prefill a cart for, paused or not.
-      return { platform: "none", baseUrl: "" }
+  /*
+   * READ THE REGISTRY, DO NOT RESTATE IT. This was a twelve-case switch whose
+   * every arm repeated a base URL and a referral pair already written down in
+   * lib/storefronts.ts. Two copies of a base URL is one typo away from a cart
+   * permalink pointing at the wrong shop, and nothing would have failed: the
+   * shopper would simply land somewhere that does not have their items.
+   *
+   * A source with no row here is not a bug. eBay, Reverb, Sweetwater,
+   * Gear4music, the CJ trio and the Impact merchants have no cart this module
+   * can prefill, so checkout for them is the single affiliate link, same as
+   * clicking through /go.
+   */
+  const merchant = storefrontMerchant(source)
+  if (!merchant) return { platform: "none", baseUrl: "" }
+
+  return {
+    platform: merchant.platform,
+    baseUrl: merchant.baseUrl,
+    ...(merchant.cartPath ? { cartPath: merchant.cartPath } : {}),
+    ...merchant.referral(),
   }
 }

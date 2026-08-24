@@ -2,6 +2,7 @@ import { Queue, type JobsOptions } from "bullmq"
 import { env } from "@/lib/env"
 import { canPullImpactMerchant, IMPACT_MERCHANTS } from "@/lib/ingestion/impact-merchants"
 import { getRedis } from "./redis"
+import { scheduledStorefrontMerchants } from "@/lib/storefronts"
 
 /**
  * BullMQ queues.
@@ -39,18 +40,12 @@ export type IngestionJob =
   | { kind: "impact-catalogue"; merchant: string }
   | { kind: "fullcompass-feed" }
   | { kind: "pinevillemusic-feed" }
-  | { kind: "folkcraft-feed" }
-  | { kind: "acousticguitar-feed" }
-  | { kind: "jamstik-feed" }
-  | { kind: "jacksonaudio-feed" }
-  | { kind: "eminencedigital-feed" }
-  | { kind: "hazeguitar-feed" }
-  | { kind: "eartguitar-feed" }
-  | { kind: "playwithauthority-feed" }
-  | { kind: "puresmusic-feed" }
-  | { kind: "squaver-feed" }
-  | { kind: "easonmusicstore-feed" }
-  | { kind: "gokalimba-feed" }
+  /**
+   * Any independent storefront, named by its registry key
+   * (lib/storefronts.ts). One job kind rather than twelve, for the same
+   * reason `impact-catalogue` is one rather than eight.
+   */
+  | { kind: "storefront-feed"; source: string }
 
 export type MaintenanceJob =
   | { kind: "refresh-deals" }
@@ -228,93 +223,37 @@ export async function registerRepeatableJobs(): Promise<string[]> {
     registered.push("pinevillemusic-feed @ daily 03:00 UTC")
   }
 
-  // Small independent Shopify sellers. Unlike the gated feeds above, these
-  // need no feed URL or merchant approval to ingest (their catalogue is
-  // public), so the schedule is unconditional.
-  await ingestion.upsertJobScheduler(
-    "folkcraft-feed",
-    { pattern: "30 */6 * * *" },
-    { name: "folkcraft-feed", data: { kind: "folkcraft-feed" } },
-  )
-  registered.push("folkcraft-feed @ every 6h")
+  /*
+   * Independent storefronts. Unlike the gated feeds above, these need no feed
+   * URL or merchant approval to ingest, so the schedule is unconditional.
+   *
+   * DRIVEN OFF THE REGISTRY, so a store's pattern is written once beside its
+   * base URL rather than here as well. A paused store has a null schedule and
+   * is simply absent from this loop, which is the same "code stays, schedule
+   * doesn't" treatment Full Compass and Pineville Music get above: the job
+   * still runs by hand, it just does not run by itself.
+   *
+   * The scheduler id stays `<source>-feed`, unchanged from when these were
+   * twelve blocks. BullMQ keys a schedule on that id, so renaming them would
+   * leave every old schedule running beside the new one and pull each feed
+   * twice.
+   */
+  for (const merchant of scheduledStorefrontMerchants()) {
+    await ingestion.upsertJobScheduler(
+      `${merchant.source}-feed`,
+      { pattern: merchant.schedule as string },
+      { name: `${merchant.source}-feed`, data: { kind: "storefront-feed", source: merchant.source } },
+    )
+    registered.push(`${merchant.source}-feed @ ${merchant.schedule}`)
+  }
 
-  await ingestion.upsertJobScheduler(
-    "acousticguitar-feed",
-    { pattern: "45 */6 * * *" },
-    { name: "acousticguitar-feed", data: { kind: "acousticguitar-feed" } },
-  )
-  registered.push("acousticguitar-feed @ every 6h")
-
-  await ingestion.upsertJobScheduler(
-    "jamstik-feed",
-    { pattern: "15 */6 * * *" },
-    { name: "jamstik-feed", data: { kind: "jamstik-feed" } },
-  )
-  registered.push("jamstik-feed @ every 6h")
-
-  await ingestion.upsertJobScheduler(
-    "jacksonaudio-feed",
-    { pattern: "35 */6 * * *" },
-    { name: "jacksonaudio-feed", data: { kind: "jacksonaudio-feed" } },
-  )
-  registered.push("jacksonaudio-feed @ every 6h")
-
-  await ingestion.upsertJobScheduler(
-    "eminencedigital-feed",
-    { pattern: "5 */6 * * *" },
-    { name: "eminencedigital-feed", data: { kind: "eminencedigital-feed" } },
-  )
-  registered.push("eminencedigital-feed @ every 6h")
-
-  await ingestion.upsertJobScheduler(
-    "hazeguitar-feed",
-    { pattern: "25 */6 * * *" },
-    { name: "hazeguitar-feed", data: { kind: "hazeguitar-feed" } },
-  )
-  registered.push("hazeguitar-feed @ every 6h")
-
-  await ingestion.upsertJobScheduler(
-    "eartguitar-feed",
-    { pattern: "50 */6 * * *" },
-    { name: "eartguitar-feed", data: { kind: "eartguitar-feed" } },
-  )
-  registered.push("eartguitar-feed @ every 6h")
-
-  await ingestion.upsertJobScheduler(
-    "playwithauthority-feed",
-    { pattern: "55 */6 * * *" },
-    { name: "playwithauthority-feed", data: { kind: "playwithauthority-feed" } },
-  )
-  registered.push("playwithauthority-feed @ every 6h")
-
-  // Pures Music: paused indefinitely. GoAffPro enrollment was never
-  // confirmed, and on top of that the product mix (sound-healing accessories
-  // mixed with real instruments) isn't a fit the user wants on the site, a
-  // separate decision that stands even if enrollment is later confirmed. The
-  // ingestion module, cron route, and env vars stay in place; re-add the
-  // scheduler call here only after an explicit decision to carry the
-  // product-mix concern anyway.
-
-  await ingestion.upsertJobScheduler(
-    "squaver-feed",
-    { pattern: "8 */6 * * *" },
-    { name: "squaver-feed", data: { kind: "squaver-feed" } },
-  )
-  registered.push("squaver-feed @ every 6h")
-
-  await ingestion.upsertJobScheduler(
-    "easonmusicstore-feed",
-    { pattern: "12 */6 * * *" },
-    { name: "easonmusicstore-feed", data: { kind: "easonmusicstore-feed" } },
-  )
-  registered.push("easonmusicstore-feed @ every 6h")
-
-  await ingestion.upsertJobScheduler(
-    "gokalimba-feed",
-    { pattern: "18 */6 * * *" },
-    { name: "gokalimba-feed", data: { kind: "gokalimba-feed" } },
-  )
-  registered.push("gokalimba-feed @ every 6h")
+  /*
+   * Pures Music used to be commented out here in prose. It is now a null
+   * `schedule` with a `pausedReason` on its registry row, which is a better
+   * place for it: a commented-out block says a store is paused only to
+   * somebody reading this file, while the row says it to the cron route, the
+   * admin console and anybody listing the merchants.
+   */
 
   await maintenance.upsertJobScheduler(
     "refresh-deals",
