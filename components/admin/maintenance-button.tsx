@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { Check, Download, ListTree, RefreshCw, Stethoscope, TriangleAlert } from "lucide-react"
 
 /**
@@ -64,6 +64,7 @@ export function MaintenanceButton({
       <AndertonsButton />
       <ProbeButton />
       <StorefrontProbeButton />
+      <PromoteCapturesPanel />
       <RebuildButton />
     </div>
   )
@@ -939,4 +940,155 @@ type SourceStatusRow = {
   whereFrom?: string
   lastRun: { job: string; status: string; rowsUpserted: number; ageMinutes: number | null } | null
   lastError: { at: string | null; text: string } | null
+}
+
+/**
+ * PUBLISH A MERCHANT'S CAPTURES, OR RETIRE THEM AGAIN.
+ *
+ * The one control in the capture pipeline that puts rows in front of shoppers,
+ * so it previews first and always. "See what it would do" is the primary
+ * action and writing is the second press, because nobody should learn what a
+ * promotion does by doing it.
+ *
+ * IT SAYS THE COMMISSION TRUTH ON EVERY ROW. A promoted Impact or CJ listing
+ * carries a null affiliate_url, because their deep links need a campaign and an
+ * ad id that a captured page cannot hold and this repo never hand-builds one.
+ * Those rows send real shoppers to real products and earn nothing, which is the
+ * right trade (section 5: a tracker crediting nobody is worse than a clean
+ * direct link) and also the best argument there is for connecting the feed.
+ * Left unsaid it would look exactly like working monetisation.
+ */
+function PromoteCapturesPanel() {
+  const [rules, setRules] = useState<PromotionRuleRow[] | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [result, setResult] = useState<string | null>(null)
+
+  const call = useCallback(async (payload: Record<string, unknown>, label: string) => {
+    setBusy(label)
+    if (payload.mode !== "list") setResult(null)
+    try {
+      const response = await fetch("/api/admin/capture/promote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const body = await response.json()
+      if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`)
+      if (payload.mode === "list") {
+        setRules(body.rules as PromotionRuleRow[])
+      } else {
+        setResult(JSON.stringify(body, null, 2))
+      }
+    } catch (caught) {
+      setResult(caught instanceof Error ? caught.message : "Something went wrong.")
+    } finally {
+      setBusy(null)
+    }
+  }, [])
+
+  return (
+    <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
+      <h2 className="font-display text-base font-bold text-[var(--text)]">
+        Publish captures as listings
+      </h2>
+      <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+        Turns what the collector stored into listings a shopper can see. Only for merchants with a
+        written-down basis in <code>PROMOTION_RULES</code>, because capturing a merchant&apos;s pages
+        says nothing about the right to republish them. Preview first; writing is a second press.
+      </p>
+      <p className="mb-3 max-w-prose text-sm leading-relaxed text-[var(--accent-text)]">
+        Captured rows expire on a timer, because a capture cannot learn that something sold.
+        Re-capture the page to push the date out.
+      </p>
+
+      <button
+        type="button"
+        className="stomp"
+        onClick={() => void call({ mode: "list" }, "list")}
+        disabled={busy !== null}
+      >
+        {busy === "list" ? "Reading..." : rules ? "Refresh" : "What can be published"}
+      </button>
+
+      {rules && rules.length === 0 && (
+        <p className="mt-3 text-sm text-[var(--muted-foreground)]">
+          No merchant has a promotion rule yet.
+        </p>
+      )}
+
+      {rules && rules.length > 0 && (
+        <ul className="mt-4 space-y-4">
+          {rules.map((rule) => (
+            <li key={rule.merchantKey} className="border-l-2 border-[var(--chrome-dk)] pl-3">
+              <p className="text-sm font-semibold text-[var(--text)]">
+                {rule.merchantKey}{" "}
+                <span className="font-normal text-[var(--muted-foreground)]">
+                  &rarr; {rule.source} &middot; {rule.liveNow} live &middot; {rule.staleAfterDays}d
+                  shelf life
+                </span>
+              </p>
+              {!rule.earnsCommission && (
+                <p className="text-sm text-[var(--money)]">
+                  These listings earn NOTHING. No tracked link can be built from a captured page.
+                </p>
+              )}
+              <p className="max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+                {rule.basis}, decided {rule.decidedOn}. {rule.note}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="stomp"
+                  onClick={() => void call({ merchantKey: rule.merchantKey }, rule.merchantKey)}
+                  disabled={busy !== null}
+                >
+                  See what it would do
+                </button>
+                <button
+                  type="button"
+                  className="stomp"
+                  onClick={() =>
+                    void call({ merchantKey: rule.merchantKey, commit: true }, rule.merchantKey)
+                  }
+                  disabled={busy !== null}
+                >
+                  Publish
+                </button>
+                <button
+                  type="button"
+                  className="stomp"
+                  onClick={() => {
+                    if (!window.confirm(`Retire every captured listing for ${rule.merchantKey}?`)) {
+                      return
+                    }
+                    void call({ merchantKey: rule.merchantKey, mode: "clear" }, rule.merchantKey)
+                  }}
+                  disabled={busy !== null || rule.liveNow === 0}
+                >
+                  Retire them
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {result && (
+        <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-[8px] border border-[var(--line)] bg-[var(--bg)] p-3 text-xs leading-relaxed text-[var(--muted-foreground)]">
+          {result}
+        </pre>
+      )}
+    </div>
+  )
+}
+
+type PromotionRuleRow = {
+  merchantKey: string
+  source: string
+  basis: string
+  note: string
+  decidedOn: string
+  earnsCommission: boolean
+  staleAfterDays: number
+  liveNow: number
 }
