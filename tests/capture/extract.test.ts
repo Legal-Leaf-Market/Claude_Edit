@@ -157,6 +157,54 @@ describe("the DOM fallback, which is the path the big retailers need", () => {
   })
 })
 
+describe("reading a page fetched by a crawl rather than the one you are on", () => {
+  /*
+   * The crawl fetches page two same-origin and parses it into a detached
+   * Document that has no window, no location, and a baseURI pointing at the
+   * page that DID the fetching. All three would quietly poison the result.
+   */
+  function parsed(html: string) {
+    return new DOMParser().parseFromString(html, "text/html")
+  }
+
+  it("resolves relative links against the fetched page, not the fetching one", () => {
+    /*
+     * THE BUG THIS PREVENTS IS THE ONE THAT LOOKS LIKE SUCCESS. Resolve page
+     * two's links against page one and every product URL comes out identical
+     * to page one's, so the crawl dedupes them all away, reports "nothing new"
+     * and stops after two pages, having captured a fraction of the catalogue
+     * while appearing to work.
+     */
+    const doc = parsed(`<body><a href="/product/page-two-pedal"><h3>Page two pedal</h3></a><span>$99</span></body>`)
+
+    const result = captureSource(doc, "https://shop.example.com/guitars?page=2")
+
+    expect(result.products[0].url).toBe("https://shop.example.com/product/page-two-pedal")
+    expect(result.pageUrl).toBe("https://shop.example.com/guitars?page=2")
+    expect(result.origin).toBe("https://shop.example.com")
+  })
+
+  it("does not report the crawling page's platform as the fetched page's", () => {
+    /*
+     * Platform detection reads `window`, which a detached document has none
+     * of. Reading the crawler's globals while claiming to describe the fetched
+     * page would stamp every crawled page with page one's platform.
+     */
+    const doc = parsed(`<body><a href="/product/x"><h3>A pedal</h3></a><span>$10</span></body>`)
+    expect(captureSource(doc, "https://shop.example.com/p2").platform).toBeNull()
+  })
+
+  it("still finds the pagination on a fetched page, so the crawl can continue", () => {
+    const doc = parsed(`<body>
+      <a rel="next" href="/guitars?page=3">Next</a>
+      <a href="/product/x"><h3>A pedal</h3></a><span>$10</span>
+    </body>`)
+
+    const result = captureSource(doc, "https://shop.example.com/guitars?page=2")
+    expect(result.coverage.nextPageUrl).toBe("https://shop.example.com/guitars?page=3")
+  })
+})
+
 describe("saying what the capture did NOT see", () => {
   /*
    * THE FAILURE THIS PREVENTS IS THE EXPENSIVE ONE. A capture holding 24 of

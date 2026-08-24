@@ -105,8 +105,14 @@ const OPERATOR_SOURCE = `
   var ORIGIN = "";
   try { ORIGIN = new URL(SRC).origin; } catch (e) { ORIGIN = "%%ORIGIN%%"; }
 
-  var capture = (%%CAPTURE%%)();
+  var CAPTURE = %%CAPTURE%%;
+  var capture = CAPTURE();
   capture.build = BUILD;
+
+  /* Everything gathered this session: the page you are on, plus every page a
+     crawl walked. Merged on send, deduplicated by product URL. */
+  var pages = [capture];
+  var stopRequested = false;
 
   /* ---------------------------------------------------------------- panel */
 
@@ -145,7 +151,13 @@ const OPERATOR_SOURCE = `
       '<input id="ga-token" type="password" placeholder="ADMIN_PASSCODE" ' +
       'style="width:100%;margin-top:3px;padding:7px 8px;border-radius:7px;border:1px solid #2b4a72;' +
       'background:#061223;color:#e8eef7"></label>' +
-    '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' +
+    '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">' +
+      '<button id="ga-crawl" style="flex:1;background:none;color:#ffd479;border:1px solid #6b5426;' +
+      'border-radius:999px;padding:9px 14px;cursor:pointer;font:inherit">Crawl every page</button>' +
+      '<input id="ga-max" type="number" value="200" min="1" max="2000" title="page limit" ' +
+      'style="width:70px;padding:8px;border-radius:7px;border:1px solid #2b4a72;background:#061223;color:#e8eef7">' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">' +
       '<button id="ga-send" style="flex:1;background:#4ade80;color:#06202b;font-weight:700;border:0;' +
       'border-radius:999px;padding:9px 14px;cursor:pointer;font:inherit;font-weight:700">Send</button>' +
       '<button id="ga-copy" style="background:none;color:#8fd3ff;border:1px solid #2b4a72;' +
@@ -184,13 +196,171 @@ const OPERATOR_SOURCE = `
     window.__GEAR_CAPTURE__ = body();
   };
 
+  /*
+   * ONE PAYLOAD FROM EVERY PAGE WALKED. Deduplicated by product URL because
+   * consecutive pages of a grid repeat a few cards, and because the extractors
+   * overlap on purpose. The page URL reported is the one the crawl STARTED
+   * from, so re-crawling the same section replaces its row rather than
+   * accumulating one row per page: the ingest is keyed on page URL.
+   */
   function body(){
+    var seen = {}, products = [], notes = [], claimed = null;
+    for (var i = 0; i < pages.length; i++) {
+      var p = pages[i];
+      for (var j = 0; j < p.products.length; j++) {
+        var item = p.products[j];
+        var key = item.url || (item.title + "|" + item.priceCents);
+        if (seen[key]) continue;
+        seen[key] = 1;
+        products.push(item);
+      }
+      for (var n = 0; n < p.coverage.notes.length; n++) {
+        if (notes.indexOf(p.coverage.notes[n]) === -1) notes.push(p.coverage.notes[n]);
+      }
+      if (p.coverage.claimedTotal != null) {
+        claimed = Math.max(claimed || 0, p.coverage.claimedTotal);
+      }
+    }
+    var bySource = {};
+    for (var k = 0; k < products.length; k++) {
+      bySource[products[k].via] = (bySource[products[k].via] || 0) + 1;
+    }
+    var merged = {
+      capturedAt: capture.capturedAt,
+      pageUrl: capture.pageUrl,
+      pageTitle: capture.pageTitle,
+      origin: capture.origin,
+      platform: capture.platform,
+      build: BUILD,
+      pagesWalked: pages.length,
+      products: products,
+      coverage: {
+        claimedTotal: claimed,
+        nextPageUrl: null,
+        pageLinks: [],
+        looksLazyLoaded: capture.coverage.looksLazyLoaded,
+        notes: notes,
+      },
+      bySource: bySource,
+    };
     return {
       merchantKey: ($("ga-key").value || "").trim(),
       build: BUILD,
-      capture: capture,
+      capture: merged,
     };
   }
+
+  function total(){ return body().capture.products.length; }
+
+  /* ---------------------------------------------------------------- crawl */
+
+  /*
+   * WALK THE WHOLE SECTION, not just the page you are standing on.
+   *
+   * A retailer's category runs to hundreds of pages, and pressing a bookmark on
+   * each is not a workflow anybody sustains. So this follows the pagination
+   * itself: fetch the next page SAME-ORIGIN from inside the merchant's own
+   * page, parse it, and run the identical extractor against it.
+   *
+   * SAME-ORIGIN IS WHY THIS WORKS AT ALL. The bookmarklet is executing on the
+   * merchant's own origin, so a fetch of their page two is an ordinary
+   * same-origin request carrying the session the operator already has. There is
+   * no CORS to negotiate and no proxy involved.
+   *
+   * IT GOES SLOWLY ON PURPOSE. One page at a time, never in parallel, with a
+   * pause between. A crawl that hammers a merchant we have an affiliate
+   * agreement with is a good way to lose the agreement, and nothing here is
+   * urgent enough to be worth that. The delay is deliberately not configurable
+   * in the panel: the one setting somebody would reach for under impatience is
+   * the one that should not move.
+   *
+   * FOUR WAYS IT STOPS, and the second is the one that matters most. No next
+   * page found; a page that yielded NOTHING NEW, which is what a pagination
+   * that silently loops back to page one looks like; the page cap; and the
+   * operator pressing stop.
+   */
+  var CRAWL_DELAY_MS = 1200;
+
+  function nextUrlFrom(result, currentUrl){
+    /* The page's own declared next link is always preferred: it is the
+       merchant telling us where page two is. */
+    if (result.coverage.nextPageUrl) return result.coverage.nextPageUrl;
+
+    /* Otherwise increment a page parameter, which covers numbered pagination
+       with no rel=next. A URL with no such parameter gets ?page=2 tried once. */
+    try {
+      var u = new URL(currentUrl);
+      var keys = ["page", "p", "pageNumber", "start", "offset"];
+      for (var i = 0; i < keys.length; i++) {
+        var v = u.searchParams.get(keys[i]);
+        if (v !== null && /^\d+$/.test(v)) {
+          u.searchParams.set(keys[i], String(parseInt(v, 10) + 1));
+          return u.toString();
+        }
+      }
+      u.searchParams.set("page", "2");
+      return u.toString();
+    } catch (e) { return null; }
+  }
+
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+  async function crawl(){
+    var max = parseInt($("ga-max").value, 10);
+    if (!(max > 0)) max = 200;
+
+    stopRequested = false;
+    $("ga-crawl").textContent = "Stop";
+    $("ga-crawl").onclick = function(){ stopRequested = true; $("ga-crawl").textContent = "Stopping..."; };
+
+    var url = nextUrlFrom(capture, location.href);
+    var walked = 1;
+    var emptyStreak = 0;
+
+    while (url && walked < max && !stopRequested) {
+      say("Page " + (walked + 1) + " of at most " + max + ", " + total() + " products so far...");
+      var before = total();
+
+      try {
+        var response = await fetch(url, { credentials: "same-origin" });
+        if (!response.ok) { say("Page " + (walked + 1) + " answered " + response.status + ". Stopping."); break; }
+        var html = await response.text();
+        var doc = new DOMParser().parseFromString(html, "text/html");
+        var result = CAPTURE(doc, url);
+        pages.push(result);
+        walked++;
+
+        /*
+         * NOTHING NEW MEANS STOP. A pagination that runs past its last page
+         * commonly serves page one again rather than a 404, and without this
+         * the crawl would walk to the cap re-reading the same grid and report
+         * a confident, wrong total.
+         */
+        if (total() === before) {
+          emptyStreak++;
+          if (emptyStreak >= 2) { say("Two pages in a row added nothing new. Stopping at " + total() + " products."); break; }
+        } else {
+          emptyStreak = 0;
+        }
+
+        url = nextUrlFrom(result, url);
+      } catch (err) {
+        say("Page " + (walked + 1) + " failed: " + (err && err.message ? err.message : err) + ". Stopping.");
+        break;
+      }
+
+      await sleep(CRAWL_DELAY_MS);
+    }
+
+    $("ga-crawl").textContent = "Crawl every page";
+    $("ga-crawl").onclick = function(){ void crawl(); };
+    say((stopRequested ? "Stopped" : "Done") + ": " + walked + " page(s), " + total() +
+        " products. Press Send.");
+    var counter = panel.querySelector("strong");
+    if (counter) counter.textContent = total() + " products";
+  }
+
+  $("ga-crawl").onclick = function(){ void crawl(); };
 
   /* ----------------------------------------------------------------- send */
 
@@ -199,7 +369,7 @@ const OPERATOR_SOURCE = `
     if (!token) { say("Paste the admin passcode first."); return; }
     if (!($("ga-key").value || "").trim()) { say("Name the merchant first."); return; }
     $("ga-send").disabled = true;
-    say("Sending " + capture.products.length + " products...");
+    say("Sending " + total() + " products from " + pages.length + " page(s)...");
 
     fetch(ORIGIN + "%%INGEST%%", {
       method: "POST",

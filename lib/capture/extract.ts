@@ -104,7 +104,26 @@ export type CaptureResult = {
  * declared inside this function. Do not lift a helper out of it, however
  * tempting, and do not import a constant into it.
  */
-export function captureSource(): CaptureResult {
+export function captureSource(sourceDoc?: Document, sourceUrl?: string): CaptureResult {
+  /*
+   * THE DOCUMENT IS A PARAMETER SO A CRAWL CAN REUSE THIS.
+   *
+   * It read the globals directly, which was right while the only page it could
+   * ever see was the one the operator was standing on. Crawling changes that:
+   * page two arrives as text from a same-origin fetch and is parsed into a
+   * detached Document that has no window, no location, and a baseURI pointing
+   * at the page that fetched it.
+   *
+   * So the document and its URL come in, and default to the live ones. Relative
+   * links resolve against the URL PASSED IN rather than document.baseURI, which
+   * is the part that silently breaks otherwise: every product link on page two
+   * would resolve against page one and the crawl would capture the same
+   * products over and over while looking like it was making progress.
+   */
+  const d = sourceDoc ?? document
+  const href = sourceUrl ?? location.href
+  const isLive = !sourceDoc
+
   /* ---------------------------------------------------------------- helpers */
 
   const text = (value: unknown): string | null => {
@@ -149,11 +168,18 @@ export function captureSource(): CaptureResult {
     return Math.round(parsed * 100)
   }
 
-  const absolute = (href: unknown): string | null => {
-    const value = text(href)
+  /*
+   * The parameter is `raw` rather than `href` on purpose: naming it `href`
+   * shadowed the page URL above and resolved every relative link against
+   * ITSELF, which throws for a bare path and so returned null for every
+   * product on the page. Caught by the compiler, and it would otherwise have
+   * been a capture that silently found nothing.
+   */
+  const absolute = (raw: unknown): string | null => {
+    const value = text(raw)
     if (!value) return null
     try {
-      return new URL(value, document.baseURI).toString()
+      return new URL(value, href).toString()
     } catch {
       return null
     }
@@ -217,7 +243,7 @@ export function captureSource(): CaptureResult {
     }
   }
 
-  const ldNodes = document.querySelectorAll('script[type="application/ld+json"]')
+  const ldNodes = d.querySelectorAll('script[type="application/ld+json"]')
   for (const node of Array.from(ldNodes)) {
     try {
       fromJsonLd(JSON.parse(node.textContent ?? ""), 0)
@@ -227,7 +253,7 @@ export function captureSource(): CaptureResult {
   }
 
   /* ----------------------------------------------------------- 2. Microdata */
-  const microNodes = document.querySelectorAll('[itemtype*="schema.org/Product" i]')
+  const microNodes = d.querySelectorAll('[itemtype*="schema.org/Product" i]')
   for (const scope of Array.from(microNodes)) {
     const prop = (name: string): string | null => {
       const el = scope.querySelector(`[itemprop="${name}"]`)
@@ -272,12 +298,12 @@ export function captureSource(): CaptureResult {
    */
   const meta = (name: string): string | null => {
     const el =
-      document.querySelector(`meta[property="${name}"]`) ?? document.querySelector(`meta[name="${name}"]`)
+      d.querySelector(`meta[property="${name}"]`) ?? d.querySelector(`meta[name="${name}"]`)
     return text(el?.getAttribute("content"))
   }
   if (meta("og:type") === "product" || meta("product:price:amount")) {
     const ogRaw: Record<string, string | null> = {}
-    for (const el of Array.from(document.querySelectorAll("meta[property], meta[name]"))) {
+    for (const el of Array.from(d.querySelectorAll("meta[property], meta[name]"))) {
       const key = el.getAttribute("property") ?? el.getAttribute("name")
       if (key && /^(og|product|twitter):/i.test(key)) ogRaw[key] = el.getAttribute("content")
     }
@@ -292,15 +318,22 @@ export function captureSource(): CaptureResult {
       gtin: meta("product:ean") ?? meta("product:gtin"),
       mpn: meta("product:mfr_part_no"),
       availability: meta("product:availability"),
-      url: absolute(meta("og:url")) ?? location.href,
+      url: absolute(meta("og:url")) ?? href,
       imageUrl: absolute(meta("og:image")),
       raw: ogRaw,
     })
   }
 
   /* --------------------------------------------- 4. Platform globals */
+  /*
+   * LIVE PAGE ONLY. These read `window`, and a page fetched during a crawl is
+   * parsed into a detached Document with no window of its own. Reading the
+   * CRAWLING page's globals while claiming to describe the fetched one would
+   * be worse than skipping: every crawled page would report the platform, and
+   * the variants, of page one.
+   */
   let platform: string | null = null
-  const w = window as unknown as Record<string, unknown>
+  const w = (isLive ? window : {}) as unknown as Record<string, unknown>
 
   const shopifyAnalytics = w.ShopifyAnalytics as { meta?: Record<string, unknown> } | undefined
   if (shopifyAnalytics?.meta || w.Shopify) {
@@ -322,7 +355,7 @@ export function captureSource(): CaptureResult {
           gtin: null,
           mpn: text(variant.sku),
           availability: null,
-          url: location.href,
+          url: href,
           imageUrl: null,
           raw: { product, variant },
         })
@@ -332,7 +365,7 @@ export function captureSource(): CaptureResult {
       "Shopify detected. Its own /products.json returns the whole catalogue in one request and is " +
         "the better pull; this DOM capture is only worth keeping if that endpoint is disabled.",
     )
-  } else if (w.wc_add_to_cart_params || document.querySelector("body.woocommerce, .woocommerce")) {
+  } else if (w.wc_add_to_cart_params || d.querySelector("body.woocommerce, .woocommerce")) {
     platform = "woocommerce"
     notes.push(
       "WooCommerce detected. Its Store API (/wp-json/wc/store/v1/products) usually answers with the " +
@@ -340,7 +373,7 @@ export function captureSource(): CaptureResult {
     )
   } else if (w.BCData) {
     platform = "bigcommerce"
-  } else if (w.dataLayer && document.querySelector('[data-testid*="product" i]')) {
+  } else if (w.dataLayer && d.querySelector('[data-testid*="product" i]')) {
     platform = "custom (dataLayer present)"
   }
 
@@ -358,7 +391,7 @@ export function captureSource(): CaptureResult {
   const seenUrls = new Set(products.map((p) => p.url).filter(Boolean) as string[])
   const PRICE = /(?:[$£€¥]|USD|GBP|EUR)\s?\d[\d.,]*/
 
-  const candidates = Array.from(document.querySelectorAll("a[href]")).filter((a) => {
+  const candidates = Array.from(d.querySelectorAll("a[href]")).filter((a) => {
     const href = a.getAttribute("href") ?? ""
     return /\/(product|products|p|item|dp|gear|detail)[/-]/i.test(href) || /\/p\//.test(href)
   })
@@ -441,8 +474,8 @@ export function captureSource(): CaptureResult {
     }
     return out
   }
-  const bodyText = document.body
-    ? ((document.body as HTMLElement).innerText ?? joinText(document.body))
+  const bodyText = d.body
+    ? ((d.body as HTMLElement).innerText ?? joinText(d.body))
     : ""
   const totalMatch =
     bodyText.match(/([\d,]{2,})\s+(?:results?|products?|items?)\b/i) ??
@@ -450,20 +483,20 @@ export function captureSource(): CaptureResult {
   const claimedTotal = totalMatch ? Number.parseInt(totalMatch[1].replace(/,/g, ""), 10) : null
 
   const nextLink =
-    document.querySelector('link[rel="next"]') ??
-    document.querySelector('a[rel="next"]') ??
-    Array.from(document.querySelectorAll("a")).find((a) =>
+    d.querySelector('link[rel="next"]') ??
+    d.querySelector('a[rel="next"]') ??
+    Array.from(d.querySelectorAll("a")).find((a) =>
       /^(next|older|more)\b/i.test((a.textContent ?? "").trim()),
     )
 
-  const pageLinks = Array.from(document.querySelectorAll("a[href]"))
+  const pageLinks = Array.from(d.querySelectorAll("a[href]"))
     .map((a) => absolute(a.getAttribute("href")))
     .filter((href): href is string => href != null && /[?&](page|p|start|offset)=\d+/i.test(href))
     .filter((href, index, all) => all.indexOf(href) === index)
     .slice(0, 200)
 
   const looksLazyLoaded = Boolean(
-    document.querySelector("[data-infinite-scroll], .infinite-scroll, [class*='load-more' i]") ||
+    d.querySelector("[data-infinite-scroll], .infinite-scroll, [class*='load-more' i]") ||
       /load more|show more/i.test(bodyText),
   )
   if (looksLazyLoaded) {
@@ -490,9 +523,9 @@ export function captureSource(): CaptureResult {
 
   return {
     capturedAt: new Date().toISOString(),
-    pageUrl: location.href,
-    pageTitle: document.title,
-    origin: location.origin,
+    pageUrl: href,
+    pageTitle: d.title,
+    origin: new URL(href).origin,
     platform,
     products,
     coverage: {

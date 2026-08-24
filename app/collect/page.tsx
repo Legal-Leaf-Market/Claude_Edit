@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { CAPTURE_TARGETS } from "@/lib/capture/targets"
 import { CollectClient } from "@/components/capture/collect-client"
 
 export const dynamic = "force-dynamic"
@@ -33,5 +34,11 @@ export const metadata: Metadata = {
 }
 
 export default function CollectPage() {
-  return <CollectClient />
+  /*
+   * The target list is passed in from the server rather than imported by the
+   * client component, for the same reason the Impact merchants are on the admin
+   * page: it keeps the client tree free of a module that could grow a server
+   * import later, and it renders in the HTML for an operator whose JS is slow.
+   */
+  return <CollectClient targets={CAPTURE_TARGETS} />
 }

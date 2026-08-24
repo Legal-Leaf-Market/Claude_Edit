@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import type { CaptureTarget } from "@/lib/capture/targets"
 
 /**
  * The operator side of the collector: install it, see what has landed, and act
@@ -39,7 +40,7 @@ type MerchantRow = {
   builds: string | null
 }
 
-export function CollectClient() {
+export function CollectClient({ targets }: { targets: CaptureTarget[] }) {
   const [isRelay, setIsRelay] = useState<boolean | null>(null)
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export function CollectClient() {
   }, [])
 
   if (isRelay === null) return null
-  return isRelay ? <RelayTab /> : <InstallPage />
+  return isRelay ? <RelayTab /> : <InstallPage targets={targets} />
 }
 
 /* -------------------------------------------------------------------------- */
@@ -130,7 +131,7 @@ function RelayTab() {
 /*  The install page                                                          */
 /* -------------------------------------------------------------------------- */
 
-function InstallPage() {
+function InstallPage({ targets }: { targets: CaptureTarget[] }) {
   const [loaderUrl, setLoaderUrl] = useState("#")
   const [inlineUrl, setInlineUrl] = useState<string | null>(null)
   const [inlineNote, setInlineNote] = useState("Building...")
@@ -329,8 +330,11 @@ function InstallPage() {
           this can see.
         </li>
         <li>Click the bookmark.</li>
+        <li>
+          Press <strong className="text-[var(--text)]">Crawl every page</strong> to walk the rest of
+          that section on its own, or just capture the page you are on.
+        </li>
         <li>Check the count, confirm the merchant key, paste the admin passcode, press Send.</li>
-        <li>Page to the next page of results and do it again. The analyser merges captures by URL.</li>
       </ol>
       <p className="mt-3 max-w-prose rounded-[10px] border-l-2 border-[var(--chrome-dk)] pl-3 text-sm leading-relaxed text-[var(--muted-foreground)]">
         <strong className="text-[var(--text)]">A menu inside a cross-origin iframe cannot be read.</strong>{" "}
@@ -339,7 +343,54 @@ function InstallPage() {
         there.
       </p>
 
-      <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">3 &middot; What has landed</h2>
+      <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">
+        3 &middot; Where to point it
+      </h2>
+      <p className="mt-2 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+        Open a category, let it load, then press the bookmark and hit{" "}
+        <strong className="text-[var(--text)]">Crawl every page</strong>. It walks that section&apos;s
+        pagination from inside the merchant&apos;s own page, one page at a time with a pause between,
+        and stops on its own when a page adds nothing new. The merchant key beside each is what the
+        capture files under, so it has to match.
+      </p>
+      <div className="mt-3 space-y-3">
+        {targets.map((target) => (
+          <div
+            key={target.merchantKey}
+            className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4"
+          >
+            <p className="font-display text-base font-bold text-[var(--text)]">
+              {target.label}{" "}
+              <code className="font-mono text-sm font-normal text-[var(--accent-text)]">
+                {target.merchantKey}
+              </code>
+            </p>
+            <p className="mt-1 max-w-prose text-sm text-[var(--muted-foreground)]">{target.basis}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {target.entries.map((entry) => (
+                <a
+                  key={entry.url}
+                  className="stomp"
+                  href={entry.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {entry.label}
+                </a>
+              ))}
+            </div>
+            {target.notes && target.notes.length > 0 && (
+              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm leading-relaxed text-[var(--muted-foreground)]">
+                {target.notes.map((note) => (
+                  <li key={note}>{note}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">4 &middot; What has landed</h2>
       <div className="mt-3 rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
         {merchants === null ? (
           <p className="text-sm text-[var(--muted-foreground)]">Loading...</p>
