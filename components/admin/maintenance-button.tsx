@@ -58,6 +58,7 @@ export function MaintenanceButton({
 }) {
   return (
     <div className="space-y-3">
+      <SourceStatusPanel />
       <ImpactCatalogueButton merchants={merchants} />
       <PartnerLinks links={partnerLinks} />
       <AndertonsButton />
@@ -810,4 +811,132 @@ function StorefrontProbeButton() {
       )}
     </div>
   )
+}
+
+/**
+ * WHAT IS BLOCKING EACH SOURCE, AND THE LAST THING THAT WENT WRONG.
+ *
+ * FIRST ON THE PAGE, because it is the question every other button here is
+ * downstream of. The site has 8,298 active listings from twelve small Shopify
+ * sellers and none at all from the three largest catalogues we are actually
+ * entitled to read, and nothing anywhere said which value was missing.
+ *
+ * The `lastError` column is the part that has never existed. `ingest_runs`
+ * has stored the reason the Anderton's FTP pull died since 11 August and no
+ * surface in this app has ever shown it, which is the same shape of problem
+ * as the Impact 400 that ran for two weeks saying only "400".
+ */
+function SourceStatusPanel() {
+  const [state, setState] = useState<"idle" | "running" | "done" | "error">("idle")
+  const [rows, setRows] = useState<SourceStatusRow[] | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+
+  async function load() {
+    setState("running")
+    setMessage(null)
+    try {
+      const response = await fetch("/api/admin/source-status")
+      const body = await response.json()
+      if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`)
+      setRows(body.statuses as SourceStatusRow[])
+      setState("done")
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Something went wrong.")
+      setState("error")
+    }
+  }
+
+  const blocked = rows?.filter((r) => r.state === "blocked") ?? []
+  const other = rows?.filter((r) => r.state !== "blocked" && r.state !== "live") ?? []
+  const live = rows?.filter((r) => r.state === "live") ?? []
+
+  return (
+    <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
+      <h2 className="font-display text-base font-bold text-[var(--text)]">
+        What is blocking each source
+      </h2>
+      <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+        Every source, the state it is actually in, and for the blocked ones the exact variable and
+        where its value is found. Also the text of the last failure, which is stored on every run and
+        has never been shown anywhere until now.
+      </p>
+
+      <button type="button" className="stomp" onClick={() => void load()} disabled={state === "running"}>
+        {state === "running" ? "Reading..." : rows ? "Refresh" : "Show me"}
+      </button>
+
+      {message && <p className="mt-3 text-sm text-[var(--money)]">{message}</p>}
+
+      {blocked.length > 0 && (
+        <div className="mt-4">
+          <h3 className="font-display text-sm font-bold text-[var(--text)]">
+            Blocked: somebody has to paste a value ({blocked.length})
+          </h3>
+          <ul className="mt-2 space-y-3">
+            {blocked.map((row) => (
+              <li key={row.source} className="border-l-2 border-[var(--chrome-dk)] pl-3">
+                <p className="text-sm font-semibold text-[var(--text)]">
+                  {row.label}{" "}
+                  <span className="font-normal text-[var(--muted-foreground)]">({row.transport})</span>
+                </p>
+                <p className="text-sm text-[var(--accent-text)]">{row.blockedBy}</p>
+                <p className="max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+                  {row.whereFrom}
+                </p>
+                {row.lastError && (
+                  <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-[8px] border border-[var(--line)] bg-[var(--bg)] p-2 text-xs text-[var(--muted-foreground)]">
+                    {`last failure ${row.lastError.at ?? ""}\n${row.lastError.text}`}
+                  </pre>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {other.length > 0 && (
+        <div className="mt-4">
+          <h3 className="font-display text-sm font-bold text-[var(--text)]">
+            Nothing here can fix these ({other.length})
+          </h3>
+          <ul className="mt-2 space-y-3">
+            {other.map((row) => (
+              <li key={row.source} className="border-l-2 border-[var(--line)] pl-3">
+                <p className="text-sm font-semibold text-[var(--text)]">
+                  {row.label}{" "}
+                  <span className="font-normal text-[var(--muted-foreground)]">({row.state})</span>
+                </p>
+                <p className="max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+                  {row.blockedBy ? `${row.blockedBy}. ` : ""}
+                  {row.whereFrom}
+                </p>
+                {row.lastError && (
+                  <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-[8px] border border-[var(--line)] bg-[var(--bg)] p-2 text-xs text-[var(--muted-foreground)]">
+                    {`last failure ${row.lastError.at ?? ""}\n${row.lastError.text}`}
+                  </pre>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {live.length > 0 && (
+        <p className="mt-4 text-sm text-[var(--muted-foreground)]">
+          Live ({live.length}): {live.map((r) => r.label).join(", ")}
+        </p>
+      )}
+    </div>
+  )
+}
+
+type SourceStatusRow = {
+  source: string
+  label: string
+  state: "live" | "blocked" | "merchant-side" | "paused"
+  transport: string
+  blockedBy?: string
+  whereFrom?: string
+  lastRun: { job: string; status: string; rowsUpserted: number; ageMinutes: number | null } | null
+  lastError: { at: string | null; text: string } | null
 }
