@@ -1525,6 +1525,18 @@ engine.
 - Do NOT store an empty capture. One row per page URL means an empty one
   REPLACES a good earlier capture of that page, which is how running the
   bookmarklet too early destroys work silently.
+- Do NOT promote a capture for a merchant with no row in `PROMOTION_RULES`.
+  Capturing a page says nothing about the right to republish it, and the row is
+  where the reason, the decider and the date live (section 21).
+- Do NOT promote a captured row without a shelf life. A capture cannot learn
+  that something sold, so `endsAt` is what stops it sitting on the site getting
+  quietly wronger.
+- Do NOT hand-build an Impact or CJ deep link to make promoted listings earn.
+  A null `affiliate_url` and a clean direct link is the correct outcome; the
+  fix is connecting the feed, which carries the real ones.
+- Do NOT drop the `cap-` prefix from a promoted external id. It is the only
+  thing that tells a captured row from a feed row, and without it one product
+  is listed twice at one store and counted twice in its median.
 
 ---
 
@@ -1805,4 +1817,55 @@ URL, which lives in a bookmarks bar in plain sight forever.
 empty one would REPLACE a good earlier capture with nothing. Running the
 bookmarklet before the grid finished rendering is the exact way this tool could
 otherwise destroy work.
+
+**PROMOTION: WHEN A CAPTURE MAY BECOME A LISTING.** `lib/capture/promote.ts`,
+`/api/admin/capture/promote`, surfaced as a panel. This is the step the rest of
+the pipeline deliberately does not take, and every guard on it exists because
+the same act done carelessly is the one that gets a letter rather than a bug.
+
+**Four gates, none optional.** A merchant needs a row in `PROMOTION_RULES`
+recording WHY, who decided and when: capturing a page says nothing whatever
+about the right to republish it, and the whole risk is somebody assuming
+otherwise because the data is sitting right there. The listings must land under
+a `Source` the schema already knows, so a shop nobody has decided about has
+nowhere to go structurally. A row with no parsed price is skipped rather than
+guessed at. And every promoted row gets a shelf life.
+
+**`affiliate-agreement` is the strong basis and the only one in use.** An
+approved affiliate is a partner the merchant WANTS sending traffic to their
+products, so displaying their catalogue behind our link is the purpose of the
+arrangement and the feed is the delivery mechanism rather than the permission
+itself. That is a materially different position from a merchant we have no
+relationship with, and it is exactly why Guitar Center is not in that table and
+cannot be put in it by capturing their pages.
+
+**CAPTURED LISTINGS EXPIRE, and that is the honest shape of the data rather
+than a limitation.** Every feed re-runs and learns what sold; a capture is a
+photograph taken once with no way to discover that an item went out of stock an
+hour later. So `endsAt = capturedAt + staleAfterDays` and `expirePastEndDate`
+retires it. Re-capturing pushes the date out, which makes keeping a merchant
+live a repeated explicit act rather than something that decays invisibly.
+
+**MOST PROMOTED LISTINGS EARN NOTHING, AND EVERY SURFACE SAYS SO.** Impact
+deep links need `/c/<publisherId>/<campaignId>/<adId>` and CJ ships a pre-built
+`BUY_URL` per row; a captured page carries neither, and this repo never
+hand-builds one. So those rows store a null `affiliate_url` and `/go` sends the
+shopper to the merchant's own page. That is the right trade (section 5: a
+tracker crediting nobody is worse than a clean direct link; section 17: payout
+is not why a merchant is listed), and it is also the strongest argument there
+is for connecting the feed. A rule declaring a buildable link with no builder
+wired up THROWS rather than returning null, because a silent null there means
+every listing earns nothing and nothing fails.
+
+**Off-site links are dropped at promotion time**, against the same allowlist
+`/go` uses. A retailer's category page carries sponsored placements and partner
+links in markup that looks exactly like a product card, and promoting one puts
+a stranger's URL in the catalogue under this merchant's name.
+
+**The `cap-` prefix is load bearing.** Feed rows key on the merchant's own
+product id and captured rows on the URL path, so the two never collide and one
+product would be listed twice at one store and counted twice in its median.
+`clearPromotedListings()` sweeps them, and the intended sequence is explicit:
+when a feed starts working for a source, clear its captured rows. It expires
+them rather than deleting, so the prices they recorded stay in the history.
 
