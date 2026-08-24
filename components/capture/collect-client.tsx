@@ -143,11 +143,24 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
   const [pasteToken, setPasteToken] = useState("")
   const [pasteMessage, setPasteMessage] = useState("")
   const [copied, setCopied] = useState("")
+  const [needsSignIn, setNeedsSignIn] = useState(false)
 
   const load = useCallback(async () => {
     try {
       const response = await fetch("/api/capture/ingest")
       const body = await response.json()
+      if (response.status === 401) {
+        /*
+         * Expected, not an error. This page is deliberately not behind the
+         * passcode: the bookmarklet and the target list are not secrets and an
+         * operator installing them should not have to sign in first. Only the
+         * state table is gated, because it is our own operating information.
+         */
+        setNeedsSignIn(true)
+        setMerchants([])
+        return
+      }
+      setNeedsSignIn(false)
       setMerchants(body.merchants ?? [])
       setWritable(Boolean(body.writable))
     } catch {
@@ -393,7 +406,15 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
 
       <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">4 &middot; What has landed</h2>
       <div className="mt-3 rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
-        {merchants === null ? (
+        {needsSignIn ? (
+          <p className="text-sm text-[var(--muted-foreground)]">
+            <a className="underline" href="/admin/operating-model">
+              Sign in
+            </a>{" "}
+            to see what has been captured. Installing the bookmarklet and capturing do not need it;
+            only this table does, because it is our own operating information.
+          </p>
+        ) : merchants === null ? (
           <p className="text-sm text-[var(--muted-foreground)]">Loading...</p>
         ) : merchants.length === 0 ? (
           <p className="text-sm text-[var(--muted-foreground)]">Nothing captured yet.</p>

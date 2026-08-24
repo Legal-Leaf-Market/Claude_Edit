@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { desc, sql } from "drizzle-orm"
-import { passcodeMatches, adminConfigured } from "@/lib/admin/gate"
+import { isAdmin, passcodeMatches, adminConfigured } from "@/lib/admin/gate"
 import { db } from "@/lib/db"
 import { productCaptures } from "@/lib/db/schema"
 import type { CaptureResult } from "@/lib/capture/extract"
@@ -152,10 +152,34 @@ export async function POST(request: Request) {
   )
 }
 
-/** What has been captured so far, for the install page's state table. */
+/**
+ * What has been captured so far, for the install page's state table.
+ *
+ * SIGNED IN, AND NOT CORS-OPEN. This shipped as neither, which was a mistake
+ * worth naming rather than quietly correcting: the POST needs `*` because the
+ * collector posts from the merchant's own origin, and the GET inherited that
+ * header and the missing gate along with it.
+ *
+ * Empty, it leaked nothing. Populated, it would have served any site on the
+ * internet the list of merchants we are capturing, how many products from each,
+ * and when we last ran one. That is our own operating information, and there is
+ * no caller that needs it cross-origin: the install page is same-origin, and
+ * the collector on a merchant's page only ever POSTs.
+ *
+ * A 401 here is a normal state rather than a fault. /collect is not behind the
+ * passcode, because the bookmarklet and the target list are not secrets and an
+ * operator installing them should not have to sign in first. Only the state
+ * table is gated, and the page says so.
+ */
 export async function GET() {
+  if (!(await isAdmin())) {
+    return NextResponse.json(
+      { error: "Sign in at /admin to see what has been captured.", merchants: [] },
+      { status: 401 },
+    )
+  }
   if (!adminConfigured()) {
-    return NextResponse.json({ writable: false, merchants: [] }, { headers: CORS })
+    return NextResponse.json({ writable: false, merchants: [] })
   }
 
   const rows = await db
@@ -171,5 +195,5 @@ export async function GET() {
     .groupBy(productCaptures.merchantKey)
     .orderBy(desc(sql`COALESCE(SUM(${productCaptures.productCount}), 0)`))
 
-  return NextResponse.json({ writable: true, merchants: rows }, { headers: CORS })
+  return NextResponse.json({ writable: true, merchants: rows })
 }
