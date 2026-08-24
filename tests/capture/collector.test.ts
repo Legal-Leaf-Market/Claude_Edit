@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { captureSource } from "@/lib/capture/extract"
 import { collectorSource } from "@/lib/capture/collector"
@@ -189,5 +190,54 @@ describe("the collector the bookmarklet actually runs", () => {
      */
     expect(source).toContain("ga-key")
     expect(source).toContain("guessKey")
+  })
+})
+
+describe("backslashes survive the template literal", () => {
+  const { source } = collectorSource("https://gearavail.com")
+
+  /*
+   * A BUG THAT SHIPPED, AND THE WHOLE CLASS IT BELONGS TO.
+   *
+   * The operator half of the collector lives in a TypeScript template literal,
+   * and a template literal EATS an unrecognised escape: `\d` written there
+   * emits a bare `d`. So `/^\d+$/` was served to browsers as `/^d+$/`, a
+   * regex that matches a run of the letter d and therefore never matched a
+   * page number.
+   *
+   * The consequence was exactly the silent kind. The crawl's fallback for
+   * numbered pagination could not fire, so on any site without a rel=next
+   * link it stopped after page one and reported success. Found by reading the
+   * DEPLOYED file, not by any test here, because every test asserted on
+   * substrings that happened not to include a backslash.
+   *
+   * Rather than pin the one regex, this checks the rule: inside that template
+   * literal every backslash must be doubled.
+   */
+  const file = readFileSync(new URL("../../lib/capture/collector.ts", import.meta.url), "utf-8")
+  const literal = file.slice(
+    file.indexOf("const OPERATOR_SOURCE = `") + "const OPERATOR_SOURCE = `".length,
+    file.indexOf("\n`\n", file.indexOf("const OPERATOR_SOURCE = `")),
+  )
+
+  it("has no lone backslash in the operator source", () => {
+    /* Every `\\` is fine; a single `\` before anything else is the bug. */
+    const lone = [...literal.matchAll(/(?<!\\)\\(?!\\)(.)/g)].map((m) => `\\${m[1]}`)
+    expect(
+      [...new Set(lone)],
+      "A single backslash inside this template literal is consumed by TypeScript and never reaches " +
+        "the browser. Double it. This is how /^\\d+$/ shipped as /^d+$/ and silently broke the " +
+        "crawl's pagination fallback.",
+    ).toEqual([])
+  })
+
+  it("emits the page-number pattern intact", () => {
+    /* The specific one that broke, pinned so a regression is named. */
+    expect(source).toContain("/^\\d+$/.test(v)")
+    expect(source, "the escape was eaten again").not.toContain("/^d+$/")
+  })
+
+  it("emits the hostname patterns intact", () => {
+    expect(source).toContain("/^www\\./")
   })
 })
