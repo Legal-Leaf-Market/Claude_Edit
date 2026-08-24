@@ -138,17 +138,23 @@ describe("the collector the bookmarklet actually runs", () => {
     expect(() => new Function(source)).not.toThrow()
   })
 
-  it("fits in a bookmarks bar", () => {
+  it("fits in a bookmarks bar, for the browsers that still can", () => {
     /*
-     * A self-contained bookmarklet carries the whole program in its URL.
-     * Chrome, Edge and Firefox take very long ones; Safari refuses past
-     * roughly 64KB, and the console method is the documented fallback there.
-     * This is a canary rather than a hard limit: if the collector ever triples
-     * in size, the install page's advice stops being true and should change
-     * with it.
+     * A CANARY THAT ALREADY FIRED ONCE, AND THE PAGE CHANGED RATHER THAN THE
+     * NUMBER.
+     *
+     * A self-contained bookmarklet carries the whole program in its URL. Adding
+     * the iframe reader took it past 64KB, which is roughly where Safari stops
+     * accepting one, so the install page no longer claims Safari will take it
+     * and points there at the snippet instead. Chrome, Edge and Firefox are
+     * content with URLs far longer than this.
+     *
+     * The ceiling here is deliberately not "whatever it currently is". It is
+     * the point past which even Chrome starts to be a question, and reaching
+     * it should mean the same conversation again rather than another bump.
      */
     const url = "javascript:" + encodeURIComponent(`(function(){${source}})();`)
-    expect(url.length).toBeLessThan(60_000)
+    expect(url.length).toBeLessThan(120_000)
   })
 
   it("stamps a build that moves when the source does", () => {

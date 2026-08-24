@@ -485,7 +485,7 @@ export function captureSource(sourceDoc?: Document, sourceUrl?: string): Capture
   }
 
   for (const priceEl of priceNodes) {
-    const priceText = (priceEl.textContent ?? "").match(PRICE)?.[0] ?? null
+    let priceText = (priceEl.textContent ?? "").match(PRICE)?.[0] ?? null
 
     /*
      * Up to the card. Six levels is generous for real markup and short enough
@@ -516,13 +516,23 @@ export function captureSource(sourceDoc?: Document, sourceUrl?: string): Capture
     }
 
     /*
-     * A CARD HOLDS ONE PRODUCT. If the ancestor we landed on carries several
-     * prices we climbed past the card into the grid, and taking it would file
-     * the whole page under one product with one arbitrary link. Skipping is
-     * right: another price node inside that grid will resolve to its own card.
+     * A CARD HOLDS ONE PRODUCT, AND THE TEST FOR THAT IS THE TITLE, NOT THE
+     * PRICE.
+     *
+     * It was the price, and that quietly destroyed every discounted item on
+     * the page. A card on sale shows two: "was £999" beside "now £799". So a
+     * guard reading "more than one price means we climbed into the grid"
+     * rejected every reduced product, twice over, once per price node. On
+     * Andertons' bass department that was 53 rejections against 34 products
+     * kept, on a page of 48: the sale items were the missing third.
+     *
+     * A product title, though, really is one per card and many per grid. It is
+     * also what a person uses to tell a card from the container holding it.
      */
-    const pricesInside = (card.textContent ?? "").match(new RegExp(PRICE, "g")) ?? []
-    if (pricesInside.length > 1) {
+    const titlesInside = card.querySelectorAll(
+      "h1, h2, h3, h4, h5, [class*='title' i], [class*='name' i]",
+    ).length
+    if (titlesInside > 1) {
       rejectedMultiPrice += 1
       continue
     }
@@ -559,6 +569,30 @@ export function captureSource(sourceDoc?: Document, sourceUrl?: string): Capture
 
     /* Neither a name nor a price is navigation, not a product. */
     if (!title && !priceText) continue
+
+    /*
+     * WITH SEVERAL PRICES IN A CARD, THE LOWEST IS THE ONE THE SHOPPER PAYS.
+     *
+     * Now that a sale card is kept rather than discarded, which of its prices
+     * is the price has to be decided rather than left to whichever node the
+     * walk happened to start from. Markup order is no guide: some shops print
+     * the RRP first and some print it last.
+     *
+     * The lowest is the honest answer. A struck-through "was" price is always
+     * the higher one, and publishing it would show a shopper a number above
+     * what the merchant is actually asking, which is the same class of wrong
+     * as a stale price.
+     */
+    const allPrices = (card.textContent ?? "").match(new RegExp(PRICE, "g")) ?? []
+    if (allPrices.length > 1) {
+      let lowest: { text: string; value: number } | null = null
+      for (const candidate of allPrices) {
+        const value = cents(candidate)
+        if (value == null || value <= 0) continue
+        if (!lowest || value < lowest.value) lowest = { text: candidate, value }
+      }
+      if (lowest) priceText = lowest.text
+    }
 
     const img = card.querySelector("img")
     seenUrls.add(url)

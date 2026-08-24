@@ -356,6 +356,102 @@ const OPERATOR_SOURCE = `
 
   function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
+  /*
+   * READ A PAGE IN A HIDDEN IFRAME, NOT WITH fetch.
+   *
+   * fetch was the obvious way and it fails on any shop that renders its grid
+   * in the browser. Andertons is one: page one captured 34 products because
+   * the operator was LOOKING at it, fully rendered, while page two fetched as
+   * raw HTML held 977 links, two prices and no grid whatsoever. The markup
+   * that arrives over the wire is a shell, and the products appear only after
+   * the page's own JavaScript has run.
+   *
+   * A same-origin iframe is a real browsing context: it runs their scripts,
+   * renders their grid, and hands back a document that looks exactly like what
+   * the operator sees. Because the collector is executing on the merchant's
+   * own origin, reading contentDocument is ordinary same-origin access rather
+   * than anything clever.
+   *
+   * IT WAITS FOR THE GRID RATHER THAN FOR A FIXED DELAY, by re-reading until
+   * products appear. A fixed wait is wrong in both directions: too short on a
+   * slow page and wasted on a fast one, and the slow case fails silently as an
+   * empty capture that looks like an empty category.
+   *
+   * FALLS BACK TO fetch when the iframe cannot be read at all, which is what a
+   * frame-busting script or X-Frame-Options: DENY produces. On a
+   * server-rendered shop that fallback is perfectly good, and it is how this
+   * worked before.
+   */
+  var FRAME_TIMEOUT_MS = 12000;
+  var frame = null;
+
+  function ensureFrame(){
+    if (frame && frame.parentNode) return frame;
+    frame = document.createElement("iframe");
+    /* Big enough that a responsive grid lays out as the desktop one, and far
+       enough off-screen not to flash. Not display:none: some layouts render
+       nothing at all with no box to render into. */
+    frame.setAttribute("style",
+      "position:fixed;left:-10000px;top:0;width:1400px;height:2400px;border:0;opacity:0.01;" +
+      "pointer-events:none;z-index:-1");
+    document.body.appendChild(frame);
+    return frame;
+  }
+
+  async function readViaFrame(url){
+    var f = ensureFrame();
+    var settled = false;
+
+    var loaded = new Promise(function(resolve){
+      f.onload = function(){ resolve(true); };
+      setTimeout(function(){ resolve(false); }, FRAME_TIMEOUT_MS);
+    });
+    f.src = url;
+    await loaded;
+
+    var best = null;
+    var waited = 0;
+    while (waited < FRAME_TIMEOUT_MS) {
+      var doc = null;
+      try { doc = f.contentDocument; } catch (e) { doc = null; }
+      /* Cross-origin, frame-busted, or refused: nothing to read here ever. */
+      if (!doc || !doc.body) return null;
+
+      var attempt = CAPTURE(doc, url);
+      if (!best || attempt.products.length > best.products.length) best = attempt;
+      /* Products present and the count has stopped climbing: the grid is in. */
+      if (best.products.length > 0 && attempt.products.length === best.products.length && settled) break;
+      if (best.products.length > 0) settled = true;
+
+      await sleep(600);
+      waited += 600;
+    }
+    return best;
+  }
+
+  async function readPage(url){
+    var viaFrame = await readViaFrame(url);
+    if (viaFrame && viaFrame.products.length > 0) return viaFrame;
+
+    /*
+     * The iframe gave nothing. Either the page genuinely has no products, or
+     * it refused to be framed. fetch decides which, and on a server-rendered
+     * shop it is a complete answer by itself.
+     */
+    try {
+      var response = await fetch(url, { credentials: "same-origin" });
+      if (!response.ok) return viaFrame;
+      var html = await response.text();
+      var doc = new DOMParser().parseFromString(html, "text/html");
+      var fetched = CAPTURE(doc, url);
+      if (!viaFrame || fetched.products.length > viaFrame.products.length) return fetched;
+      return viaFrame;
+    } catch (e) {
+      return viaFrame;
+    }
+  }
+
+
   async function crawl(){
     var max = parseInt($("ga-max").value, 10);
     if (!(max > 0)) max = 200;
@@ -373,11 +469,8 @@ const OPERATOR_SOURCE = `
       var before = total();
 
       try {
-        var response = await fetch(url, { credentials: "same-origin" });
-        if (!response.ok) { say("Page " + (walked + 1) + " answered " + response.status + ". Stopping."); break; }
-        var html = await response.text();
-        var doc = new DOMParser().parseFromString(html, "text/html");
-        var result = CAPTURE(doc, url);
+        var result = await readPage(url);
+        if (!result) { say("Page " + (walked + 1) + " could not be read. Stopping."); break; }
         pages.push(result);
         walked++;
 
@@ -403,6 +496,7 @@ const OPERATOR_SOURCE = `
       await sleep(CRAWL_DELAY_MS);
     }
 
+    if (frame && frame.parentNode) { frame.parentNode.removeChild(frame); frame = null; }
     $("ga-crawl").textContent = "Crawl every page";
     $("ga-crawl").onclick = function(){ void crawl(); };
     say((stopRequested ? "Stopped" : "Done") + ": " + walked + " page(s), " + total() +

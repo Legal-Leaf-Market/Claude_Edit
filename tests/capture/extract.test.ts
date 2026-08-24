@@ -246,6 +246,59 @@ describe("a retailer with flat URLs and no structured data", () => {
   })
 })
 
+describe("a card that is on sale", () => {
+  /*
+   * THE BUG THAT COST A THIRD OF ANDERTONS' BASS DEPARTMENT.
+   *
+   * The card guard was "more than one price means we climbed into the grid",
+   * which is true of a grid and equally true of every discounted product: a
+   * sale card shows "was £1199" beside "now £999". The diagnostics said it
+   * plainly once they existed: 99 price nodes, 34 cards kept, 53 rejected as
+   * multi-price, on a page of 48 products.
+   *
+   * A title is the thing that is genuinely one per card, so that is the guard
+   * now, and a card may carry as many prices as it likes.
+   */
+  const SALE_CARD = `<body><div class="grid">
+    <div class="card">
+      <h3 class="title"><a href="/bass/tobias-classic-v/">Tobias Classic V</a></h3>
+      <div class="prices"><span class="was">£1,199.00</span><span class="now">£999.00</span></div>
+    </div>
+    <div class="card">
+      <h3 class="title"><a href="/bass/eastcoast-srb/">EastCoast SRB</a></h3>
+      <div class="prices"><span class="now">£99.00</span></div>
+    </div>
+  </div></body>`
+
+  it("keeps a discounted product instead of throwing it away", () => {
+    render(SALE_CARD, "https://www.andertons.co.uk/browse/bass-dept/")
+    const dom = captureSource().products.filter((p) => p.via === "dom")
+    expect(dom.map((p) => p.title)).toContain("Tobias Classic V")
+    expect(dom).toHaveLength(2)
+  })
+
+  it("publishes the price the shopper pays, not the struck-through one", () => {
+    /*
+     * The lowest, because a "was" price is always the higher one and showing
+     * it would put a number above what the merchant is actually asking in
+     * front of a shopper. Same class of wrong as a stale price.
+     */
+    render(SALE_CARD, "https://www.andertons.co.uk/browse/bass-dept/")
+    const sale = captureSource().products.find((p) => p.title === "Tobias Classic V")
+    expect(sale?.priceCents).toBe(99900)
+  })
+
+  it("still refuses to swallow the whole grid as one product", () => {
+    /*
+     * Relaxing the price guard could have opened this up, so it is pinned:
+     * the container holds two titles and must never resolve to one product.
+     */
+    render(SALE_CARD, "https://www.andertons.co.uk/browse/bass-dept/")
+    const urls = captureSource().products.map((p) => p.url)
+    expect(new Set(urls).size).toBe(2)
+  })
+})
+
 describe("reading a page fetched by a crawl rather than the one you are on", () => {
   /*
    * The crawl fetches page two same-origin and parses it into a detached
