@@ -193,6 +193,35 @@ describe("the bookmarklet anchors survive React", () => {
     expect(client).not.toMatch(/href=\{inlineUrl/)
   })
 
+  it("offers a path for somebody who cannot drag", () => {
+    /*
+     * Dragging assumes a visible bookmarks bar and a pointer, and it is the
+     * step this tool kept failing at in practice. Copying the URL into a
+     * hand-made bookmark needs neither, and pasting the source into a console
+     * needs no bookmark at all.
+     */
+    expect(client).toContain("copyBookmarklet")
+    expect(client).toContain("copySource")
+  })
+
+  it("can run the collector on the install page itself", () => {
+    /*
+     * The diagnostic that turns "it does not work" into a specific answer: if
+     * the panel appears here, the program runs and the problem is
+     * installation. Nothing else on the page distinguishes those, and they
+     * need completely different fixes.
+     */
+    expect(client).toContain("testHere")
+    expect(client).toContain("Run it on this page")
+  })
+
+  it("warns that the address bar strips the javascript: prefix", () => {
+    /* Chrome and Firefox drop it as typo protection, and the difference
+       between that and a bookmark URL field is invisible until nothing
+       happens. */
+    expect(client).toMatch(/address bar/i)
+  })
+
   it("still builds both bookmarklet URLs", () => {
     expect(client).toContain('"javascript:"')
     expect(client).toContain("loaderRef")
