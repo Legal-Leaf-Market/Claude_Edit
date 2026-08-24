@@ -1,0 +1,270 @@
+// @vitest-environment jsdom
+import { beforeEach, describe, expect, it } from "vitest"
+import { captureSource } from "@/lib/capture/extract"
+import { analyseCaptures } from "@/lib/capture/analyse"
+
+/**
+ * WHAT THE EXTRACTOR HAS TO GET RIGHT ON A PAGE IT HAS NEVER SEEN.
+ *
+ * The merchants this exists for run custom platforms, so the DOM fallback is
+ * not a nicety, it is the path that will actually be used. And the two
+ * failures that matter are both silent: a price read wrong, and a capture that
+ * quietly holds a fraction of the page while looking complete.
+ */
+
+function render(html: string, url = "https://example-shop.com/guitars") {
+  document.documentElement.innerHTML = html
+  /* jsdom will not navigate, so the URL is set on the window directly. */
+  Object.defineProperty(window, "location", {
+    value: new URL(url),
+    writable: true,
+    configurable: true,
+  })
+  const base = document.createElement("base")
+  base.href = url
+  document.head.appendChild(base)
+}
+
+beforeEach(() => {
+  document.documentElement.innerHTML = "<head></head><body></body>"
+})
+
+describe("reading prices without getting one wrong", () => {
+  /*
+   * A WRONG PRICE IS WORSE THAN A MISSING ONE, everywhere on this project. The
+   * hard case is a thousands separator against a decimal comma, and the two
+   * are written identically in different countries.
+   */
+  const price = (text: string) => {
+    render(`<body><a href="/products/x"><h3>A pedal</h3><span>${text}</span></a></body>`)
+    return captureSource().products[0]?.priceCents ?? null
+  }
+
+  it("reads a plain dollar price", () => {
+    expect(price("$129.99")).toBe(12999)
+  })
+
+  it("reads thousands with a comma", () => {
+    expect(price("$1,299")).toBe(129900)
+  })
+
+  it("reads thousands with a dot, the European way", () => {
+    expect(price("€1.299")).toBe(129900)
+  })
+
+  it("reads a decimal comma", () => {
+    expect(price("€1.299,50")).toBe(129950)
+  })
+
+  it("reads pounds", () => {
+    expect(price("£89.00")).toBe(8900)
+  })
+})
+
+describe("JSON-LD, the best source when a page has it", () => {
+  it("finds a product nested inside an ItemList", () => {
+    /*
+     * Real category pages nest Product inside ItemList inside @graph, and a
+     * flat scan of the top level misses the entire page.
+     */
+    render(`<head><script type="application/ld+json">${JSON.stringify({
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "ItemList",
+          itemListElement: [
+            {
+              "@type": "ListItem",
+              item: {
+                "@type": "Product",
+                name: "Boss DS-1 Distortion",
+                brand: { "@type": "Brand", name: "Boss" },
+                mpn: "DS-1",
+                offers: { "@type": "Offer", price: "59.99", priceCurrency: "USD" },
+                url: "/products/ds-1",
+              },
+            },
+          ],
+        },
+      ],
+    })}</script></head><body></body>`)
+
+    const result = captureSource()
+    const product = result.products.find((p) => p.via === "json-ld")
+
+    expect(product?.title).toBe("Boss DS-1 Distortion")
+    expect(product?.brand).toBe("Boss")
+    expect(product?.mpn).toBe("DS-1")
+    expect(product?.priceCents).toBe(5999)
+    expect(product?.url).toBe("https://example-shop.com/products/ds-1")
+  })
+
+  it("keeps the whole source object rather than only the fields it understood", () => {
+    /*
+     * CAPTURE EVERYTHING, FILTER NEVER. A field nothing here reads today is
+     * exactly the field somebody needs on the second pass, and re-browsing
+     * forty pages to recover it is the rework this tool exists to prevent.
+     */
+    render(`<head><script type="application/ld+json">${JSON.stringify({
+      "@type": "Product",
+      name: "A pedal",
+      weirdVendorField: "keep me",
+    })}</script></head><body></body>`)
+
+    const raw = captureSource().products[0]?.raw as Record<string, unknown>
+    expect(raw.weirdVendorField).toBe("keep me")
+  })
+
+  it("survives a JSON-LD block that does not parse, and says so", () => {
+    render(`<head><script type="application/ld+json">{ not json </script></head><body></body>`)
+    const result = captureSource()
+    expect(result.coverage.notes.join(" ")).toMatch(/did not parse/)
+  })
+})
+
+describe("the DOM fallback, which is the path the big retailers need", () => {
+  it("pairs a product link with the price in its card", () => {
+    render(`<body>
+      <div class="grid">
+        <div class="card"><a href="/product/tube-screamer"><h3>Ibanez TS9 Tube Screamer</h3></a><span class="price">$109.99</span></div>
+        <div class="card"><a href="/product/big-muff"><h3>EHX Big Muff Pi</h3></a><span class="price">$79.00</span></div>
+      </div>
+      <a href="/help/shipping">Shipping info</a>
+    </body>`)
+
+    const result = captureSource()
+    const dom = result.products.filter((p) => p.via === "dom")
+
+    expect(dom).toHaveLength(2)
+    expect(dom[0].title).toBe("Ibanez TS9 Tube Screamer")
+    expect(dom[0].priceCents).toBe(10999)
+    /* A help link is navigation, not a product, and carries neither. */
+    expect(dom.some((p) => p.url?.includes("/help/"))).toBe(false)
+  })
+
+  it("does not report one product twice when two extractors both find it", () => {
+    render(`<head><script type="application/ld+json">${JSON.stringify({
+      "@type": "Product",
+      name: "Boss DS-1",
+      url: "https://example-shop.com/product/ds-1",
+      offers: { price: "59.99" },
+    })}</script></head>
+    <body><a href="/product/ds-1"><h3>Boss DS-1</h3></a><span>$59.99</span></body>`)
+
+    const result = captureSource()
+    /* The DOM pass skips a URL the structured pass already claimed. */
+    expect(result.products.filter((p) => p.url?.endsWith("/product/ds-1"))).toHaveLength(1)
+  })
+})
+
+describe("saying what the capture did NOT see", () => {
+  /*
+   * THE FAILURE THIS PREVENTS IS THE EXPENSIVE ONE. A capture holding 24 of
+   * 1,180 products looks exactly like a small catalogue, and a decision made
+   * on it is wrong in a way nothing reveals until the work has been done
+   * twice.
+   */
+  it("reports the total the page claims", () => {
+    render(`<body><p>1,180 results</p><a href="/product/a"><h3>A</h3></a><span>$10</span></body>`)
+    expect(captureSource().coverage.claimedTotal).toBe(1180)
+  })
+
+  it("warns when the claimed total exceeds what it captured", () => {
+    render(`<body><p>1,180 results</p><a href="/product/a"><h3>A</h3></a><span>$10</span></body>`)
+    expect(captureSource().coverage.notes.join(" ")).toMatch(/claims 1180 results/)
+  })
+
+  it("notices a grid that loads more on demand", () => {
+    render(`<body><button class="load-more">Load more</button><a href="/product/a"><h3>A</h3></a><span>$10</span></body>`)
+    const coverage = captureSource().coverage
+    expect(coverage.looksLazyLoaded).toBe(true)
+    expect(coverage.notes.join(" ")).toMatch(/Scroll to the very bottom/)
+  })
+
+  it("collects the pagination it can see", () => {
+    render(`<body>
+      <a href="/guitars?page=2">2</a><a href="/guitars?page=3">3</a>
+      <a rel="next" href="/guitars?page=2">Next</a>
+      <a href="/product/a"><h3>A</h3></a><span>$10</span>
+    </body>`)
+    const coverage = captureSource().coverage
+    expect(coverage.nextPageUrl).toContain("page=2")
+    expect(coverage.pageLinks.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it("says plainly when it found nothing at all", () => {
+    render(`<body><h1>Welcome</h1></body>`)
+    const result = captureSource()
+    expect(result.products).toHaveLength(0)
+    expect(result.coverage.notes.join(" ")).toMatch(/Nothing found/)
+  })
+})
+
+describe("what the analysis concludes", () => {
+  it("scores a capture against the pedals we have already modelled", () => {
+    /*
+     * THE NUMBER WORTH ACTING ON. The site has 89 measured 3D models and
+     * almost nothing live reaches them, so "this page carries pedals we can
+     * already render" is a better reason to chase a merchant than a product
+     * count.
+     */
+    render(`<body>
+      <div><a href="/product/ds-1"><h3>Boss DS-1 Distortion</h3></a><span>$59.99</span></div>
+      <div><a href="/product/kettle"><h3>Stainless Steel Kettle</h3></a><span>$29.99</span></div>
+    </body>`)
+
+    const analysis = analyseCaptures([captureSource()])
+
+    expect(analysis.modelled.count).toBe(1)
+    expect(analysis.modelled.matches[0].model).toMatch(/DS-1/)
+    expect(analysis.verdict).toMatch(/measured 3D models/)
+  })
+
+  it("calls a partial capture a sample rather than a catalogue", () => {
+    render(`<body><p>1,180 results</p><a href="/product/a"><h3>A pedal</h3></a><span>$10</span></body>`)
+    const analysis = analyseCaptures([captureSource()])
+    expect(analysis.verdict).toMatch(/THIS IS A SAMPLE, NOT THE CATALOGUE/)
+  })
+
+  it("merges several pages into one answer and does not double-count", () => {
+    render(`<body><a href="/product/a"><h3>A pedal</h3></a><span>$10</span></body>`)
+    const first = captureSource()
+    render(`<body><a href="/product/a"><h3>A pedal</h3></a><span>$10</span>
+      <a href="/product/b"><h3>B pedal</h3></a><span>$20</span></body>`)
+    const second = captureSource()
+
+    const analysis = analyseCaptures([first, second])
+    expect(analysis.distinct).toBe(2)
+  })
+
+  it("prefers the richer record when two extractors found one product", () => {
+    /*
+     * A JSON-LD record carries a brand and an identifier; the DOM record for
+     * the same product carries a name off a card. Keeping whichever arrived
+     * first would throw away half the fields at random.
+     */
+    render(`<head><script type="application/ld+json">${JSON.stringify({
+      "@type": "Product",
+      name: "Boss DS-1",
+      brand: { name: "Boss" },
+      mpn: "DS-1",
+      url: "https://example-shop.com/product/ds-1",
+      offers: { price: "59.99" },
+    })}</script></head>
+    <body><a href="/product/ds-1"><h3>Boss DS-1</h3></a><span>$59.99</span></body>`)
+
+    const analysis = analyseCaptures([captureSource()])
+    expect(analysis.brands[0]?.brand).toBe("Boss")
+  })
+
+  it("reports a median rather than a mean", () => {
+    /* Section 8's rule, for section 8's reason: one optimist ruins a mean. */
+    render(`<body>
+      <div><a href="/product/a"><h3>A</h3></a><span>$10</span></div>
+      <div><a href="/product/b"><h3>B</h3></a><span>$20</span></div>
+      <div><a href="/product/c"><h3>C</h3></a><span>$100000</span></div>
+    </body>`)
+    const analysis = analyseCaptures([captureSource()])
+    expect(analysis.priceCents?.median).toBe(2000)
+  })
+})
