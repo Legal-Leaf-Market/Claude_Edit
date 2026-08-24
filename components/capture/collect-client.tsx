@@ -232,8 +232,9 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
         setInlineUrl(url)
         inlineRef.current?.setAttribute("href", url)
         setInlineNote(
-          `Ready, ${Math.round(url.length / 1024)} KB. Long bookmarks are fine in Chrome, Edge and ` +
-            `Firefox; Safari can refuse very long ones, and the console method is the fallback there.`,
+          `Ready, ${Math.round(url.length / 1024)} KB. Chrome, Edge and Firefox take a bookmark this ` +
+            `long. Safari stops accepting one at around 64 KB, so on Safari use the snippet above ` +
+            `instead: this build is past that.`,
         )
       })
       .catch((error: Error) => setInlineNote(`Could not build it: ${error.message}. Use the console method.`))
