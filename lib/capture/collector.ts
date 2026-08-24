@@ -163,6 +163,10 @@ const OPERATOR_SOURCE = `
       '<button id="ga-copy" style="background:none;color:#8fd3ff;border:1px solid #2b4a72;' +
       'border-radius:999px;padding:9px 14px;cursor:pointer;font:inherit">Copy</button>' +
     '</div>' +
+    '<div style="margin-top:8px">' +
+      '<button id="ga-diag" style="width:100%;background:none;color:#c0b4ff;border:1px solid #40376b;' +
+      'border-radius:999px;padding:8px 14px;cursor:pointer;font:inherit">Copy diagnostics</button>' +
+    '</div>' +
     '<div id="ga-msg" style="margin-top:9px;opacity:.85"></div>' +
     '<div style="margin-top:10px;opacity:.5;font-size:11px">build ' + BUILD + '</div>';
 
@@ -251,6 +255,53 @@ const OPERATOR_SOURCE = `
   }
 
   function total(){ return body().capture.products.length; }
+
+  /* ----------------------------------------------------------- diagnostics */
+
+  /*
+   * WHAT TO SEND SOMEBODY WHEN IT FINDS NOTHING.
+   *
+   * "It found zero" is not a bug report, and the person who has to fix the
+   * extractor usually cannot open the shop it failed on. What they need is the
+   * markup around the prices this saw and could not turn into cards, because
+   * that names the shape to support in one look rather than five round trips.
+   *
+   * Deliberately small enough to paste into a message: counts, the page, and a
+   * few hundred characters of markup per sample rather than the page itself.
+   */
+  $("ga-diag").onclick = function(){
+    var lines = [];
+    for (var i = 0; i < pages.length; i++) {
+      var p = pages[i], g = p.diagnostics || {};
+      lines.push(
+        "PAGE " + (i + 1) + ": " + p.pageUrl,
+        "  build " + BUILD + "  platform " + (p.platform || "none"),
+        "  products " + p.products.length + "  by source " + JSON.stringify(p.bySource),
+        "  claimed total " + p.coverage.claimedTotal + "  next page " + (p.coverage.nextPageUrl || "none") +
+          "  lazy " + p.coverage.looksLazyLoaded,
+        "  anchors " + g.anchors + "  price nodes " + g.priceNodes + "  cards " + g.cardsResolved,
+        "  rejected: multi-price " + g.rejectedMultiPrice + ", no product signal " +
+          g.rejectedNoProductSignal + ", no anchor " + g.rejectedNoAnchor +
+          ", duplicate " + g.rejectedDuplicate,
+        "  json-ld blocks " + g.jsonLdBlocks + "  types " + JSON.stringify(g.jsonLdTypes || [])
+      );
+      var un = g.unresolvedSamples || [];
+      for (var u = 0; u < un.length; u++) lines.push("  UNRESOLVED " + (u + 1) + ": " + un[u]);
+      var re = g.resolvedSamples || [];
+      for (var r = 0; r < re.length; r++) lines.push("  RESOLVED " + (r + 1) + ": " + re[r]);
+      var notes = p.coverage.notes || [];
+      for (var n = 0; n < notes.length; n++) lines.push("  NOTE: " + notes[n]);
+      lines.push("");
+    }
+    var report = lines.join("\\n");
+    try {
+      navigator.clipboard.writeText(report);
+      say("Diagnostics copied, " + Math.round(report.length / 1024) + " KB. Paste them where they help.");
+    } catch (e) {
+      window.__GEAR_DIAGNOSTICS__ = report;
+      say("Could not copy. Read window.__GEAR_DIAGNOSTICS__ in the console.");
+    }
+  };
 
   /* ---------------------------------------------------------------- crawl */
 

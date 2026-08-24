@@ -84,6 +84,40 @@ export type CaptureCoverage = {
   notes: string[]
 }
 
+/**
+ * WHY THE CAPTURE CARRIES ITS OWN POST-MORTEM.
+ *
+ * When this finds nothing on a real shop, the person who has to fix it cannot
+ * open that shop: the merchants worth capturing are often unreachable from
+ * wherever the fixing happens, and "it found zero" is not a bug report. What
+ * IS a bug report is the markup around the prices it saw and could not resolve
+ * into cards, because that names the shape to support in one look.
+ *
+ * So every capture records what the passes tried, what they rejected and why,
+ * and a few samples of the markup involved. It is the difference between one
+ * round trip and five.
+ */
+export type CaptureDiagnostics = {
+  anchors: number
+  /** Leaf elements whose own text is a price. The DOM pass starts from these. */
+  priceNodes: number
+  cardsResolved: number
+  /** Climbed past the card into a grid holding several prices. */
+  rejectedMultiPrice: number
+  /** Price beside a link with no picture and no name: page furniture. */
+  rejectedNoProductSignal: number
+  /** No ancestor within six levels held a link at all. */
+  rejectedNoAnchor: number
+  /** Already claimed by a structured pass. */
+  rejectedDuplicate: number
+  jsonLdBlocks: number
+  jsonLdTypes: string[]
+  /** Markup around prices that produced nothing. The thing worth reading. */
+  unresolvedSamples: string[]
+  /** Markup that DID resolve, for comparison. */
+  resolvedSamples: string[]
+}
+
 export type CaptureResult = {
   capturedAt: string
   pageUrl: string
@@ -95,6 +129,7 @@ export type CaptureResult = {
   coverage: CaptureCoverage
   /** Counts per extractor, so a page carrying rich JSON-LD is obvious. */
   bySource: Record<string, number>
+  diagnostics: CaptureDiagnostics
 }
 
 /**
@@ -207,6 +242,8 @@ export function captureSource(sourceDoc?: Document, sourceUrl?: string): Capture
     const type = obj["@type"]
     const types = Array.isArray(type) ? type.map(String) : [String(type ?? "")]
 
+    for (const t of types) if (t && t !== "undefined" && !ldTypes.includes(t)) ldTypes.push(t)
+
     if (types.some((t) => /product|itempage|offer$/i.test(t))) {
       const offersRaw = obj.offers
       const offer = (
@@ -243,6 +280,7 @@ export function captureSource(sourceDoc?: Document, sourceUrl?: string): Capture
     }
   }
 
+  const ldTypes: string[] = []
   const ldNodes = d.querySelectorAll('script[type="application/ld+json"]')
   for (const node of Array.from(ldNodes)) {
     try {
@@ -388,43 +426,144 @@ export function captureSource(sourceDoc?: Document, sourceUrl?: string): Capture
    * symbol next to digits in every one of them, and the product's name is
    * reliably the nearest heading or the longest link text in the same card.
    */
-  const seenUrls = new Set(products.map((p) => p.url).filter(Boolean) as string[])
   const PRICE = /(?:[$£€¥]|USD|GBP|EUR)\s?\d[\d.,]*/
 
-  const candidates = Array.from(d.querySelectorAll("a[href]")).filter((a) => {
-    const href = a.getAttribute("href") ?? ""
-    return /\/(product|products|p|item|dp|gear|detail)[/-]/i.test(href) || /\/p\//.test(href)
-  })
+  /*
+   * ANCHOR ON THE PRICE, NOT ON THE URL.
+   *
+   * The first version collected links whose path contained /product/, /item/
+   * and friends, then looked for a price near each. That works on Shopify and
+   * fails completely on a retailer with flat URLs: Andertons product pages
+   * live at paths like /guitars/guitar-pedals/boss-ds1-distortion-pedal, with
+   * no marker segment anywhere, so EVERY product link was rejected and a
+   * category page of a thousand items captured zero. The page said "1,000+
+   * results" and the panel said nothing found, which is precisely the
+   * contradiction that made it obvious.
+   *
+   * A URL shape is a convention each retailer invents. A price is not: it is a
+   * currency symbol next to digits on every commerce page in the world, and
+   * it is what a person's eye uses to find the grid too. So the price is the
+   * anchor now and the link is found FROM it.
+   *
+   * The walk goes from the price OUTWARD to the nearest ancestor that also
+   * holds a link, which is the card. Outward rather than inward because a card
+   * has exactly one price and one product link, while a grid has hundreds of
+   * both: starting wide and narrowing would have to guess where the boundaries
+   * are, and starting at a price and stopping at the first link cannot.
+   */
 
-  for (const anchor of candidates) {
-    const url = absolute(anchor.getAttribute("href"))
-    if (!url || seenUrls.has(url)) continue
+  /*
+   * The elements that ARE a price, rather than elements that merely contain
+   * one. Every ancestor of a price contains it, up to <body>, so the leaves
+   * are what matter: an element whose own text is a price and which holds no
+   * child element that could claim it instead.
+   */
+  const priceNodes: Element[] = []
+  for (const el of Array.from(d.querySelectorAll("body *"))) {
+    if (el.children.length > 0) continue
+    const own = el.textContent ?? ""
+    if (own.length > 40) continue
+    if (PRICE.test(own)) priceNodes.push(el)
+  }
 
-    /* Walk up to the card: the nearest ancestor that also holds a price. */
-    let card: Element | null = anchor
-    let priceText: string | null = null
-    for (let hop = 0; hop < 5 && card; hop++) {
-      const match = (card.textContent ?? "").match(PRICE)
-      if (match) {
-        priceText = match[0]
+  const seenUrls = new Set(products.map((p) => p.url).filter(Boolean) as string[])
+  let cardsFound = 0
+  let rejectedMultiPrice = 0
+  let rejectedNoProductSignal = 0
+  let rejectedNoAnchor = 0
+  let rejectedDuplicate = 0
+  const unresolvedSamples: string[] = []
+  const resolvedSamples: string[] = []
+
+  /* The markup AROUND a price, which is what names the shape to support. */
+  const contextOf = (el: Element): string => {
+    let node: Element = el
+    for (let up = 0; up < 3 && node.parentElement && node.parentElement !== d.body; up++) {
+      node = node.parentElement
+    }
+    return node.outerHTML.replace(/\s+/g, " ").slice(0, 700)
+  }
+
+  for (const priceEl of priceNodes) {
+    const priceText = (priceEl.textContent ?? "").match(PRICE)?.[0] ?? null
+
+    /*
+     * Up to the card. Six levels is generous for real markup and short enough
+     * that a page with no cards at all cannot walk to <body> and call it one.
+     */
+    let card: Element | null = priceEl.parentElement
+    let anchor: HTMLAnchorElement | null = null
+    for (let hop = 0; hop < 6 && card && card !== d.body; hop++) {
+      /*
+       * `matches` BEFORE `querySelector`, because querySelector only looks at
+       * descendants. On the very common shape where the whole card IS the
+       * link, `<a><h3>Name</h3><span>$129</span></a>`, searching descendants
+       * finds nothing, the walk runs to <body> and the product is dropped.
+       */
+      const found = (card.matches("a[href]") ? card : card.querySelector("a[href]")) as
+        | HTMLAnchorElement
+        | null
+      if (found) {
+        anchor = found
         break
       }
       card = card.parentElement
     }
-    if (!card) card = anchor
+    if (!anchor || !card) {
+      rejectedNoAnchor += 1
+      if (unresolvedSamples.length < 4) unresolvedSamples.push(contextOf(priceEl))
+      continue
+    }
 
-    const heading = card.querySelector("h1, h2, h3, h4, [class*='title' i], [class*='name' i]")
+    /*
+     * A CARD HOLDS ONE PRODUCT. If the ancestor we landed on carries several
+     * prices we climbed past the card into the grid, and taking it would file
+     * the whole page under one product with one arbitrary link. Skipping is
+     * right: another price node inside that grid will resolve to its own card.
+     */
+    const pricesInside = (card.textContent ?? "").match(new RegExp(PRICE, "g")) ?? []
+    if (pricesInside.length > 1) {
+      rejectedMultiPrice += 1
+      continue
+    }
+
+    const url = absolute(anchor.getAttribute("href"))
+    if (!url || seenUrls.has(url)) {
+      rejectedDuplicate += 1
+      continue
+    }
+
+    /*
+     * A PRODUCT CARD SHOWS THE PRODUCT. It carries a picture or a name, and
+     * usually both; a price sitting next to a link with neither is page
+     * furniture. "Delivery from £2.99" in a footer is the case that made this
+     * necessary: it satisfies price-plus-link perfectly and is not a product,
+     * and left in it would inflate every count and every median built on one.
+     *
+     * This is the one place the "capture everything, filter never" rule bends,
+     * and only because the thing being excluded is not a product at all rather
+     * than a product we are uninterested in.
+     */
+    const heading = card.querySelector("h1, h2, h3, h4, h5, [class*='title' i], [class*='name' i]")
+    if (!heading && !card.querySelector("img")) {
+      rejectedNoProductSignal += 1
+      if (unresolvedSamples.length < 4) unresolvedSamples.push(contextOf(priceEl))
+      continue
+    }
     const title =
       text(heading?.textContent) ??
       text(anchor.getAttribute("title")) ??
       text(anchor.getAttribute("aria-label")) ??
-      text(anchor.textContent)
+      text(anchor.textContent) ??
+      text(card.querySelector("img")?.getAttribute("alt"))
 
-    /* A card with neither a name nor a price is navigation, not a product. */
+    /* Neither a name nor a price is navigation, not a product. */
     if (!title && !priceText) continue
 
     const img = card.querySelector("img")
     seenUrls.add(url)
+    cardsFound += 1
+    if (resolvedSamples.length < 2) resolvedSamples.push(card.outerHTML.replace(/\s+/g, " ").slice(0, 700))
 
     products.push({
       via: "dom",
@@ -438,7 +577,11 @@ export function captureSource(sourceDoc?: Document, sourceUrl?: string): Capture
       mpn: null,
       availability: null,
       url,
-      imageUrl: absolute(img?.getAttribute("src") ?? img?.getAttribute("data-src")),
+      imageUrl: absolute(
+        img?.getAttribute("src") ??
+          img?.getAttribute("data-src") ??
+          img?.getAttribute("data-srcset")?.split(" ")[0],
+      ),
       raw: { html: card.outerHTML.slice(0, 4000) },
     })
   }
@@ -536,5 +679,18 @@ export function captureSource(sourceDoc?: Document, sourceUrl?: string): Capture
       notes,
     },
     bySource,
+    diagnostics: {
+      anchors: d.querySelectorAll("a[href]").length,
+      priceNodes: priceNodes.length,
+      cardsResolved: cardsFound,
+      rejectedMultiPrice,
+      rejectedNoProductSignal,
+      rejectedNoAnchor,
+      rejectedDuplicate,
+      jsonLdBlocks: ldNodes.length,
+      jsonLdTypes: ldTypes,
+      unresolvedSamples,
+      resolvedSamples,
+    },
   }
 }
