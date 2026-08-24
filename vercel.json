@@ -54,8 +54,8 @@
       "schedule": "0 15 * * 2"
     },
     {
-      "path": "/api/cron/ingest-impact/andertons",
-      "schedule": "10 */3 * * *"
+      "path": "/api/cron/ingest-andertons",
+      "schedule": "10 4 * * *"
     },
     {
       "path": "/api/cron/ingest-impact/americanmusical",
