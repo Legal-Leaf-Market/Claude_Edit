@@ -538,6 +538,43 @@ export function redactImpactUrl(url: string): string {
   return url.replace(/(\/Mediapartners\/)[^/?#]+/i, "$1***")
 }
 
+/**
+ * The catalogue exists, the account may read it, and the ADVERTISER has not
+ * published it to the API.
+ *
+ * A distinct type because it is not a failure in any sense this codebase means
+ * by the word: nothing is misconfigured here, no retry can help, and the fix is
+ * a setting in somebody else's account. It is the same class of thing as an
+ * unset catalogue id, which is already a supported state, so it gets the same
+ * treatment rather than a 500 every three hours.
+ *
+ * Anderton's is the one that taught us. Its catalogue is delivered by FTP drop
+ * and the API path answers every request for it with exactly this.
+ */
+export class ImpactCatalogueNotApiEnabled extends Error {
+  readonly catalogId: string
+  constructor(catalogId: string, detail: string) {
+    super(
+      `Impact catalogue ${catalogId} is not published to the API by the advertiser. ` +
+        `Either ask them to enable API delivery for it, or take this merchant by FTP. ${detail}`.trim(),
+    )
+    this.name = "ImpactCatalogueNotApiEnabled"
+    this.catalogId = catalogId
+  }
+}
+
+/**
+ * Does this body say the advertiser has not switched API delivery on?
+ *
+ * A string match on somebody else's error text, which is fragile, and the
+ * fragility runs the safe way: if Impact rewords it we stop recognising the
+ * case and go back to reporting a loud failure, which is the behaviour this
+ * replaced. Being wrong here costs an alert, not a silence.
+ */
+function isNotApiEnabled(status: number, body: string): boolean {
+  return status === 400 && /not been made available via API/i.test(body)
+}
+
 /** Turn a non-2xx into the one sentence that says what to go and change. */
 function apiError(status: number, statusText: string, catalogId: string, extra = ""): Error {
   const detail =
@@ -629,11 +666,15 @@ export async function fetchImpactApiPage(
   }
 
   if (!response.ok) {
+    const detail = await errorBody(response)
+    if (isNotApiEnabled(response.status, detail)) {
+      throw new ImpactCatalogueNotApiEnabled(config.catalogId, detail)
+    }
     throw apiError(
       response.status,
       response.statusText,
       config.catalogId,
-      `Asked for ${redactImpactUrl(url.toString())}. ${await errorBody(response)}`.trim(),
+      `Asked for ${redactImpactUrl(url.toString())}. ${detail}`.trim(),
     )
   }
 
@@ -1042,6 +1083,23 @@ export async function ingestImpactCatalogue(
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
+
+    /*
+     * NOT PUBLISHED TO THE API IS A STATE, NOT A FAULT.
+     *
+     * Anderton's ran this branch every three hours for two weeks as a 500,
+     * which is a health warning nobody can clear and a run burned on something
+     * that cannot succeed until a setting changes in the advertiser's account.
+     * Recording it as skipped keeps it visible with its reason, next to the
+     * merchants whose catalogue id is simply unset, which is the same shape of
+     * problem and already the same shape of answer.
+     */
+    if (error instanceof ImpactCatalogueNotApiEnabled) {
+      console.warn(`[impact:${merchant.key}] ${message}`)
+      await finishRun(run, { status: "skipped", error: message })
+      return { status: "skipped", reason: message, stats: emptyStats(), resolved: 0 }
+    }
+
     console.error(`[impact:${merchant.key}] failed: ${message}`)
     await finishRun(run, { status: "failed", error: message })
     return { status: "failed", stats: emptyStats(), resolved: 0, error: message }
