@@ -40,14 +40,15 @@ type MerchantRow = {
   builds: string | null
 }
 
-export function CollectClient({ targets }: { targets: CaptureTarget[] }) {
-  const [isRelay, setIsRelay] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    setIsRelay(/[?&]receive=1/.test(window.location.search))
-  }, [])
-
-  if (isRelay === null) return null
+export function CollectClient({
+  isRelay,
+  targets,
+}: {
+  isRelay: boolean
+  targets: CaptureTarget[]
+}) {
+  /* Decided on the server from the URL, so this page is server-rendered rather
+     than blank until hydration. See app/collect/page.tsx. */
   return isRelay ? <RelayTab /> : <InstallPage targets={targets} />
 }
 
