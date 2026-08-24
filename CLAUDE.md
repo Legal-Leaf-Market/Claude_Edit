@@ -1508,6 +1508,23 @@ engine.
   request re-proposes the whole tree and conflicts on every file both sides
   touched. Merge commits, every time (section 10).
 - Do NOT point the test suite at a database you care about; it truncates.
+- Do NOT turn a capture into a `marketplace_listings` row because the capture
+  exists. Reading a page you are on is research; republishing a catalogue is
+  redistribution, and section 2 decides that separately on a feed or a
+  published permission. The two tables are separate so it cannot happen by
+  accident (section 21).
+- Do NOT make `captureSource()` reference anything outside its own body. It is
+  serialised into a bookmarklet, so an outer reference becomes a ReferenceError
+  on a stranger's website with no console anybody will read.
+- Do NOT commit a copy of the collector beside the typed source. It is
+  generated per request so the loader, the self-contained bookmarklet and the
+  console paste cannot disagree; a committed copy is the one that goes stale.
+- Do NOT drop any of the three ways a capture gets home. Direct POST, relay
+  tab, clipboard: each covers a different refusal, and removing one strands
+  exactly the shops that needed it.
+- Do NOT store an empty capture. One row per page URL means an empty one
+  REPLACES a good earlier capture of that page, which is how running the
+  bookmarklet too early destroys work silently.
 
 ---
 
@@ -1696,3 +1713,96 @@ copies of every route file, one per chrome, and a duplicated route tree is a far
 more expensive thing to keep honest than a cache miss. Crawlers get fully
 server-rendered HTML either way, so nothing about the SEO argument in section 16
 changes.
+
+---
+
+## 21. The collector: capturing a catalogue from a page you are already on
+
+`/collect`, `/gear-collector.js`, `lib/capture/`, `product_captures`.
+
+**PORTED FROM `legal-leafmarket.com/coldwater-collect`, AND THE AWKWARD PARTS
+ARE THE POINT.** That tool has been in operator use long enough to have paid for
+every strange thing in this one. A first attempt at this is a bookmarklet that
+reads the DOM and POSTs it, and that version fails on precisely the shops worth
+capturing, silently, in four different ways. This is the reusable pattern for
+every site in this family, so the lessons are written down rather than
+rediscovered.
+
+**WHAT IT IS.** A person browses a merchant's site in their own browser, as a
+visitor, and clicks a bookmark. It reads the products out of the page already
+rendered in front of them. **No request is made to the merchant at all** and
+nothing is crawled: the page was fetched because a human asked for it. That is a
+different act from a scraper, which is a program that visits pages on its own,
+at machine speed, without a person.
+
+**WHAT IT IS FOR: KNOWING WHAT IS THERE BEFORE BUILDING ANYTHING.** Deciding
+whether to chase a merchant, build a category, or model a product needs to rest
+on what they actually stock, at what prices, under which brands. Guessing that
+from a homepage is how a week goes into a category with forty products in it.
+
+**AND WHERE THE LINE IS, because the tool does not enforce it.** Reading a page
+you are on is research. Republishing that catalogue as public listings is
+redistribution, governed by the merchant's own terms, and nothing about how the
+bytes were obtained changes that answer. Section 2 still decides what may become
+a `marketplace_listings` row. The capture lands in `product_captures`, a
+different table, so publishing cannot happen by accident while doing research.
+
+**CAPTURE EVERYTHING. FILTER NEVER.** The design rule, and it comes from a real
+cost: a partial pull gets analysed, a conclusion gets drawn, and then the
+missing rows turn out to have changed the answer and the work is done twice. So
+the extractor keeps what it found in full, raw source objects and per-card HTML
+included, and `payload` stores the lot. Whittling is `lib/capture/analyse.ts`'s
+job, downstream, where it can be redone without re-browsing forty pages.
+
+**SAY WHAT THE CAPTURE DID NOT SEE.** A capture holding 24 of 1,180 products
+looks exactly like a small catalogue. So `coverage` reports the total the page
+claimed, the pagination it found, and whether the grid was lazy-loaded, and the
+analysis calls a partial pull a SAMPLE in words. A known gap is worth far more
+than a clean-looking number.
+
+**THE FOUR LESSONS, each one already paid for:**
+
+- **A bookmarklet is exempt from CSP. What it loads is not.** The obvious build
+  injects `<script src>`, which a strict `script-src` refuses, and the refusal
+  is SILENT because a blocked script fires no error event. So there are two
+  bookmarklets: a loader, and a SELF-CONTAINED one carrying the whole program in
+  its URL, which has nothing left to refuse. Under both there is console paste,
+  which nothing can block.
+- **A self-contained bookmarklet is a snapshot, and a stale one lies.** Once
+  dragged it never updates. On the sister site a shop was reported broken months
+  after the fix, from a bookmark that predated it: a stale reader does not throw,
+  it returns a SMALLER catalogue that looks entirely plausible. So the collector
+  carries a BUILD stamp, prints it in its panel, and `/collect` prints the
+  current one. The two differing is the whole diagnostic. It is a hash of the
+  source, never a hand-typed version: a number somebody has to remember to bump
+  stops moving on the day it matters.
+- **`connect-src` can block the send after a successful read.** All the work
+  done, nothing delivered. The answer is a route CSP does not govern: opening a
+  tab is a NAVIGATION, so the collector opens `/collect?receive=1` and hands the
+  capture over with postMessage, and from there the POST is same-origin. Both
+  ends pin the origin.
+- **What is in the DOM is all it can see.** A lazy grid has to be scrolled to
+  the bottom first, and a menu in a cross-origin iframe cannot be read at all,
+  which is the same-origin policy working correctly rather than a bug to route
+  around. Open that frame in its own tab instead. The panel says both in words.
+
+**ONE EXTRACTOR, SERIALISED.** `captureSource()` in `lib/capture/extract.ts` is
+read with `Function.prototype.toString()` and pasted into the bookmarklet, so it
+may close over NOTHING: no imports, no module constants, no helpers beside it.
+`tests/capture/collector.test.ts` enforces that, parses the assembled program
+with `new Function` so a syntax error cannot reach a stranger's website, and
+checks the URL still fits a bookmarks bar. The sister site's collector is a
+committed 180KB file beside the source it duplicates; ours is generated per
+request from the typed source, so the loader, the inline build and the console
+paste are the same program by construction.
+
+**The collector route is public and carries no credential.** It has to be
+fetchable from a merchant's page. The admin passcode is typed into the panel at
+capture time, used for one request, and never stored: never in the bookmarklet
+URL, which lives in a bookmarks bar in plain sight forever.
+
+**An empty capture is REFUSED, not stored.** One row per page URL, so storing an
+empty one would REPLACE a good earlier capture with nothing. Running the
+bookmarklet before the grid finished rendering is the exact way this tool could
+otherwise destroy work.
+

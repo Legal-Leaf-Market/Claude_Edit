@@ -386,6 +386,55 @@ export const ingestRuns = pgTable(
   ],
 )
 
+/**
+ * OPERATOR CAPTURES: what a person saw on a merchant's page, kept raw.
+ *
+ * NOT `marketplace_listings`, and the separation is the whole point. A capture
+ * is research: it says what a merchant stocks, so a decision about whether to
+ * chase them can be made on evidence rather than on a homepage. Turning one
+ * into a public listing is redistribution, which section 2 gates on a feed or a
+ * published permission, and nothing about a capture changes that answer.
+ * Keeping them in different tables means the second cannot happen by accident
+ * while doing the first.
+ *
+ * KEPT WHOLE, AND THAT IS DELIBERATE. `payload` is the extractor's entire
+ * output including the raw source objects and the per-card HTML. Storing the
+ * normalised fields alone would be exactly the partial pull this tool exists to
+ * stop: a question nobody thought to ask on the first pass could not then be
+ * asked without browsing forty pages again.
+ *
+ * ONE ROW PER PAGE, not per capture session. Re-capturing a page REPLACES its
+ * row (the unique index below), so pressing the button twice on a grid you have
+ * scrolled further down is the intended way to improve a capture rather than a
+ * way to double-count it.
+ */
+export const productCaptures = pgTable(
+  "product_captures",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** The operator's name for the merchant, confirmed in the panel. */
+    merchantKey: varchar("merchant_key", { length: 60 }).notNull(),
+    origin: varchar("origin", { length: 255 }).notNull(),
+    pageUrl: text("page_url").notNull(),
+    pageTitle: text("page_title"),
+    platform: varchar("platform", { length: 40 }),
+    /** Which collector read it, so a stale snapshot bookmark is identifiable. */
+    build: varchar("build", { length: 16 }),
+    productCount: integer("product_count").notNull().default(0),
+    /** What the page claimed it held, when it said. Null is "it did not say". */
+    claimedTotal: integer("claimed_total"),
+    payload: jsonb("payload").notNull(),
+    capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_product_captures_page").on(t.pageUrl),
+    index("idx_product_captures_merchant").on(t.merchantKey, t.capturedAt),
+  ],
+)
+
+export type ProductCapture = typeof productCaptures.$inferSelect
+export type NewProductCapture = typeof productCaptures.$inferInsert
+
 /* -------------------------------------------------------------------------- */
 /*  Flip Match: a public bulletin board, not a marketplace                   */
 /* -------------------------------------------------------------------------- */

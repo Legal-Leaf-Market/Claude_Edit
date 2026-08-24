@@ -57,6 +57,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31.10",
+    "jsdom": "^30.0.1",
     "postcss": "^8.5",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.20.0",
