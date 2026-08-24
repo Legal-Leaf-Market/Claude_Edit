@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { isAllowedDestination } from "@/lib/affiliate/allowed-hosts"
 import { CAPTURE_TARGETS, captureTarget } from "@/lib/capture/targets"
@@ -122,5 +123,41 @@ describe("the crawl the collector performs", () => {
   it("merges every walked page into one payload, deduplicated", () => {
     expect(source).toContain("pagesWalked")
     expect(source).toContain("function total()")
+  })
+})
+
+describe("the capture state is not public", () => {
+  /*
+   * A BUG THAT SHIPPED, CAUGHT BY FETCHING THE DEPLOYED ENDPOINT. The GET on
+   * /api/capture/ingest had no auth check and inherited the POST's
+   * `access-control-allow-origin: *`. Empty it leaked nothing, which is exactly
+   * why it looked fine; populated it would have served any site on the internet
+   * the merchants we are capturing, how many products from each, and when.
+   *
+   * The POST genuinely needs the open origin, because the collector posts from
+   * the merchant's own page. The GET has no cross-origin caller at all.
+   */
+  const source = readFileSync(
+    new URL("../../app/api/capture/ingest/route.ts", import.meta.url),
+    "utf-8",
+  )
+  const get = source.slice(source.indexOf("export async function GET"))
+
+  it("requires a signed-in admin to list what has been captured", () => {
+    expect(get).toContain("await isAdmin()")
+    expect(get).toContain("401")
+  })
+
+  it("does not send CORS headers on the GET", () => {
+    expect(get, "the GET has no cross-origin caller and must not invite one").not.toContain("CORS")
+  })
+
+  it("still allows the cross-origin POST the collector depends on", () => {
+    const post = source.slice(
+      source.indexOf("export async function POST"),
+      source.indexOf("export async function GET"),
+    )
+    expect(post).toContain("headers: CORS")
+    expect(post).toContain("passcodeMatches")
   })
 })
