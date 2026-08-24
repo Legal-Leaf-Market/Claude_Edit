@@ -293,7 +293,7 @@ const OPERATOR_SOURCE = `
       var keys = ["page", "p", "pageNumber", "start", "offset"];
       for (var i = 0; i < keys.length; i++) {
         var v = u.searchParams.get(keys[i]);
-        if (v !== null && /^\d+$/.test(v)) {
+        if (v !== null && /^\\d+$/.test(v)) {
           u.searchParams.set(keys[i], String(parseInt(v, 10) + 1));
           return u.toString();
         }
