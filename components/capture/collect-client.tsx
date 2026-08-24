@@ -142,6 +142,7 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
   const [pasteToken, setPasteToken] = useState("")
   const [pasteMessage, setPasteMessage] = useState("")
   const [copied, setCopied] = useState("")
+  const [copiedUrl, setCopiedUrl] = useState("")
   const [needsSignIn, setNeedsSignIn] = useState(false)
 
   /*
@@ -240,6 +241,61 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
     void load()
   }, [load])
 
+  /*
+   * COPY THE BOOKMARKLET URL, for anybody who cannot drag.
+   *
+   * Dragging assumes a visible bookmarks bar and a pointer, and it is the step
+   * this tool kept failing at. Every browser can instead take a new bookmark
+   * made by hand with this pasted into its URL field, which needs neither.
+   *
+   * ONE CAVEAT WORTH SAYING OUT LOUD: Chrome and Firefox strip the
+   * `javascript:` prefix when text is pasted into the ADDRESS bar, as typo
+   * protection. Pasting into a bookmark's URL field is fine; pasting into the
+   * address bar is not, and the difference is invisible until nothing happens.
+   */
+  async function copyBookmarklet(which: "loader" | "inline") {
+    const node = which === "loader" ? loaderRef.current : inlineRef.current
+    const url = node?.getAttribute("href")
+    if (!url) {
+      setCopiedUrl("Not built yet. Wait a moment and try again.")
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedUrl(
+        `Copied ${Math.round(url.length / 1024) || 1} KB. Make a new bookmark by hand and paste this ` +
+          `into its URL field. Do NOT paste it into the address bar: browsers strip the ` +
+          `"javascript:" prefix there.`,
+      )
+    } catch {
+      setCopiedUrl("Could not copy. Right-click the button above and choose Copy link address.")
+    }
+  }
+
+  /*
+   * RUN IT RIGHT HERE, which turns "it does not work" into a specific answer.
+   *
+   * If the panel appears on this page, the collector runs and the problem is
+   * installation. If it does not, the problem is the program. Nothing else on
+   * this page could tell those two apart, and they need completely different
+   * fixes.
+   *
+   * It finds nothing here, because this page has no products, and that is the
+   * expected result rather than a failure.
+   */
+  async function testHere() {
+    try {
+      const response = await fetch(`/gear-collector.js?${Date.now()}`)
+      const source = await response.text()
+      const run = new Function(`window.__GEAR_COLLECTOR_SRC__=${JSON.stringify(
+        `${window.location.origin}/gear-collector.js`,
+      )};${source}`)
+      run()
+    } catch (error) {
+      alert(`The collector failed to run: ${(error as Error).message}`)
+    }
+  }
+
   async function copySource() {
     try {
       const src = `${window.location.origin}/gear-collector.js`
@@ -303,7 +359,35 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
         </p>
       )}
 
-      <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">1 &middot; Install</h2>
+      <div className="mt-6 rounded-[12px] border border-[var(--chrome-dk)] bg-[var(--surface)] p-4">
+        <h2 className="font-display text-base font-bold text-[var(--text)]">
+          Does it work at all? Press this first.
+        </h2>
+        <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+          Runs the collector on this very page. A panel should appear top-right saying it found
+          nothing, which is the right answer here because this page has no products on it. If the
+          panel appears, the program works and anything still going wrong is installation. If it does
+          not appear, the program is the problem. Nothing else on this page tells those two apart,
+          and they need completely different fixes.
+        </p>
+        <button type="button" className="stomp" onClick={() => void testHere()}>
+          Run it on this page
+        </button>
+        {build && (
+          <p className="mt-3 text-sm text-[var(--muted-foreground)]">
+            Current collector build <strong className="font-mono text-[var(--text)]">{build}</strong>.
+            If a panel shows a different one, your bookmark is an old snapshot: re-drag or re-copy it.
+          </p>
+        )}
+      </div>
+
+      <h2 className="mt-9 font-display text-lg font-bold text-[var(--accent-text)]">
+        1 &middot; Install, whichever of these works for you
+      </h2>
+      <p className="mt-2 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+        Three ways in, and they run the identical program. If dragging is not working for you, the
+        console method below needs no bookmark at all and is the most reliable of the three.
+      </p>
       <div className="mt-3 rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
         <p className="text-sm text-[var(--muted-foreground)]">Drag this to your bookmarks bar:</p>
         {/* No href prop: see the comment on loaderRef. React 19 would strip it. */}
@@ -319,6 +403,13 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
         >
           Grab catalogue
         </a>
+        <button
+          type="button"
+          className="stomp mt-2 ml-2 inline-block"
+          onClick={() => void copyBookmarklet("loader")}
+        >
+          Copy it instead
+        </button>
 
         <hr className="my-5 border-0 border-t border-[var(--line)]" />
 
@@ -341,7 +432,17 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
         >
           Grab catalogue (self-contained)
         </a>
+        <button
+          type="button"
+          className="stomp mt-2 ml-2 inline-block"
+          onClick={() => void copyBookmarklet("inline")}
+        >
+          Copy it instead
+        </button>
         <p className="mt-3 text-sm text-[var(--muted-foreground)]">{inlineNote}</p>
+        {copiedUrl && (
+          <p className="mt-2 max-w-prose text-sm leading-relaxed text-[var(--accent-text)]">{copiedUrl}</p>
+        )}
         <p className="mt-2 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
           The first one loads the collector from this site when you click it, and a shop with a
           strict <code>script-src</code> refuses that, silently, because a blocked script fires no
