@@ -62,6 +62,7 @@ export function MaintenanceButton({
       <PartnerLinks links={partnerLinks} />
       <AndertonsButton />
       <ProbeButton />
+      <StorefrontProbeButton />
       <RebuildButton />
     </div>
   )
@@ -676,6 +677,136 @@ function RebuildButton() {
           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{error}</span>
         </p>
+      )}
+    </div>
+  )
+}
+
+/**
+ * "Does this shop want to be read?"
+ *
+ * THE STEP BEFORE ADDING A STORE, and the reason it is a button rather than a
+ * habit. Section 2 has always required checking a merchant's own terms before
+ * wiring one in, and doing that by hand is why the catalogue is twelve small
+ * sellers rather than fifty: a check nobody can run in a minute eventually
+ * gets skipped, and the first time it is skipped is the expensive time.
+ *
+ * It fetches three public documents off the origin and reports what they say.
+ * It adds nothing, ingests nothing and approves nothing. Paste the findings
+ * into the new row's `permission.note` in lib/storefronts.ts, so the basis for
+ * that row outlives whoever added it.
+ *
+ * The one verdict that decides anything on its own is `refused`.
+ */
+function StorefrontProbeButton() {
+  const [url, setUrl] = useState("")
+  const [state, setState] = useState<"idle" | "running" | "done" | "error">("idle")
+  const [summary, setSummary] = useState<string | null>(null)
+  const [verdict, setVerdict] = useState<string | null>(null)
+  const [detail, setDetail] = useState<string | null>(null)
+
+  async function run() {
+    if (!url.trim()) return
+    setState("running")
+    setSummary(null)
+    setVerdict(null)
+    setDetail(null)
+    try {
+      const response = await fetch("/api/admin/storefront-probe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim() }),
+      })
+      const body = await response.json()
+      if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`)
+
+      setVerdict(body.verdict)
+      setSummary(body.summary)
+      setDetail(
+        [
+          ...(body.alreadyIngested
+            ? [
+                `ALREADY IN THE REGISTRY as "${body.alreadyIngested.source}" ` +
+                  `(${body.alreadyIngested.label}), basis ${body.alreadyIngested.recordedBasis}, ` +
+                  `checked ${body.alreadyIngested.recordedOn}, ` +
+                  `${body.alreadyIngested.scheduled ? "scheduled" : "paused"}.`,
+                "",
+              ]
+            : []),
+          ...(body.findings ?? []),
+          "",
+          body.catalogue?.sampleTitles?.length
+            ? `Sample products: ${body.catalogue.sampleTitles.join(" | ")}`
+            : "",
+          "",
+          "--- agents.md ---",
+          body.agentsMd?.excerpt ?? `(${body.agentsMd?.status ?? body.agentsMd?.error})`,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      )
+      setState("done")
+    } catch (caught) {
+      setSummary(caught instanceof Error ? caught.message : "Something went wrong.")
+      setState("error")
+    }
+  }
+
+  return (
+    <div className="rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-4">
+      <h2 className="font-display text-base font-bold text-[var(--text)]">
+        Check a storefront before adding it
+      </h2>
+      <p className="mb-3 mt-1 max-w-prose text-sm leading-relaxed text-[var(--muted-foreground)]">
+        Reads the shop&apos;s agents.md, its robots.txt and one page of its catalogue endpoint, and
+        reports what they actually say. It writes nothing and adds nothing. An endpoint answering is
+        not a permission: what decides it is whether the shop publishes an agents.md sanctioning
+        read-only catalogue access. Whether they run an affiliate program is a separate question and
+        does not gate this.
+      </p>
+
+      <div className="mb-3 flex flex-wrap gap-2">
+        <input
+          type="url"
+          className="plate min-w-[16rem] flex-1"
+          placeholder="https://someshop.com"
+          value={url}
+          onChange={(event) => setUrl(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") void run()
+          }}
+        />
+        <button
+          type="button"
+          className="stomp"
+          onClick={() => void run()}
+          disabled={state === "running" || !url.trim()}
+        >
+          {state === "running" ? "Asking..." : "Check it"}
+        </button>
+      </div>
+
+      {summary && (
+        <p
+          className="max-w-prose text-sm leading-relaxed"
+          style={{
+            color:
+              verdict === "refused"
+                ? "var(--money)"
+                : verdict === "sanctioned"
+                  ? "var(--accent-text)"
+                  : "var(--muted-foreground)",
+          }}
+        >
+          {verdict ? `${verdict.toUpperCase()}: ` : ""}
+          {summary}
+        </p>
+      )}
+
+      {detail && (
+        <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-[8px] border border-[var(--line)] bg-[var(--bg)] p-3 text-xs leading-relaxed text-[var(--muted-foreground)]">
+          {detail}
+        </pre>
       )}
     </div>
   )

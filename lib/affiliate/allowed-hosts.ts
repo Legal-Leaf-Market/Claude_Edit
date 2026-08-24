@@ -1,3 +1,19 @@
+import { STOREFRONT_MERCHANTS } from "@/lib/storefronts"
+
+/**
+ * A storefront's own host, and any subdomain of the registrable domain it
+ * sits on, so `store.acousticguitar.com` and `www.jamstik.com` are one rule
+ * each rather than two.
+ *
+ * The leading `(^|\.)` is what makes it a suffix match; the trailing `$` is
+ * what stops `folkcraft.com.evil.example` clearing it. Both matter, and
+ * dropping either turns the allowlist into decoration.
+ */
+function hostPattern(merchant: { baseUrl: string }): RegExp {
+  const host = new URL(merchant.baseUrl).hostname.replace(/^www\./i, "")
+  return new RegExp(`(^|\\.)${host.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i")
+}
+
 /**
  * Hosts Gear Avail will ever send a shopper to. Shared between /go (single
  * listing redirect) and /api/cart/checkout (multi-item checkout handoff),
@@ -46,21 +62,19 @@ export const ALLOWED_HOSTS = [
   // rather than to whatever a config edit happens to contain.
   /(^|\.)martinic\.com$/i,
   /(^|\.)distrokid\.com$/i,
-  // Small independent Shopify sellers. GoAffPro-style referral links append a
-  // query param to the merchant's own domain rather than redirecting through
-  // a separate tracking host, so the raw and affiliate URLs share a host.
-  /(^|\.)folkcraft\.com$/i,
-  /(^|\.)acousticguitar\.com$/i,
-  /(^|\.)jamstik\.com$/i,
-  /(^|\.)jackson\.audio$/i,
-  /(^|\.)eminence-digital\.com$/i,
-  /(^|\.)hazeguitar\.com\.au$/i,
-  /(^|\.)eartguitar\.com$/i,
-  /(^|\.)playwithauthority\.com$/i,
-  /(^|\.)puresmusic\.com$/i,
-  /(^|\.)squaver\.in$/i,
-  /(^|\.)easonmusicstore\.com$/i,
-  /(^|\.)gokalimba\.com$/i,
+  // Independent storefronts, DERIVED from lib/storefronts.ts rather than
+  // retyped. GoAffPro-style referral links append a query param to the
+  // merchant's own domain instead of redirecting through a separate tracking
+  // host, so the raw and affiliate URLs share a host and one pattern covers
+  // both.
+  //
+  // Derived because a hand-maintained copy fails in the worst available
+  // direction: adding a store's row and forgetting its line here leaves every
+  // one of that store's listings failing closed at /go, which looks like a
+  // broken shop rather than a missing config line. The Impact merchants keep
+  // their literals above and a test asserts them, because those hosts are the
+  // network's rather than ours; these are one field on a row we own.
+  ...STOREFRONT_MERCHANTS.map(hostPattern),
 ]
 
 export function isAllowedDestination(rawUrl: string): boolean {
