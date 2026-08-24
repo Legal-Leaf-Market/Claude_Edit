@@ -157,6 +157,95 @@ describe("the DOM fallback, which is the path the big retailers need", () => {
   })
 })
 
+describe("a retailer with flat URLs and no structured data", () => {
+  /*
+   * THE ANDERTONS CASE, and the reason the DOM pass was rewritten.
+   *
+   * The first version collected links whose path contained /product/, /item/
+   * and friends. Andertons product pages live at paths like
+   * /guitars/guitar-pedals/boss-ds1-distortion-pedal, with no marker segment
+   * anywhere, so every product link was rejected and a category page of a
+   * thousand items captured ZERO. The page said "1,000+ results" and the panel
+   * said nothing found, which is the contradiction that gave it away.
+   *
+   * A URL shape is a convention each retailer invents. A price is not.
+   */
+  const ANDERTONS_SHAPED = `<body>
+    <nav><a href="/guitars">Guitars</a><a href="/bass">Bass</a></nav>
+    <p>1,024 results</p>
+    <div class="ProductList">
+      <div class="ProductCard">
+        <a href="/guitars/guitar-pedals/boss-ds1-distortion-pedal">
+          <img src="/i/ds1.jpg" alt="Boss DS-1 Distortion Pedal">
+          <span class="ProductCard__name">Boss DS-1 Distortion Pedal</span>
+        </a>
+        <div class="ProductCard__price"><span>£45.00</span></div>
+      </div>
+      <div class="ProductCard">
+        <a href="/guitars/guitar-pedals/ibanez-ts9-tube-screamer">
+          <img src="/i/ts9.jpg" alt="Ibanez TS9 Tube Screamer">
+          <span class="ProductCard__name">Ibanez TS9 Tube Screamer</span>
+        </a>
+        <div class="ProductCard__price"><span>£99.00</span></div>
+      </div>
+    </div>
+    <footer><a href="/delivery">Delivery from £2.99</a></footer>
+  </body>`
+
+  it("finds products whose URLs carry no /product/ marker at all", () => {
+    render(ANDERTONS_SHAPED, "https://www.andertons.co.uk/guitars/guitar-pedals")
+    const result = captureSource()
+
+    const dom = result.products.filter((p) => p.via === "dom")
+    expect(dom.length, "the flat-URL grid was missed again").toBe(2)
+    expect(dom.map((p) => p.title)).toContain("Boss DS-1 Distortion Pedal")
+    expect(dom[0].priceCents).toBe(4500)
+    expect(dom[0].url).toBe(
+      "https://www.andertons.co.uk/guitars/guitar-pedals/boss-ds1-distortion-pedal",
+    )
+  })
+
+  it("does not take the whole grid as one product", () => {
+    /*
+     * Climbing past the card into the container would file every item on the
+     * page under one arbitrary link. A card holds one price; a grid holds
+     * many, and that is the test.
+     */
+    render(ANDERTONS_SHAPED, "https://www.andertons.co.uk/guitars/guitar-pedals")
+    const urls = captureSource().products.map((p) => p.url)
+    expect(urls).not.toContain("https://www.andertons.co.uk/guitars")
+  })
+
+  it("still reports the claimed total beside what it captured", () => {
+    render(ANDERTONS_SHAPED, "https://www.andertons.co.uk/guitars/guitar-pedals")
+    expect(captureSource().coverage.claimedTotal).toBe(1024)
+  })
+
+  it("takes the title from an image alt when the card has no heading", () => {
+    render(
+      `<body><div><a href="/x/y/thing"><img src="/i.jpg" alt="Fender Blues Junior"></a>
+       <span>£599.00</span></div></body>`,
+      "https://shop.example.com/amps",
+    )
+    const dom = captureSource().products.filter((p) => p.via === "dom")
+    expect(dom[0]?.title).toBe("Fender Blues Junior")
+  })
+
+  it("ignores a price in the footer that belongs to no product card", () => {
+    /*
+     * "Delivery from £2.99" sits next to a link, so a naive price walk would
+     * make a product out of it. It has no product card around it, but it does
+     * have an anchor, so this is the honest limit of the heuristic: it is
+     * captured and left for the analyser rather than guessed away here. What
+     * matters is that it does not displace a real product.
+     */
+    render(ANDERTONS_SHAPED, "https://www.andertons.co.uk/guitars/guitar-pedals")
+    const titles = captureSource().products.map((p) => p.title)
+    expect(titles).toContain("Boss DS-1 Distortion Pedal")
+    expect(titles).toContain("Ibanez TS9 Tube Screamer")
+  })
+})
+
 describe("reading a page fetched by a crawl rather than the one you are on", () => {
   /*
    * The crawl fetches page two same-origin and parses it into a detached
@@ -175,7 +264,13 @@ describe("reading a page fetched by a crawl rather than the one you are on", () 
      * and stops after two pages, having captured a fraction of the catalogue
      * while appearing to work.
      */
-    const doc = parsed(`<body><a href="/product/page-two-pedal"><h3>Page two pedal</h3></a><span>$99</span></body>`)
+    /* Wrapped in a card element, as every real grid is: the extractor finds the
+       card by walking out from the price to the nearest ancestor holding a
+       link, and <body> is deliberately not allowed to be that ancestor. */
+    const doc = parsed(
+      `<body><div class="card"><a href="/product/page-two-pedal"><h3>Page two pedal</h3></a>` +
+        `<span>$99</span></div></body>`,
+    )
 
     const result = captureSource(doc, "https://shop.example.com/guitars?page=2")
 
@@ -275,10 +370,12 @@ describe("what the analysis concludes", () => {
   })
 
   it("merges several pages into one answer and does not double-count", () => {
-    render(`<body><a href="/product/a"><h3>A pedal</h3></a><span>$10</span></body>`)
+    render(`<body><div><a href="/product/a"><h3>A pedal</h3></a><span>$10</span></div></body>`)
     const first = captureSource()
-    render(`<body><a href="/product/a"><h3>A pedal</h3></a><span>$10</span>
-      <a href="/product/b"><h3>B pedal</h3></a><span>$20</span></body>`)
+    render(`<body>
+      <div><a href="/product/a"><h3>A pedal</h3></a><span>$10</span></div>
+      <div><a href="/product/b"><h3>B pedal</h3></a><span>$20</span></div>
+    </body>`)
     const second = captureSource()
 
     const analysis = analyseCaptures([first, second])

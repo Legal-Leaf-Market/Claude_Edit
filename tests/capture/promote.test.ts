@@ -51,6 +51,19 @@ function capture(products: Partial<CaptureResult["products"][number]>[]): Captur
     })),
     coverage: { claimedTotal: null, nextPageUrl: null, pageLinks: [], looksLazyLoaded: false, notes: [] },
     bySource: { dom: products.length },
+    diagnostics: {
+      anchors: products.length,
+      priceNodes: products.length,
+      cardsResolved: products.length,
+      rejectedMultiPrice: 0,
+      rejectedNoProductSignal: 0,
+      rejectedNoAnchor: 0,
+      rejectedDuplicate: 0,
+      jsonLdBlocks: 0,
+      jsonLdTypes: [],
+      unresolvedSamples: [],
+      resolvedSamples: [],
+    },
   }
 }
 
