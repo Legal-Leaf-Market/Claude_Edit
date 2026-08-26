@@ -108,6 +108,7 @@ const OPERATOR_SOURCE = `
   var CAPTURE = %%CAPTURE%%;
   var capture = CAPTURE();
   capture.build = BUILD;
+  capture.readVia = "live page";
 
   /* Everything gathered this session: the page you are on, plus every page a
      crawl walked. Merged on send, deduplicated by product URL. */
@@ -275,7 +276,8 @@ const OPERATOR_SOURCE = `
       var p = pages[i], g = p.diagnostics || {};
       lines.push(
         "PAGE " + (i + 1) + ": " + p.pageUrl,
-        "  build " + BUILD + "  platform " + (p.platform || "none"),
+        "  build " + BUILD + "  platform " + (p.platform || "none") +
+          "  read via " + (p.readVia || "?"),
         "  products " + p.products.length + "  by source " + JSON.stringify(p.bySource),
         "  claimed total " + p.coverage.claimedTotal + "  next page " + (p.coverage.nextPageUrl || "none") +
           "  lazy " + p.coverage.looksLazyLoaded,
@@ -429,9 +431,29 @@ const OPERATOR_SOURCE = `
     return best;
   }
 
+  /*
+   * WHICH PATH READ THIS PAGE, RECORDED RATHER THAN GUESSED.
+   *
+   * When a crawled page comes back empty there are two completely different
+   * causes and the numbers alone cannot separate them: the frame rendered and
+   * the page really has nothing, or the frame was refused and what got read
+   * was the pre-render shell over fetch. The first is a finished category; the
+   * second is a tool that is not working. Guessing between them cost a round
+   * trip, so the diagnostics now say.
+   */
   async function readPage(url){
-    var viaFrame = await readViaFrame(url);
-    if (viaFrame && viaFrame.products.length > 0) return viaFrame;
+    var viaFrame = null, frameNote = "";
+    try {
+      viaFrame = await readViaFrame(url);
+      if (viaFrame === null) frameNote = "frame unreadable (cross-origin, frame-busted, or refused)";
+    } catch (e) {
+      frameNote = "frame threw: " + (e && e.message ? e.message : e);
+    }
+    if (viaFrame && viaFrame.products.length > 0) {
+      viaFrame.readVia = "frame";
+      return viaFrame;
+    }
+    if (!frameNote) frameNote = "frame rendered but found no products";
 
     /*
      * The iframe gave nothing. Either the page genuinely has no products, or
@@ -444,9 +466,14 @@ const OPERATOR_SOURCE = `
       var html = await response.text();
       var doc = new DOMParser().parseFromString(html, "text/html");
       var fetched = CAPTURE(doc, url);
-      if (!viaFrame || fetched.products.length > viaFrame.products.length) return fetched;
+      if (!viaFrame || fetched.products.length > viaFrame.products.length) {
+        fetched.readVia = "fetch (" + frameNote + ")";
+        return fetched;
+      }
+      viaFrame.readVia = "frame (" + frameNote + ")";
       return viaFrame;
     } catch (e) {
+      if (viaFrame) viaFrame.readVia = "frame (" + frameNote + "); fetch also failed";
       return viaFrame;
     }
   }
@@ -579,6 +606,34 @@ const OPERATOR_SOURCE = `
  * moves it. A version number somebody has to remember to bump stops moving on
  * the day it matters.
  */
+/**
+ * STRIP THE PROSE BEFORE IT GOES IN A BOOKMARK.
+ *
+ * A normal bookmarklet is a few hundred bytes. This one was FIFTY THOUSAND
+ * characters, a fifth of which was the commentary above being shipped into
+ * somebody's bookmarks bar, and browsers get unreliable with bookmark URLs
+ * that long: the failure is not an error, it is a bookmark that stores wrong
+ * or does not fire, which is exactly what was reported.
+ *
+ * So the served file keeps every comment, because that is the copy a person
+ * pastes into a snippet and reads, and the BOOKMARK build gets this. One
+ * source, two renderings, which is a build step rather than a second
+ * implementation.
+ *
+ * DELIBERATELY CONSERVATIVE. It removes only block comments that START a line
+ * and the indentation in front of them, so it can never reach inside a string
+ * or a regex. That matters more than the last few bytes: a minifier that eats
+ * the `//` in "https://..." produces a program that fails on a stranger's
+ * website with nothing to read.
+ */
+export function compactCollector(source: string): string {
+  return source
+    .replace(/^[ \t]*\/\*[\s\S]*?\*\/[ \t]*\r?\n/gm, "")
+    .replace(/^[ \t]+/gm, "")
+    .replace(/\n{2,}/g, "\n")
+    .trim()
+}
+
 export function collectorSource(origin: string): { source: string; build: string } {
   const withExtractor = OPERATOR_SOURCE.replace("%%CAPTURE%%", captureSource.toString())
     .replace("%%INGEST%%", INGEST_PATH)

@@ -516,23 +516,41 @@ export function captureSource(sourceDoc?: Document, sourceUrl?: string): Capture
     }
 
     /*
-     * A CARD HOLDS ONE PRODUCT, AND THE TEST FOR THAT IS THE TITLE, NOT THE
-     * PRICE.
+     * A CARD LINKS TO ONE PRODUCT. A GRID LINKS TO MANY. That is the test, and
+     * it took three tries to get here, so the two rejected candidates are
+     * worth keeping written down.
      *
-     * It was the price, and that quietly destroyed every discounted item on
-     * the page. A card on sale shows two: "was £999" beside "now £799". So a
-     * guard reading "more than one price means we climbed into the grid"
-     * rejected every reduced product, twice over, once per price node. On
-     * Andertons' bass department that was 53 rejections against 34 products
-     * kept, on a page of 48: the sale items were the missing third.
+     * COUNTING PRICES failed on every sale item. A reduced card shows two,
+     * "was £999" beside "now £799", so a guard reading "more than one price
+     * means we climbed into the grid" threw away every discount, twice over,
+     * once per price node. On Andertons' bass department: 53 rejections
+     * against 34 kept, on a page of 48.
      *
-     * A product title, though, really is one per card and many per grid. It is
-     * also what a person uses to tell a card from the container holding it.
+     * COUNTING TITLES failed on every card, which was worse. Their markup is
+     *
+     *     <h3 class="productCard__title">
+     *       <a class="productCard__title__link" href="...">Tobias Classic V</a>
+     *     </h3>
+     *
+     * and `[class*='title' i]` matches the h3 AND the anchor nested inside it.
+     * Two titles in every single card, so the guitar department went from 34
+     * products to 0: 94 price nodes, 92 rejected, nothing kept. A substring
+     * match on a class name counts the same thing more than once whenever a
+     * shop names a child after its parent, which is most of them.
+     *
+     * DISTINCT HREFS cannot be fooled that way. A card points at one product,
+     * however many elements point at it: the image link and the title link
+     * carry the same URL and collapse to one. A grid points at dozens. The
+     * threshold is generous rather than exact because a card legitimately
+     * carries a couple of utility links (quick view, wishlist, a brand page),
+     * and the failure being guarded against is not "a few" but "the entire
+     * page", which is never close to the line.
      */
-    const titlesInside = card.querySelectorAll(
-      "h1, h2, h3, h4, h5, [class*='title' i], [class*='name' i]",
-    ).length
-    if (titlesInside > 1) {
+    const distinctHrefs = new Set<string>()
+    for (const link of Array.from(card.querySelectorAll("a[href]"))) {
+      distinctHrefs.add(link.getAttribute("href") ?? "")
+    }
+    if (distinctHrefs.size > 3) {
       rejectedMultiPrice += 1
       continue
     }

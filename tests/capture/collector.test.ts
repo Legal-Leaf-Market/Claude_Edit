@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { captureSource } from "@/lib/capture/extract"
-import { collectorSource } from "@/lib/capture/collector"
+import { collectorSource, compactCollector } from "@/lib/capture/collector"
 
 /**
  * THE SERIALISATION TRICK HAS ONE RULE, AND NOTHING ELSE ENFORCES IT.
@@ -245,5 +245,59 @@ describe("backslashes survive the template literal", () => {
 
   it("emits the hostname patterns intact", () => {
     expect(source).toContain("/^www\\./")
+  })
+})
+
+describe("the compact build that actually goes in a bookmark", () => {
+  /*
+   * A NORMAL BOOKMARKLET IS A FEW HUNDRED BYTES. This one was FIFTY THOUSAND
+   * characters, a fifth of it the commentary in the source being shipped into
+   * somebody's bookmarks bar, and it was reported as bookmarks that simply
+   * never fired. Browsers are unreliable with URLs that long and unreliable in
+   * the worst way: no error, just a bookmark that stores wrong.
+   */
+  const { source } = collectorSource("https://www.gearavail.com")
+  const compact = compactCollector(source)
+
+  it("is still valid JavaScript", () => {
+    /* The only thing that matters. A minifier that breaks the program produces
+       a failure on a stranger's website with nothing to read. */
+    expect(() => new Function(compact)).not.toThrow()
+  })
+
+  it("is meaningfully smaller", () => {
+    expect(compact.length).toBeLessThan(source.length * 0.8)
+  })
+
+  it("keeps every part of the program", () => {
+    for (const marker of [
+      "var BUILD",
+      "ga-crawl",
+      "ga-diag",
+      "ga-relay-ready",
+      "readViaFrame",
+      "/api/capture/ingest",
+    ]) {
+      expect(compact, `compacting lost ${marker}`).toContain(marker)
+    }
+  })
+
+  it("does not reach inside strings", () => {
+    /*
+     * THE FAILURE MODE THAT MATTERS. A naive comment stripper eats the "//" in
+     * "https://..." and the program dies. This one only removes block comments
+     * that START a line, so it can never touch mid-line content, and the origin
+     * baked into the source is the proof.
+     */
+    expect(compact).toContain("https://www.gearavail.com")
+    expect(compact).toContain("/^\\d+$/.test(v)")
+  })
+
+  it("leaves the served default fully commented", () => {
+    /* The snippet copy is the one people read. Only the bookmark is stripped.
+       The marker has to be a comment INSIDE the emitted program: the module's
+       own docstring never reaches the browser at all. */
+    expect(source).toContain("A GUESS, SHOWN IN AN EDITABLE FIELD")
+    expect(compact).not.toContain("A GUESS, SHOWN IN AN EDITABLE FIELD")
   })
 })

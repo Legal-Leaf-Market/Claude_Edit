@@ -246,6 +246,82 @@ describe("a retailer with flat URLs and no structured data", () => {
   })
 })
 
+describe("Andertons' real card markup", () => {
+  /*
+   * COPIED FROM A LIVE DIAGNOSTICS PASTE, not invented. Two guards died on
+   * this shape and the second one was worse than the first, so it is pinned
+   * verbatim rather than paraphrased.
+   *
+   * The killer is `productCard__title__link`: a class-name substring match on
+   * "title" counts the h3 AND the anchor nested inside it, so every card
+   * looked like two products and the guitar department went from 34 to zero.
+   */
+  const REAL = `<body>
+    <div class="size-10" data-testid="cart-icon">
+      <a href="/cart.php" aria-label="Cart with 0 items">
+        <span class="cart-price-total hidden"> £0.00 </span>
+      </a>
+    </div>
+    <p>3,805 results</p>
+    <div class="productGrid">
+      <div class="productCard">
+        <a href="/tobias-classic-v-5-string-bass-guitar-satin-natural/"><img src="/i/1.jpg" alt="Tobias"></a>
+        <div class="productCard__details" data-testid="product-card-details">
+          <p class="productCard__brand" data-testid="product-card-brand">Tobias</p>
+          <h3 class="productCard__title" data-testid="product-card-title">
+            <a href="/tobias-classic-v-5-string-bass-guitar-satin-natural/"
+               class="productCard__title__link">Tobias Classic V 5-String Bass Guitar in Satin Natural</a>
+          </h3>
+          <div class="productCard__priceContainer"><span class="productCard__price">£999.00</span></div>
+        </div>
+      </div>
+      <div class="productCard">
+        <a href="/eastcoast-srb-bass-in-black/"><img src="/i/2.jpg" alt="EastCoast"></a>
+        <div class="productCard__details">
+          <p class="productCard__brand">EastCoast Guitars</p>
+          <h3 class="productCard__title">
+            <a href="/eastcoast-srb-bass-in-black/" class="productCard__title__link">EastCoast SRB Bass Guitar in Black</a>
+          </h3>
+          <div class="productCard__priceContainer">
+            <span class="productCard__wasPrice">£149.00</span>
+            <span class="productCard__price">£99.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>`
+
+  it("finds both cards, including the one whose title wraps its own link", () => {
+    render(REAL, "https://www.andertons.co.uk/browse/guitar-dept/")
+    const dom = captureSource().products.filter((p) => p.via === "dom")
+
+    expect(dom, "the title guard counted the nested anchor again").toHaveLength(2)
+    expect(dom.map((p) => p.title)).toContain(
+      "Tobias Classic V 5-String Bass Guitar in Satin Natural",
+    )
+  })
+
+  it("takes the sale price, not the struck-through one", () => {
+    render(REAL, "https://www.andertons.co.uk/browse/guitar-dept/")
+    const sale = captureSource().products.find((p) => p.title?.startsWith("EastCoast"))
+    expect(sale?.priceCents).toBe(9900)
+  })
+
+  it("does not turn the basket total into a product", () => {
+    /* "£0.00" in the cart icon: a price beside a link, and the very first
+       thing every unresolved sample in the field turned out to be. */
+    render(REAL, "https://www.andertons.co.uk/browse/guitar-dept/")
+    const urls = captureSource().products.map((p) => p.url ?? "")
+    expect(urls.some((u) => u.includes("/cart.php"))).toBe(false)
+  })
+
+  it("never resolves the grid container itself", () => {
+    render(REAL, "https://www.andertons.co.uk/browse/guitar-dept/")
+    const dom = captureSource().products.filter((p) => p.via === "dom")
+    expect(new Set(dom.map((p) => p.url)).size).toBe(2)
+  })
+})
+
 describe("a card that is on sale", () => {
   /*
    * THE BUG THAT COST A THIRD OF ANDERTONS' BASS DEPARTMENT.
