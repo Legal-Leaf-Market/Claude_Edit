@@ -606,6 +606,34 @@ const OPERATOR_SOURCE = `
  * moves it. A version number somebody has to remember to bump stops moving on
  * the day it matters.
  */
+/**
+ * STRIP THE PROSE BEFORE IT GOES IN A BOOKMARK.
+ *
+ * A normal bookmarklet is a few hundred bytes. This one was FIFTY THOUSAND
+ * characters, a fifth of which was the commentary above being shipped into
+ * somebody's bookmarks bar, and browsers get unreliable with bookmark URLs
+ * that long: the failure is not an error, it is a bookmark that stores wrong
+ * or does not fire, which is exactly what was reported.
+ *
+ * So the served file keeps every comment, because that is the copy a person
+ * pastes into a snippet and reads, and the BOOKMARK build gets this. One
+ * source, two renderings, which is a build step rather than a second
+ * implementation.
+ *
+ * DELIBERATELY CONSERVATIVE. It removes only block comments that START a line
+ * and the indentation in front of them, so it can never reach inside a string
+ * or a regex. That matters more than the last few bytes: a minifier that eats
+ * the `//` in "https://..." produces a program that fails on a stranger's
+ * website with nothing to read.
+ */
+export function compactCollector(source: string): string {
+  return source
+    .replace(/^[ \t]*\/\*[\s\S]*?\*\/[ \t]*\r?\n/gm, "")
+    .replace(/^[ \t]+/gm, "")
+    .replace(/\n{2,}/g, "\n")
+    .trim()
+}
+
 export function collectorSource(origin: string): { source: string; build: string } {
   const withExtractor = OPERATOR_SOURCE.replace("%%CAPTURE%%", captureSource.toString())
     .replace("%%INGEST%%", INGEST_PATH)

@@ -215,7 +215,8 @@ function InstallPage({ targets }: { targets: CaptureTarget[] }) {
      * not optional: an inlined program has no document.currentScript, so
      * without it the collector could not work out where to send.
      */
-    void fetch(`${src}?${Date.now()}`)
+    /* The compact build for the bookmark. The snippet copy stays commented. */
+    void fetch(`${src}?compact=1&${Date.now()}`)
       .then(async (response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         setBuild(response.headers.get("x-collector-build"))

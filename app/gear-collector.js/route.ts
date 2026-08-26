@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { collectorSource } from "@/lib/capture/collector"
+import { collectorSource, compactCollector } from "@/lib/capture/collector"
 
 export const dynamic = "force-dynamic"
 
@@ -29,7 +29,23 @@ export const dynamic = "force-dynamic"
 export async function GET(request: NextRequest) {
   const { source, build } = collectorSource(request.nextUrl.origin)
 
-  return new NextResponse(source, {
+  /*
+   * ?compact=1 STRIPS THE PROSE, AND ONLY THE BOOKMARK BUILD ASKS FOR IT.
+   *
+   * A bookmarklet carries its whole program in a URL, and this one had grown to
+   * fifty thousand characters with a fifth of that being commentary. Browsers
+   * are unreliable with bookmark URLs that long, and unreliable in the worst
+   * way: not an error, just a bookmark that stores wrong or never fires.
+   *
+   * The default stays fully commented, because that is the copy a person saves
+   * as a DevTools snippet and reads. Same source, two renderings, and the build
+   * stamp is of the full one either way so the two cannot be confused for
+   * different programs.
+   */
+  const compact = request.nextUrl.searchParams.get("compact") === "1"
+  const body = compact ? compactCollector(source) : source
+
+  return new NextResponse(body, {
     headers: {
       "content-type": "text/javascript; charset=utf-8",
       "cache-control": "no-store, max-age=0",
