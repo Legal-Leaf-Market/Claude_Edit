@@ -1273,6 +1273,17 @@ Fuzz Face's brand pattern was anchored on `arbiter` while both datasets say
 quietly rendered as a box. Checking the match table against the real data is
 what found it; reading the model file could not have.
 
+**AN EMPTY BOARD IS A SHELF, NOT A SENTENCE.** `/pedalboard` opened as a dashed
+rectangle reading "Empty board. Add a pedal", on the page that is meant to sell
+the whole tool, with the one thing this project owns outright, eighty-eight
+pedals measured in millimetres and now photographed, two clicks away behind a
+picker nobody opens on arrival. The empty state is the pedals now: ONE PER SLOT,
+in signal order, so the first thing the page says is that it understands the
+order. Only modelled pedals, because a shelf of the honest generic would be a
+shelf of identical boxes. It derives from the catalogue prop and the guide
+dataset like the picker does, so it works unchanged on both domains and fetches
+nothing (section 18).
+
 **THE SEARCH GRID WAS THE ONE PLACE IGNORING THE RULE ABOUT GREEN.** Every
 listing card carried a hand-rolled full-width `--sage` gradient for the way out
 and a second full-width bar under it for the cart, so sixteen listings meant
