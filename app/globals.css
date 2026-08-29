@@ -2184,35 +2184,61 @@
 /* Take it off the board. Sits outside the enclosure, appears on hover or
    keyboard focus, because a delete control visible at rest on sixteen boxes
    is sixteen invitations to lose your board. */
-.enclosure-remove {
+/*
+ * WHAT YOU DO TO A PEDAL THAT IS ALREADY ON THE BOARD.
+ *
+ * Swap, pick it up, take it off. All three sit INSIDE the card, and that is a
+ * bug fix rather than a layout preference: `.deck-row` is a `preserve-3d`
+ * surface rotated 13 degrees, so anything positioned outside the enclosure is
+ * hit-tested against its flat layout box while the pedals are hit-tested
+ * against their projected geometry. The floated row this replaces was covered
+ * by the NEXT pedal's projection and could not be clicked at all, which meant
+ * the 3D viewer, the best thing on this site, had no working way in.
+ *
+ * MUTED AT REST, NOT HIDDEN. They used to be opacity 0 until hover, so they did
+ * not exist on a touch screen and nobody found them on a desktop either. Quiet
+ * and present, brightening on hover, is what section 16 asks of chrome
+ * everywhere else.
+ */
+.enclosure-acts {
   position: absolute;
-  top: -0.4rem;
-  right: -0.4rem;
+  top: -0.45rem;
+  right: -0.3rem;
+  z-index: 2;
+  display: flex;
+  gap: 0.2rem;
+}
+
+.enclosure-act {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 1.35rem;
   height: 1.35rem;
   border-radius: 50%;
-  border: 1px solid var(--line-strong);
-  background: var(--chip);
-  color: var(--dim);
-  font-size: 0.7rem;
-  font-weight: 700;
-  line-height: 1;
-  opacity: 0;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--chip) 86%, transparent);
+  color: color-mix(in srgb, var(--dim) 70%, transparent);
+  backdrop-filter: blur(3px);
   transition:
-    opacity 140ms ease,
     color 140ms ease,
-    border-color 140ms ease;
+    border-color 140ms ease,
+    background-color 140ms ease;
 }
 
-.group\/pedal:hover .enclosure-remove,
-.enclosure-remove:focus-visible {
-  opacity: 1;
+.group\/pedal:hover .enclosure-act,
+.enclosure-act:focus-visible {
+  color: var(--text);
+  border-color: var(--line-strong);
+  background: var(--chip);
 }
 
-.enclosure-remove:hover {
+.enclosure-act:hover {
+  color: var(--chrome);
+  border-color: var(--chrome-dk);
+}
+
+.enclosure-act-off:hover {
   color: var(--red);
   border-color: var(--red);
 }
@@ -2700,6 +2726,60 @@
    around it: the geometry, the materials and the lighting are all in the
    component, where they can be reasoned about together.
    ========================================================================== */
+
+/* ==========================================================================
+   THE MEASURED MODEL, STANDING IN FOR A PHOTOGRAPH THAT DOES NOT EXIST
+
+   `scripts/render-pedal-models.ts` photographs the same three.js pedal the
+   inspector shows and commits the stills. Where a listing carries no usable
+   picture, and we have measured that exact pedal, the card shows the model
+   instead of a broken-image glyph. It is the largest single reason the search
+   grid stopped looking like a page that had failed to load.
+
+   THE MARK IS NOT DECORATION. A render silently replacing a photograph is a
+   claim about what turns up in the post, so it is labelled: quiet, lowercase
+   in the dim colour, out of the way of the pedal, and present at every size
+   the type is legible at. Chrome would be wrong here twice over, once because
+   an edge colour is not a fill and once because this is the least assertive
+   thing on the card.
+   ========================================================================== */
+
+.modelled {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  /* A shallow pool of light under the object rather than a flat plate. The
+     render carries its own contact shadow, so the ground only has to stop the
+     pedal floating on the card's own colour. */
+  background:
+    radial-gradient(120% 90% at 50% 108%, rgba(0, 0, 0, 0.34), transparent 62%),
+    linear-gradient(180deg, var(--surface-2), var(--chip));
+}
+
+.modelled-img {
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+  padding: 10%;
+}
+
+.modelled-mark {
+  position: absolute;
+  left: 8px;
+  bottom: 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  padding: 2px 8px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--dim);
+  backdrop-filter: blur(4px);
+}
 
 .p3d {
   display: flex;

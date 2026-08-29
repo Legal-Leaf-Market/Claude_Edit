@@ -247,6 +247,7 @@ app/
   pedalboard/               The rig builder (chain check, power, live pricing)
   alerts/, sign-in/, sign-up/
   stompbox/               THE GUIDE. /stompbox/* here, / on stompbox.world (section 20)
+  render-bench/[slug]/      The offline renderer's subject. 404s unless RENDER_BENCH=1
   api/
     health                  Freshness and config, read this first when confused
     ask                     The Groq assistant. 503s when unconfigured
@@ -266,6 +267,8 @@ lib/
   ai/                       Groq client + the allowlisted DB tools (section 14)
   pedalboard/chain.ts       Signal-chain order rules and power estimates
   regions.ts                Who can buy from which store (section 15)
+  board/pedal-models.ts     THE 88 MEASURED PEDALS, in millimetres (section 16)
+  board/pedal-render.ts     Which committed still belongs to which pedal
   ingestion/ebay-feed.ts    Transport + TSV parsing (section 3)
   ingestion/ebay-ingest.ts  The three eBay jobs
   ingestion/reverb-awin.ts  Awin feed only. Never the Reverb API (section 2)
@@ -284,7 +287,9 @@ lib/
   deals/pricing.ts          Rolling median, deal threshold
   search/                   Typesense with a real Postgres fallback (section 6)
   queue/                    BullMQ; the OTHER way to run ingestion (section 7)
-scripts/                    migrate, seed, worker, run-ingest, reindex
+public/pedals/              The 88 stills. Generated, committed, never hand-drawn
+scripts/                    migrate, seed, worker, run-ingest, reindex,
+                            render-pedal-models (section 16)
 ```
 
 ---
@@ -649,6 +654,7 @@ process, and the accident is far likelier.
 | `NEXT_PUBLIC_STOMPBOX_HOST` | One extra Host that serves the STANDALONE guide rather than the aggregator. `stompbox.world` and `www.stompbox.world` are always recognised; this exists so a Vercel preview URL can be pointed at the standalone shape without editing `lib/stompbox/host.ts`. Unset is normal. |
 | `GEAR_AVAIL_URL` | Origin the guide uses for absolute links back into the catalogue. The guide is served on a different domain, so `/gear/[slug]` cannot be relative there. Falls back to `SITE_URL`, then to production. |
 | `YOUTUBE_API_KEY` | Anderton's TV metadata and comments, via the YouTube Data API v3. The reasoning, including why transcripts are off limits, is in the `youtube` block of `lib/env.ts`. Unset means the reader no-ops. |
+| `RENDER_BENCH` | `/render-bench/[slug]`, the harness `scripts/render-pedal-models.ts` photographs to produce the committed pedal stills. Unset is the expected state everywhere, including locally: the route 404s until it is `1`. It is the one canvas that mounts outside the pick-it-up dialog, so it fails closed like `CRON_SECRET` rather than relying on nothing linking to it (section 16). |
 
 | `IMPACT_ACCOUNT_SID` / `IMPACT_AUTH_TOKEN` | Impact's partner REST API (`api.impact.com/Mediapartners/{sid}/Catalogs/{id}/Items`, HTTP Basic, JSON, paginated), which is the OTHER way into Anderton's and the ONLY way into the other seven merchants. Both credentials are on Impact's API settings page and both are shared by every advertiser on the account. **Prefer this over the FTP block where it works**: ordinary HTTPS with no control connection or passive ports, and a slice is a page rather than a re-download of the whole catalogue per chunk. **It does NOT work for Anderton's**, and that is settled rather than suspected: see the note below the table. |
 | `IMPACT_ANDERTONS_CATALOG_ID` | Defaults to 30480 (campaign 43829, 27,052 products) because somebody read it off the platform and it is not a secret. |
@@ -1267,6 +1273,49 @@ Fuzz Face's brand pattern was anchored on `arbiter` while both datasets say
 quietly rendered as a box. Checking the match table against the real data is
 what found it; reading the model file could not have.
 
+**THE MODELS ARE PHOTOGRAPHED OFFLINE, AND THAT IS WHAT PUT THEM ON THE
+SITE.** Eighty-eight measured pedals existed for months and almost nobody saw
+one, because the only way in was a hover-only icon on a rig you had to load
+first. Meanwhile every listing with no usable photo rendered as a grey
+rectangle with a broken-image glyph, which on `/used/effects-pedals` was every
+card on the page. `scripts/render-pedal-models.ts` drives a headless browser
+over `/render-bench/<slug>`, screenshots the SAME viewer the dialog mounts, and
+commits the stills to `public/pedals`; `lib/board/pedal-render.ts` hands one to
+a card when the seller gave us nothing and `modelFor` recognises the pedal.
+
+**It does not breach the no-canvas rule, and the reason is worth stating rather
+than assuming.** What ships is a WebP in an `<img>`, so the page is still
+indexable, tabbable, screen-reader reachable and still carries `/go`, which is
+the whole of what that rule protects. The bench is the one place a canvas
+mounts outside the dialog, it fails closed on `RENDER_BENCH=1` the way
+`CRON_SECRET` and `ADMIN_PASSCODE` do, and nothing links to it.
+
+**One renderer, still.** The stills are photographs OF the dialog's pedal, not a
+second drawing of it. A scene assembled node-side would have been easier and
+would have drifted, and the way that drift announces itself is not an error: it
+is a card whose picture slowly stops matching the object you pick up.
+
+**And the card says it is a drawing.** `ModelledRender` prints "Illustration" at
+any size the type is legible, and the alt text says it at every size. A render
+silently standing in for a photograph is a claim about what arrives in the
+post: this colour, this clean, this complete, with these knobs still on it. The
+model knows the shape and knows nothing else, which is the same honesty as
+`p3d-truth` in the inspector and as refusing a market price under
+`MIN_SAMPLE_SIZE`.
+
+**EVERY CONTROL FOR A PEDAL ON THE BOARD LIVES INSIDE ITS CARD, because
+`preserve-3d` decides what a pointer can hit.** Swap and pick-up were a row
+floated under the enclosure by the builder, and they were not clickable at all:
+`.deck-row` carries `rotateX(13deg)`, so the pedals are hit-tested against their
+PROJECTED geometry while a plain absolutely-positioned row is hit-tested against
+its flat layout box, and the neighbouring pedal's projection sat on top of it.
+`document.elementFromPoint` returned the sibling wrapper. Nothing errored, no
+test failed, and the only way into the 3D viewer on this site simply did not
+respond to a pointer. The remove button had always worked because it was inside
+the card. They are all inside it now, and MUTED AT REST RATHER THAN HIDDEN:
+opacity 0 until hover meant they did not exist on a touch screen and nobody
+found them on a desktop either.
+
 **Godot is on the table for one thing only.** A separate 3D "rig room" (cables
 that hang, footswitches you stomp, knobs you hear) is a legitimate toy and a
 shareable. The planner itself stays in the DOM: it is indexable, and
@@ -1460,6 +1509,26 @@ engine.
 - Do NOT let a model claim to be the actual product. A measured one says what
   its shape tells you, a derived one says plainly that it is not this pedal,
   and the photograph beside it is the real one.
+- Do NOT hand-write a second scene to produce the pedal stills. They are
+  screenshots of the real viewer through `/render-bench`, and a node-side scene
+  is section 7 broken in the one place where the drift is a picture rather than
+  an error (section 16).
+- Do NOT open the render bench in production. It is the one canvas outside the
+  dialog and it fails closed on `RENDER_BENCH=1`; "nobody links to it" is not a
+  control.
+- Do NOT show a render without saying it is one. `ModelledRender` carries the
+  label and the alt text; swapping the `src` on an `<img>` instead makes a
+  drawing look like a photograph of the unit being sold.
+- Do NOT reach for a render by matching the listing TITLE. It goes through the
+  resolved `canonical_gear` brand and model, so it inherits the resolver's
+  judgement; a title reading "DS-1 bundle w/ cables" is not a picture of a DS-1.
+- Do NOT commit a still with no model behind it, or a model with no still. A
+  test walks both directions: an orphan file reads as coverage, and a missing
+  one is an `<img>` asking for a file that is not there.
+- Do NOT put a pedal's controls outside its enclosure. `.deck-row` is a
+  `preserve-3d` surface, so anything outside the card is hit-tested against a
+  flat box the neighbouring pedal's projection covers, and the control silently
+  stops responding (section 16).
 - Do NOT put the board's `perspective` on `.deck`. `.deck` is the horizontal
   scroller, and any overflow other than visible makes an element a grouping
   element, which forces `transform-style: flat` and silently collapses every

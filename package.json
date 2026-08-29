@@ -24,7 +24,8 @@
     "ingest:fullcompass": "tsx scripts/run-ingest.ts fullcompass",
     "ingest:pinevillemusic": "tsx scripts/run-ingest.ts pinevillemusic",
     "ingest:store": "tsx scripts/run-ingest.ts",
-    "search:reindex": "tsx scripts/reindex.ts"
+    "search:reindex": "tsx scripts/reindex.ts",
+    "render:pedals": "tsx scripts/render-pedal-models.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",
@@ -58,7 +59,9 @@
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31.10",
     "jsdom": "^30.0.1",
+    "playwright-core": "^1.62.1",
     "postcss": "^8.5",
+    "sharp": "^0.35.4",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.20.0",
     "typescript": "5.7.3",

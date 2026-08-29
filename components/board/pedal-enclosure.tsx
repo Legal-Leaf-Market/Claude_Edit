@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useState } from "react"
+import { ArrowLeftRight, Rotate3d, X } from "lucide-react"
 import type { BoardItem } from "@/lib/board/model"
 import { SLOT_BY_ID } from "@/lib/stompbox/chain"
 
@@ -24,18 +25,38 @@ import { SLOT_BY_ID } from "@/lib/stompbox/chain"
  * board of identical grey boxes. Guide entries have no photo and get the
  * silkscreen treatment instead, which is also the honest signal that the two
  * are different kinds of thing.
+ *
+ * EVERY CONTROL FOR THIS PEDAL LIVES INSIDE THIS CARD, and that is a bug fix
+ * with a cause worth writing down. Swap and pick-up used to be a row floated
+ * under the enclosure by the builder, and they were not clickable: `.deck-row`
+ * carries `rotateX(13deg)` with `preserve-3d`, so the pedals are hit-tested
+ * against their PROJECTED geometry while a plain absolutely-positioned row is
+ * hit-tested against its flat layout box. The neighbouring pedal's projection
+ * covered it, `document.elementFromPoint` returned the sibling, and the only
+ * way into the 3D viewer on this whole site simply did not respond to a
+ * pointer. Nothing errored. Controls that live inside the card transform with
+ * it, which is why the remove button always worked.
  */
 export function PedalEnclosure({
   item,
   position,
   onToggle,
   onRemove,
+  onSwap,
+  onInspect,
+  swapLabel,
 }: {
   item: BoardItem
   /** 1-based place in the signal chain, printed on the box like a patch number. */
   position: number
   onToggle: () => void
   onRemove: () => void
+  /** Try a different pedal in this slot. The common move, so it comes first. */
+  onSwap: () => void
+  /** Take it off the shelf and turn it over: the 3D viewer. */
+  onInspect: () => void
+  /** "another overdrive", so the label names the slot rather than the pedal. */
+  swapLabel: string
 }) {
   const [photoFailed, setPhotoFailed] = useState(false)
   const showPhoto = Boolean(item.imageUrl) && !photoFailed
@@ -113,15 +134,46 @@ export function PedalEnclosure({
         </span>
       </button>
 
-      <button
-        type="button"
-        onClick={onRemove}
-        title={`Take ${item.name} off the board`}
-        className="enclosure-remove"
-      >
-        <span aria-hidden="true">x</span>
-        <span className="sr-only">Take {item.name} off the board</span>
-      </button>
+      {/*
+        MUTED AT REST RATHER THAN HIDDEN, which is section 16's rule about
+        chrome applied to an affordance instead of to a colour. These were
+        opacity 0 until hover, so on a touch screen they did not exist at all
+        and on a desktop nobody found the viewer. Visible and quiet, then full
+        on hover, is the same thing the rest of the interface does.
+      */}
+      <div className="enclosure-acts">
+        <button
+          type="button"
+          onClick={onSwap}
+          title={`Swap for ${swapLabel}`}
+          className="enclosure-act"
+        >
+          <ArrowLeftRight className="h-3 w-3" aria-hidden="true" />
+          <span className="sr-only">
+            Swap {item.name} for {swapLabel}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onInspect}
+          title="Pick it up and turn it over"
+          className="enclosure-act"
+        >
+          <Rotate3d className="h-3 w-3" aria-hidden="true" />
+          <span className="sr-only">Pick up {item.name} and turn it over</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onRemove}
+          title={`Take ${item.name} off the board`}
+          className="enclosure-act enclosure-act-off"
+        >
+          <X className="h-3 w-3" aria-hidden="true" />
+          <span className="sr-only">Take {item.name} off the board</span>
+        </button>
+      </div>
     </div>
   )
 }

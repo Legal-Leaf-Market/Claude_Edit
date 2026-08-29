@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm"
 import { ExternalLink, MapPin, Truck } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ListingImage } from "@/components/listing-image"
+import { renderForGear } from "@/lib/board/pedal-render"
 import { PriceHistoryChart } from "@/components/price-history-chart"
 import { GearCredits } from "@/components/rigs/gear-credits"
 import { db } from "@/lib/db"
@@ -49,6 +50,9 @@ export default async function GearPage({ params }: PageProps) {
   ])
 
   const name = `${gear.brand} ${gear.model}`
+  /* One lookup for the page: the hero and every listing row are all this same
+     instrument, so a photograph missing anywhere on it means the same model. */
+  const modelled = renderForGear(gear.brand, gear.model)
   const cheapest = listings[0]
   const cheapestCents = cheapest ? Number(cheapest.price_cents) : null
 
@@ -79,6 +83,7 @@ export default async function GearPage({ params }: PageProps) {
         <ListingImage
           src={gear.imageUrl}
           alt={name}
+          modelled={modelled}
           className="h-40 w-full rounded-lg sm:h-40 sm:w-40 sm:shrink-0"
         />
         <div className="min-w-0 flex-1">
@@ -186,6 +191,7 @@ export default async function GearPage({ params }: PageProps) {
                   <ListingImage
                     src={row.primary_image_url ? String(row.primary_image_url) : null}
                     alt={String(row.title)}
+                    modelled={modelled}
                     className="h-14 w-14 shrink-0 rounded-md"
                   />
 

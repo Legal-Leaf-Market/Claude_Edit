@@ -6,6 +6,7 @@ import { ExternalLink, MapPin, RotateCcw, Truck } from "lucide-react"
 import { AddToCartButton } from "@/components/add-to-cart-button"
 import { Badge } from "@/components/ui/badge"
 import { ListingImage } from "./listing-image"
+import { renderForGear } from "@/lib/board/pedal-render"
 import { formatMargin, formatPrice, sourceLabel, timeAgo } from "@/lib/utils"
 import type { Source } from "@/lib/db/schema"
 import type { SearchHit } from "@/lib/search/types"
@@ -30,6 +31,17 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
   const age = timeAgo(hit.listedAt)
   const gearName = [hit.gearBrand, hit.gearModel].filter(Boolean).join(" ")
 
+  /*
+   * A MEASURED MODEL WHERE THE SELLER GAVE US NOTHING.
+   *
+   * Keyed off the resolved canonical gear rather than the listing title, so it
+   * inherits the resolver's judgement instead of guessing from marketing prose:
+   * a title reading "Boss DS-1 Distortion Pedal Bundle w/ Cables" is not a
+   * picture of a DS-1 alone, and `canonical_gear` is where "this listing is
+   * that instrument" has already been decided once, properly.
+   */
+  const modelled = renderForGear(hit.gearBrand, hit.gearModel)
+
   return (
     <article className="flip-card h-full" data-flipped={flipped}>
       <div className="flip-card-inner h-full">
@@ -39,7 +51,12 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
           data-best={hit.isDeal ? "true" : undefined}
         >
           <div className="relative">
-            <ListingImage src={hit.primaryImageUrl} alt={hit.title} className="h-64 w-full sm:h-72" />
+            <ListingImage
+              src={hit.primaryImageUrl}
+              alt={hit.title}
+              modelled={modelled}
+              className="h-64 w-full sm:h-72"
+            />
             {hit.isDeal && margin && (
               <div className="absolute left-2 top-2">
                 <Badge variant="deal">{margin} below market</Badge>

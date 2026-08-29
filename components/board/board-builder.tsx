@@ -230,37 +230,13 @@ export function BoardBuilder({
                       position={index + 1}
                       onToggle={() => toggle(item.key)}
                       onRemove={() => remove(item.key)}
+                      onSwap={() => {
+                        setQuery("")
+                        setPicking({ slot: item.slot, replacing: item.key })
+                      }}
+                      onInspect={() => setInspecting(item.key)}
+                      swapLabel={`another ${slotLabel(item.slot).toLowerCase()}`}
                     />
-                    {/*
-                      The two things you do to a pedal that is already on the
-                      board. SWAP is the one the whole page is arranged around,
-                      because the common move is not "remove this" but "try a
-                      different one here"; PICK IT UP takes it off the shelf and
-                      turns it over, which is the other half of being in a shop.
-                    */}
-                    <div className="absolute -bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 opacity-0 transition-opacity group-hover/pedal:opacity-100 focus-within:opacity-100">
-                      <button
-                        type="button"
-                        className="knob knob-sm"
-                        onClick={() => {
-                          setQuery("")
-                          setPicking({ slot: item.slot, replacing: item.key })
-                        }}
-                        aria-label={`Swap ${item.name} for another ${slotLabel(item.slot).toLowerCase()}`}
-                        title={`Swap for another ${slotLabel(item.slot).toLowerCase()}`}
-                      >
-                        <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
-                      <button
-                        type="button"
-                        className="knob knob-sm"
-                        onClick={() => setInspecting(item.key)}
-                        aria-label={`Pick up ${item.name} and turn it over`}
-                        title="Pick it up and turn it over"
-                      >
-                        <Rotate3d className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
-                    </div>
                   </div>
                   ))}
                 </div>

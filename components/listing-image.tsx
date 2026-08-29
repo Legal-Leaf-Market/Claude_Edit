@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react"
 import { ImageOff } from "lucide-react"
+import { ModelledRender } from "@/components/modelled-render"
 import { cn } from "@/lib/utils"
 
 /**
@@ -18,10 +19,22 @@ export function ListingImage({
   className,
   fallbackLabel,
   fallbackHue,
+  modelled,
 }: {
   src: string | null
   alt: string
   className?: string
+  /**
+   * A measured model to draw when there is no photograph.
+   *
+   * Comes from `renderForGear()`, so it is null for the vast majority of
+   * listings and that is correct: 88 pedals are measured and the catalogue is
+   * larger than that. It sits AHEAD of `fallbackLabel` because a picture of
+   * the actual object beats a tinted tile carrying the effect type, and behind
+   * the real photograph because the seller's own picture is of the seller's
+   * own unit, which is the thing being bought.
+   */
+  modelled?: { src: string; name: string } | null
   /**
    * What to draw instead of the broken-image glyph when there is no photo.
    *
@@ -57,6 +70,10 @@ export function ListingImage({
   }, [])
 
   if (!src || failed) {
+    if (modelled) {
+      return <ModelledRender src={modelled.src} name={modelled.name} className={className} />
+    }
+
     if (fallbackLabel) {
       return (
         <div

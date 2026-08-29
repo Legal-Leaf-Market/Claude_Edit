@@ -993,19 +993,27 @@ function Pedal({
   model,
   engaged,
   fit,
+  still,
 }: {
   model: PedalModel
   engaged: boolean
   fit: number
+  still: boolean
 }) {
   const group = useRef<THREE.Group>(null)
   const h = model.height * MM
 
   /* A hair of drift so it never looks frozen, far too slow to read as a spin.
      Section 16's "nothing spins at idle" is about attention-seeking motion;
-     this is below the threshold of noticing and stops on any interaction. */
+     this is below the threshold of noticing and stops on any interaction.
+
+     OFF IN A STILL, and that is the whole reason `still` exists. The offline
+     renderer photographs this scene, and a rotation that accumulates from a
+     clock means two runs of the same model produce two slightly different
+     pictures. The diff would then show every image changing on every run, which
+     is exactly how a committed asset stops being reviewable. */
   useFrame((state) => {
-    if (!group.current) return
+    if (!group.current || still) return
     group.current.rotation.y += Math.sin(state.clock.elapsedTime * 0.2) * 0.00012
   })
 
@@ -1070,9 +1078,23 @@ function Pedal({
 export function PedalViewer3D({
   model,
   engaged,
+  still = false,
 }: {
   model: PedalModel
   engaged: boolean
+  /**
+   * A PHOTOGRAPH RATHER THAN A TOY, for the offline renderer only.
+   *
+   * `scripts/render-pedal-models.ts` mounts this exact component to produce the
+   * still artwork the cards fall back to when a listing has no photo, which is
+   * section 7's "never fork the logic" applied to a picture: a second scene
+   * built node-side would drift from this one, and then the pedal on the card
+   * would stop being the pedal in the dialog.
+   *
+   * It turns off the two things that make a still unreproducible: the idle
+   * drift, and controls that could be nudged. Nothing user-facing passes it.
+   */
+  still?: boolean
 }) {
   /* The longest side on the floor decides the scale, so a wah lying along z
      and a wide 1590BB lying along x both end up filling the same frame. */
@@ -1082,7 +1104,19 @@ export function PedalViewer3D({
     <Canvas
       shadows
       dpr={[1, 2]}
-      camera={{ position: [1.35, 1.15, 1.85], fov: 32 }}
+      /*
+       * BACK OFF A LITTLE FOR A STILL, and it is framing rather than geometry.
+       *
+       * `FIT` scales the pedal against the VERTICAL field of view, and the
+       * dialog's canvas is wider than it is tall, so the horizontal has room to
+       * spare. A still is square, that spare room is gone, and the first run
+       * came out with a Cry Baby's toe off the left edge. The pedal is
+       * unchanged; the camera stands where it can see all of it.
+       */
+      camera={{
+        position: still ? [1.35 * 1.2, 1.15 * 1.2, 1.85 * 1.2] : [1.35, 1.15, 1.85],
+        fov: 32,
+      }}
       /* The scene's own ground, so the canvas is not a transparent hole in the
          panel and the shadow has something to fall on. */
       style={{ background: "transparent" }}
@@ -1111,7 +1145,7 @@ export function PedalViewer3D({
         <directionalLight position={[-2.4, 1.4, -1.2]} intensity={0.7} color="#9fc0ff" />
         <directionalLight position={[0, 0.6, -3]} intensity={0.5} color="#ffffff" />
 
-        <Pedal model={model} engaged={engaged} fit={fit} />
+        <Pedal model={model} engaged={engaged} fit={fit} still={still} />
 
         <ContactShadows
           /* Under the scaled pedal, not the unscaled one: a shadow floating
@@ -1123,7 +1157,7 @@ export function PedalViewer3D({
           far={1.4}
         />
 
-        <OrbitControls
+        {!still && <OrbitControls
           makeDefault
           enablePan={false}
           minDistance={1.15}
@@ -1133,7 +1167,7 @@ export function PedalViewer3D({
           maxPolarAngle={Math.PI - 0.15}
           enableDamping
           dampingFactor={0.08}
-        />
+        />}
       </Suspense>
     </Canvas>
   )
