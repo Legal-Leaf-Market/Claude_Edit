@@ -3,6 +3,8 @@ import type { Pedal } from "@/lib/stompbox/pedals"
 import { SLOT_BY_ID } from "@/lib/stompbox/chain"
 import { sbHref } from "@/lib/stompbox/host"
 import { CircuitFigure } from "@/components/stompbox/circuit-figure"
+import { ModelledRender } from "@/components/modelled-render"
+import { renderForGear } from "@/lib/board/pedal-render"
 
 /**
  * One pedal, as a card.
@@ -12,6 +14,20 @@ import { CircuitFigure } from "@/components/stompbox/circuit-figure"
  * hit any part of the one they want.
  */
 export function PedalCard({ pedal, base }: { pedal: Pedal; base: string }) {
+  /*
+   * THE PEDAL ITSELF, WHERE SOMEBODY HAS MEASURED IT.
+   *
+   * The waveform says what the circuit does and it is the better half of this
+   * card, but a grid of fifteen figures with no objects in it reads as a
+   * textbook. A reader arriving on this page mostly knows these pedals by
+   * sight, and the shape of a Cry Baby beside the shape of its filter sweep is
+   * the fastest possible "yes, that one".
+   *
+   * `compact`, so no legend: at 64px a chip is three grey pixels. The alt text
+   * still says it is drawn from measurements rather than photographed.
+   */
+  const modelled = renderForGear(pedal.maker, pedal.name)
+
   return (
     <Link
       href={sbHref(base, `/pedals/${pedal.slug}`)}
@@ -22,9 +38,17 @@ export function PedalCard({ pedal, base }: { pedal: Pedal; base: string }) {
         <span className="stencil text-[0.58rem]">{pedal.era}</span>
       </div>
 
-      <h3 className="mt-1.5 text-xl font-black tracking-tight text-[var(--text)]">
-        {pedal.name}
-      </h3>
+      <div className="mt-1.5 flex items-start justify-between gap-3">
+        <h3 className="text-xl font-black tracking-tight text-[var(--text)]">{pedal.name}</h3>
+        {modelled ? (
+          <ModelledRender
+            src={modelled.src}
+            name={modelled.name}
+            className="h-14 w-16 flex-none rounded-md"
+            compact
+          />
+        ) : null}
+      </div>
 
       {/*
         The shape, small and uncaptioned. A grid of these is the fastest way to
