@@ -220,11 +220,15 @@ export default async function GearPage({ params }: PageProps) {
                     <span className="text-lg font-bold tracking-[-0.01em] text-[var(--cream)]">
                       {formatPrice(priceCents, String(row.currency ?? "USD"))}
                     </span>
+                    {/* A quiet stomp per row, not a green bar per row. Twenty
+                        listings meant twenty saturated gradients competing with
+                        each other and with the price beside them, which is the
+                        opposite of what section 16 reserves the LED for. */}
                     <a
                       href={`/go/${id}`}
                       rel="nofollow sponsored noopener"
                       target="_blank"
-                      className="inline-flex h-9 items-center gap-1.5 rounded-[10px] bg-gradient-to-r from-[var(--sage-dk)] to-[var(--sage)] px-4 text-[13px] font-bold tracking-[0.02em] text-[#04140a] shadow-[0_4px_14px_rgba(34,197,94,.2)] transition-all hover:brightness-110 hover:shadow-[0_6px_20px_rgba(34,197,94,.35)]"
+                      className="stomp stomp-sm"
                     >
                       View
                       <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />

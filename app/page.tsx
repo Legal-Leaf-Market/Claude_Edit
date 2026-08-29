@@ -204,7 +204,7 @@ export default async function HomePage() {
             <Link
               key={category.slug}
               href={`/used/${category.slug}`}
-              className="card-face flex items-center gap-3 px-4 py-3.5 text-sm text-[var(--text)] transition-colors hover:border-[var(--chrome-dk)]"
+              className="card-face tile flex items-center gap-3 px-4 py-3.5 text-sm text-[var(--text)]"
             >
               <span
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
@@ -236,7 +236,7 @@ export default async function HomePage() {
             <Link
               key={store.slug}
               href={`/shop/${store.slug}`}
-              className="card-face flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--text)] transition-colors hover:border-[var(--chrome-dk)]"
+              className="card-face tile flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--text)]"
             >
               <StoreMark source={store.source} name={store.name} size="sm" />
               <span className="truncate">{store.name}</span>
@@ -256,7 +256,7 @@ export default async function HomePage() {
             <Link
               key={board.slug}
               href={`/boards/${board.slug}`}
-              className="card-face px-4 py-3 text-sm text-[var(--text)] transition-colors hover:border-[var(--chrome-dk)]"
+              className="card-face tile px-4 py-3 text-sm text-[var(--text)]"
             >
               {board.navLabel}
             </Link>
@@ -273,9 +273,9 @@ export default async function HomePage() {
       <PartnerBanner slug="distrokid" />
 
       <section className="pb-16">
-        <h2 className="mb-4 font-display text-xl font-bold tracking-[-0.01em] text-[var(--text)]">
-          How Gear Avail works
-        </h2>
+        <div className="section-head">
+          <h2>How Gear Avail works</h2>
+        </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <HowItWorks
             icon={<SearchIcon className="h-5 w-5" aria-hidden="true" />}
@@ -296,9 +296,9 @@ export default async function HomePage() {
       </section>
 
       <section className="pb-16">
-        <h2 className="mb-4 font-display text-xl font-bold tracking-[-0.01em] text-[var(--text)]">
-          Get the weekly hunt
-        </h2>
+        <div className="section-head">
+          <h2>Get the weekly hunt</h2>
+        </div>
         <div className="max-w-2xl">
           <SubscribeForm source="home" />
         </div>
@@ -319,10 +319,8 @@ function SectionHead({
   linkLabel: string
 }) {
   return (
-    <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-      <h2 className="font-display text-xl font-bold tracking-[-0.01em] text-[var(--text)]">
-        {title}
-      </h2>
+    <div className="section-head">
+      <h2>{title}</h2>
       <Link
         href={href}
         className="text-sm font-semibold text-[var(--accent-text)] underline-offset-4 hover:underline"

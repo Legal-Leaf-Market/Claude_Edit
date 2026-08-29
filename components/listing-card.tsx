@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { ExternalLink, MapPin, RotateCcw, Truck } from "lucide-react"
-import { AddToCartButton } from "@/components/add-to-cart-button"
+import { AddToCartKnob } from "@/components/add-to-cart-button"
 import { Badge } from "@/components/ui/badge"
 import { ListingImage } from "./listing-image"
 import { renderForGear } from "@/lib/board/pedal-render"
@@ -55,6 +55,7 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
               src={hit.primaryImageUrl}
               alt={hit.title}
               modelled={modelled}
+              category={hit.gearCategory}
               className="h-64 w-full sm:h-72"
             />
             {hit.isDeal && margin && (
@@ -106,26 +107,40 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
                 {age && <span>{age}</span>}
               </div>
 
-              <a
-                href={`/go/${hit.id}`}
-                rel="nofollow sponsored noopener"
-                target="_blank"
-                className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[10px] bg-gradient-to-r from-[var(--sage-dk)] to-[var(--sage)] text-[13px] font-bold tracking-[0.02em] text-[#04140a] shadow-[0_4px_14px_rgba(34,197,94,.2)] transition-all hover:brightness-110 hover:shadow-[0_6px_20px_rgba(34,197,94,.35)]"
-              >
-                View on {sourceLabel(hit.source)}
-                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-              </a>
+              {/*
+                ONE WAY OUT, AND IT IS THE ONLY THING ON THIS CARD ALLOWED TO
+                SHOUT. This used to be a hand-rolled full-width green gradient
+                with a second full-width bar under it for the cart, on every
+                card, so a grid of sixteen listings was thirty-two bars and no
+                hierarchy at all. `.stomp` is the site's own control: a metal
+                enclosure, muted chrome at rest, and the LED coming up under the
+                pointer. Section 16 wrote that rule and the search grid was the
+                one place ignoring it.
 
-              <AddToCartButton
-                item={{
-                  listingId: hit.id,
-                  source: hit.source as Source,
-                  title: hit.title,
-                  priceCents: hit.priceCents,
-                  currency: hit.currency,
-                  image: hit.primaryImageUrl,
-                }}
-              />
+                Still `/go`, still nofollow sponsored, still a new tab.
+              */}
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/go/${hit.id}`}
+                  rel="nofollow sponsored noopener"
+                  target="_blank"
+                  className="stomp min-w-0 flex-1"
+                >
+                  <span className="truncate">View on {sourceLabel(hit.source)}</span>
+                  <ExternalLink className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
+                </a>
+
+                <AddToCartKnob
+                  item={{
+                    listingId: hit.id,
+                    source: hit.source as Source,
+                    title: hit.title,
+                    priceCents: hit.priceCents,
+                    currency: hit.currency,
+                    image: hit.primaryImageUrl,
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>

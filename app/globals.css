@@ -438,6 +438,62 @@
     height: 1px;
   }
 
+  /* ------------------------------------------------------------------
+     A SECTION HEADING, PRINTED THE WAY A PANEL IS PRINTED
+
+     The home page was eight sections whose headings were all 20px of bold
+     display type with nothing else, so the page had no rhythm: every band
+     of content began at the same weight and the eye had nowhere to land.
+
+     The rule running out to the right of the title is the same device a
+     silkscreened panel uses to tie a legend to the control it labels, and
+     it does two jobs at once here: it gives the heading enough presence to
+     start a section, and it draws the width of the page, which is what
+     makes a stack of grids read as a document rather than as a list.
+
+     --chrome-dk, not --chrome. This lands on the PAGE rather than on a
+     control, and a white hairline on white paper is nothing at all.
+     ------------------------------------------------------------------ */
+  .section-head {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin-bottom: 1.15rem;
+  }
+
+  .section-head h2 {
+    font-family: var(--display);
+    font-size: 1.45rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--text);
+    flex: none;
+  }
+
+  .section-head::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    min-width: 1.5rem;
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--chrome-dk) 46%, transparent),
+      transparent
+    );
+  }
+
+  /* The section's own way through to the full list, pushed past the rule so
+     the rule separates the heading from it rather than stopping short.
+
+     BY ELEMENT, NOT BY :last-child. `::after` is the last child in the box
+     model but not the last ELEMENT child, so `:last-child` matched the <h2>
+     on any heading with no link beside it and ordered the title to the right
+     of its own rule. Two headings on the home page shipped right-aligned. */
+  .section-head > a {
+    order: 3;
+    flex: none;
+  }
+
   /* Pill. Nav buttons, the search field, filter chips and footer buttons are
      all 999px. A pill sits on the PAGE, not on metal, so its accent states
      take the on-paper variant: a white border on white paper is not an
@@ -678,9 +734,14 @@
       box-shadow 0.18s,
       transform 0.18s;
   }
+  /* A LIFT, NOT JUST A GLOW. A card that only changes its border on hover
+     reads as a link; one that comes up off the page reads as an object you
+     can pick up, which is the whole vocabulary this site is built on. The
+     edge goes to steel rather than to green: hover is not "this is lit". */
   .flip-card:hover .card-face-front {
-    border-color: var(--sage-dk);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+    border-color: var(--chrome-dk);
+    transform: translateY(-3px);
+    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.5);
   }
   [data-theme='light'] .flip-card:hover .card-face-front {
     box-shadow: 0 12px 28px rgba(20, 30, 60, 0.16);
@@ -693,6 +754,55 @@
       0 0 0 1px color-mix(in srgb, var(--chrome-dk) 30%, transparent),
       0 12px 30px color-mix(in srgb, var(--chrome-dk) 10%, transparent);
   }
+  /* ------------------------------------------------------------------
+     A TILE: a small plate you can press, rather than a rectangle with a
+     word in it.
+
+     The home page's category, store and community grids were thirty-odd
+     boxes at exactly one elevation, in exactly one colour, with a hairline
+     border and nothing else. Individually fine, collectively the reason the
+     page reads as a spreadsheet: nothing about them says they are things you
+     can push, and the eye has no reason to stop on any one of them.
+
+     A sheen along the top edge and a lift under the pointer is the whole
+     change, and it is the same language the enclosures and the stomps use:
+     light comes from above, and metal comes up to meet your hand.
+     ------------------------------------------------------------------ */
+  .tile {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--surface-2), var(--surface) 62%);
+    transition:
+      transform 0.16s ease,
+      border-color 0.16s ease,
+      box-shadow 0.16s ease;
+  }
+
+  .tile::after {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--chrome) 26%, transparent) 30%,
+      color-mix(in srgb, var(--chrome) 26%, transparent) 70%,
+      transparent
+    );
+    pointer-events: none;
+  }
+
+  .tile:hover {
+    transform: translateY(-2px);
+    border-color: var(--chrome-dk);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.42);
+  }
+
+  [data-theme='light'] .tile:hover {
+    box-shadow: 0 10px 20px rgba(20, 30, 60, 0.14);
+  }
+
   /* Deep-navy back, so a turned card reads instantly against the grid. */
   .card-face-back {
     border-color: var(--glass-line);
@@ -2762,7 +2872,54 @@
   height: 100%;
   width: 100%;
   object-fit: contain;
-  padding: 10%;
+  padding: 7%;
+}
+
+/* ==========================================================================
+   THE CATEGORY, DRAWN, WHERE NOTHING MORE SPECIFIC IS KNOWN
+
+   Below the measured model there is still most of the catalogue: guitars,
+   amps, synths, cymbals, none of which anybody has modelled. Those cards used
+   to fall through to a broken-image glyph on a grey plate, which reads as a
+   page that failed to load rather than as a listing whose seller supplied no
+   photograph.
+
+   A big soft silhouette in the category's own accent says the true thing
+   ("this is a bass guitar") without saying anything about the unit. It is
+   deliberately quiet: it must not compete with the cards beside it that do
+   have a real photograph, because those are the ones worth looking at.
+   ========================================================================== */
+
+.silhouette {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 100% at 50% 20%, color-mix(in srgb, currentColor 13%, transparent), transparent 68%),
+    linear-gradient(180deg, var(--surface-2), var(--chip));
+}
+
+.silhouette-icon {
+  width: 44%;
+  height: 44%;
+  max-width: 132px;
+  max-height: 132px;
+  opacity: 0.42;
+}
+
+.silhouette-mark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  text-align: center;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, currentColor 68%, transparent);
 }
 
 .modelled-mark {

@@ -45,7 +45,7 @@ export default function PartnersIndexPage() {
           <li key={partner.slug}>
             <Link
               href={`/partners/${partner.slug}`}
-              className="card-face flex h-full flex-col p-5 transition-colors hover:border-[var(--chrome-dk)]"
+              className="card-face tile flex h-full flex-col p-5"
             >
               <p className="eyebrow">{partner.kind}</p>
               <p className="mt-1 text-base font-semibold text-[var(--text)]">{partner.name}</p>

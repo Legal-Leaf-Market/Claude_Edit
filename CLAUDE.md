@@ -1273,6 +1273,41 @@ Fuzz Face's brand pattern was anchored on `arbiter` while both datasets say
 quietly rendered as a box. Checking the match table against the real data is
 what found it; reading the model file could not have.
 
+**THE SEARCH GRID WAS THE ONE PLACE IGNORING THE RULE ABOUT GREEN.** Every
+listing card carried a hand-rolled full-width `--sage` gradient for the way out
+and a second full-width bar under it for the cart, so sixteen listings meant
+thirty-two bars, half of them the site's only saturated colour, on the least
+important element on the page. That is the opposite of what this section says:
+the LED means "this is lit", and full chrome is earned by hover and by the ONE
+primary action per view. The card now uses `.stomp`, which is the system's own
+control, and the cart is a `.knob` beside it, because going out to the shop is
+the action and adding to a cart is not. The gear page's per-listing rows got the
+same treatment for the same reason: twenty green gradients competing with the
+twenty prices next to them.
+
+**A SECTION HEADING IS PRINTED, NOT JUST BOLD.** `.section-head` runs a hairline
+out from the title to the right edge, which is what a silkscreened panel does to
+tie a legend to the control it labels. The home page was eight bands of content
+whose headings were all the same 20px of bold display type, so nothing started
+and nothing ended. (Watch the ordering: the rule is an `::after`, so it is the
+last CHILD but not the last ELEMENT child, and a `:last-child` rule to push the
+"see all" link past it grabbed the `<h2>` on any heading with no link and shipped
+two titles right-aligned.)
+
+**`.tile` IS WHAT MAKES A GRID OF LABELS READ AS THINGS YOU CAN PRESS.** A sheen
+along the top edge and a lift under the pointer, which is the same light this
+whole system uses: from above, on metal, coming up to meet your hand. Thirty
+category, store and community boxes at one elevation in one colour is most of
+what made the home page read as a spreadsheet.
+
+**AND BELOW THE MEASURED MODEL THERE IS THE CATEGORY, DRAWN.** Most of the
+catalogue is guitars, amps, synths and cymbals that nobody has modelled, and
+those cards fell through to a broken-image glyph. `.silhouette` puts a large
+soft `CategoryIcon` in the category's own accent behind the category's name: it
+says a true and specific thing about the listing without claiming to be a
+picture of the unit. Quiet on purpose, because it must not compete with the
+cards beside it that do have a real photograph.
+
 **THE MODELS ARE PHOTOGRAPHED OFFLINE, AND THAT IS WHAT PUT THEM ON THE
 SITE.** Eighty-eight measured pedals existed for months and almost nobody saw
 one, because the only way in was a hover-only icon on a rig you had to load
@@ -1509,6 +1544,11 @@ engine.
 - Do NOT let a model claim to be the actual product. A measured one says what
   its shape tells you, a derived one says plainly that it is not this pedal,
   and the photograph beside it is the real one.
+- Do NOT put a saturated green bar on a repeated element. The LED is for
+  things that are lit and full chrome is earned by ONE primary action per view;
+  a grid of cards gets `.stomp`, and the secondary action gets a `.knob`.
+- Do NOT reach for `:last-child` inside `.section-head`. The rule is an
+  `::after`, so `:last-child` matches the `<h2>` whenever there is no link.
 - Do NOT hand-write a second scene to produce the pedal stills. They are
   screenshots of the real viewer through `/render-bench`, and a node-side scene
   is section 7 broken in the one place where the drift is a picture rather than
