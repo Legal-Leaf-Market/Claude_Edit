@@ -28,6 +28,14 @@ const SERIALISED = captureSource.toString()
  * in a function that is fine, which is the way a guard like this gets switched
  * off: two false alarms and somebody widens the allowlist until it catches
  * nothing.
+ *
+ * REGEX LITERALS ARE NOT STRIPPED, and that is deliberate rather than an
+ * oversight. Telling a regex from a division in a plain scan is the classic
+ * lexing trap, and a heuristic that got it wrong would quietly make this guard
+ * permissive in exactly the place it is supposed to be strict. The cost is
+ * that alternation containing a space before a bracket reads as a call:
+ * `/verify you are (?:a )?human/` reported `are`. The fix is to word the
+ * pattern around it, which costs nothing, rather than to loosen the scan.
  */
 function codeOnly(source: string): string {
   return source
