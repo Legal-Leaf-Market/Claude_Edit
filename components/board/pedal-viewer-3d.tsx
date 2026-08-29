@@ -922,6 +922,112 @@ function TreadleBody({ model }: { model: PedalModel }) {
 }
 
 /**
+ * A WEDGE: a tuner whose top face is a ramp.
+ *
+ * Tall at the back, low at the front, so the display points at the player
+ * rather than at the ceiling. That slope is the entire silhouette: drawn as a
+ * box this pedal is an unmarked black rectangle, and a tuner is the one thing
+ * on a board whose whole job is to be read.
+ *
+ * BUILT FROM A SIDE PROFILE, EXTRUDED ACROSS THE WIDTH, rather than from a
+ * rotated box. A rotated box has to be shorter than the space it occupies and
+ * leaves the front and back faces at the wrong angle; a profile gives the true
+ * four-sided section for free, and the bevel comes off the extruder so the
+ * edges catch light like the cast ones on every other model here.
+ *
+ * THE RAMP CARRIES ITS OWN FITTINGS. The screen and the footswitch sit ON the
+ * slope, so they are placed here rather than by the generic groups in `Pedal`,
+ * which assume a flat top at `height / 2`. Same arrangement as the treadle: the
+ * numbers stay in the model, the branch that knows the geometry places them.
+ */
+function WedgeBody({ model }: { model: PedalModel }) {
+  const w = model.width * MM
+  const d = model.depth * MM
+  const h = model.height * MM
+
+  /*
+   * How much of the height survives at the front.
+   *
+   * Derived rather than stored, because it is a fact about the SHAPE of a
+   * tuner wedge and not a measurement of one pedal: the catalogue publishes a
+   * single height, which is the tall edge, and there is nowhere honest to put
+   * a second figure nobody has measured.
+   */
+  const frontH = h * 0.45
+  const tilt = Math.atan2(h - frontH, d)
+
+  const geometry = useMemo(() => {
+    const profile = new THREE.Shape()
+    profile.moveTo(-d / 2, -h / 2)
+    profile.lineTo(d / 2, -h / 2)
+    profile.lineTo(d / 2, -h / 2 + frontH)
+    profile.lineTo(-d / 2, h / 2)
+    profile.closePath()
+
+    const solid = new THREE.ExtrudeGeometry(profile, {
+      depth: w,
+      bevelEnabled: true,
+      bevelThickness: 0.008,
+      bevelSize: 0.008,
+      bevelSegments: 3,
+      curveSegments: 4,
+    })
+
+    /*
+     * The extruder works in its own frame: the shape lies in XY and grows along
+     * +Z. A quarter turn puts the profile in the ZY plane and the extrusion
+     * across the width, which is the orientation every other body here is in.
+     *
+     * MINUS A QUARTER, NOT PLUS, and the sign is not cosmetic. `rotateY(+PI/2)`
+     * maps a point to (z, y, -x), so the profile's depth axis comes out
+     * REVERSED: the first pass built a wedge that was tall at the front and low
+     * at the back, pointing its display at the wall behind the amp, with the
+     * decal and the screen floating off the body where the ramp used to be.
+     * `-PI/2` maps to (-z, y, x) and keeps front forward; the width is mirrored
+     * instead, which a symmetrical extrusion cannot notice.
+     */
+    solid.translate(0, 0, -w / 2)
+    solid.rotateY(-Math.PI / 2)
+    return solid
+  }, [w, d, h, frontH])
+
+  const texture = useSilkscreen(model, {
+    zMin: (-model.depth / 2) * DECAL_D,
+    zMax: (model.depth / 2) * DECAL_D,
+    width: model.width * DECAL_W,
+  })
+
+  /* The ramp's midpoint and its length, so everything mounted on it shares one
+     frame instead of each fitting solving the trigonometry again. */
+  const rampY = frontH / 2 - 0.0002
+  const rampLength = Math.hypot(d, h - frontH)
+
+  return (
+    <>
+      <mesh geometry={geometry} castShadow receiveShadow>
+        <meshPhysicalMaterial {...bodyMaterial(model.color)} />
+      </mesh>
+
+      <group position={[0, rampY, 0]} rotation={[tilt, 0, 0]}>
+        {texture && (
+          <mesh position={[0, 0.0009, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[w * DECAL_W, rampLength * DECAL_D]} />
+            <meshStandardMaterial map={texture} roughness={0.5} metalness={0.15} />
+          </mesh>
+        )}
+
+        {model.screen && model.style !== "wedge" && <Screen {...model.screen} />}
+
+        {/* At the low end of the ramp, which is where a foot lands. */}
+        {model.footswitches.map((sw, i) => (
+          <Footswitch key={i} {...sw} />
+        ))}
+      </group>
+    </>
+  )
+}
+
+/**
  * A ROUND body: a Fuzz Face.
  *
  * A 111mm circular casting, which is not a box in any direction and is the one
@@ -1035,6 +1141,8 @@ function Pedal({
         <TreadleBody model={model} />
       ) : model.style === "round" ? (
         <RoundBody model={model} />
+      ) : model.style === "wedge" ? (
+        <WedgeBody model={model} />
       ) : (
         <BoxBody model={model} />
       )}
@@ -1060,7 +1168,7 @@ function Pedal({
         pedal nobody has ever seen. The same is true of the Ibanez housing,
         which borrowed the mechanism.
       */}
-      {model.style !== "boss-compact" && (
+      {model.style !== "boss-compact" && model.style !== "wedge" && (
         <group position={[0, h / 2, 0]}>
           {model.footswitches.map((sw, i) => (
             <Footswitch key={i} {...sw} />

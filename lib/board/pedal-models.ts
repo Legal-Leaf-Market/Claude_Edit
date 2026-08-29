@@ -92,6 +92,15 @@ export type BodyStyle =
   | "treadle"
   /** A Fuzz Face: a shallow dome on a circular base, not a box at all. */
   | "round"
+  /**
+   * A tuner wedge: tall at the back, sloping down to the front.
+   *
+   * The slope is not styling, it is why you can read the thing standing up.
+   * A tuner drawn as a flat box points its display at the ceiling, and the one
+   * pedal on a board whose entire job is to be READ is the one that must not be
+   * a rectangle.
+   */
+  | "wedge"
 
 /**
  * STACKED IS A SECOND SHAFT, NOT A TALLER KNOB.
@@ -1947,6 +1956,43 @@ const CHASE_BLISS_MOOD: PedalModel = {
   note: "Two footswitches and two toggles on a 1590B, with sixteen dip switches on the back that are the real control set. Everything about it is a decision you make once.",
 }
 
+/**
+ * Korg's Pitchblack X: the one sloped enclosure here.
+ *
+ * WHY IT IS WORTH A NEW BODY STYLE. Every other pedal in this file is a box, a
+ * Boss casting, a treadle or a dome, and a tuner is none of them: the top face
+ * is a ramp so the display faces the player rather than the ceiling. Drawn flat
+ * it is an unmarked black rectangle, which is the exact failure the style
+ * branches exist to prevent.
+ *
+ * THE DISPLAY STAYS DARK. A specification for this model asked for an emissive
+ * readout showing a note letter and a tuning bar, and that is the one thing
+ * section 16 forbids inside a modelled screen: what a tuner reads depends on
+ * what you are playing, and drawing a needle is inventing a measurement the way
+ * a market price under MIN_SAMPLE_SIZE is. An unlit window is what the pedal
+ * looks like unplugged, and the wedge alone is enough to say "tuner".
+ */
+const KORG_PITCHBLACK_X: PedalModel = {
+  match: { brand: /^korg$/i, model: /\bpitch\s*black\b/i },
+  name: "Pitchblack X",
+  maker: "Korg",
+  style: "wedge",
+  ...catalogDims("korg-pitchblack-x"),
+  /* Charcoal rather than black. Pure #000 has no form under any lighting: the
+     chamfers and the slope both disappear and it renders as a hole. */
+  color: "#17191c",
+  ink: "#e8ebef",
+  knobs: [],
+  /* Most of the ramp. A tuner has nothing to set and everything to read. */
+  screen: { x: 0, z: -20, width: 44, depth: 30 },
+  footswitches: [{ x: 0, z: 36, radius: 9 }],
+  led: null,
+  /* Between the window and the switch, which is the only clear strip on a
+     face that is mostly display. */
+  legends: [{ text: "Pitchblack X", z: 14, size: 4.5 }],
+  note: "A wedge rather than a box: the top face is a ramp so the display faces you standing up, and the switch sits at the low front end where your foot lands.",
+}
+
 const TC_POLYTUNE_3: PedalModel = {
   match: { brand: /^tc\s*electronic$/i, model: /\bpoly\s*tune\b/i },
   name: "PolyTune 3",
@@ -2337,6 +2383,7 @@ export const PEDAL_MODELS: PedalModel[] = [
   WAMPLER_TUMNUS_DELUXE,
   CHASE_BLISS_MOOD,
   TC_POLYTUNE_3,
+  KORG_PITCHBLACK_X,
   /* The 2s before the Mini, whose pattern requires the word and would not take
      them, but the order says which is the specific one. */
   TC_HOF_2,

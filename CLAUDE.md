@@ -1143,6 +1143,36 @@ which shipped a Cry Baby cropped out of its own dialog. The real millimetres
 are still printed under the canvas, which is where a shopper reads how big the
 thing actually is.
 
+**THE WEDGE IS THE FOURTH BODY STYLE, AND IT EXISTS BECAUSE A TUNER IS THE ONE
+PEDAL WHOSE JOB IS TO BE READ.** A Korg Pitchblack X has a sloped top so the
+display faces the player rather than the ceiling; drawn as a box it is an
+unmarked black rectangle. It is built from a side profile extruded across the
+width rather than from a rotated box, and the ramp carries its own screen and
+footswitch, the way the treadle carries its plate: the numbers stay in the
+model, the branch that knows the geometry places them. **Watch the extruder's
+frame.** `rotateY(+PI/2)` maps a point to `(z, y, -x)`, which REVERSES the depth
+axis: the first build came out tall at the front, pointing its display at the
+wall, with the decal floating off the body. `-PI/2` keeps front forward and
+mirrors the width instead, which a symmetrical extrusion cannot notice.
+
+**ITS DISPLAY STAYS DARK, and this is where a specification was declined rather
+than followed.** An asset plan for this model asked for an emissive readout
+showing a note letter and a tuning bar. That is the one thing the rule above
+forbids: what a tuner reads depends on what you are playing, and drawing a
+needle is inventing a measurement in the same way a market price under
+`MIN_SAMPLE_SIZE` is. The wedge alone says "tuner".
+
+**AND THE RENDERER'S "HAS THIS PICTURE CHANGED" CHECK WAS WRONG BY A FACTOR OF
+THREE, WHICH THE WEDGE FOUND.** `looksTheSame` skipped rewriting a still when
+two images were within an average channel difference of 1.5, a number chosen on
+the assumption that a software rasteriser drifts between runs. Measured, it does
+not drift at all: two runs of an unchanged model are BIT IDENTICAL, and a real
+edit (a display a quarter smaller, moved 4mm) scores only 0.52. So the tolerance
+sat above the signal and a genuine change was reported as "unchanged" with the
+old file left on disk. It is 0.05 now, an order of magnitude clear of both
+numbers, and the measurements are in the file so the next person changes it with
+evidence rather than with an assumption.
+
 **EVERY BODY STYLE NEEDS A BRANCH IN THE VIEWER, AND A STYLE WITH NO BRANCH
 FAILS SILENTLY.** `boss-compact`, `treadle` and `round` all exist because the
 shape is the whole point: a wah is a chassis with two cheeks and a plate that
@@ -1532,6 +1562,9 @@ engine.
   another pedal's body. Where the casting really is shared and only the print
   differs, add a second entry spread from the first (`BOSS_DD2`, `PROCO_RAT2`);
   where the finish is unverified, let the honest generic take it.
+- Do NOT set a tolerance in `looksTheSame` from a guess about rasteriser noise.
+  The floor is zero, a real edit scores about 0.5, and the first guess of 1.5
+  silently kept a stale still on disk (section 16).
 - Do NOT add a `style` to a pedal model without adding its branch to the body
   switch in `components/board/pedal-viewer-3d.tsx`. A style with no branch does
   not error, it silently renders as a box, which is how a Cry Baby shipped as a

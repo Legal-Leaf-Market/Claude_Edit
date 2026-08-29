@@ -100,18 +100,37 @@ async function waitForStill(page: Page, label: string): Promise<Buffer> {
 }
 
 /**
- * A rough perceptual comparison, so an unchanged pedal keeps its committed file.
+ * Has the picture actually changed? Decoded pixels, with a hair of tolerance.
  *
- * Byte equality is useless here: a lossy encoder run twice over pixels that
- * differ in one channel of one texel writes a different file. What matters is
- * whether a human would call it a different picture, so this decodes both to
- * raw RGBA at a small size and asks how far apart they are on average. The
- * threshold is deliberately loose enough to absorb rasteriser noise and tight
- * enough that moving a knob 2mm fails it.
+ * Byte equality on the encoded file is useless: a lossy encoder run twice over
+ * pixels that differ in one channel of one texel writes a different file. So
+ * this decodes both and compares.
+ *
+ * THE THRESHOLD IS MEASURED, AND THE FIRST ONE WAS WRONG BY A FACTOR OF THREE.
+ * It was set to 1.5 on the assumption that a software rasteriser drifts between
+ * runs and that anything smaller than a visible edit would fall under it. Both
+ * halves were wrong, and the way it announced itself was a real change reported
+ * as "unchanged": shrinking this tuner's display by a quarter and moving it 4mm
+ * back was swallowed whole, and the file on disk stayed the old one.
+ *
+ * The actual numbers, measured on this renderer:
+ *
+ *   two runs of an UNCHANGED model      avg channel difference 0.0000, max 0
+ *   display 25% smaller, moved 4mm      avg 0.52 at 64px, 0.69 at 128px
+ *
+ * SwiftShader is deterministic here, so the noise floor is zero and the
+ * smallest edit worth noticing is half a unit. 0.05 sits an order of magnitude
+ * clear of both: it will not rewrite 89 files because a different machine's
+ * rasteriser rounds differently, and it cannot miss a moved control.
+ *
+ * 128px rather than 64: the same cost to a rounding error, twice the signal
+ * from a small part like an LED or a legend.
  */
+const SAME_PICTURE_TOLERANCE = 0.05
+
 async function looksTheSame(a: Buffer, b: Buffer): Promise<boolean> {
   const raw = (buffer: Buffer) =>
-    sharp(buffer).resize(64, 64, { fit: "fill" }).ensureAlpha().raw().toBuffer()
+    sharp(buffer).resize(128, 128, { fit: "fill" }).ensureAlpha().raw().toBuffer()
 
 
   const [left, right] = await Promise.all([raw(a), raw(b)])
@@ -119,7 +138,7 @@ async function looksTheSame(a: Buffer, b: Buffer): Promise<boolean> {
 
   let total = 0
   for (let i = 0; i < left.length; i++) total += Math.abs(left[i] - right[i])
-  return total / left.length < 1.5
+  return total / left.length < SAME_PICTURE_TOLERANCE
 }
 
 async function main() {
