@@ -922,6 +922,112 @@ function TreadleBody({ model }: { model: PedalModel }) {
 }
 
 /**
+ * A WEDGE: a tuner whose top face is a ramp.
+ *
+ * Tall at the back, low at the front, so the display points at the player
+ * rather than at the ceiling. That slope is the entire silhouette: drawn as a
+ * box this pedal is an unmarked black rectangle, and a tuner is the one thing
+ * on a board whose whole job is to be read.
+ *
+ * BUILT FROM A SIDE PROFILE, EXTRUDED ACROSS THE WIDTH, rather than from a
+ * rotated box. A rotated box has to be shorter than the space it occupies and
+ * leaves the front and back faces at the wrong angle; a profile gives the true
+ * four-sided section for free, and the bevel comes off the extruder so the
+ * edges catch light like the cast ones on every other model here.
+ *
+ * THE RAMP CARRIES ITS OWN FITTINGS. The screen and the footswitch sit ON the
+ * slope, so they are placed here rather than by the generic groups in `Pedal`,
+ * which assume a flat top at `height / 2`. Same arrangement as the treadle: the
+ * numbers stay in the model, the branch that knows the geometry places them.
+ */
+function WedgeBody({ model }: { model: PedalModel }) {
+  const w = model.width * MM
+  const d = model.depth * MM
+  const h = model.height * MM
+
+  /*
+   * How much of the height survives at the front.
+   *
+   * Derived rather than stored, because it is a fact about the SHAPE of a
+   * tuner wedge and not a measurement of one pedal: the catalogue publishes a
+   * single height, which is the tall edge, and there is nowhere honest to put
+   * a second figure nobody has measured.
+   */
+  const frontH = h * 0.45
+  const tilt = Math.atan2(h - frontH, d)
+
+  const geometry = useMemo(() => {
+    const profile = new THREE.Shape()
+    profile.moveTo(-d / 2, -h / 2)
+    profile.lineTo(d / 2, -h / 2)
+    profile.lineTo(d / 2, -h / 2 + frontH)
+    profile.lineTo(-d / 2, h / 2)
+    profile.closePath()
+
+    const solid = new THREE.ExtrudeGeometry(profile, {
+      depth: w,
+      bevelEnabled: true,
+      bevelThickness: 0.008,
+      bevelSize: 0.008,
+      bevelSegments: 3,
+      curveSegments: 4,
+    })
+
+    /*
+     * The extruder works in its own frame: the shape lies in XY and grows along
+     * +Z. A quarter turn puts the profile in the ZY plane and the extrusion
+     * across the width, which is the orientation every other body here is in.
+     *
+     * MINUS A QUARTER, NOT PLUS, and the sign is not cosmetic. `rotateY(+PI/2)`
+     * maps a point to (z, y, -x), so the profile's depth axis comes out
+     * REVERSED: the first pass built a wedge that was tall at the front and low
+     * at the back, pointing its display at the wall behind the amp, with the
+     * decal and the screen floating off the body where the ramp used to be.
+     * `-PI/2` maps to (-z, y, x) and keeps front forward; the width is mirrored
+     * instead, which a symmetrical extrusion cannot notice.
+     */
+    solid.translate(0, 0, -w / 2)
+    solid.rotateY(-Math.PI / 2)
+    return solid
+  }, [w, d, h, frontH])
+
+  const texture = useSilkscreen(model, {
+    zMin: (-model.depth / 2) * DECAL_D,
+    zMax: (model.depth / 2) * DECAL_D,
+    width: model.width * DECAL_W,
+  })
+
+  /* The ramp's midpoint and its length, so everything mounted on it shares one
+     frame instead of each fitting solving the trigonometry again. */
+  const rampY = frontH / 2 - 0.0002
+  const rampLength = Math.hypot(d, h - frontH)
+
+  return (
+    <>
+      <mesh geometry={geometry} castShadow receiveShadow>
+        <meshPhysicalMaterial {...bodyMaterial(model.color)} />
+      </mesh>
+
+      <group position={[0, rampY, 0]} rotation={[tilt, 0, 0]}>
+        {texture && (
+          <mesh position={[0, 0.0009, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[w * DECAL_W, rampLength * DECAL_D]} />
+            <meshStandardMaterial map={texture} roughness={0.5} metalness={0.15} />
+          </mesh>
+        )}
+
+        {model.screen && model.style !== "wedge" && <Screen {...model.screen} />}
+
+        {/* At the low end of the ramp, which is where a foot lands. */}
+        {model.footswitches.map((sw, i) => (
+          <Footswitch key={i} {...sw} />
+        ))}
+      </group>
+    </>
+  )
+}
+
+/**
  * A ROUND body: a Fuzz Face.
  *
  * A 111mm circular casting, which is not a box in any direction and is the one
@@ -993,19 +1099,27 @@ function Pedal({
   model,
   engaged,
   fit,
+  still,
 }: {
   model: PedalModel
   engaged: boolean
   fit: number
+  still: boolean
 }) {
   const group = useRef<THREE.Group>(null)
   const h = model.height * MM
 
   /* A hair of drift so it never looks frozen, far too slow to read as a spin.
      Section 16's "nothing spins at idle" is about attention-seeking motion;
-     this is below the threshold of noticing and stops on any interaction. */
+     this is below the threshold of noticing and stops on any interaction.
+
+     OFF IN A STILL, and that is the whole reason `still` exists. The offline
+     renderer photographs this scene, and a rotation that accumulates from a
+     clock means two runs of the same model produce two slightly different
+     pictures. The diff would then show every image changing on every run, which
+     is exactly how a committed asset stops being reviewable. */
   useFrame((state) => {
-    if (!group.current) return
+    if (!group.current || still) return
     group.current.rotation.y += Math.sin(state.clock.elapsedTime * 0.2) * 0.00012
   })
 
@@ -1027,6 +1141,8 @@ function Pedal({
         <TreadleBody model={model} />
       ) : model.style === "round" ? (
         <RoundBody model={model} />
+      ) : model.style === "wedge" ? (
+        <WedgeBody model={model} />
       ) : (
         <BoxBody model={model} />
       )}
@@ -1052,7 +1168,7 @@ function Pedal({
         pedal nobody has ever seen. The same is true of the Ibanez housing,
         which borrowed the mechanism.
       */}
-      {model.style !== "boss-compact" && (
+      {model.style !== "boss-compact" && model.style !== "wedge" && (
         <group position={[0, h / 2, 0]}>
           {model.footswitches.map((sw, i) => (
             <Footswitch key={i} {...sw} />
@@ -1070,9 +1186,23 @@ function Pedal({
 export function PedalViewer3D({
   model,
   engaged,
+  still = false,
 }: {
   model: PedalModel
   engaged: boolean
+  /**
+   * A PHOTOGRAPH RATHER THAN A TOY, for the offline renderer only.
+   *
+   * `scripts/render-pedal-models.ts` mounts this exact component to produce the
+   * still artwork the cards fall back to when a listing has no photo, which is
+   * section 7's "never fork the logic" applied to a picture: a second scene
+   * built node-side would drift from this one, and then the pedal on the card
+   * would stop being the pedal in the dialog.
+   *
+   * It turns off the two things that make a still unreproducible: the idle
+   * drift, and controls that could be nudged. Nothing user-facing passes it.
+   */
+  still?: boolean
 }) {
   /* The longest side on the floor decides the scale, so a wah lying along z
      and a wide 1590BB lying along x both end up filling the same frame. */
@@ -1082,7 +1212,19 @@ export function PedalViewer3D({
     <Canvas
       shadows
       dpr={[1, 2]}
-      camera={{ position: [1.35, 1.15, 1.85], fov: 32 }}
+      /*
+       * BACK OFF A LITTLE FOR A STILL, and it is framing rather than geometry.
+       *
+       * `FIT` scales the pedal against the VERTICAL field of view, and the
+       * dialog's canvas is wider than it is tall, so the horizontal has room to
+       * spare. A still is square, that spare room is gone, and the first run
+       * came out with a Cry Baby's toe off the left edge. The pedal is
+       * unchanged; the camera stands where it can see all of it.
+       */
+      camera={{
+        position: still ? [1.35 * 1.2, 1.15 * 1.2, 1.85 * 1.2] : [1.35, 1.15, 1.85],
+        fov: 32,
+      }}
       /* The scene's own ground, so the canvas is not a transparent hole in the
          panel and the shadow has something to fall on. */
       style={{ background: "transparent" }}
@@ -1111,7 +1253,7 @@ export function PedalViewer3D({
         <directionalLight position={[-2.4, 1.4, -1.2]} intensity={0.7} color="#9fc0ff" />
         <directionalLight position={[0, 0.6, -3]} intensity={0.5} color="#ffffff" />
 
-        <Pedal model={model} engaged={engaged} fit={fit} />
+        <Pedal model={model} engaged={engaged} fit={fit} still={still} />
 
         <ContactShadows
           /* Under the scaled pedal, not the unscaled one: a shadow floating
@@ -1123,7 +1265,7 @@ export function PedalViewer3D({
           far={1.4}
         />
 
-        <OrbitControls
+        {!still && <OrbitControls
           makeDefault
           enablePan={false}
           minDistance={1.15}
@@ -1133,7 +1275,7 @@ export function PedalViewer3D({
           maxPolarAngle={Math.PI - 0.15}
           enableDamping
           dampingFactor={0.08}
-        />
+        />}
       </Suspense>
     </Canvas>
   )

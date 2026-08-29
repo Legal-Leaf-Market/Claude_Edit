@@ -3,9 +3,10 @@
 import { useState } from "react"
 import Link from "next/link"
 import { ExternalLink, MapPin, RotateCcw, Truck } from "lucide-react"
-import { AddToCartButton } from "@/components/add-to-cart-button"
+import { AddToCartKnob } from "@/components/add-to-cart-button"
 import { Badge } from "@/components/ui/badge"
 import { ListingImage } from "./listing-image"
+import { renderForGear } from "@/lib/board/pedal-render"
 import { formatMargin, formatPrice, sourceLabel, timeAgo } from "@/lib/utils"
 import type { Source } from "@/lib/db/schema"
 import type { SearchHit } from "@/lib/search/types"
@@ -30,6 +31,17 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
   const age = timeAgo(hit.listedAt)
   const gearName = [hit.gearBrand, hit.gearModel].filter(Boolean).join(" ")
 
+  /*
+   * A MEASURED MODEL WHERE THE SELLER GAVE US NOTHING.
+   *
+   * Keyed off the resolved canonical gear rather than the listing title, so it
+   * inherits the resolver's judgement instead of guessing from marketing prose:
+   * a title reading "Boss DS-1 Distortion Pedal Bundle w/ Cables" is not a
+   * picture of a DS-1 alone, and `canonical_gear` is where "this listing is
+   * that instrument" has already been decided once, properly.
+   */
+  const modelled = renderForGear(hit.gearBrand, hit.gearModel)
+
   return (
     <article className="flip-card h-full" data-flipped={flipped}>
       <div className="flip-card-inner h-full">
@@ -39,7 +51,13 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
           data-best={hit.isDeal ? "true" : undefined}
         >
           <div className="relative">
-            <ListingImage src={hit.primaryImageUrl} alt={hit.title} className="h-64 w-full sm:h-72" />
+            <ListingImage
+              src={hit.primaryImageUrl}
+              alt={hit.title}
+              modelled={modelled}
+              category={hit.gearCategory}
+              className="h-64 w-full sm:h-72"
+            />
             {hit.isDeal && margin && (
               <div className="absolute left-2 top-2">
                 <Badge variant="deal">{margin} below market</Badge>
@@ -89,26 +107,40 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
                 {age && <span>{age}</span>}
               </div>
 
-              <a
-                href={`/go/${hit.id}`}
-                rel="nofollow sponsored noopener"
-                target="_blank"
-                className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[10px] bg-gradient-to-r from-[var(--sage-dk)] to-[var(--sage)] text-[13px] font-bold tracking-[0.02em] text-[#04140a] shadow-[0_4px_14px_rgba(34,197,94,.2)] transition-all hover:brightness-110 hover:shadow-[0_6px_20px_rgba(34,197,94,.35)]"
-              >
-                View on {sourceLabel(hit.source)}
-                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-              </a>
+              {/*
+                ONE WAY OUT, AND IT IS THE ONLY THING ON THIS CARD ALLOWED TO
+                SHOUT. This used to be a hand-rolled full-width green gradient
+                with a second full-width bar under it for the cart, on every
+                card, so a grid of sixteen listings was thirty-two bars and no
+                hierarchy at all. `.stomp` is the site's own control: a metal
+                enclosure, muted chrome at rest, and the LED coming up under the
+                pointer. Section 16 wrote that rule and the search grid was the
+                one place ignoring it.
 
-              <AddToCartButton
-                item={{
-                  listingId: hit.id,
-                  source: hit.source as Source,
-                  title: hit.title,
-                  priceCents: hit.priceCents,
-                  currency: hit.currency,
-                  image: hit.primaryImageUrl,
-                }}
-              />
+                Still `/go`, still nofollow sponsored, still a new tab.
+              */}
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/go/${hit.id}`}
+                  rel="nofollow sponsored noopener"
+                  target="_blank"
+                  className="stomp min-w-0 flex-1"
+                >
+                  <span className="truncate">View on {sourceLabel(hit.source)}</span>
+                  <ExternalLink className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
+                </a>
+
+                <AddToCartKnob
+                  item={{
+                    listingId: hit.id,
+                    source: hit.source as Source,
+                    title: hit.title,
+                    priceCents: hit.priceCents,
+                    currency: hit.currency,
+                    image: hit.primaryImageUrl,
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>

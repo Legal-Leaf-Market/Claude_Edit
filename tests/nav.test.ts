@@ -33,6 +33,7 @@ const STATIC_ROUTES = new Set([
   "/cart",
   "/alerts",
   "/pedalboard",
+  "/chord-teacher",
   "/rigs",
   "/sign-in",
   "/sign-up",

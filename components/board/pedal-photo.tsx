@@ -1,6 +1,8 @@
 "use client"
 
 import { useCallback, useState } from "react"
+import { ModelledRender } from "@/components/modelled-render"
+import { renderForGear } from "@/lib/board/pedal-render"
 
 /**
  * A catalogue pedal's photo, with a drawn enclosure standing in when there
@@ -25,9 +27,30 @@ import { useCallback, useState } from "react"
  * fill a uniform box slices the corners off half the pedals, and a pedal with
  * its footswitch cropped away is worse than one that sits small in its frame.
  */
-export function PedalPhoto({ src, alt }: { src: string | null; alt: string }) {
+export function PedalPhoto({
+  src,
+  alt,
+  brand,
+  model,
+}: {
+  src: string | null
+  alt: string
+  /**
+   * Which pedal this is, so a missing photo can fall back to the measured
+   * model rather than to the drawn enclosure.
+   *
+   * The lookup happens HERE rather than in each caller, so a second shelf
+   * somewhere cannot quietly ship without it. It resolves through `modelFor`,
+   * which is brand-scoped and whole-word: a pedal nobody has measured gets
+   * null and keeps the enclosure glyph, which is the honest answer and the
+   * common one.
+   */
+  brand?: string
+  model?: string
+}) {
   const [failed, setFailed] = useState(false)
   const checkAlreadyFailed = useAlreadyFailed(setFailed)
+  const modelled = renderForGear(brand, model)
 
   return (
     <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[var(--radius-md)] bg-[var(--chip)]">
@@ -42,6 +65,8 @@ export function PedalPhoto({ src, alt }: { src: string | null; alt: string }) {
           onError={() => setFailed(true)}
           className="absolute inset-0 h-full w-full object-contain p-3 transition-transform duration-200 group-hover:scale-[1.03]"
         />
+      ) : modelled ? (
+        <ModelledRender src={modelled.src} name={modelled.name} className="absolute inset-0" />
       ) : (
         <EnclosureGlyph />
       )}
@@ -57,9 +82,20 @@ export function PedalPhoto({ src, alt }: { src: string | null; alt: string }) {
  * matters: the fallback, because a bin of forty broken-image glyphs is worse
  * than a bin of forty drawn enclosures.
  */
-export function PedalThumb({ src, alt }: { src: string | null; alt: string }) {
+export function PedalThumb({
+  src,
+  alt,
+  brand,
+  model,
+}: {
+  src: string | null
+  alt: string
+  brand?: string
+  model?: string
+}) {
   const [failed, setFailed] = useState(false)
   const checkAlreadyFailed = useAlreadyFailed(setFailed)
+  const modelled = renderForGear(brand, model)
 
   return (
     <span className="flex h-9 w-9 flex-none items-center justify-center overflow-hidden rounded-[6px] bg-[var(--chip)]">
@@ -74,6 +110,9 @@ export function PedalThumb({ src, alt }: { src: string | null; alt: string }) {
           onError={() => setFailed(true)}
           className="h-full w-full object-contain p-0.5"
         />
+      ) : modelled ? (
+        /* No legend at 36px: see ModelledRender's `compact`. */
+        <ModelledRender src={modelled.src} name={modelled.name} className="h-full w-full" compact />
       ) : (
         <EnclosureGlyph />
       )}

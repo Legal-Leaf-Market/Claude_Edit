@@ -222,7 +222,7 @@ function RecordIndex() {
           <li key={`${rig.slug}-${record.title}`}>
             <Link
               href={`/rigs/${rig.slug}`}
-              className="card-face flex h-full flex-col gap-1 p-4 transition-colors hover:border-[var(--chrome-dk)]"
+              className="card-face tile flex h-full flex-col gap-1 p-4"
             >
               <span className="flex items-baseline justify-between gap-3">
                 <span className="card-title text-[var(--text)]">{record.title}</span>

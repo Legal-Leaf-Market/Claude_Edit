@@ -246,7 +246,9 @@ app/
   rigs/                     Artist rigs, and the records each is documented on
   pedalboard/               The rig builder (chain check, power, live pricing)
   alerts/, sign-in/, sign-up/
+  chord-teacher/            Guitar harmony, all computed (section 22)
   stompbox/               THE GUIDE. /stompbox/* here, / on stompbox.world (section 20)
+  render-bench/[slug]/      The offline renderer's subject. 404s unless RENDER_BENCH=1
   api/
     health                  Freshness and config, read this first when confused
     ask                     The Groq assistant. 503s when unconfigured
@@ -266,6 +268,9 @@ lib/
   ai/                       Groq client + the allowlisted DB tools (section 14)
   pedalboard/chain.ts       Signal-chain order rules and power estimates
   regions.ts                Who can buy from which store (section 15)
+  chords/                   Harmony: qualities, keys, voicing search (section 22)
+  board/pedal-models.ts     THE 88 MEASURED PEDALS, in millimetres (section 16)
+  board/pedal-render.ts     Which committed still belongs to which pedal
   ingestion/ebay-feed.ts    Transport + TSV parsing (section 3)
   ingestion/ebay-ingest.ts  The three eBay jobs
   ingestion/reverb-awin.ts  Awin feed only. Never the Reverb API (section 2)
@@ -284,7 +289,9 @@ lib/
   deals/pricing.ts          Rolling median, deal threshold
   search/                   Typesense with a real Postgres fallback (section 6)
   queue/                    BullMQ; the OTHER way to run ingestion (section 7)
-scripts/                    migrate, seed, worker, run-ingest, reindex
+public/pedals/              The 88 stills. Generated, committed, never hand-drawn
+scripts/                    migrate, seed, worker, run-ingest, reindex,
+                            render-pedal-models (section 16)
 ```
 
 ---
@@ -649,6 +656,7 @@ process, and the accident is far likelier.
 | `NEXT_PUBLIC_STOMPBOX_HOST` | One extra Host that serves the STANDALONE guide rather than the aggregator. `stompbox.world` and `www.stompbox.world` are always recognised; this exists so a Vercel preview URL can be pointed at the standalone shape without editing `lib/stompbox/host.ts`. Unset is normal. |
 | `GEAR_AVAIL_URL` | Origin the guide uses for absolute links back into the catalogue. The guide is served on a different domain, so `/gear/[slug]` cannot be relative there. Falls back to `SITE_URL`, then to production. |
 | `YOUTUBE_API_KEY` | Anderton's TV metadata and comments, via the YouTube Data API v3. The reasoning, including why transcripts are off limits, is in the `youtube` block of `lib/env.ts`. Unset means the reader no-ops. |
+| `RENDER_BENCH` | `/render-bench/[slug]`, the harness `scripts/render-pedal-models.ts` photographs to produce the committed pedal stills. Unset is the expected state everywhere, including locally: the route 404s until it is `1`. It is the one canvas that mounts outside the pick-it-up dialog, so it fails closed like `CRON_SECRET` rather than relying on nothing linking to it (section 16). |
 
 | `IMPACT_ACCOUNT_SID` / `IMPACT_AUTH_TOKEN` | Impact's partner REST API (`api.impact.com/Mediapartners/{sid}/Catalogs/{id}/Items`, HTTP Basic, JSON, paginated), which is the OTHER way into Anderton's and the ONLY way into the other seven merchants. Both credentials are on Impact's API settings page and both are shared by every advertiser on the account. **Prefer this over the FTP block where it works**: ordinary HTTPS with no control connection or passive ports, and a slice is a page rather than a re-download of the whole catalogue per chunk. **It does NOT work for Anderton's**, and that is settled rather than suspected: see the note below the table. |
 | `IMPACT_ANDERTONS_CATALOG_ID` | Defaults to 30480 (campaign 43829, 27,052 products) because somebody read it off the platform and it is not a secret. |
@@ -1135,6 +1143,36 @@ which shipped a Cry Baby cropped out of its own dialog. The real millimetres
 are still printed under the canvas, which is where a shopper reads how big the
 thing actually is.
 
+**THE WEDGE IS THE FOURTH BODY STYLE, AND IT EXISTS BECAUSE A TUNER IS THE ONE
+PEDAL WHOSE JOB IS TO BE READ.** A Korg Pitchblack X has a sloped top so the
+display faces the player rather than the ceiling; drawn as a box it is an
+unmarked black rectangle. It is built from a side profile extruded across the
+width rather than from a rotated box, and the ramp carries its own screen and
+footswitch, the way the treadle carries its plate: the numbers stay in the
+model, the branch that knows the geometry places them. **Watch the extruder's
+frame.** `rotateY(+PI/2)` maps a point to `(z, y, -x)`, which REVERSES the depth
+axis: the first build came out tall at the front, pointing its display at the
+wall, with the decal floating off the body. `-PI/2` keeps front forward and
+mirrors the width instead, which a symmetrical extrusion cannot notice.
+
+**ITS DISPLAY STAYS DARK, and this is where a specification was declined rather
+than followed.** An asset plan for this model asked for an emissive readout
+showing a note letter and a tuning bar. That is the one thing the rule above
+forbids: what a tuner reads depends on what you are playing, and drawing a
+needle is inventing a measurement in the same way a market price under
+`MIN_SAMPLE_SIZE` is. The wedge alone says "tuner".
+
+**AND THE RENDERER'S "HAS THIS PICTURE CHANGED" CHECK WAS WRONG BY A FACTOR OF
+THREE, WHICH THE WEDGE FOUND.** `looksTheSame` skipped rewriting a still when
+two images were within an average channel difference of 1.5, a number chosen on
+the assumption that a software rasteriser drifts between runs. Measured, it does
+not drift at all: two runs of an unchanged model are BIT IDENTICAL, and a real
+edit (a display a quarter smaller, moved 4mm) scores only 0.52. So the tolerance
+sat above the signal and a genuine change was reported as "unchanged" with the
+old file left on disk. It is 0.05 now, an order of magnitude clear of both
+numbers, and the measurements are in the file so the next person changes it with
+evidence rather than with an assumption.
+
 **EVERY BODY STYLE NEEDS A BRANCH IN THE VIEWER, AND A STYLE WITH NO BRANCH
 FAILS SILENTLY.** `boss-compact`, `treadle` and `round` all exist because the
 shape is the whole point: a wah is a chassis with two cheeks and a plate that
@@ -1266,6 +1304,95 @@ Fuzz Face's brand pattern was anchored on `arbiter` while both datasets say
 "Dallas Arbiter", so the one round pedal on the site matched nothing at all and
 quietly rendered as a box. Checking the match table against the real data is
 what found it; reading the model file could not have.
+
+**AN EMPTY BOARD IS A SHELF, NOT A SENTENCE.** `/pedalboard` opened as a dashed
+rectangle reading "Empty board. Add a pedal", on the page that is meant to sell
+the whole tool, with the one thing this project owns outright, eighty-eight
+pedals measured in millimetres and now photographed, two clicks away behind a
+picker nobody opens on arrival. The empty state is the pedals now: ONE PER SLOT,
+in signal order, so the first thing the page says is that it understands the
+order. Only modelled pedals, because a shelf of the honest generic would be a
+shelf of identical boxes. It derives from the catalogue prop and the guide
+dataset like the picker does, so it works unchanged on both domains and fetches
+nothing (section 18).
+
+**THE SEARCH GRID WAS THE ONE PLACE IGNORING THE RULE ABOUT GREEN.** Every
+listing card carried a hand-rolled full-width `--sage` gradient for the way out
+and a second full-width bar under it for the cart, so sixteen listings meant
+thirty-two bars, half of them the site's only saturated colour, on the least
+important element on the page. That is the opposite of what this section says:
+the LED means "this is lit", and full chrome is earned by hover and by the ONE
+primary action per view. The card now uses `.stomp`, which is the system's own
+control, and the cart is a `.knob` beside it, because going out to the shop is
+the action and adding to a cart is not. The gear page's per-listing rows got the
+same treatment for the same reason: twenty green gradients competing with the
+twenty prices next to them.
+
+**A SECTION HEADING IS PRINTED, NOT JUST BOLD.** `.section-head` runs a hairline
+out from the title to the right edge, which is what a silkscreened panel does to
+tie a legend to the control it labels. The home page was eight bands of content
+whose headings were all the same 20px of bold display type, so nothing started
+and nothing ended. (Watch the ordering: the rule is an `::after`, so it is the
+last CHILD but not the last ELEMENT child, and a `:last-child` rule to push the
+"see all" link past it grabbed the `<h2>` on any heading with no link and shipped
+two titles right-aligned.)
+
+**`.tile` IS WHAT MAKES A GRID OF LABELS READ AS THINGS YOU CAN PRESS.** A sheen
+along the top edge and a lift under the pointer, which is the same light this
+whole system uses: from above, on metal, coming up to meet your hand. Thirty
+category, store and community boxes at one elevation in one colour is most of
+what made the home page read as a spreadsheet.
+
+**AND BELOW THE MEASURED MODEL THERE IS THE CATEGORY, DRAWN.** Most of the
+catalogue is guitars, amps, synths and cymbals that nobody has modelled, and
+those cards fell through to a broken-image glyph. `.silhouette` puts a large
+soft `CategoryIcon` in the category's own accent behind the category's name: it
+says a true and specific thing about the listing without claiming to be a
+picture of the unit. Quiet on purpose, because it must not compete with the
+cards beside it that do have a real photograph.
+
+**THE MODELS ARE PHOTOGRAPHED OFFLINE, AND THAT IS WHAT PUT THEM ON THE
+SITE.** Eighty-eight measured pedals existed for months and almost nobody saw
+one, because the only way in was a hover-only icon on a rig you had to load
+first. Meanwhile every listing with no usable photo rendered as a grey
+rectangle with a broken-image glyph, which on `/used/effects-pedals` was every
+card on the page. `scripts/render-pedal-models.ts` drives a headless browser
+over `/render-bench/<slug>`, screenshots the SAME viewer the dialog mounts, and
+commits the stills to `public/pedals`; `lib/board/pedal-render.ts` hands one to
+a card when the seller gave us nothing and `modelFor` recognises the pedal.
+
+**It does not breach the no-canvas rule, and the reason is worth stating rather
+than assuming.** What ships is a WebP in an `<img>`, so the page is still
+indexable, tabbable, screen-reader reachable and still carries `/go`, which is
+the whole of what that rule protects. The bench is the one place a canvas
+mounts outside the dialog, it fails closed on `RENDER_BENCH=1` the way
+`CRON_SECRET` and `ADMIN_PASSCODE` do, and nothing links to it.
+
+**One renderer, still.** The stills are photographs OF the dialog's pedal, not a
+second drawing of it. A scene assembled node-side would have been easier and
+would have drifted, and the way that drift announces itself is not an error: it
+is a card whose picture slowly stops matching the object you pick up.
+
+**And the card says it is a drawing.** `ModelledRender` prints "Illustration" at
+any size the type is legible, and the alt text says it at every size. A render
+silently standing in for a photograph is a claim about what arrives in the
+post: this colour, this clean, this complete, with these knobs still on it. The
+model knows the shape and knows nothing else, which is the same honesty as
+`p3d-truth` in the inspector and as refusing a market price under
+`MIN_SAMPLE_SIZE`.
+
+**EVERY CONTROL FOR A PEDAL ON THE BOARD LIVES INSIDE ITS CARD, because
+`preserve-3d` decides what a pointer can hit.** Swap and pick-up were a row
+floated under the enclosure by the builder, and they were not clickable at all:
+`.deck-row` carries `rotateX(13deg)`, so the pedals are hit-tested against their
+PROJECTED geometry while a plain absolutely-positioned row is hit-tested against
+its flat layout box, and the neighbouring pedal's projection sat on top of it.
+`document.elementFromPoint` returned the sibling wrapper. Nothing errored, no
+test failed, and the only way into the 3D viewer on this site simply did not
+respond to a pointer. The remove button had always worked because it was inside
+the card. They are all inside it now, and MUTED AT REST RATHER THAN HIDDEN:
+opacity 0 until hover meant they did not exist on a touch screen and nobody
+found them on a desktop either.
 
 **Godot is on the table for one thing only.** A separate 3D "rig room" (cables
 that hang, footswitches you stomp, knobs you hear) is a legitimate toy and a
@@ -1435,6 +1562,9 @@ engine.
   another pedal's body. Where the casting really is shared and only the print
   differs, add a second entry spread from the first (`BOSS_DD2`, `PROCO_RAT2`);
   where the finish is unverified, let the honest generic take it.
+- Do NOT set a tolerance in `looksTheSame` from a guess about rasteriser noise.
+  The floor is zero, a real edit scores about 0.5, and the first guess of 1.5
+  silently kept a stale still on disk (section 16).
 - Do NOT add a `style` to a pedal model without adding its branch to the body
   switch in `components/board/pedal-viewer-3d.tsx`. A style with no branch does
   not error, it silently renders as a box, which is how a Cry Baby shipped as a
@@ -1460,6 +1590,31 @@ engine.
 - Do NOT let a model claim to be the actual product. A measured one says what
   its shape tells you, a derived one says plainly that it is not this pedal,
   and the photograph beside it is the real one.
+- Do NOT put a saturated green bar on a repeated element. The LED is for
+  things that are lit and full chrome is earned by ONE primary action per view;
+  a grid of cards gets `.stomp`, and the secondary action gets a `.knob`.
+- Do NOT reach for `:last-child` inside `.section-head`. The rule is an
+  `::after`, so `:last-child` matches the `<h2>` whenever there is no link.
+- Do NOT hand-write a second scene to produce the pedal stills. They are
+  screenshots of the real viewer through `/render-bench`, and a node-side scene
+  is section 7 broken in the one place where the drift is a picture rather than
+  an error (section 16).
+- Do NOT open the render bench in production. It is the one canvas outside the
+  dialog and it fails closed on `RENDER_BENCH=1`; "nobody links to it" is not a
+  control.
+- Do NOT show a render without saying it is one. `ModelledRender` carries the
+  label and the alt text; swapping the `src` on an `<img>` instead makes a
+  drawing look like a photograph of the unit being sold.
+- Do NOT reach for a render by matching the listing TITLE. It goes through the
+  resolved `canonical_gear` brand and model, so it inherits the resolver's
+  judgement; a title reading "DS-1 bundle w/ cables" is not a picture of a DS-1.
+- Do NOT commit a still with no model behind it, or a model with no still. A
+  test walks both directions: an orphan file reads as coverage, and a missing
+  one is an `<img>` asking for a file that is not there.
+- Do NOT put a pedal's controls outside its enclosure. `.deck-row` is a
+  `preserve-3d` surface, so anything outside the card is hit-tested against a
+  flat box the neighbouring pedal's projection covers, and the control silently
+  stops responding (section 16).
 - Do NOT put the board's `perspective` on `.deck`. `.deck` is the horizontal
   scroller, and any overflow other than visible makes an element a grouping
   element, which forces `transform-style: flat` and silently collapses every
@@ -1507,6 +1662,21 @@ engine.
   and a squash leaves it sharing no history with `main`, so the next pull
   request re-proposes the whole tree and conflicts on every file both sides
   touched. Merge commits, every time (section 10).
+- Do NOT store a chord as fret numbers in `lib/chords`. A stored grip is a
+  chord in one key and one tuning, and it is what made every other bug in the
+  studio this was ported from possible (section 22).
+- Do NOT let the modulation planner emit a chain it has not verified. A route
+  that does not exist for a key pair gets the reason, not four plausible
+  chords.
+- Do NOT let a reharmonisation change a label without changing the notes. Each
+  one returns a chord or refuses with a reason; the voicing search does the
+  rest.
+- Do NOT measure voice leading as fret deltas on the same string. It skips
+  every string muted at either end and it describes the hand rather than the
+  ear (section 22).
+- Do NOT spread the fretboard's four interval hues to anything else. They are
+  meaning on a diagram, bounded to the dots and their legend, and every dot
+  prints its degree too.
 - Do NOT point the test suite at a database you care about; it truncates.
 - Do NOT turn a capture into a `marketplace_listings` row because the capture
   exists. Reading a page you are on is research; republishing a catalogue is
@@ -1869,3 +2039,84 @@ product would be listed twice at one store and counted twice in its median.
 when a feed starts working for a source, clear its captured rows. It expires
 them rather than deleting, so the prices they recorded stay in the history.
 
+---
+
+## 22. The chord teacher: everything on it is computed
+
+`/chord-teacher`, `lib/chords/`, `components/chord-teacher/`. A guitar harmony
+workbench: what a chord is made of, where it sits on the neck, what moves when
+one chord becomes the next, and how to get from one key to another.
+
+**PORTED FROM A SINGLE-FILE STUDIO, AND THE PORT IS THE POINT.** The original
+was 1,400 lines of Tailwind CDN and vanilla JS with a real Web Audio pluck
+synth, genuinely good explanatory prose, and one structural decision that made
+most of it untrue: **every chord was six hand-typed fret numbers.** From that
+one decision:
+
+- A chord nobody had typed did not exist.
+- Every grip was a standard-tuning grip, so choosing DADGAD silently showed the
+  wrong notes under the right names.
+- The "altered dominant" button rewrote the chord's NAME and FORMULA and left
+  the frets alone, so the panel read 7#9b13 while the guitar played a plain
+  dominant seventh.
+- The "shell voicing" button did arithmetic on fret NUMBERS (`frets[1] - 1`,
+  `frets[1] + 1`) with no idea what note it landed on, and wrote the result
+  back over the stored grip, so the toggle could never be undone.
+- "Tritone sub" always produced Db7(#11), whatever chord you pressed it on.
+  Correct for a G7 and wrong for the other eleven.
+
+**AND THE MODULATION PLANNER READ NEITHER KEY DROPDOWN.** Two selects, five
+strategies, a paragraph of explanation, and every strategy returned the same
+four hard-coded grips with the chosen key names pasted over the labels. The
+prose asserted that Am7 is the vi of the source key and the ii of the target.
+That is true for C to G and false for every other pair the dropdowns offered,
+silently, in a confident voice, on a page somebody is learning from. **This is
+section 8's cardinal error in a different currency**: inventing a market price
+and inventing a pivot chord are the same act.
+
+**SO NOTHING IS STORED. `lib/chords/voicing.ts` SEARCHES THE NECK.** A chord is
+a root and an interval set; a voicing is found by sliding a four-fret window
+along the fretboard, taking the chord's notes plus open strings plus a mute per
+string, and keeping what a hand can hold: span, finger count with a barre
+counted once, no more than one inner mute, root in the bass unless asked
+otherwise, and every non-optional degree present. That is a few thousand
+combinations, and it fixes all four bugs above at once. A shell is expressed as
+DEGREES and searched for, so it is exactly root, third and seventh and it
+toggles back. `dom7alt` has no perfect fifth in its interval set, because the
+altered scale does not, so "alter it" genuinely changes the notes.
+
+**THE TUNING SELECTOR NOW WORKS,** which is the clearest proof the rewrite was
+structural rather than cosmetic: there was never a stored grip to be wrong.
+
+**A PIVOT IS COMPUTED, AND WHEN THERE ISN'T ONE THE PANEL SAYS SO.**
+`lib/chords/modulation.ts` asks each key what it calls a chord and keeps the
+ones both keys can name. C to G finds Am7 (vi7 / ii7); Eb to Bb finds Cm7. C to
+F# finds nothing at all, because those keys share two notes and not one
+diatonic seventh chord, and the honest answer there is to say which route DOES
+work rather than to draw four plausible chords. Same for a chromatic mediant
+between keys that are not a third apart, and a common-tone move between tonic
+chords with no common tone.
+
+**VOICE LEADING IS MEASURED BETWEEN PITCHES, NOT BETWEEN FRET NUMBERS.** The
+original compared frets on the same string, which skipped any string muted at
+either end (usually the biggest event in the change) and described what the
+HAND did while calling it what the ear hears. Both are computed now and both
+are named: `voiceMoves` matches pitches to pitches by cheapest assignment,
+`fingerMoves` is the per-string story, and the prose is derived from the numbers
+rather than typed beside them.
+
+**Four hues on the fretboard are a bounded exception to section 16.** Root,
+third, fifth and seventh have to be separable at a glance on a diagram with
+twenty dots on it, and that is meaning rather than mood. It is bounded: the
+hues appear on the dots and in the legend that explains them and nowhere else,
+every dot PRINTS its degree as well, and the rest of the page is the site's own
+blue.
+
+**Keyboard handling is scoped to the panel.** The original bound the arrow keys
+to `window`, so a reader scrolling the page changed the chord under them and
+space played a chord instead of scrolling. Every playable position is a real
+`<button>`; positions NOT in the chord are not focusable, because forty tab
+stops per string is an obstacle rather than access.
+
+**It sells nothing and links out nowhere**, which is fine: section 17's promise
+is that payout is not why something is here.

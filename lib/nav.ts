@@ -186,6 +186,27 @@ export const NAV_SECTIONS: NavSection[] = [
           { href: "/pedalboard#cost", label: "What it costs", hint: "Live prices per pedal across every store we track" },
         ],
       },
+      {
+        /*
+         * The instrument rather than the pedals, and it is filed under Build
+         * for the same reason the guide is: it is what you read before you know
+         * what to buy, and it carries no stock, no price and nothing to click
+         * out to.
+         */
+        title: "For the guitar itself",
+        links: [
+          {
+            href: "/chord-teacher",
+            label: "Chord teacher",
+            hint: "Voicings found on the neck, and what moves between two chords",
+          },
+          {
+            href: "/chord-teacher#change-key",
+            label: "Change key",
+            hint: "Pivot chords worked out for the two keys you picked",
+          },
+        ],
+      },
       /*
        * THE GUIDE, filed under Build rather than under Shop, and the filing is
        * the honest one for the same reason the partners sit under Community.

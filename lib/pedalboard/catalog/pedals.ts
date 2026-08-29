@@ -939,6 +939,25 @@ export const PEDALS: PedalSpec[] = [
     aliases: ["H9"],
   },
   {
+    /*
+     * KORG'S OWN CASTING, and the only sloped-top pedal in this catalogue.
+     *
+     * No Hammond number to read a size off: the wedge is Korg's, so the figures
+     * are marked `estimate` rather than `maker`. They came off a specification
+     * written up for this model rather than off Korg's own page, and that is
+     * exactly the distinction `SpecSource` exists to record. A layout that
+     * places a board on estimated dimensions is a layout that can be a few
+     * millimetres out, and the planner says so rather than pretending.
+     */
+    id: "korg-pitchblack-x",
+    brand: "Korg",
+    model: "Pitchblack X",
+    type: "tuner",
+    dims: { widthMm: 69, depthMm: 110, heightMm: 49, source: "estimate" },
+    power: dc(50, "estimate"),
+    weightG: 320,
+  },
+  {
     id: "tc-polytune-3",
     brand: "TC Electronic",
     model: "PolyTune 3",

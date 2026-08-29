@@ -3,6 +3,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ChevronRight, Disc3, Wrench } from "lucide-react"
 import { ListingImage } from "@/components/listing-image"
+import { renderForGear } from "@/lib/board/pedal-render"
 import { EFFECTS } from "@/lib/pedalboard/chain"
 import { matchPedalsByName, pedalBoardDetails } from "@/lib/pedalboard/queries"
 import { hueFor, initialsFor, rigChainOrder, rigFromSlug, RIGS, type RigPedal } from "@/lib/rigs"
@@ -220,10 +221,16 @@ function PedalRow({ row, position, isLast }: { row: Row; position: number; isLas
           <span className="font-display text-sm font-bold text-[var(--dim)]">{position}</span>
         </span>
 
+        {/* A documented rig is mostly pedals nobody we track has in stock, so
+            this column used to be a run of tinted tiles carrying the effect
+            type. Where the pedal is one of the measured ones, it can be the
+            pedal instead, which is the point of a page about which pedals made
+            a record. */}
         <ListingImage
           src={row.imageUrl}
           alt=""
           className="h-14 w-14 shrink-0 rounded-md"
+          modelled={renderForGear(row.pedal.brand, row.pedal.model)}
           fallbackLabel={meta.label}
           fallbackHue={meta.hue}
         />

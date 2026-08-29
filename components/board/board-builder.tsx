@@ -18,6 +18,7 @@ import {
   type CatalogInput,
 } from "@/lib/board/model"
 import { decodeBoard, encodeBoard, resolveBoard } from "@/lib/board/share"
+import { renderForGear } from "@/lib/board/pedal-render"
 import { PEDALS } from "@/lib/stompbox/pedals"
 import type { SlotId } from "@/lib/stompbox/chain"
 
@@ -162,6 +163,45 @@ export function BoardBuilder({
     [catalog],
   )
 
+  /**
+   * THE SHELF: what an empty board offers instead of a sentence.
+   *
+   * `/pedalboard` opened as a dashed rectangle reading "Empty board. Add a
+   * pedal", on the page that is meant to sell the whole tool. Nothing about it
+   * showed what the tool does, and the one thing this project owns outright,
+   * eighty-eight pedals measured in millimetres and photographed, was two
+   * clicks away behind a picker nobody opens on arrival.
+   *
+   * So the empty state is the pedals. Only the modelled ones, because a shelf
+   * of the honest generic would be a shelf of identical boxes, and one per slot
+   * so it reads as a signal chain rather than as eight overdrives: what a
+   * player wants to see first is that this thing understands the ORDER.
+   *
+   * It is derived from the catalogue prop and the guide dataset, exactly like
+   * the picker. Nothing here fetches (section 18).
+   */
+  const shelf = useMemo(() => {
+    const seen = new Set<SlotId>()
+    const picks: { item: BoardItem; render: { src: string; name: string } }[] = []
+
+    const everything = [
+      ...catalog
+        .map((entry) => itemFromCatalog(entry))
+        .filter((item): item is BoardItem => item !== null),
+      ...PEDALS.map((pedal) => itemFromGuide(pedal)),
+    ]
+
+    for (const item of everything) {
+      if (seen.has(item.slot)) continue
+      const render = renderForGear(item.maker, item.name)
+      if (!render) continue
+      seen.add(item.slot)
+      picks.push({ item, render })
+    }
+
+    return picks
+  }, [catalog])
+
   /** Candidates for the picker, narrowed to the slot when swapping. */
   const candidates = useMemo(() => {
     const slot = picking?.slot ?? null
@@ -215,9 +255,39 @@ export function BoardBuilder({
         <section aria-label="Your board">
           <div className="deck overflow-x-auto p-5 sm:p-7">
             {ordered.length === 0 ? (
-              <p className="py-10 text-center text-sm text-[var(--dim)]">
-                Empty board. Add a pedal, or load somebody else&rsquo;s rig and start swapping.
-              </p>
+              <div className="py-2">
+                <p className="mb-4 text-sm text-[var(--dim)]">
+                  Nothing on the board. Start with one of these, add your own, or load
+                  somebody else&rsquo;s rig below and swap from there.
+                </p>
+                <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+                  {shelf.map(({ item, render }) => (
+                    <li key={item.key}>
+                      <button
+                        type="button"
+                        onClick={() => add(item)}
+                        className="card-face tile flex w-full flex-col items-center gap-1 p-2 text-center"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={render.src}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          className="h-20 w-full object-contain"
+                        />
+                        <span className="line-clamp-1 w-full text-xs font-semibold text-[var(--text)]">
+                          {item.name}
+                        </span>
+                        <span className="text-[0.6rem] uppercase tracking-[0.11em] text-[var(--dim)]">
+                          {slotLabel(item.slot)}
+                        </span>
+                        <span className="sr-only">Put {item.name} on the board</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ) : (
               /* The camera lives on the stage, not on .deck: .deck is the
                  scroller, and overflow flattens 3D. See globals.css. */
@@ -230,37 +300,13 @@ export function BoardBuilder({
                       position={index + 1}
                       onToggle={() => toggle(item.key)}
                       onRemove={() => remove(item.key)}
+                      onSwap={() => {
+                        setQuery("")
+                        setPicking({ slot: item.slot, replacing: item.key })
+                      }}
+                      onInspect={() => setInspecting(item.key)}
+                      swapLabel={`another ${slotLabel(item.slot).toLowerCase()}`}
                     />
-                    {/*
-                      The two things you do to a pedal that is already on the
-                      board. SWAP is the one the whole page is arranged around,
-                      because the common move is not "remove this" but "try a
-                      different one here"; PICK IT UP takes it off the shelf and
-                      turns it over, which is the other half of being in a shop.
-                    */}
-                    <div className="absolute -bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 opacity-0 transition-opacity group-hover/pedal:opacity-100 focus-within:opacity-100">
-                      <button
-                        type="button"
-                        className="knob knob-sm"
-                        onClick={() => {
-                          setQuery("")
-                          setPicking({ slot: item.slot, replacing: item.key })
-                        }}
-                        aria-label={`Swap ${item.name} for another ${slotLabel(item.slot).toLowerCase()}`}
-                        title={`Swap for another ${slotLabel(item.slot).toLowerCase()}`}
-                      >
-                        <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
-                      <button
-                        type="button"
-                        className="knob knob-sm"
-                        onClick={() => setInspecting(item.key)}
-                        aria-label={`Pick up ${item.name} and turn it over`}
-                        title="Pick it up and turn it over"
-                      >
-                        <Rotate3d className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
-                    </div>
                   </div>
                   ))}
                 </div>

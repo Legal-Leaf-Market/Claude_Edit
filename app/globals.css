@@ -438,6 +438,62 @@
     height: 1px;
   }
 
+  /* ------------------------------------------------------------------
+     A SECTION HEADING, PRINTED THE WAY A PANEL IS PRINTED
+
+     The home page was eight sections whose headings were all 20px of bold
+     display type with nothing else, so the page had no rhythm: every band
+     of content began at the same weight and the eye had nowhere to land.
+
+     The rule running out to the right of the title is the same device a
+     silkscreened panel uses to tie a legend to the control it labels, and
+     it does two jobs at once here: it gives the heading enough presence to
+     start a section, and it draws the width of the page, which is what
+     makes a stack of grids read as a document rather than as a list.
+
+     --chrome-dk, not --chrome. This lands on the PAGE rather than on a
+     control, and a white hairline on white paper is nothing at all.
+     ------------------------------------------------------------------ */
+  .section-head {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin-bottom: 1.15rem;
+  }
+
+  .section-head h2 {
+    font-family: var(--display);
+    font-size: 1.45rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--text);
+    flex: none;
+  }
+
+  .section-head::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    min-width: 1.5rem;
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--chrome-dk) 46%, transparent),
+      transparent
+    );
+  }
+
+  /* The section's own way through to the full list, pushed past the rule so
+     the rule separates the heading from it rather than stopping short.
+
+     BY ELEMENT, NOT BY :last-child. `::after` is the last child in the box
+     model but not the last ELEMENT child, so `:last-child` matched the <h2>
+     on any heading with no link beside it and ordered the title to the right
+     of its own rule. Two headings on the home page shipped right-aligned. */
+  .section-head > a {
+    order: 3;
+    flex: none;
+  }
+
   /* Pill. Nav buttons, the search field, filter chips and footer buttons are
      all 999px. A pill sits on the PAGE, not on metal, so its accent states
      take the on-paper variant: a white border on white paper is not an
@@ -678,9 +734,14 @@
       box-shadow 0.18s,
       transform 0.18s;
   }
+  /* A LIFT, NOT JUST A GLOW. A card that only changes its border on hover
+     reads as a link; one that comes up off the page reads as an object you
+     can pick up, which is the whole vocabulary this site is built on. The
+     edge goes to steel rather than to green: hover is not "this is lit". */
   .flip-card:hover .card-face-front {
-    border-color: var(--sage-dk);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+    border-color: var(--chrome-dk);
+    transform: translateY(-3px);
+    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.5);
   }
   [data-theme='light'] .flip-card:hover .card-face-front {
     box-shadow: 0 12px 28px rgba(20, 30, 60, 0.16);
@@ -693,6 +754,55 @@
       0 0 0 1px color-mix(in srgb, var(--chrome-dk) 30%, transparent),
       0 12px 30px color-mix(in srgb, var(--chrome-dk) 10%, transparent);
   }
+  /* ------------------------------------------------------------------
+     A TILE: a small plate you can press, rather than a rectangle with a
+     word in it.
+
+     The home page's category, store and community grids were thirty-odd
+     boxes at exactly one elevation, in exactly one colour, with a hairline
+     border and nothing else. Individually fine, collectively the reason the
+     page reads as a spreadsheet: nothing about them says they are things you
+     can push, and the eye has no reason to stop on any one of them.
+
+     A sheen along the top edge and a lift under the pointer is the whole
+     change, and it is the same language the enclosures and the stomps use:
+     light comes from above, and metal comes up to meet your hand.
+     ------------------------------------------------------------------ */
+  .tile {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--surface-2), var(--surface) 62%);
+    transition:
+      transform 0.16s ease,
+      border-color 0.16s ease,
+      box-shadow 0.16s ease;
+  }
+
+  .tile::after {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--chrome) 26%, transparent) 30%,
+      color-mix(in srgb, var(--chrome) 26%, transparent) 70%,
+      transparent
+    );
+    pointer-events: none;
+  }
+
+  .tile:hover {
+    transform: translateY(-2px);
+    border-color: var(--chrome-dk);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.42);
+  }
+
+  [data-theme='light'] .tile:hover {
+    box-shadow: 0 10px 20px rgba(20, 30, 60, 0.14);
+  }
+
   /* Deep-navy back, so a turned card reads instantly against the grid. */
   .card-face-back {
     border-color: var(--glass-line);
@@ -2184,35 +2294,61 @@
 /* Take it off the board. Sits outside the enclosure, appears on hover or
    keyboard focus, because a delete control visible at rest on sixteen boxes
    is sixteen invitations to lose your board. */
-.enclosure-remove {
+/*
+ * WHAT YOU DO TO A PEDAL THAT IS ALREADY ON THE BOARD.
+ *
+ * Swap, pick it up, take it off. All three sit INSIDE the card, and that is a
+ * bug fix rather than a layout preference: `.deck-row` is a `preserve-3d`
+ * surface rotated 13 degrees, so anything positioned outside the enclosure is
+ * hit-tested against its flat layout box while the pedals are hit-tested
+ * against their projected geometry. The floated row this replaces was covered
+ * by the NEXT pedal's projection and could not be clicked at all, which meant
+ * the 3D viewer, the best thing on this site, had no working way in.
+ *
+ * MUTED AT REST, NOT HIDDEN. They used to be opacity 0 until hover, so they did
+ * not exist on a touch screen and nobody found them on a desktop either. Quiet
+ * and present, brightening on hover, is what section 16 asks of chrome
+ * everywhere else.
+ */
+.enclosure-acts {
   position: absolute;
-  top: -0.4rem;
-  right: -0.4rem;
+  top: -0.45rem;
+  right: -0.3rem;
+  z-index: 2;
+  display: flex;
+  gap: 0.2rem;
+}
+
+.enclosure-act {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 1.35rem;
   height: 1.35rem;
   border-radius: 50%;
-  border: 1px solid var(--line-strong);
-  background: var(--chip);
-  color: var(--dim);
-  font-size: 0.7rem;
-  font-weight: 700;
-  line-height: 1;
-  opacity: 0;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--chip) 86%, transparent);
+  color: color-mix(in srgb, var(--dim) 70%, transparent);
+  backdrop-filter: blur(3px);
   transition:
-    opacity 140ms ease,
     color 140ms ease,
-    border-color 140ms ease;
+    border-color 140ms ease,
+    background-color 140ms ease;
 }
 
-.group\/pedal:hover .enclosure-remove,
-.enclosure-remove:focus-visible {
-  opacity: 1;
+.group\/pedal:hover .enclosure-act,
+.enclosure-act:focus-visible {
+  color: var(--text);
+  border-color: var(--line-strong);
+  background: var(--chip);
 }
 
-.enclosure-remove:hover {
+.enclosure-act:hover {
+  color: var(--chrome);
+  border-color: var(--chrome-dk);
+}
+
+.enclosure-act-off:hover {
   color: var(--red);
   border-color: var(--red);
 }
@@ -2701,6 +2837,107 @@
    component, where they can be reasoned about together.
    ========================================================================== */
 
+/* ==========================================================================
+   THE MEASURED MODEL, STANDING IN FOR A PHOTOGRAPH THAT DOES NOT EXIST
+
+   `scripts/render-pedal-models.ts` photographs the same three.js pedal the
+   inspector shows and commits the stills. Where a listing carries no usable
+   picture, and we have measured that exact pedal, the card shows the model
+   instead of a broken-image glyph. It is the largest single reason the search
+   grid stopped looking like a page that had failed to load.
+
+   THE MARK IS NOT DECORATION. A render silently replacing a photograph is a
+   claim about what turns up in the post, so it is labelled: quiet, lowercase
+   in the dim colour, out of the way of the pedal, and present at every size
+   the type is legible at. Chrome would be wrong here twice over, once because
+   an edge colour is not a fill and once because this is the least assertive
+   thing on the card.
+   ========================================================================== */
+
+.modelled {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  /* A shallow pool of light under the object rather than a flat plate. The
+     render carries its own contact shadow, so the ground only has to stop the
+     pedal floating on the card's own colour. */
+  background:
+    radial-gradient(120% 90% at 50% 108%, rgba(0, 0, 0, 0.34), transparent 62%),
+    linear-gradient(180deg, var(--surface-2), var(--chip));
+}
+
+.modelled-img {
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+  padding: 7%;
+}
+
+/* ==========================================================================
+   THE CATEGORY, DRAWN, WHERE NOTHING MORE SPECIFIC IS KNOWN
+
+   Below the measured model there is still most of the catalogue: guitars,
+   amps, synths, cymbals, none of which anybody has modelled. Those cards used
+   to fall through to a broken-image glyph on a grey plate, which reads as a
+   page that failed to load rather than as a listing whose seller supplied no
+   photograph.
+
+   A big soft silhouette in the category's own accent says the true thing
+   ("this is a bass guitar") without saying anything about the unit. It is
+   deliberately quiet: it must not compete with the cards beside it that do
+   have a real photograph, because those are the ones worth looking at.
+   ========================================================================== */
+
+.silhouette {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 100% at 50% 20%, color-mix(in srgb, currentColor 13%, transparent), transparent 68%),
+    linear-gradient(180deg, var(--surface-2), var(--chip));
+}
+
+.silhouette-icon {
+  width: 44%;
+  height: 44%;
+  max-width: 132px;
+  max-height: 132px;
+  opacity: 0.42;
+}
+
+.silhouette-mark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  text-align: center;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, currentColor 68%, transparent);
+}
+
+.modelled-mark {
+  position: absolute;
+  left: 8px;
+  bottom: 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  padding: 2px 8px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--dim);
+  backdrop-filter: blur(4px);
+}
+
 .p3d {
   display: flex;
   flex-direction: column;
@@ -2883,5 +3120,709 @@
   border: 1px solid var(--line);
   background: linear-gradient(180deg, var(--surface-2), var(--bg2));
   font-size: 0.78rem;
+  color: var(--dim);
+}
+
+/* ==========================================================================
+   THE CHORD TEACHER
+
+   A harmony workbench at /chord-teacher, ported from a single-file studio and
+   rebuilt so everything it says is computed. The visual job here is different
+   from the rest of the site: this page is a diagram first, so the neck gets the
+   contrast budget and everything around it stays quiet.
+
+   THE FRETBOARD IS THE ONE PLACE ON THIS SITE WHERE COLOUR CARRIES MEANING
+   RATHER THAN MOOD. Four hues separate root, third, fifth and seventh, and
+   they have to be told apart at a glance on a diagram with twenty dots on it.
+   That is a legitimate exception to section 16's "the LED is the only
+   saturated colour", and it is bounded: the hues appear on the dots and in the
+   legend that explains them, and nowhere else. Every dot also PRINTS its
+   degree, so the diagram still works for a reader who cannot separate the
+   hues, and it still works in print.
+   ========================================================================== */
+
+.ct {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/*
+ * MIN-WIDTH ZERO, EVERYWHERE A CHILD HOLDS THE NECK.
+ *
+ * A flex or grid child defaults to `min-width: auto`, which means it refuses to
+ * shrink below its content. The fretboard is deliberately 40rem wide with its
+ * own horizontal scroller, so on a phone that default propagated straight back
+ * up the tree and made the whole PAGE 698px wide inside a 390px window: the
+ * scroller was there and nothing ever reached it. Every ancestor has to be told
+ * it may be narrower than what is inside it.
+ */
+.ct > *,
+.ct-main > *,
+.ct-side > * {
+  min-width: 0;
+}
+
+.ct-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.9rem;
+  padding: 0.95rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, var(--surface-2), var(--surface) 70%);
+}
+
+.ct-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 9rem;
+}
+
+.ct-field-wide {
+  min-width: 12rem;
+  flex: 1;
+}
+
+.ct-field > span,
+.ct-tempo > span:first-child {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.ct-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  font-size: 0.8rem;
+  color: var(--text);
+  max-width: 15rem;
+}
+
+.ct-check em {
+  display: block;
+  font-style: normal;
+  font-size: 0.7rem;
+  color: var(--dim);
+}
+
+.ct-audio {
+  margin-left: auto;
+}
+
+.ct-blurb {
+  max-width: 62ch;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--dim);
+}
+
+.ct-transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ct-tempo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+}
+
+.ct-tempo input {
+  width: 7rem;
+  accent-color: var(--brand-led);
+}
+
+/* --- the progression strip ------------------------------------------- */
+
+.ct-strip {
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  padding-bottom: 0.4rem;
+  list-style: none;
+}
+
+.ct-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 8.5rem;
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, var(--surface-2), var(--surface) 70%);
+  transition:
+    border-color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.ct-card:hover {
+  border-color: var(--chrome-dk);
+  transform: translateY(-2px);
+}
+
+/* The chord you are looking at. The LED green means the same thing it means
+   everywhere else on this site: this one is live. */
+.ct-card[data-active] {
+  border-color: var(--brand-led);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-led) 40%, transparent);
+}
+
+.ct-card-numeral {
+  font-family: var(--display);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  min-height: 0.9rem;
+}
+
+.ct-card-symbol {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ct-card-shape {
+  font-size: 0.66rem;
+  color: var(--dim);
+}
+
+/* --- the neck and the panel beside it --------------------------------- */
+
+.ct-main {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 1100px) {
+  .ct-main {
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.ct-neck-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ct-neck-head h3 {
+  font-family: var(--display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ct-neck-head p {
+  font-size: 0.8rem;
+  color: var(--dim);
+}
+
+.ct-h3 {
+  font-family: var(--display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ct-h4 {
+  font-family: var(--display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 0.55rem;
+}
+
+.ct-note {
+  font-size: 0.86rem;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.ct-sub {
+  margin-top: 0.5rem;
+  font-size: 0.76rem;
+  line-height: 1.6;
+  color: var(--dim);
+}
+
+.ct-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.01em;
+}
+
+.ct-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* --- the fretboard ---------------------------------------------------- */
+
+.ct-board-wrap {
+  overflow-x: auto;
+  /* A diagram wider than a phone must scroll inside its own box rather than
+     making the page scroll sideways. */
+  padding-bottom: 0.3rem;
+}
+
+.ct-board {
+  min-width: 40rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  /* The fingerboard itself: dark, slightly warm, with the fret wires drawn as
+     the cell borders below rather than as separate elements. */
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 40%),
+    linear-gradient(180deg, #1b1408, #120e07);
+  padding: 0.6rem 0.7rem 0.5rem;
+}
+
+[data-theme='light'] .ct-board {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.5), transparent 40%),
+    linear-gradient(180deg, #3a2c18, #2a2011);
+}
+
+.ct-fret-numbers,
+.ct-string {
+  display: grid;
+  grid-template-columns: 2.1rem 2.4rem repeat(15, minmax(1.9rem, 1fr));
+  align-items: center;
+}
+
+.ct-fret-numbers {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.42);
+  text-align: center;
+  padding-bottom: 0.35rem;
+}
+
+.ct-fret-numbers [data-inlay] {
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 700;
+}
+
+.ct-string {
+  height: 2.3rem;
+  position: relative;
+}
+
+/* The string itself, drawn once per row and behind everything. */
+.ct-string::before {
+  content: '';
+  position: absolute;
+  left: 4.5rem;
+  right: 0.15rem;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(226, 232, 240, 0.75), rgba(148, 163, 184, 0.55));
+  pointer-events: none;
+}
+
+/* Low strings are visibly fatter, which is most of what makes a drawing of a
+   neck read as a neck. */
+.ct-string:nth-last-child(1)::before { height: 3px; }
+.ct-string:nth-last-child(2)::before { height: 2.5px; }
+.ct-string:nth-last-child(3)::before { height: 2px; }
+.ct-string:nth-last-child(4)::before { height: 1.6px; }
+.ct-string:nth-last-child(5)::before { height: 1.3px; }
+
+.ct-string-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+  text-align: center;
+}
+
+.ct-nut-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  /* The nut: a thick pale bar, which is the landmark the whole diagram is
+     measured from. */
+  border-right: 4px solid rgba(226, 232, 240, 0.8);
+  position: relative;
+  z-index: 1;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.ct-fret {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  border-right: 1px solid rgba(226, 232, 240, 0.22);
+  position: relative;
+}
+
+/* The inlay, on the middle string's row only, so it reads as one dot on the
+   fingerboard rather than as six. */
+.ct-fret[data-inlay]::before {
+  content: '';
+  position: absolute;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: rgba(226, 232, 240, 0.16);
+  pointer-events: none;
+}
+
+.ct-muted {
+  color: var(--red);
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.ct-nut-dash {
+  width: 0.3rem;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* The dot. Fingertip-sized, printed with its note and its degree. */
+.ct-dot {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  line-height: 1;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.6);
+  transition: transform 0.14s ease;
+}
+
+.ct-dot:hover {
+  transform: scale(1.12);
+}
+
+.ct-dot[data-open] {
+  /* An open string is not stopped by a finger, so it is drawn hollow. */
+  background-image: none !important;
+  border-width: 2.5px;
+}
+
+.ct-dot-note {
+  font-size: 0.58rem;
+  font-weight: 800;
+}
+
+.ct-dot-degree {
+  font-size: 0.5rem;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+/* The four functions, plus everything above the seventh. Chosen inside the
+   site's own blue world where possible and pushed apart in hue where the
+   diagram needs them separable. */
+.ct-dot[data-tone='root'],
+.ct-legend-swatch[data-tone='root'] {
+  background: #e2504a;
+  color: #ffffff;
+}
+.ct-dot[data-tone='third'],
+.ct-legend-swatch[data-tone='third'] {
+  background: #47b4d8;
+  color: #06202b;
+}
+.ct-dot[data-tone='fifth'],
+.ct-legend-swatch[data-tone='fifth'] {
+  background: #e0a63c;
+  color: #241703;
+}
+.ct-dot[data-tone='seventh'],
+.ct-legend-swatch[data-tone='seventh'] {
+  background: #9b7ae0;
+  color: #ffffff;
+}
+.ct-dot[data-tone='colour'],
+.ct-legend-swatch[data-tone='colour'] {
+  background: var(--brand-led);
+  color: #04240f;
+}
+
+.ct-dot[data-open] {
+  background: rgba(8, 14, 30, 0.85);
+  color: #ffffff;
+}
+
+.ct-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  font-size: 0.68rem;
+  color: var(--dim);
+  list-style: none;
+}
+
+.ct-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ct-legend-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  font-size: 0.55rem;
+  font-weight: 800;
+}
+
+.ct-board-caption {
+  margin-top: 0.6rem;
+  font-size: 0.72rem;
+  color: var(--dim);
+}
+
+.ct-nothing {
+  padding: 1rem;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  font-size: 0.84rem;
+  line-height: 1.65;
+  color: var(--dim);
+}
+
+.ct-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.4rem;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+
+.ct-facts dt {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.ct-facts dd {
+  margin-top: 0.15rem;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+/* --- alternatives and reharmonisation --------------------------------- */
+
+.ct-voicings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+  list-style: none;
+}
+
+.ct-voicing {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--chip);
+  transition: border-color 0.15s ease;
+}
+
+.ct-voicing:hover {
+  border-color: var(--chrome-dk);
+}
+
+.ct-voicing[data-active] {
+  border-color: var(--brand-led);
+}
+
+.ct-voicing .ct-mono {
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.ct-voicing-meta {
+  font-size: 0.68rem;
+  color: var(--dim);
+}
+
+.ct-reharms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.ct-reharm-note {
+  margin-top: 0.75rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--line);
+  color: var(--dim);
+}
+
+/* --- what moves ------------------------------------------------------- */
+
+.ct-moves {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.8rem;
+  list-style: none;
+}
+
+@media (min-width: 700px) {
+  .ct-moves {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ct-moves li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--chip);
+  font-size: 0.76rem;
+  color: var(--dim);
+}
+
+/* A voice that does not move is the whole subject, so it is the one that
+   gets the light. */
+.ct-moves li[data-still] {
+  box-shadow: inset 2px 0 0 var(--brand-led);
+}
+
+.ct-moves .ct-mono {
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.ct-move-distance {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- the modulation planner ------------------------------------------- */
+
+.ct-mod-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ct-shared {
+  flex: none;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--chip);
+  font-size: 0.7rem;
+  color: var(--dim);
+}
+
+.ct-mod-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  margin: 1rem 0;
+}
+
+.ct-changes {
+  margin-bottom: 0.9rem;
+}
+
+.ct-chain {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+  list-style: none;
+}
+
+.ct-chain li {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--chip);
+}
+
+@media (min-width: 800px) {
+  .ct-chain li {
+    grid-template-columns: 9rem 6rem 8rem minmax(0, 1fr);
+    align-items: baseline;
+    gap: 0.9rem;
+  }
+}
+
+.ct-chain-numerals {
+  font-family: var(--display);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--accent-text);
+}
+
+.ct-chain-symbol {
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ct-chain-shape {
+  font-size: 0.72rem;
+  color: var(--dim);
+}
+
+.ct-chain-role {
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--dim);
+}
+
+/* The panel says the route does not exist for this pair. It is a real answer,
+   so it is styled as one rather than as an error. */
+.ct-refusal {
+  padding: 0.9rem 1rem;
+  border-left: 2px solid var(--chrome-dk);
+  background: var(--chip);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   color: var(--dim);
 }

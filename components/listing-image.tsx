@@ -2,7 +2,9 @@
 
 import { useCallback, useState } from "react"
 import { ImageOff } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { CategoryIcon, CATEGORY_HUE, FALLBACK_HUE } from "@/components/category-icon"
+import { ModelledRender } from "@/components/modelled-render"
+import { cn, slugifyCategory } from "@/lib/utils"
 
 /**
  * Thumbnail for a marketplace listing.
@@ -18,10 +20,34 @@ export function ListingImage({
   className,
   fallbackLabel,
   fallbackHue,
+  modelled,
+  category,
 }: {
   src: string | null
   alt: string
   className?: string
+  /**
+   * A measured model to draw when there is no photograph.
+   *
+   * Comes from `renderForGear()`, so it is null for the vast majority of
+   * listings and that is correct: 88 pedals are measured and the catalogue is
+   * larger than that. It sits AHEAD of `fallbackLabel` because a picture of
+   * the actual object beats a tinted tile carrying the effect type, and behind
+   * the real photograph because the seller's own picture is of the seller's
+   * own unit, which is the thing being bought.
+   */
+  modelled?: { src: string; name: string } | null
+  /**
+   * What KIND of thing this is, for when nobody has measured the exact one.
+   *
+   * 88 pedals are modelled and the catalogue is mostly guitars, amps, synths
+   * and cymbals, so `modelled` answers null for most of the site and the
+   * fallback under it was a broken-image glyph on a grey plate. A drawn
+   * silhouette of the category says something true and specific about the
+   * listing without pretending to be a picture of the unit, which is the same
+   * trade the tinted rig tiles have always made, done better.
+   */
+  category?: string | null
   /**
    * What to draw instead of the broken-image glyph when there is no photo.
    *
@@ -57,6 +83,22 @@ export function ListingImage({
   }, [])
 
   if (!src || failed) {
+    if (modelled) {
+      return <ModelledRender src={modelled.src} name={modelled.name} className={className} />
+    }
+
+    if (category) {
+      const slug = slugifyCategory(category)
+      const hue = CATEGORY_HUE[slug] ?? FALLBACK_HUE
+      return (
+        <div className={cn("silhouette", className)} style={{ color: hue }}>
+          <CategoryIcon slug={slug} className="silhouette-icon" />
+          <span className="silhouette-mark">{category}</span>
+          <span className="sr-only">No photo available</span>
+        </div>
+      )
+    }
+
     if (fallbackLabel) {
       return (
         <div

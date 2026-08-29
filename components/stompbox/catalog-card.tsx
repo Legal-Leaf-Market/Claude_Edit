@@ -37,7 +37,12 @@ export function CatalogCard({ pedal, minSample }: { pedal: CatalogPedal; minSamp
           is a list. The API has sent one of these for every pedal since the
           endpoint was written and this card ignored it, which is why the page
           read as a wall of text. */}
-      <PedalPhoto src={pedal.imageUrl} alt={`${pedal.brand} ${pedal.model}`} />
+      <PedalPhoto
+        src={pedal.imageUrl}
+        alt={`${pedal.brand} ${pedal.model}`}
+        brand={pedal.brand}
+        model={pedal.model}
+      />
 
       <div className="mt-4 flex items-baseline justify-between gap-3">
         <span className="stencil">{pedal.brand}</span>
