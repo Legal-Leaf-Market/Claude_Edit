@@ -385,6 +385,11 @@ const OPERATOR_SOURCE = `
    * worked before.
    */
   var FRAME_TIMEOUT_MS = 12000;
+  /* The frame's viewport height, and the step the scroller walks down in. ONE
+     number, because the sizing and the "have we reached the bottom" test have
+     to agree: a frame told it is 2400 tall while the maths assumes 800 stops
+     scrolling three quarters of the way down every page. */
+  var FRAME_H = 2400;
   var frame = null;
 
   function ensureFrame(){
@@ -394,15 +399,36 @@ const OPERATOR_SOURCE = `
        enough off-screen not to flash. Not display:none: some layouts render
        nothing at all with no box to render into. */
     frame.setAttribute("style",
-      "position:fixed;left:-10000px;top:0;width:1400px;height:2400px;border:0;opacity:0.01;" +
+      "position:fixed;left:-10000px;top:0;width:1400px;height:" + FRAME_H + "px;border:0;opacity:0.01;" +
       "pointer-events:none;z-index:-1");
     document.body.appendChild(frame);
     return frame;
   }
 
+  /*
+   * THE FRAME HAS TO BE SCROLLED, AND NOT SCROLLING IT IS WHY PAGE ONE WORKED
+   * AND NOTHING AFTER IT DID.
+   *
+   * Reported as a crawl that finds the first page and returns zero for every
+   * page after it, which looked like the frame being refused and was not. The
+   * asymmetry gives it away: page one is the tab the OPERATOR already has open,
+   * and the panel tells them to scroll to the bottom before capturing, because
+   * a lazy grid only renders what has been near the viewport. Nobody scrolls a
+   * hidden iframe, so every later page was read as an empty grid with its
+   * loading placeholders still in it.
+   *
+   * The frame was already given a real 1400x2400 box for exactly this family of
+   * reasons. That is necessary and it is not sufficient: an IntersectionObserver
+   * grid wants the SCROLL, not just the room, and a category page is far taller
+   * than one screen anyway.
+   *
+   * Stepwise rather than one jump to the bottom. A single scrollTo past the end
+   * skips every band in between, and some observers never fire for a region
+   * that was never intersected; walking down in screen-sized steps is what a
+   * person does and it is what the page is built to respond to.
+   */
   async function readViaFrame(url){
     var f = ensureFrame();
-    var settled = false;
 
     var loaded = new Promise(function(resolve){
       f.onload = function(){ resolve(true); };
@@ -412,21 +438,65 @@ const OPERATOR_SOURCE = `
     await loaded;
 
     var best = null;
-    var waited = 0;
-    while (waited < FRAME_TIMEOUT_MS) {
-      var doc = null;
-      try { doc = f.contentDocument; } catch (e) { doc = null; }
+    var stalled = 0;
+    var y = 0;
+    var scrolls = 0;
+    var grewAfterScroll = false;
+
+    for (var pass = 0; pass < 26; pass++) {
+      var doc = null, win = null;
+      try { doc = f.contentDocument; win = f.contentWindow; } catch (e) { doc = null; }
       /* Cross-origin, frame-busted, or refused: nothing to read here ever. */
       if (!doc || !doc.body) return null;
 
       var attempt = CAPTURE(doc, url);
-      if (!best || attempt.products.length > best.products.length) best = attempt;
-      /* Products present and the count has stopped climbing: the grid is in. */
-      if (best.products.length > 0 && attempt.products.length === best.products.length && settled) break;
-      if (best.products.length > 0) settled = true;
+      if (!best || attempt.products.length > best.products.length) {
+        if (best && scrolls > 0) grewAfterScroll = true;
+        best = attempt;
+        stalled = 0;
+      } else {
+        stalled += 1;
+      }
 
-      await sleep(600);
-      waited += 600;
+      var height = 0;
+      try { height = doc.documentElement.scrollHeight || doc.body.scrollHeight || 0; } catch (e) { height = 0; }
+      var atBottom = y + FRAME_H >= height - 40;
+      var canScroll = height > FRAME_H + 40;
+
+      /* Everything is in: products found, the count has stopped climbing, and
+         there is no more page to reveal. */
+      if (best.products.length > 0 && stalled >= 2 && atBottom) break;
+
+      if (canScroll && !atBottom) {
+        y = Math.min(y + Math.round(FRAME_H * 0.8), Math.max(0, height - FRAME_H));
+        try { win.scrollTo(0, y); scrolls += 1; } catch (e) {}
+      } else if (best.products.length === 0) {
+        /*
+         * NOTHING FOUND AND NOWHERE TO SCROLL, which is not the contradiction
+         * it looks like: a page whose grid has not arrived yet is SHORT because
+         * the grid has not arrived, so the honest "have we reached the bottom"
+         * test says yes on a page that is nothing but a skeleton. Gating the
+         * scroll on that test alone is why the first version of this fix
+         * changed nothing at all.
+         *
+         * A document with no overflow cannot emit a scroll event however hard
+         * it is pushed, so this nudges the position and says so directly. Once
+         * the grid lands the page grows and the walk above takes over.
+         */
+        try {
+          win.scrollTo(0, 1);
+          win.scrollTo(0, 0);
+          win.dispatchEvent(new win.Event("scroll"));
+        } catch (e) {}
+        scrolls += 1;
+      }
+
+      await sleep(500);
+    }
+
+    if (best) {
+      best.frameScrolls = scrolls;
+      best.frameGrewAfterScroll = grewAfterScroll;
     }
     return best;
   }
@@ -450,10 +520,14 @@ const OPERATOR_SOURCE = `
       frameNote = "frame threw: " + (e && e.message ? e.message : e);
     }
     if (viaFrame && viaFrame.products.length > 0) {
-      viaFrame.readVia = "frame";
+      viaFrame.readVia = "frame, " + (viaFrame.frameScrolls || 0) + " scrolls" +
+        (viaFrame.frameGrewAfterScroll ? " (the grid grew as it scrolled: lazy)" : "");
       return viaFrame;
     }
-    if (!frameNote) frameNote = "frame rendered but found no products";
+    if (!frameNote) {
+      frameNote = "frame rendered and scrolled " + ((viaFrame && viaFrame.frameScrolls) || 0) +
+        " times, still found no products";
+    }
 
     /*
      * The iframe gave nothing. Either the page genuinely has no products, or

@@ -248,6 +248,50 @@ describe("backslashes survive the template literal", () => {
   })
 })
 
+describe("the crawl scrolls the page it is reading", () => {
+  const { source } = collectorSource("https://gearavail.com")
+
+  /*
+   * A BUG THAT WAS REPRODUCED, MEASURED AND FIXED, and the numbers are here so
+   * a future edit that quietly drops the scroll is caught by name.
+   *
+   * Reported as a crawl that reads the first page and returns zero for every
+   * page after it. The asymmetry was the clue: page one is the tab the OPERATOR
+   * already had open and had scrolled, because the panel tells them to. Later
+   * pages are read in a hidden iframe that nobody scrolls, so a lazy grid never
+   * fired and every one of them was captured as an empty skeleton.
+   *
+   * Against a fixture whose second page fills its grid only on a scroll event,
+   * driven in real Chromium:
+   *
+   *   before  Done: 3 page(s), 6 products      (page one only)
+   *   after   Done: 4 page(s), 15 products     (page one, plus page two's nine)
+   *
+   * The first attempt at the fix changed nothing, and that is worth keeping
+   * too: it scrolled only when the document was taller than the frame, and a
+   * page whose grid has not arrived is SHORT precisely because the grid has not
+   * arrived. Hence the nudge for a document that cannot scroll at all.
+   */
+  it("walks the framed document down instead of reading it where it landed", () => {
+    expect(source).toContain("scrollTo")
+    expect(source, "the frame viewport and the scroll maths must share one number").toContain(
+      "FRAME_H",
+    )
+  })
+
+  it("still provokes a page too short to scroll", () => {
+    expect(source).toContain("dispatchEvent")
+  })
+
+  it("reports how far it scrolled, so an empty page can be diagnosed", () => {
+    /* "frame rendered but found no products" and "frame refused" need
+       completely different fixes, and the count is what separates a grid that
+       was given every chance from one that never got looked at. */
+    expect(source).toContain("frameScrolls")
+    expect(source).toContain("scrolls")
+  })
+})
+
 describe("the compact build that actually goes in a bookmark", () => {
   /*
    * A NORMAL BOOKMARKLET IS A FEW HUNDRED BYTES. This one was FIFTY THOUSAND
