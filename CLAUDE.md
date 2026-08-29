@@ -1689,6 +1689,9 @@ engine.
 - Do NOT commit a copy of the collector beside the typed source. It is
   generated per request so the loader, the self-contained bookmarklet and the
   console paste cannot disagree; a committed copy is the one that goes stale.
+- Do NOT read a crawled page in the frame without scrolling it. A lazy grid
+  renders nothing for a viewport nobody moved, and the symptom is a crawl that
+  works on page one and returns zero forever after (section 21).
 - Do NOT drop any of the three ways a capture gets home. Direct POST, relay
   tab, clipboard: each covers a different refusal, and removing one strands
   exactly the shops that needed it.
@@ -1963,6 +1966,18 @@ than a clean-looking number.
   tab is a NAVIGATION, so the collector opens `/collect?receive=1` and hands the
   capture over with postMessage, and from there the POST is same-origin. Both
   ends pin the origin.
+- **A HIDDEN FRAME HAS TO BE SCROLLED, and page one hides that from you.** The
+  crawl read later pages in an off-screen iframe and captured nothing from any
+  of them, which read as the frame being refused and was not. Page one is the
+  tab the OPERATOR already scrolled, because the panel tells them to; nobody
+  scrolls an iframe, so every later page was captured as an empty skeleton with
+  its placeholders still in it. The frame now walks down in screen-sized steps
+  and reports how many it took. Measured against a fixture whose second page
+  fills on scroll: 6 products before, 15 after. **And the first fix changed
+  nothing**, which is the part worth remembering: it scrolled only when the
+  document was taller than the frame, and a page whose grid has not arrived is
+  short BECAUSE the grid has not arrived, so a document that cannot scroll gets
+  nudged instead.
 - **What is in the DOM is all it can see.** A lazy grid has to be scrolled to
   the bottom first, and a menu in a cross-origin iframe cannot be read at all,
   which is the same-origin policy working correctly rather than a bug to route
