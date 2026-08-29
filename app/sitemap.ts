@@ -91,6 +91,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     })),
     { url: `${base}/pedalboard`, changeFrequency: "weekly" as const, priority: 0.7 },
+    /* Entirely static and entirely computed: no stock behind it, so nothing
+       about it goes stale between crawls. */
+    { url: `${base}/chord-teacher`, changeFrequency: "monthly" as const, priority: 0.6 },
     // The partner pages are listed unconditionally, like the rigs and the
     // boards and unlike anything inventory-backed. Their content is the
     // hand-written write-up, which is on the page whether or not a feed ran, so

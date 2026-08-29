@@ -246,6 +246,7 @@ app/
   rigs/                     Artist rigs, and the records each is documented on
   pedalboard/               The rig builder (chain check, power, live pricing)
   alerts/, sign-in/, sign-up/
+  chord-teacher/            Guitar harmony, all computed (section 22)
   stompbox/               THE GUIDE. /stompbox/* here, / on stompbox.world (section 20)
   render-bench/[slug]/      The offline renderer's subject. 404s unless RENDER_BENCH=1
   api/
@@ -267,6 +268,7 @@ lib/
   ai/                       Groq client + the allowlisted DB tools (section 14)
   pedalboard/chain.ts       Signal-chain order rules and power estimates
   regions.ts                Who can buy from which store (section 15)
+  chords/                   Harmony: qualities, keys, voicing search (section 22)
   board/pedal-models.ts     THE 88 MEASURED PEDALS, in millimetres (section 16)
   board/pedal-render.ts     Which committed still belongs to which pedal
   ingestion/ebay-feed.ts    Transport + TSV parsing (section 3)
@@ -1627,6 +1629,21 @@ engine.
   and a squash leaves it sharing no history with `main`, so the next pull
   request re-proposes the whole tree and conflicts on every file both sides
   touched. Merge commits, every time (section 10).
+- Do NOT store a chord as fret numbers in `lib/chords`. A stored grip is a
+  chord in one key and one tuning, and it is what made every other bug in the
+  studio this was ported from possible (section 22).
+- Do NOT let the modulation planner emit a chain it has not verified. A route
+  that does not exist for a key pair gets the reason, not four plausible
+  chords.
+- Do NOT let a reharmonisation change a label without changing the notes. Each
+  one returns a chord or refuses with a reason; the voicing search does the
+  rest.
+- Do NOT measure voice leading as fret deltas on the same string. It skips
+  every string muted at either end and it describes the hand rather than the
+  ear (section 22).
+- Do NOT spread the fretboard's four interval hues to anything else. They are
+  meaning on a diagram, bounded to the dots and their legend, and every dot
+  prints its degree too.
 - Do NOT point the test suite at a database you care about; it truncates.
 - Do NOT turn a capture into a `marketplace_listings` row because the capture
   exists. Reading a page you are on is research; republishing a catalogue is
@@ -1989,3 +2006,84 @@ product would be listed twice at one store and counted twice in its median.
 when a feed starts working for a source, clear its captured rows. It expires
 them rather than deleting, so the prices they recorded stay in the history.
 
+---
+
+## 22. The chord teacher: everything on it is computed
+
+`/chord-teacher`, `lib/chords/`, `components/chord-teacher/`. A guitar harmony
+workbench: what a chord is made of, where it sits on the neck, what moves when
+one chord becomes the next, and how to get from one key to another.
+
+**PORTED FROM A SINGLE-FILE STUDIO, AND THE PORT IS THE POINT.** The original
+was 1,400 lines of Tailwind CDN and vanilla JS with a real Web Audio pluck
+synth, genuinely good explanatory prose, and one structural decision that made
+most of it untrue: **every chord was six hand-typed fret numbers.** From that
+one decision:
+
+- A chord nobody had typed did not exist.
+- Every grip was a standard-tuning grip, so choosing DADGAD silently showed the
+  wrong notes under the right names.
+- The "altered dominant" button rewrote the chord's NAME and FORMULA and left
+  the frets alone, so the panel read 7#9b13 while the guitar played a plain
+  dominant seventh.
+- The "shell voicing" button did arithmetic on fret NUMBERS (`frets[1] - 1`,
+  `frets[1] + 1`) with no idea what note it landed on, and wrote the result
+  back over the stored grip, so the toggle could never be undone.
+- "Tritone sub" always produced Db7(#11), whatever chord you pressed it on.
+  Correct for a G7 and wrong for the other eleven.
+
+**AND THE MODULATION PLANNER READ NEITHER KEY DROPDOWN.** Two selects, five
+strategies, a paragraph of explanation, and every strategy returned the same
+four hard-coded grips with the chosen key names pasted over the labels. The
+prose asserted that Am7 is the vi of the source key and the ii of the target.
+That is true for C to G and false for every other pair the dropdowns offered,
+silently, in a confident voice, on a page somebody is learning from. **This is
+section 8's cardinal error in a different currency**: inventing a market price
+and inventing a pivot chord are the same act.
+
+**SO NOTHING IS STORED. `lib/chords/voicing.ts` SEARCHES THE NECK.** A chord is
+a root and an interval set; a voicing is found by sliding a four-fret window
+along the fretboard, taking the chord's notes plus open strings plus a mute per
+string, and keeping what a hand can hold: span, finger count with a barre
+counted once, no more than one inner mute, root in the bass unless asked
+otherwise, and every non-optional degree present. That is a few thousand
+combinations, and it fixes all four bugs above at once. A shell is expressed as
+DEGREES and searched for, so it is exactly root, third and seventh and it
+toggles back. `dom7alt` has no perfect fifth in its interval set, because the
+altered scale does not, so "alter it" genuinely changes the notes.
+
+**THE TUNING SELECTOR NOW WORKS,** which is the clearest proof the rewrite was
+structural rather than cosmetic: there was never a stored grip to be wrong.
+
+**A PIVOT IS COMPUTED, AND WHEN THERE ISN'T ONE THE PANEL SAYS SO.**
+`lib/chords/modulation.ts` asks each key what it calls a chord and keeps the
+ones both keys can name. C to G finds Am7 (vi7 / ii7); Eb to Bb finds Cm7. C to
+F# finds nothing at all, because those keys share two notes and not one
+diatonic seventh chord, and the honest answer there is to say which route DOES
+work rather than to draw four plausible chords. Same for a chromatic mediant
+between keys that are not a third apart, and a common-tone move between tonic
+chords with no common tone.
+
+**VOICE LEADING IS MEASURED BETWEEN PITCHES, NOT BETWEEN FRET NUMBERS.** The
+original compared frets on the same string, which skipped any string muted at
+either end (usually the biggest event in the change) and described what the
+HAND did while calling it what the ear hears. Both are computed now and both
+are named: `voiceMoves` matches pitches to pitches by cheapest assignment,
+`fingerMoves` is the per-string story, and the prose is derived from the numbers
+rather than typed beside them.
+
+**Four hues on the fretboard are a bounded exception to section 16.** Root,
+third, fifth and seventh have to be separable at a glance on a diagram with
+twenty dots on it, and that is meaning rather than mood. It is bounded: the
+hues appear on the dots and in the legend that explains them and nowhere else,
+every dot PRINTS its degree as well, and the rest of the page is the site's own
+blue.
+
+**Keyboard handling is scoped to the panel.** The original bound the arrow keys
+to `window`, so a reader scrolling the page changed the chord under them and
+space played a chord instead of scrolling. Every playable position is a real
+`<button>`; positions NOT in the chord are not focusable, because forty tab
+stops per string is an obstacle rather than access.
+
+**It sells nothing and links out nowhere**, which is fine: section 17's promise
+is that payout is not why something is here.
