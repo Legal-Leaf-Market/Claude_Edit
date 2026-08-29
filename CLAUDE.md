@@ -1394,6 +1394,34 @@ the card. They are all inside it now, and MUTED AT REST RATHER THAN HIDDEN:
 opacity 0 until hover meant they did not exist on a touch screen and nobody
 found them on a desktop either.
 
+**THE FIRST RIG-ROOM ASSET IS A REAL MESH ON DISK, AND IT IS NOT THE SITE'S
+PEDAL.** `scripts/gear-3d/ds1.py` builds a BOSS DS-1 in headless Blender and
+exports `public/gear-3d/boss-ds1.glb`; `ds1-decals.mjs` rasterises its print.
+That is a different job from `lib/board/pedal-models.ts`, which describes
+eighty-eight pedals in numbers and lets ONE renderer draw them all, and the two
+must not be confused for each other: a hand-authored mesh per pedal is exactly
+the fork section 7 forbids at eighty-eight, and exactly what a single hero
+object for the rig room is worth. Nothing on the site loads this file yet.
+
+**NOTHING IS TRACED FROM SOMEBODY ELSE'S MODEL.** The brief pointed at a free
+CGTrader mesh; it is authored from the published external dimensions instead,
+so the asset is ours and there is no licence to check. Same rule section 13
+applies to imagery, for the same reason.
+
+**AND IT IS INSPECTED IN A NEUTRAL VIEWER, NOT IN THE TOOL THAT MADE IT.**
+`scripts/gear-3d/validate-glb.mjs` loads the exported GLB in three.js under
+studio light and photographs the nine angles the brief names, because Blender's
+preview reads the SCENE and ships the EXPORT, and the two disagree silently. It
+also asserts what is genuinely a number: the bounding box against the published
+millimetres, that the model sits ON the floor, and that the named interaction
+nodes (`PEDAL_TREADLE`, `CONTROL_*`, `SOCKET_*`, `LED_CHECK`) survived. Every
+one of those caught something the eye had already passed over. The bounding box
+was 85mm on a 73mm pedal because two side decals faced backward with their
+short axis across the body; the model stood 1.2mm through the floor; the tread
+plate had been built at HALF its stated size since the file was written, and
+its rest angle lifted the toe off the deck instead of laying it on. None of
+those threw, and the picture looked plausible with all four in it.
+
 **Godot is on the table for one thing only.** A separate 3D "rig room" (cables
 that hang, footswitches you stomp, knobs you hear) is a legitimate toy and a
 shareable. The planner itself stays in the DOM: it is indexable, and
@@ -1677,6 +1705,17 @@ engine.
 - Do NOT spread the fretboard's four interval hues to anything else. They are
   meaning on a diagram, bounded to the dots and their legend, and every dot
   prints its degree too.
+- Do NOT hand-author a mesh for a pedal that `lib/board/pedal-models.ts`
+  already describes. There is one renderer for the eighty-eight and one
+  hand-built hero asset for the rig room, and a per-pedal GLB is section 7
+  broken once per pedal (section 16).
+- Do NOT judge an exported GLB in Blender's viewport. It reads the scene rather
+  than the file, so it shows geometry the exporter dropped and normals that are
+  only right because Blender knew which side you meant. Run
+  `scripts/gear-3d/validate-glb.mjs` and look at the nine angles.
+- Do NOT commit the GLB validation renders. They are diagnostics of a build
+  artefact, they regenerate in seconds, and a folder of them beside
+  `public/pedals` reads as though the site served them.
 - Do NOT point the test suite at a database you care about; it truncates.
 - Do NOT turn a capture into a `marketplace_listings` row because the capture
   exists. Reading a page you are on is research; republishing a catalogue is
