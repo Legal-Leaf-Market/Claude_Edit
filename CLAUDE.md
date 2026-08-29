@@ -1689,6 +1689,13 @@ engine.
 - Do NOT commit a copy of the collector beside the typed source. It is
   generated per request so the loader, the self-contained bookmarklet and the
   console paste cannot disagree; a committed copy is the one that goes stale.
+- Do NOT crawl a shop running bot management without the operator saying so
+  twice. Reading the page they loaded is research; walking the rest at machine
+  cadence from inside their session is what that product is built to catch, and
+  it is their session it flags (section 21).
+- Do NOT widen the challenge-page check beyond the title. A pedal called
+  "Access Denied Fuzz" flagged an ordinary category page the first time, and a
+  false positive here stops work on a merchant who never objected.
 - Do NOT read a crawled page in the frame without scrolling it. A lazy grid
   renders nothing for a viewport nobody moved, and the symptom is a crawl that
   works on page one and returns zero forever after (section 21).
@@ -1944,6 +1951,40 @@ looks exactly like a small catalogue. So `coverage` reports the total the page
 claimed, the pagination it found, and whether the grid was lazy-loaded, and the
 analysis calls a partial pull a SAMPLE in words. A known gap is worth far more
 than a clean-looking number.
+
+**A SHOP CAN TELL YOU IT DOES NOT WANT THIS, AND THE COLLECTOR NOW LISTENS.**
+Musician's Friend runs Akamai Bot Manager: a DevTools trace of `/effects` shows
+`akam-sw.js` plus a run of POSTs to obfuscated paths under one constant prefix,
+which is sensor data going back for scoring. A general debugger looked at that
+and called it a harmless fire-and-forget beacon, safe to ignore. It is right
+about the request and wrong about what it means here, and the distinction is
+the one this section is built on:
+
+- **Reading the page in front of you is unaffected.** A person loaded it, in
+  their own browser, having passed whatever was asked. That is research and it
+  stays research.
+- **Walking pages 2..N from inside that session is a different act.** It is
+  precisely what bot management exists to catch, it does not fail politely (it
+  serves challenge pages this reader captures as empty categories), and the
+  session and address it flags belong to the OPERATOR rather than to us.
+
+So `captureSource()` names the wall from what is already in the document,
+cookies and script paths, never by probing, and the crawl asks once before
+walking a shop that has one. A second press goes ahead, because the person at
+the keyboard is the one who knows whether there is an arrangement with that
+merchant and a bookmarklet cannot.
+
+**AND THE INTERSTITIAL CHECK READS THE TITLE ONLY**, which a test earned rather
+than a guess. Reading the phrase out of the body as well looked obviously
+better and immediately flagged an ordinary category page holding a pedal called
+"Access Denied Fuzz". The false positive is the expensive direction: it stops
+an operator working a merchant who never objected, on evidence that is a
+product name.
+
+**THE LEGITIMATE PATH FOR THESE THREE IS NOT THE COLLECTOR AT ALL.** Musician's
+Friend, American Musical Supply and Anderton's are approved Impact merchants
+(section 1). A capture is for deciding whether a merchant is worth chasing; the
+catalogue itself comes from the feed, which is why the feed exists.
 
 **THE FOUR LESSONS, each one already paid for:**
 

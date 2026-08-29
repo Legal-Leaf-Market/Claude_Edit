@@ -542,3 +542,70 @@ describe("what the analysis concludes", () => {
     expect(analysis.priceCents?.median).toBe(2000)
   })
 })
+
+describe("a shop that has said it does not want this", () => {
+  /*
+   * FROM A REAL DEVTOOLS TRACE of musiciansfriend.com/effects: an `akam-sw.js`
+   * service worker plus a run of POSTs to obfuscated paths under one constant
+   * prefix, which is Akamai Bot Manager collecting sensor data.
+   *
+   * A general-purpose debugger looked at that and called it a harmless
+   * fire-and-forget telemetry beacon, safe to ignore. It is right about the
+   * request and wrong about what it means here, and the difference is the whole
+   * reason this detection exists: for THIS tool it is the most important fact
+   * on the page. Reading a page a human loaded is unaffected; walking the rest
+   * of the category from inside their session is what the product is built to
+   * catch, and the session it burns is the operator's.
+   *
+   * A capture that comes back empty from behind one of these looks exactly like
+   * a finished category. Naming the wall is what separates them.
+   */
+  function pageWith(html: string, cookie = ""): Document {
+    const doc = new DOMParser().parseFromString(html, "text/html")
+    /* Same-origin cookie reads are what the live path does; a parsed document
+       has none of its own, so the live branch is simulated by the caller. */
+    Object.defineProperty(doc, "cookie", { value: cookie, configurable: true })
+    return doc
+  }
+
+  it("names Akamai from the service worker the trace showed", () => {
+    const doc = pageWith(
+      `<html><head><script src="/akam-sw.js?othersw=%2Fsw.js"></script></head><body><h1>Effects</h1></body></html>`,
+    )
+    const result = captureSource(doc, "https://www.musiciansfriend.com/effects")
+    expect(result.diagnostics.defences).toContain("Akamai Bot Manager")
+  })
+
+  it("says so in the notes, where an operator will read it", () => {
+    const doc = pageWith(`<html><head><script src="/akam-sw.js"></script></head><body></body></html>`)
+    const result = captureSource(doc, "https://www.musiciansfriend.com/effects")
+    expect(result.coverage.notes.join(" ")).toMatch(/crawl/i)
+  })
+
+  it("calls an interstitial an interstitial rather than an empty category", () => {
+    const doc = pageWith(
+      `<html><head><title>Pardon Our Interruption</title></head><body><p>Pardon Our Interruption. Please verify you are a human.</p></body></html>`,
+    )
+    const result = captureSource(doc, "https://www.example.com/c")
+    expect(result.diagnostics.challenged).toBe(true)
+    expect(result.coverage.notes.join(" ")).toMatch(/challenge or block page/i)
+  })
+
+  it("does not cry wolf on an ordinary shop", () => {
+    /*
+     * THE FAILURE THAT MATTERS RUNS THIS WAY. A false positive stops an
+     * operator crawling a merchant who never objected, so the patterns are
+     * anchored on cookie names and script paths rather than on loose words, and
+     * the interstitial check reads only the title and the first 400 characters
+     * so a pedal called "Access Denied Fuzz" cannot trip it.
+     */
+    const doc = pageWith(
+      `<html><head><title>Guitar pedals</title><script src="/assets/app.js"></script></head>` +
+        `<body><h1>Pedals</h1><div class="pc"><a href="/p/1"><h3>Access Denied Fuzz</h3></a>` +
+        `<span>£99.00</span></div></body></html>`,
+    )
+    const result = captureSource(doc, "https://www.example.com/pedals")
+    expect(result.diagnostics.defences).toEqual([])
+    expect(result.diagnostics.challenged).toBe(false)
+  })
+})

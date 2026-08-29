@@ -116,6 +116,17 @@ export type CaptureDiagnostics = {
   unresolvedSamples: string[]
   /** Markup that DID resolve, for comparison. */
   resolvedSamples: string[]
+  /**
+   * Bot management products detected on this page, by name.
+   *
+   * Not a judgement about the shop: plenty of retailers run one and still
+   * publish a feed. It is a judgement about what THIS tool should do next,
+   * because a crawl through a wall returns challenge pages that look exactly
+   * like empty categories, and the session it burns is the operator's own.
+   */
+  defences: string[]
+  /** The page itself looks like a challenge or a block, not a listing. */
+  challenged: boolean
 }
 
 export type CaptureResult = {
@@ -413,6 +424,86 @@ export function captureSource(sourceDoc?: Document, sourceUrl?: string): Capture
     platform = "bigcommerce"
   } else if (w.dataLayer && d.querySelector('[data-testid*="product" i]')) {
     platform = "custom (dataLayer present)"
+  }
+
+  /*
+   * IS THIS SHOP RUNNING A BOT WALL? Named, because "0 products" is what a
+   * challenge page and a broken reader look like from here, and they need
+   * opposite responses.
+   *
+   * Musician's Friend is the case that prompted this. A DevTools trace of
+   * `/effects` showed `akam-sw.js` plus a run of POSTs to obfuscated paths
+   * under one constant prefix, which is Akamai Bot Manager collecting sensor
+   * data. A general debugger called that a harmless telemetry beacon and said
+   * to ignore it, which is right about the request and wrong about what it
+   * means for this tool: it is the single most important fact on the page.
+   *
+   * WHY IT CHANGES WHAT THE COLLECTOR SHOULD DO. Reading the page the operator
+   * is already looking at stays fine, because a human loaded it in their own
+   * browser and passed whatever checks were asked of them. Walking pages 2..N
+   * from inside that session at machine cadence is a different act: it is what
+   * bot management exists to catch, it will start returning challenges instead
+   * of products, and the account and address it burns are the OPERATOR's own.
+   *
+   * DETECTED FROM WHAT IS ALREADY IN THE DOCUMENT, never by probing. Cookies
+   * and script names are same-origin reads on a page we were invited to; the
+   * interstitial phrases are what these products actually print.
+   */
+  const defences: string[] = []
+  const cookieJar = (() => {
+    try {
+      return isLive ? document.cookie : ""
+    } catch {
+      return ""
+    }
+  })()
+
+  const scriptSrc = Array.from(d.querySelectorAll("script[src]"))
+    .map((node) => node.getAttribute("src") ?? "")
+    .join(" ")
+
+  if (/\b_abck=|\bbm_sz=|\bak_bmsc=/.test(cookieJar) || /akam[-/]?sw|\/akam\//i.test(scriptSrc)) {
+    defences.push("Akamai Bot Manager")
+  }
+  if (/\b__cf_bm=|\bcf_clearance=/.test(cookieJar) || /challenges\.cloudflare\.com/i.test(scriptSrc)) {
+    defences.push("Cloudflare bot management")
+  }
+  if (/\bdatadome=/.test(cookieJar) || /datadome/i.test(scriptSrc)) defences.push("DataDome")
+  if (/\bincap_ses|\bvisid_incap/.test(cookieJar)) defences.push("Imperva/Incapsula")
+  if (/\bpx-|_px[23]?=/.test(cookieJar) || /perimeterx|px-cloud/i.test(scriptSrc)) {
+    defences.push("PerimeterX")
+  }
+
+  /*
+   * The interstitial itself, which is what a crawled page comes back as once
+   * the wall has decided.
+   *
+   * THE TITLE ONLY, and that narrowing was earned by a test rather than
+   * guessed. Reading the phrase out of the body as well seemed obviously
+   * better and immediately flagged an ordinary category page holding a pedal
+   * called "Access Denied Fuzz". The false positive is the expensive direction
+   * here: it stops an operator working a merchant who never objected, on
+   * evidence that is just a product name. A challenge page always titles
+   * itself, and a title is short enough not to collide.
+   */
+  const challenged =
+    /pardon our interruption|access denied|request unsuccessful|just a moment|checking your browser|are you a robot|verify you are a? ?human/i.test(
+      d.title ?? "",
+    )
+
+  if (defences.length) {
+    notes.push(
+      `This shop runs ${defences.join(" and ")}. Reading the page you are on is fine: you loaded ` +
+        "it yourself. Crawling the rest from inside your session is what that product exists to " +
+        "catch, and the session it flags is yours, so the crawl will not walk it without being " +
+        "told to twice.",
+    )
+  }
+  if (challenged) {
+    notes.push(
+      "This looks like a challenge or block page rather than a product listing. Anything captured " +
+        "from it describes the interstitial, not the catalogue.",
+    )
   }
 
   /* --------------------------------------------------------------- 5. DOM */
@@ -743,6 +834,8 @@ export function captureSource(sourceDoc?: Document, sourceUrl?: string): Capture
       jsonLdTypes: ldTypes,
       unresolvedSamples,
       resolvedSamples,
+      defences,
+      challenged,
     },
   }
 }

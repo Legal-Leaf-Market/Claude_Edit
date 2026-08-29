@@ -285,7 +285,9 @@ const OPERATOR_SOURCE = `
         "  rejected: multi-price " + g.rejectedMultiPrice + ", no product signal " +
           g.rejectedNoProductSignal + ", no anchor " + g.rejectedNoAnchor +
           ", duplicate " + g.rejectedDuplicate,
-        "  json-ld blocks " + g.jsonLdBlocks + "  types " + JSON.stringify(g.jsonLdTypes || [])
+        "  json-ld blocks " + g.jsonLdBlocks + "  types " + JSON.stringify(g.jsonLdTypes || []),
+        "  bot wall " + ((g.defences && g.defences.length) ? g.defences.join(" + ") : "none") +
+          (g.challenged ? "  CHALLENGE PAGE: this is not a listing" : "")
       );
       var un = g.unresolvedSamples || [];
       for (var u = 0; u < un.length; u++) lines.push("  UNRESOLVED " + (u + 1) + ": " + un[u]);
@@ -553,9 +555,35 @@ const OPERATOR_SOURCE = `
   }
 
 
+  /*
+   * THE CRAWL STOPS AT A BOT WALL, AND MAKES YOU SAY IT TWICE.
+   *
+   * Reading the page in front of you is research: a person loaded it, in their
+   * own browser, having passed whatever the shop asked. Walking pages 2..N from
+   * inside that session at machine cadence is the thing bot management exists
+   * to catch, and it does not fail politely: it starts serving challenge pages
+   * that this reader captures as empty categories, and the session and address
+   * it flags belong to the OPERATOR rather than to us.
+   *
+   * So a shop that has told us it does not want this gets asked once. A second
+   * press goes ahead, because the person at the keyboard is the one who knows
+   * whether they have an arrangement with this merchant, and there is no honest
+   * way for a bookmarklet to know that.
+   */
+  var crawlConfirmed = false;
+
   async function crawl(){
     var max = parseInt($("ga-max").value, 10);
     if (!(max > 0)) max = 200;
+
+    var wall = (capture.diagnostics && capture.diagnostics.defences) || [];
+    if (wall.length && !crawlConfirmed) {
+      crawlConfirmed = true;
+      say("This shop runs " + wall.join(" and ") + ". Crawling it from inside your session is " +
+          "what that is built to stop, and it is your session it flags. Capturing THIS page is " +
+          "unaffected: press Send. Press Crawl again to go ahead anyway.");
+      return;
+    }
 
     stopRequested = false;
     $("ga-crawl").textContent = "Stop";

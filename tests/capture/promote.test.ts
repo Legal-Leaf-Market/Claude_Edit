@@ -63,6 +63,8 @@ function capture(products: Partial<CaptureResult["products"][number]>[]): Captur
       jsonLdTypes: [],
       unresolvedSamples: [],
       resolvedSamples: [],
+      defences: [],
+      challenged: false,
     },
   }
 }
