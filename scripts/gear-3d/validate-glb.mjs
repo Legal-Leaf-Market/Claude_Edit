@@ -39,7 +39,9 @@ import sharp from "sharp"
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..")
 const SLUG = process.argv[2] ?? "boss-ds1"
-const GLB = path.join(ROOT, "public", "gear-3d", `${SLUG}.glb`)
+/* The assets live in the Godot project, which is their only consumer. */
+const ASSET_DIR = "godot/rig-room/assets"
+const GLB = path.join(ROOT, ASSET_DIR, `${SLUG}.glb`)
 const OUT_DIR = path.join(ROOT, "scripts", "gear-3d", "validation")
 
 /** Shot big and downsampled, for the same reason the pedal stills are. */
@@ -92,6 +94,7 @@ function serve(root) {
     ".js": "text/javascript",
     ".mjs": "text/javascript",
     ".glb": "model/gltf-binary",
+    ".import": "text/plain",
     ".png": "image/png",
   }
   const server = createServer((request, response) => {
@@ -182,7 +185,7 @@ window.__view = (azimDeg, elevDeg) => {
   renderer.render(scene, camera)
 }
 
-new GLTFLoader().load("/public/gear-3d/${SLUG}.glb", (gltf) => {
+new GLTFLoader().load("/${ASSET_DIR}/${SLUG}.glb", (gltf) => {
   const root = gltf.scene
   root.traverse((node) => {
     if (node.isMesh) { node.castShadow = true; node.receiveShadow = true }

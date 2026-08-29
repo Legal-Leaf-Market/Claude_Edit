@@ -1,0 +1,14 @@
+# Godot's import cache. Regenerated from the source assets the first time the
+# project is opened, machine-specific, and large; the .import FILES beside each
+# asset are settings and DO belong in the repository.
+.import/
+
+# Materials Godot extracts from a GLB on import. They are a view of what is
+# already inside the asset, they are rewritten on every reimport, and
+# committing them means a Blender edit silently disagrees with ten files
+# nobody looks at.
+*.material
+
+# Editor-local state.
+.godot/
+export_presets.cfg

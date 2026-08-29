@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://gear/gear_definition.gd" type="Script" id=1]
+
+[resource]
+script = ExtResource( 1 )
+id = "boss-ds1"
+manufacturer = "BOSS"
+model = "DS-1"
+category = "distortion"
+width_mm = 73.0
+depth_mm = 129.0
+height_mm = 59.0
+inspect_distance = 0.0

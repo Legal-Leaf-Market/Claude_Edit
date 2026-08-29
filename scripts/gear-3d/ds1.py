@@ -45,7 +45,13 @@ HALF_D = DEPTH / 2
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 TEXTURES = os.path.join(ROOT, "scripts", "gear-3d", "textures")
-OUT_GLB = os.path.join(ROOT, "public", "gear-3d", "boss-ds1.glb")
+# STRAIGHT INTO THE GODOT PROJECT, and there is no second copy anywhere.
+# It lived in public/ first, back when the site was going to serve it, and
+# nothing ever loaded it from there. Two copies of a binary that one script
+# regenerates is the drift the collector's committed bundle already taught this
+# repository about: the copy nobody rebuilds is the one that goes stale, and a
+# stale mesh does not error, it just stops being the pedal you edited.
+OUT_GLB = os.path.join(ROOT, "godot", "rig-room", "assets", "boss-ds1.glb")
 OUT_BLEND = os.path.join(ROOT, "scripts", "gear-3d", "boss-ds1-master.blend")
 
 # ---------------------------------------------------------------------------
@@ -254,6 +260,36 @@ solid = plate.modifiers.new("Solidify", "SOLIDIFY")
 solid.thickness = PLATE_T
 solid.offset = -1
 apply_modifiers(plate)
+
+"""
+THE CASTING IS RECESSED TO TAKE THE PLATE, AND WITHOUT THAT THE UNDERSIDE
+Z-FIGHTS.
+
+The sweep gives the body a flat closed bottom at z = 0 and the plate's own
+underside sits at z = 0 too, so the two are coplanar across the whole
+footprint. Nothing is wrong with either mesh; the depth buffer simply cannot
+choose, and the result is fine parallel stripes over the entire base.
+
+It survived nine three.js validation renders because not one of them looks at
+the bottom of the pedal, and it turned up the first time something PICKED THE
+PEDAL UP AND TURNED IT OVER. That is the argument for the game harness in one
+defect: an inspection mode is a renderer that goes wherever it likes, so it
+asks questions a fixed camera list never will.
+
+The recess is cut 0.2mm deeper than the plate is thick, so the two never touch.
+"""
+RECESS = PLATE_T + 0.2 * MM
+bpy.ops.mesh.primitive_cube_add(size=1)
+pocket = bpy.context.active_object
+pocket.name = "plate_pocket"
+pocket.scale = (WIDTH - 4 * MM, DEPTH - 4 * MM, RECESS * 2)
+bpy.ops.object.transform_apply(scale=True)
+pocket.location = (0, 0, 0)
+pocket_cut = body.modifiers.new("PlatePocket", "BOOLEAN")
+pocket_cut.operation = "DIFFERENCE"
+pocket_cut.object = pocket
+apply_modifiers(body)
+bpy.data.objects.remove(pocket, do_unlink=True)
 
 
 # ---------------------------------------------------------------------------

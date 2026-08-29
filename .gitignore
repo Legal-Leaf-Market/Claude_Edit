@@ -30,3 +30,6 @@ scripts/gear-3d/validation/
 # that one is committed, the same way public/pedals is.
 *.blend
 *.blend1
+
+# Godot writes its import cache and extracted materials inside the project; see
+# godot/rig-room/.gitignore for which of them are settings and which are cache.

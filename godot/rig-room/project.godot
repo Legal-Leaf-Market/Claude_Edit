@@ -1,0 +1,86 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=4
+
+_global_script_classes=[ {
+"base": "Node",
+"class": "CableSocket",
+"language": "GDScript",
+"path": "res://systems/cable_socket.gd"
+}, {
+"base": "Resource",
+"class": "GearDefinition",
+"language": "GDScript",
+"path": "res://gear/gear_definition.gd"
+}, {
+"base": "StaticBody",
+"class": "GearRig",
+"language": "GDScript",
+"path": "res://gear/gear_rig.gd"
+}, {
+"base": "Node",
+"class": "Indicator",
+"language": "GDScript",
+"path": "res://systems/indicator.gd"
+}, {
+"base": "Node",
+"class": "Inspectable",
+"language": "GDScript",
+"path": "res://systems/inspectable.gd"
+}, {
+"base": "Spatial",
+"class": "Interactable",
+"language": "GDScript",
+"path": "res://systems/interactable.gd"
+}, {
+"base": "KinematicBody",
+"class": "RigPlayer",
+"language": "GDScript",
+"path": "res://player/player.gd"
+}, {
+"base": "Node",
+"class": "RotatableControl",
+"language": "GDScript",
+"path": "res://systems/rotatable_control.gd"
+}, {
+"base": "Node",
+"class": "ToggleControl",
+"language": "GDScript",
+"path": "res://systems/toggle_control.gd"
+} ]
+_global_script_class_icons={
+"CableSocket": "",
+"GearDefinition": "",
+"GearRig": "",
+"Indicator": "",
+"Inspectable": "",
+"Interactable": "",
+"RigPlayer": "",
+"RotatableControl": "",
+"ToggleControl": ""
+}
+
+[application]
+
+config/name="Gear Avail Rig Room"
+run/main_scene="res://world/room.tscn"
+
+[display]
+
+window/size/width=1280
+window/size/height=800
+
+[physics]
+
+common/enable_pause_aware_picking=true
+
+[rendering]
+
+quality/shadows/filter_mode=2
+environment/default_clear_color=Color( 0.04, 0.05, 0.08, 1 )

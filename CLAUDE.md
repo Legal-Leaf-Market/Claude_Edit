@@ -1094,7 +1094,9 @@ dialog on a page whose DOM board, `/go` links, indexability and screen-reader
 path all survive untouched. three.js is about 150KB and mounts inside the
 existing React tree; Godot would ship tens of megabytes of WASM and its own
 export pipeline for the same job. Godot stays reserved for the separate rig
-room below, where physics and sound would actually earn it.
+room, and as of August 2026 that room EXISTS: `godot/rig-room` is a real Godot
+project with a first-person player, a reach raycast and an inspection mode, and
+`tools/verify.tscn` walks the whole loop and photographs it. See section 23.
 
 **THE CANVAS EXISTS ONLY INSIDE THE DIALOG, and that is what keeps section
 16's four guarantees.** The row of pedals is real DOM buttons, the outbound
@@ -1396,7 +1398,8 @@ found them on a desktop either.
 
 **THE FIRST RIG-ROOM ASSET IS A REAL MESH ON DISK, AND IT IS NOT THE SITE'S
 PEDAL.** `scripts/gear-3d/ds1.py` builds a BOSS DS-1 in headless Blender and
-exports `public/gear-3d/boss-ds1.glb`; `ds1-decals.mjs` rasterises its print.
+exports it straight into `godot/rig-room/assets/`; `ds1-decals.mjs` rasterises
+its print.
 That is a different job from `lib/board/pedal-models.ts`, which describes
 eighty-eight pedals in numbers and lets ONE renderer draw them all, and the two
 must not be confused for each other: a hand-authored mesh per pedal is exactly
@@ -1716,6 +1719,16 @@ engine.
 - Do NOT commit the GLB validation renders. They are diagnostics of a build
   artefact, they regenerate in seconds, and a folder of them beside
   `public/pedals` reads as though the site served them.
+- Do NOT port the pedalboard planner into `godot/rig-room`. The four reasons in
+  section 16 are unchanged by the rig room existing (section 23).
+- Do NOT import anything under `godot/` from `app/`, `lib/` or `components/`,
+  or the catalogue from `godot/`. They share built assets and nothing else.
+- Do NOT write a per-product script in the rig room. A gear asset is a GLB with
+  the node naming convention, a `.tres`, and a line in `world/room.gd`.
+- Do NOT keep a second copy of a GLB. `scripts/gear-3d/` exports into the Godot
+  project and nowhere else; a copy nobody rebuilds goes stale without erroring.
+- Do NOT judge a model without turning it over. The underside z-fought for a
+  whole session because every validation angle looked at the top (section 23).
 - Do NOT point the test suite at a database you care about; it truncates.
 - Do NOT turn a capture into a `marketplace_listings` row because the capture
   exists. Reading a page you are on is research; republishing a catalogue is
@@ -1945,6 +1958,59 @@ more expensive thing to keep honest than a cache miss. Crawlers get fully
 server-rendered HTML either way, so nothing about the SEO argument in section 16
 changes.
 
+
+---
+
+## 23. The rig room: a Godot game, not a second website
+
+`godot/rig-room`, and its own README carries the operating detail. What belongs
+here is why it is a separate program and what must not leak between them.
+
+**THE PLANNER IS NOT MOVING INTO IT.** Section 16's four reasons stand
+unchanged: `/pedalboard` is indexable and programmatic SEO is this site's growth
+model, the money path is `/go/[listingId]` as a real anchor in the DOM, the
+layout and power engines are TypeScript shared with the server, and a canvas has
+no DOM so no screen reader. The rig room is the thing an engine was always
+reserved FOR: picking gear up, turning it over, stomping a switch, and
+eventually cables that hang.
+
+**IT SHARES ASSETS WITH THE WEBSITE AND NO CODE.** `scripts/gear-3d/` builds the
+GLBs and exports them into the Godot project, which is their only consumer;
+there is deliberately no copy under `public/`, because the copy nobody rebuilds
+is the one that silently stops being the pedal you edited. Nothing in `app/`,
+`lib/` or `components/` reads anything under `godot/`, and nothing under
+`godot/` reads the catalogue.
+
+**A GEAR ASSET IS TWO FILES AND ONE LINE, NEVER A SCRIPT.**
+`gear/gear_rig.gd` reads a naming convention off the exported mesh:
+`CONTROL_<NAME>` becomes a knob, `PEDAL_TREADLE` a footswitch, `LED_<NAME>` an
+indicator, `SOCKET_*` a cable point. Nothing in `systems/` knows the word
+"pedal", so the first amplifier needs a GLB and a `.tres` and no code. A script
+per product is section 7's fork, and it is worse here than on the web side
+because it also has to be kept in step with an art pipeline somebody else edits.
+
+**THE HARNESS IS THE POINT, AND IT HAS ALREADY PAID.**
+`tools/verify.tscn` walks the player in, picks the pedal up, turns it over,
+zooms, works a knob, stomps the switch, checks the lamp followed, drops it, and
+asserts it landed back where it started, photographing every step. Turning the
+pedal over is what found the GLB's underside z-fighting: the casting's bottom
+face and the bottom plate were coplanar across the whole footprint, and nine
+fixed validation angles in three.js never looked at the bottom of the pedal. An
+inspection mode is a renderer that goes wherever it likes, which is exactly why
+it finds what a camera list cannot.
+
+**GODOT 3.5 IS A CONSTRAINT, NOT A CHOICE.** Godot 4 is the right target. No
+Godot 4 binary was reachable from the build environment, and unverified GDScript
+for an engine that cannot be launched is the failure this project keeps having.
+The README carries the porting table. Do not "upgrade" the project by rewriting
+it untested.
+
+**AND THE ENGINE WAS NEVER THE VARIABLE.** Godot renders meshes; it does not
+author them. It loads the same GLB Blender built and three.js already
+photographed, and it independently measured the same 77.4 x 58.9 x 131.7 mm,
+which is a useful cross-check and not a new capability. What an engine buys is
+everything after the mesh exists. What makes a pedal look real is the ASSET:
+geometry, then PBR texture maps, which the DS-1 does not have yet.
 ---
 
 ## 21. The collector: capturing a catalogue from a page you are already on
