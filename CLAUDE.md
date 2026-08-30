@@ -1729,6 +1729,12 @@ engine.
   project and nowhere else; a copy nobody rebuilds goes stale without erroring.
 - Do NOT judge a model without turning it over. The underside z-fought for a
   whole session because every validation angle looked at the top (section 23).
+- Do NOT hand-model a pedal for the rig room that `lib/board/pedal-models.ts`
+  already describes. It exports from the same renderer the website draws with,
+  and a second mesh of the same pedal is the fork section 7 forbids.
+- Do NOT export a pedal without flattening its materials to plain PBR, and do
+  NOT let Godot store an imported asset's materials in external files. Either
+  one renders the pedal white, in the engine only, silently (section 23).
 - Do NOT point the test suite at a database you care about; it truncates.
 - Do NOT turn a capture into a `marketplace_listings` row because the capture
   exists. Reading a page you are on is research; republishing a catalogue is
@@ -1998,6 +2004,34 @@ face and the bottom plate were coplanar across the whole footprint, and nine
 fixed validation angles in three.js never looked at the bottom of the pedal. An
 inspection mode is a renderer that goes wherever it likes, which is exactly why
 it finds what a camera list cannot.
+
+**THE ROOM IS STOCKED FROM THE WEBSITE'S OWN RENDERER, NOT FROM BLENDER.**
+`scripts/gear-3d/export-models-glb.mjs` drives the same `/render-bench/<slug>`
+the still photographer drives and hands the pedal to three.js's GLTFExporter,
+so a measured model becomes a picture for the site and a mesh for the game out
+of ONE description and ONE renderer. Eighty-nine pedals export; twelve are
+committed and placed, because a knurled knob is two dozen small meshes and all
+eighty-nine is 60MB. The viewer names its parts (`CONTROL_<LABEL>`,
+`PEDAL_FOOTSWITCH_<n>`, `PEDAL_TREADLE`, `LED_<n>`), so an exported TS9 arrives
+in the game with DRIVE, TONE, LEVEL, a lamp and a switch already bound and no
+per-product script anywhere.
+
+**glTF IS METRES AND THE VIEWER IS NOT.** `SCENE_UNITS_PER_MM` is 0.01 so a
+pedal is not a speck under a default camera, and the exporter divides by that
+constant rather than by a 10 somebody typed. Exported raw, a DS-1 measured
+770 x 1326mm: it does not error, and on its own it looks like a coffee table.
+
+**AND TWO THINGS MADE TWELVE PEDALS ARRIVE WHITE, NEITHER OF WHICH LOGGED
+ANYTHING.** The export carried `KHR_materials_clearcoat`, because the viewer
+paints bodies with a physical material; the file was correct and three.js read
+it back as a green TS9 with its legends on. Godot drew it white. The export now
+flattens to plain PBR, which is what a game asset should be anyway. That was
+only half of it: Godot's scene importer defaults to `materials/storage=1` and
+`keep_on_reimport=true`, so it writes one `.material` file per material beside
+the asset and then REFUSES to overwrite them, and the first import wins
+forever. The committed `.import` files set both the other way, which is why
+they are committed at all. A generated asset must never have its materials
+stored in a file nobody regenerates.
 
 **GODOT 3.5 IS A CONSTRAINT, NOT A CHOICE.** Godot 4 is the right target. No
 Godot 4 binary was reachable from the build environment, and unverified GDScript

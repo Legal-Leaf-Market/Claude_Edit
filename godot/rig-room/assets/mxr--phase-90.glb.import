@@ -2,12 +2,12 @@
 
 importer="scene"
 type="PackedScene"
-path="res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn"
+path="res://.import/mxr--phase-90.glb-60cc4881cca10732a8495d2b8f4cd708.scn"
 
 [deps]
 
-source_file="res://assets/boss-ds1.glb"
-dest_files=[ "res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn" ]
+source_file="res://assets/mxr--phase-90.glb"
+dest_files=[ "res://.import/mxr--phase-90.glb-60cc4881cca10732a8495d2b8f4cd708.scn" ]
 
 [params]
 

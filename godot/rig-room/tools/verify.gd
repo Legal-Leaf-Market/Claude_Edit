@@ -46,7 +46,19 @@ func _ready() -> void:
 		_fail("no gear was built into the room")
 		_finish()
 		return
+	# PICK BY CAPABILITY, NOT BY POSITION.
+	# The first rig on the board is now a Cry Baby, and a wah has no knobs and
+	# no indicator, so a harness that always grabbed rigs[0] reported two
+	# failures against a pedal behaving exactly right. What is under test is
+	# the BINDING, so the fixture has to be a pedal with something to bind.
 	rig = room.rigs[0]
+	for candidate in room.rigs:
+		if not candidate.controls.empty() and not candidate.indicators.empty():
+			rig = candidate
+			break
+	print("inspecting: ", rig.definition.display_name(),
+		"  controls=", rig.controls.keys(), "  lamps=", rig.indicators.keys(),
+		"  switch=", rig.switch != null)
 	resting = rig.model.global_transform
 	_build_steps()
 
@@ -122,9 +134,15 @@ func _turn_over() -> void:
 func _zoom_in() -> void:
 	player.zoom_held(6.0)
 
+var _knob_key := ""
+
 func _turn_knob() -> void:
-	if rig.controls.has("DIST"):
-		rig.controls["DIST"].set_value(0.92)
+	# Whichever knob this pedal actually has. Naming one is how the test
+	# quietly became about the DS-1 rather than about the naming convention.
+	if rig.controls.empty():
+		return
+	_knob_key = rig.controls.keys()[0]
+	rig.controls[_knob_key].set_value(0.92)
 
 func _stomp() -> void:
 	if rig.switch != null:
@@ -172,11 +190,11 @@ func _check_closer() -> String:
 	return "" if now < _before_zoom - 0.001 else "zoom did not bring it closer (%f -> %f)" % [_before_zoom, now]
 
 func _check_knob() -> String:
-	if not rig.controls.has("DIST"):
-		return "no DIST control was wired from the asset (found: %s)" % [rig.controls.keys()]
-	var knob: RotatableControl = rig.controls["DIST"]
+	if rig.controls.empty():
+		return "no CONTROL_* was wired from any asset on the board"
+	var knob: RotatableControl = rig.controls[_knob_key]
 	if abs(knob.control.rotation.y) < 0.01:
-		return "the DIST knob did not turn"
+		return "the %s knob did not turn" % _knob_key
 	return ""
 
 func _check_lamp() -> String:

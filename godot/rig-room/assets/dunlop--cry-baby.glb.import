@@ -2,12 +2,12 @@
 
 importer="scene"
 type="PackedScene"
-path="res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn"
+path="res://.import/dunlop--cry-baby.glb-27234fb18e0374a71ca0d5f07baad706.scn"
 
 [deps]
 
-source_file="res://assets/boss-ds1.glb"
-dest_files=[ "res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn" ]
+source_file="res://assets/dunlop--cry-baby.glb"
+dest_files=[ "res://.import/dunlop--cry-baby.glb-27234fb18e0374a71ca0d5f07baad706.scn" ]
 
 [params]
 

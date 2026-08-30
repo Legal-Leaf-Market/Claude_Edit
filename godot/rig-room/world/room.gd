@@ -13,12 +13,22 @@ const PLAYER := preload("res://player/player.tscn")
 # id -> where it sits on the board. Everything else about the gear comes from
 # its own resource and its own mesh.
 const GEAR := [
-	{
-		"definition": "res://gear/boss_ds1.tres",
-		"scene": "res://assets/boss-ds1.glb",
-		"at": Vector3(0, 0, 0),
-		"facing": 0.0,
-	},
+	# One line per pedal, in signal order across two rows, the way somebody
+	# actually lays a board out: gain at the toe, time and space behind it.
+	# The GLB and the .tres are both written by the exporter, so adding a
+	# thirteenth is a slug in its ROOM list, a re-run, and a line here.
+	{"id": "dunlop--cry-baby",                    "at": Vector3(-0.30, 0, 0.10)},
+	{"id": "ibanez--ts9-tube-screamer",           "at": Vector3(-0.11, 0, 0.10)},
+	{"id": "boss--ds-1-distortion",               "at": Vector3(-0.02, 0, 0.10)},
+	{"id": "proco--rat-2",                        "at": Vector3(0.07, 0, 0.10)},
+	{"id": "electro-harmonix--big-muff-pi",       "at": Vector3(0.19, 0, 0.10)},
+	{"id": "dunlop--fuzz-face",                   "at": Vector3(0.32, 0, 0.10)},
+	{"id": "boss--bd-2-blues-driver",             "at": Vector3(-0.30, 0, -0.09)},
+	{"id": "mxr--phase-90",                       "at": Vector3(-0.21, 0, -0.09)},
+	{"id": "boss--ge-7-equalizer",                "at": Vector3(-0.12, 0, -0.09)},
+	{"id": "electro-harmonix--deluxe-memory-man", "at": Vector3(0.01, 0, -0.09)},
+	{"id": "tc-electronic--hall-of-fame-2",       "at": Vector3(0.14, 0, -0.09)},
+	{"id": "line-6--dl4-delay-modeler",           "at": Vector3(0.32, 0, -0.09)},
 ]
 
 var player: RigPlayer
@@ -38,10 +48,15 @@ func _spawn_gear() -> void:
 		deck_top = board.translation.y + Inspectable._bounds(board).size.y * 0.5
 
 	for entry in GEAR:
-		var definition = load(entry["definition"])
-		var scene = load(entry["scene"])
+		# CONVENTION RATHER THAN TWO PATHS PER ENTRY. The exporter writes
+		# gear/<id>.tres beside assets/<id>.glb, always, so an entry that names
+		# one and not the other cannot exist. A missing pair is reported and
+		# skipped rather than crashing the room: one bad asset must not cost
+		# you the other eleven.
+		var definition = load("res://gear/%s.tres" % entry["id"])
+		var scene = load("res://assets/%s.glb" % entry["id"])
 		if definition == null or scene == null:
-			push_error("room: could not load %s" % entry["definition"])
+			push_warning("room: no asset pair for %s, skipping it" % entry["id"])
 			continue
 		var rig := GearRig.new()
 		add_child(rig)
@@ -50,7 +65,8 @@ func _spawn_gear() -> void:
 			continue
 		var at: Vector3 = entry["at"]
 		rig.translation = Vector3(at.x, deck_top + at.y, at.z)
-		rig.rotation.y = deg2rad(entry["facing"])
+		if entry.has("facing"):
+			rig.rotation.y = deg2rad(entry["facing"])
 		rigs.append(rig)
 
 func _spawn_player() -> void:

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://gear/gear_definition.gd" type="Script" id=1]
+
+; WRITTEN BY scripts/gear-3d/export-models-glb.mjs. The millimetres are the
+; EXPORTED mesh's own rather than the catalogue's, because gear_rig.gd checks
+; the two against each other at load and a figure typed by hand would only be
+; checking itself. Edit lib/board/pedal-models.ts and re-export.
+[resource]
+script = ExtResource( 1 )
+id = "dunlop--fuzz-face"
+manufacturer = "Dunlop"
+model = "Fuzz Face"
+category = "round"
+width_mm = 114
+depth_mm = 114
+height_mm = 74.8
+inspect_distance = 0.0

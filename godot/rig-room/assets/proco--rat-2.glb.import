@@ -2,12 +2,12 @@
 
 importer="scene"
 type="PackedScene"
-path="res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn"
+path="res://.import/proco--rat-2.glb-83564f845cd9294c4a598b7fddc313ad.scn"
 
 [deps]
 
-source_file="res://assets/boss-ds1.glb"
-dest_files=[ "res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn" ]
+source_file="res://assets/proco--rat-2.glb"
+dest_files=[ "res://.import/proco--rat-2.glb-83564f845cd9294c4a598b7fddc313ad.scn" ]
 
 [params]
 

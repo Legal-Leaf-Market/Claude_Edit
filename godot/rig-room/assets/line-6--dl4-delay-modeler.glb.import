@@ -2,12 +2,12 @@
 
 importer="scene"
 type="PackedScene"
-path="res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn"
+path="res://.import/line-6--dl4-delay-modeler.glb-e9f8c5a0d4792a37e7466765345214fe.scn"
 
 [deps]
 
-source_file="res://assets/boss-ds1.glb"
-dest_files=[ "res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn" ]
+source_file="res://assets/line-6--dl4-delay-modeler.glb"
+dest_files=[ "res://.import/line-6--dl4-delay-modeler.glb-e9f8c5a0d4792a37e7466765345214fe.scn" ]
 
 [params]
 

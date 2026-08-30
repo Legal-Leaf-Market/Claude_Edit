@@ -2,12 +2,12 @@
 
 importer="scene"
 type="PackedScene"
-path="res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn"
+path="res://.import/tc-electronic--hall-of-fame-2.glb-8baf914f694d8b9b27ce76f81888f3ad.scn"
 
 [deps]
 
-source_file="res://assets/boss-ds1.glb"
-dest_files=[ "res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn" ]
+source_file="res://assets/tc-electronic--hall-of-fame-2.glb"
+dest_files=[ "res://.import/tc-electronic--hall-of-fame-2.glb-8baf914f694d8b9b27ce76f81888f3ad.scn" ]
 
 [params]
 

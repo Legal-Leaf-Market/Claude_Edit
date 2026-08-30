@@ -2,12 +2,12 @@
 
 importer="scene"
 type="PackedScene"
-path="res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn"
+path="res://.import/boss--ds-1-distortion.glb-4a4452716a6f479437baaac49484d77d.scn"
 
 [deps]
 
-source_file="res://assets/boss-ds1.glb"
-dest_files=[ "res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn" ]
+source_file="res://assets/boss--ds-1-distortion.glb"
+dest_files=[ "res://.import/boss--ds-1-distortion.glb-4a4452716a6f479437baaac49484d77d.scn" ]
 
 [params]
 

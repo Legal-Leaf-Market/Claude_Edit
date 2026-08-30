@@ -2,12 +2,12 @@
 
 importer="scene"
 type="PackedScene"
-path="res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn"
+path="res://.import/electro-harmonix--deluxe-memory-man.glb-a8d86bb6599da2941b8c3cc321f46ab5.scn"
 
 [deps]
 
-source_file="res://assets/boss-ds1.glb"
-dest_files=[ "res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn" ]
+source_file="res://assets/electro-harmonix--deluxe-memory-man.glb"
+dest_files=[ "res://.import/electro-harmonix--deluxe-memory-man.glb-a8d86bb6599da2941b8c3cc321f46ab5.scn" ]
 
 [params]
 

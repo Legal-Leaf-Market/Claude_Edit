@@ -2,12 +2,12 @@
 
 importer="scene"
 type="PackedScene"
-path="res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn"
+path="res://.import/dunlop--fuzz-face.glb-7fe288b462b0a16563e6af9bb4837ab0.scn"
 
 [deps]
 
-source_file="res://assets/boss-ds1.glb"
-dest_files=[ "res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn" ]
+source_file="res://assets/dunlop--fuzz-face.glb"
+dest_files=[ "res://.import/dunlop--fuzz-face.glb-7fe288b462b0a16563e6af9bb4837ab0.scn" ]
 
 [params]
 

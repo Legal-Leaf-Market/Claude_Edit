@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { createPortal } from "react-dom"
+import type * as THREE from "three"
 import dynamic from "next/dynamic"
 import { PEDAL_MODELS } from "@/lib/board/pedal-models"
 import { renderSlug } from "@/lib/board/pedal-render"
@@ -43,6 +44,23 @@ declare global {
      * and pixel stability says "it has finished drawing itself".
      */
     __benchReady?: boolean
+    /**
+     * The live three.js scene, for the GLB exporter.
+     *
+     * SAME SCENE, NOT A SECOND ONE. `scripts/gear-3d/export-models-glb.mjs`
+     * hands these meshes to GLTFExporter so the rig room loads the very object
+     * the inspector draws, exactly as the stills are photographs OF that
+     * object rather than a redrawing of it. A node-side scene assembling the
+     * same models from the same numbers would be a fork of the renderer, and
+     * the way that fork announces itself is not an error: it is a pedal you
+     * pick up in the game that has quietly stopped matching the one on the
+     * site.
+     *
+     * Bench only, and the bench fails closed on RENDER_BENCH.
+     */
+    __benchScene?: unknown
+    /** Serialise the pedal above to a base64 GLB. See lib/board/export-glb.ts. */
+    __benchExportGlb?: () => Promise<{ b64: string; names: string[]; sizeMM: number[] }>
   }
 }
 
@@ -55,6 +73,26 @@ declare global {
  * it up on this side costs nothing, since the table is a module constant that
  * the viewer's chunk is pulling in regardless.
  */
+/**
+ * Hand the pedal to `window`, where the offline driver can reach it.
+ *
+ * Both the group ITSELF and a ready-made exporter, because the driver runs in
+ * node and the browser cannot resolve a bare "three" specifier from an
+ * evaluated snippet. The scene is exposed too, so anything wanting to measure
+ * rather than export does not need a second door.
+ */
+function publishScene(scene: THREE.Object3D) {
+  window.__benchScene = scene
+  window.__benchExportGlb = async () => {
+    const { exportPedalGlb } = await import("@/lib/board/export-glb")
+    const { glb, names, sizeMM } = await exportPedalGlb(scene)
+    const bytes = new Uint8Array(glb)
+    let binary = ""
+    for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i])
+    return { b64: btoa(binary), names, sizeMM }
+  }
+}
+
 export function RenderBench({ slug }: { slug: string }) {
   const [host, setHost] = useState<HTMLElement | null>(null)
   const model = useMemo(() => PEDAL_MODELS.find((entry) => renderSlug(entry) === slug), [slug])
@@ -103,7 +141,7 @@ export function RenderBench({ slug }: { slug: string }) {
     /* `engaged` false so the LED is dark. A lit indicator is a claim that the
        pedal is switched on, and a still on a search card is not showing
        anybody's rig: it is showing the object. */
-    <PedalViewer3D model={model} engaged={false} still />,
+    <PedalViewer3D model={model} engaged={false} still onScene={publishScene} />,
     host,
   )
 }

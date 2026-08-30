@@ -2,12 +2,12 @@
 
 importer="scene"
 type="PackedScene"
-path="res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn"
+path="res://.import/ibanez--ts9-tube-screamer.glb-fe0fb2342188feec44578927e4f343d7.scn"
 
 [deps]
 
-source_file="res://assets/boss-ds1.glb"
-dest_files=[ "res://.import/boss-ds1.glb-302e82b7ea93172ad0f786a81ed60013.scn" ]
+source_file="res://assets/ibanez--ts9-tube-screamer.glb"
+dest_files=[ "res://.import/ibanez--ts9-tube-screamer.glb-fe0fb2342188feec44578927e4f343d7.scn" ]
 
 [params]
 

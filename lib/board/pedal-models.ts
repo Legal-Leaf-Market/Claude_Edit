@@ -113,6 +113,19 @@ export type BodyStyle =
  */
 export type KnobStyle = "dome" | "chicken-head" | "skirted" | "mini" | "stacked"
 
+/**
+ * How a model's MILLIMETRES become scene units, in one place.
+ *
+ * The viewer picked 0.01 because a pedal at true metre scale is a speck under
+ * a default camera and every light and shadow constant would have had to be
+ * tuned around it. That is fine for drawing, and it is a trap for anything
+ * LEAVING the browser: the GLB exporter measured a DS-1 at 770 x 1326mm,
+ * which is a plausible-looking coffee table. glTF is metres by specification,
+ * so the exporter divides by this rather than by a 10 somebody typed, and the
+ * day the viewer wants a different working scale the export follows it.
+ */
+export const SCENE_UNITS_PER_MM = 0.01
+
 export type PedalModel = {
   /** Matched against the board item. See `modelFor`. */
   match: { brand: RegExp; model: RegExp }
