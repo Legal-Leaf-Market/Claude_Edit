@@ -85,9 +85,24 @@ export async function exportPedalGlb(source: THREE.Object3D): Promise<{
     if (!mesh.isMesh) return
     const from = mesh.material as THREE.MeshStandardMaterial
     if (Array.isArray(mesh.material) || !from?.isMaterial) return
+    /*
+     * EVERY MAP, NOT JUST THE COLOUR ONE.
+     *
+     * The first version of this copied `map` and nothing else, and the day a
+     * normal map was added to the pedal bodies the export did not change by a
+     * single byte: the exporter reported eighty-nine files "unchanged" and
+     * every one of them was silently flat. Copying the whole set means the next
+     * map to arrive comes with it rather than being discovered missing.
+     */
     const flat = new THREE.MeshStandardMaterial({
       color: from.color?.clone() ?? new THREE.Color(0xffffff),
       map: from.map ?? null,
+      normalMap: from.normalMap ?? null,
+      roughnessMap: from.roughnessMap ?? null,
+      metalnessMap: from.metalnessMap ?? null,
+      aoMap: from.aoMap ?? null,
+      alphaMap: from.alphaMap ?? null,
+      emissiveMap: from.emissiveMap ?? null,
       roughness: from.roughness ?? 0.6,
       metalness: from.metalness ?? 0,
       emissive: from.emissive?.clone() ?? new THREE.Color(0x000000),
@@ -95,6 +110,7 @@ export async function exportPedalGlb(source: THREE.Object3D): Promise<{
       opacity: from.opacity ?? 1,
       side: from.side ?? THREE.FrontSide,
     })
+    if (from.normalScale) flat.normalScale.copy(from.normalScale)
     /* Left at 1 deliberately: any other value is what emits
        KHR_materials_emissive_strength, and the colour already carries it. */
     flat.emissiveIntensity = 1

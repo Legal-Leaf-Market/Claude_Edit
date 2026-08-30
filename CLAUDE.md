@@ -1735,6 +1735,12 @@ engine.
 - Do NOT export a pedal without flattening its materials to plain PBR, and do
   NOT let Godot store an imported asset's materials in external files. Either
   one renders the pedal white, in the engine only, silently (section 23).
+- Do NOT seed a generated texture from anything but a constant. The stills are
+  compared pixel by pixel, so a random seed rewrites all eighty-eight on every
+  run and the diff stops meaning anything (section 23).
+- Do NOT add a map to a pedal material without adding it to the flattener in
+  `lib/board/export-glb.ts`. A dropped map does not error: the export reports
+  the file unchanged and the pedal ships flat.
 - Do NOT point the test suite at a database you care about; it truncates.
 - Do NOT turn a capture into a `marketplace_listings` row because the capture
   exists. Reading a page you are on is research; republishing a catalogue is
@@ -2032,6 +2038,30 @@ the asset and then REFUSES to overwrite them, and the first import wins
 forever. The committed `.import` files set both the other way, which is why
 they are committed at all. A generated asset must never have its materials
 stored in a file nobody regenerates.
+
+**THE ENCLOSURES ARE POWDER COATED NOW, AND THE SETTING IS MEASURED RATHER
+THAN CHOSEN.** `lib/board/surface.ts` builds one 128px tileable normal map from
+seeded value noise, shared by every body on the site and in the game. Three
+properties are load bearing. It is DETERMINISTIC, because the committed stills
+are compared at a tolerance of 0.05 against a renderer whose noise floor is
+zero, and a texture seeded from `Math.random` would rewrite all eighty-eight
+files on every run. It is SMALL, because every exported GLB embeds its own copy
+of the maps its materials use. And it is BUILT ONCE, because eighty-eight
+pedals are all the same paint process.
+
+**THE AMPLITUDE IS THE WHOLE JOB, and the first pass ignored the warning in its
+own comment.** At normalScale 0.5 with a repeat of 6, a TS9 came out looking
+like hammered paint: not a break-up of the highlight but a crocodile skin,
+which is a worse lie than the flat green it replaced. Powder coat is a texture
+you FEEL. What works is a low amplitude with a fine repeat (0.16 at 16), where
+the grain sits at the edge of visible and does its work by disturbing a
+reflection rather than by being seen.
+
+**AND A FLATTENER THAT DROPS A MAP REPORTS SUCCESS.** `exportPedalGlb` copies
+materials down to plain PBR, and the first version copied `color` and `map` and
+nothing else. The day the normal map arrived, the exporter wrote eighty-nine
+files, reported every one of them UNCHANGED, and every one was silently flat.
+It copies the whole set now, so the next map to arrive travels with it.
 
 **GODOT 3.5 IS A CONSTRAINT, NOT A CHOICE.** Godot 4 is the right target. No
 Godot 4 binary was reachable from the build environment, and unverified GDScript

@@ -5,6 +5,7 @@ import { Canvas, useFrame, useThree, type ThreeElements } from "@react-three/fib
 import { OrbitControls, RoundedBox, ContactShadows } from "@react-three/drei"
 import * as THREE from "three"
 import { SCENE_UNITS_PER_MM, type ModelKnob, type PedalModel } from "@/lib/board/pedal-models"
+import { powderCoatNormal } from "@/lib/board/surface"
 
 /**
  * A PEDAL YOU CAN ACTUALLY PICK UP.
@@ -89,6 +90,7 @@ function bodyMaterial(color: string) {
    * see it: what you see is paint, and paint is a dielectric. Raising this to
    * look "metal" is the single easiest way to make the whole thing read as tin.
    */
+  const grain = powderCoatNormal()
   return {
     color,
     roughness: 0.38,
@@ -96,8 +98,16 @@ function bodyMaterial(color: string) {
     clearcoat: 0.85,
     clearcoatRoughness: 0.18,
     envMapIntensity: 1.1,
+    /* The orange-peel of a cured powder coat. Shared, deterministic and 128px:
+       see lib/board/surface.ts for why each of those three matters. */
+    ...(grain ? { normalMap: grain, normalScale: NORMAL_SCALE } : {}),
   }
 }
+
+/* One vector, not one per material: this is spread into every body in every
+   pedal on the board, and a fresh Vector2 per call is eighty-eight of them a
+   frame for a value that never changes. */
+const NORMAL_SCALE = new THREE.Vector2(0.16, 0.16)
 
 /**
  * A STUDIO, BUILT IN CODE RATHER THAN FETCHED.
