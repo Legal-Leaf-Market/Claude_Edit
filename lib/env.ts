@@ -382,6 +382,29 @@ export const env = {
     },
   },
 
+  /**
+   * DEAN'S BOUTIQUE, our own Reverb shop.
+   *
+   * Section 2 forbids the Reverb API for the catalogue, and the reason it
+   * gives is the carve-out this uses: the API is scoped to managing YOUR OWN
+   * shop. Reading our own listings to show them on our own site is the one
+   * thing it is for. `lib/reverb/shop.ts` states the boundary that keeps this
+   * apart from ingestion, and it is structural: nothing it returns ever
+   * reaches `marketplace_listings`, a median, or a deal badge.
+   *
+   * The token is a Personal Access Token from the shop's own API settings and
+   * belongs in the deployment, never in this repository. Unset is fully
+   * supported: the section simply does not render.
+   */
+  reverbShop: {
+    token: str("REVERB_SHOP_TOKEN"),
+    /* Not a secret, so it can default. It is the tail of the shop URL. */
+    slug: str("REVERB_SHOP_SLUG", "deans-boutique-505"),
+    get isConfigured(): boolean {
+      return Boolean(env.reverbShop.token)
+    },
+  },
+
   groq: {
     apiKey: str("GROQ_API_KEY"),
     model: str("GROQ_MODEL", "openai/gpt-oss-120b"),
