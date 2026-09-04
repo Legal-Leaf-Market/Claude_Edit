@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { OUTREACH_HTML as HTML } from "@/app/stompbox/outreach/document"
+import { OUTREACH_HTML as HTML } from "@/app/admin/outreach/document"
 
 /**
  * THE DOCUMENT IS EMBEDDED IN A TEMPLATE LITERAL, AND THAT IS THE RISK.
  *
- * `app/stompbox/outreach/document.ts` holds a whole HTML page as one string,
+ * `app/admin/outreach/document.ts` holds a whole HTML page as one string,
  * escaped mechanically from the standalone file. A bad escape does not throw:
  * it truncates the document, or swallows a closing tag, or turns part of the
  * page's own JavaScript into an interpolation that silently evaluates to

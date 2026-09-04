@@ -32,7 +32,7 @@ export type ShopListing = {
 }
 
 export type ShopResult =
-  | { ok: true; listings: ShopListing[]; source: string }
+  | { ok: true; listings: ShopListing[]; source: string; raw?: Record<string, unknown> }
   | { ok: false; reason: string }
 
 /**
@@ -117,7 +117,20 @@ export async function fetchShopListings(): Promise<ShopResult> {
       const listings = rows
         .map((r) => normalize(r as Record<string, unknown>))
         .filter((l): l is ShopListing => l !== null)
-      if (listings.length) return { ok: true, listings, source: new URL(url).pathname }
+      if (listings.length) {
+        /* `raw` is the first row exactly as Reverb sent it, carried only for
+           the admin diagnostic below. THE PRICE FIELD WAS BOUND WRONG ONCE
+           ALREADY: `price` read back well under the live asking price, so the
+           shop advertised numbers the shop was not asking. Guessing a second
+           field after getting the first one wrong is how you ship a third
+           wrong number, so the raw object is what decides it. */
+        return {
+          ok: true,
+          listings,
+          source: new URL(url).pathname,
+          raw: rows[0] as Record<string, unknown>,
+        }
+      }
       failures.push(`${new URL(url).pathname} -> 200, no listings`)
     } catch (error) {
       failures.push(`${new URL(url).pathname} -> ${(error as Error).message}`)

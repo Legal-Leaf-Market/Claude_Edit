@@ -1,4 +1,5 @@
 import { fetchShopListings } from "@/lib/reverb/shop"
+import { isAdmin } from "@/lib/admin/gate"
 
 /**
  * OUR OWN SHOP'S LISTINGS, AS PUBLIC JSON.
@@ -28,8 +29,32 @@ import { fetchShopListings } from "@/lib/reverb/shop"
  */
 export const revalidate = 120
 
-export async function GET() {
+export async function GET(request: Request) {
   const result = await fetchShopListings()
+
+  /*
+   * `?debug=1`, BEHIND THE PASSCODE.
+   *
+   * The live asking prices totalled $631 and this route reported $400, which
+   * is a shop advertising numbers it is not asking. That is worse than a
+   * missing section: it is a wrong number a shopper can act on.
+   *
+   * So rather than binding a second field on a hunch, this returns every
+   * price-shaped key on a real row and lets the answer come from the data.
+   * Admin only, because a raw listing object is more than the public JSON
+   * deliberately publishes.
+   */
+  if (new URL(request.url).searchParams.get("debug") === "1") {
+    if (!(await isAdmin())) return new Response("Not found", { status: 404 })
+    const raw = result.ok ? (result.raw ?? {}) : {}
+    const priceish = Object.fromEntries(
+      Object.entries(raw).filter(([key]) => /price|amount|offer|sale|discount/i.test(key)),
+    )
+    return Response.json(
+      { keys: Object.keys(raw).sort(), priceish },
+      { headers: { "cache-control": "private, no-store" } },
+    )
+  }
 
   if (!result.ok) {
     /* 200 with an empty list, not an error status. The caller is a decorative

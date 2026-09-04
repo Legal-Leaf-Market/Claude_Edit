@@ -40,6 +40,26 @@ export function middleware(request: NextRequest) {
   if (!isStompboxHost(request.headers.get("host"))) return NextResponse.next()
 
   const { pathname } = request.nextUrl
+
+  /*
+   * THE ADMIN TREE IS NOT THE GUIDE, and must not be rewritten into it.
+   *
+   * `/outreach` is the tool we work from. It needs the admin passcode, and the
+   * boundary test forbids the guide's tree from importing admin code, so the
+   * page lives at `/admin/outreach` and this is what keeps the URL people
+   * actually type. `/admin/*` then has to pass through untouched or the
+   * sign-in page it redirects to would itself be rewritten into the guide and
+   * 404, which locks the door with the key on the wrong side of it.
+   */
+  if (pathname === "/outreach") {
+    const url = request.nextUrl.clone()
+    url.pathname = "/admin/outreach"
+    return NextResponse.rewrite(url)
+  }
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    return NextResponse.next()
+  }
+
   if (pathname === STOMPBOX_PREFIX || pathname.startsWith(`${STOMPBOX_PREFIX}/`)) {
     return NextResponse.next()
   }
