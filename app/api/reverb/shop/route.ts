@@ -13,7 +13,20 @@ import { fetchShopListings } from "@/lib/reverb/shop"
  * want the shopper to end up anyway. Nothing about inventory, cost, margin or
  * the account, and no field the API returns that we do not explicitly name.
  */
-export const revalidate = 900
+/**
+ * TWO MINUTES, NOT FIFTEEN.
+ *
+ * The first version cached for 15 minutes and a listing added in that window
+ * simply was not there, which reads as the feed being broken rather than as a
+ * cache doing its job. A shop with nine items is not a load problem, and the
+ * cost of being wrong about what is in stock is higher than the cost of a
+ * request.
+ *
+ * `?fresh=` bypasses it outright: the CDN keys on the whole URL, so a unique
+ * value is a guaranteed repull for somebody who has just listed something and
+ * wants to see it now.
+ */
+export const revalidate = 120
 
 export async function GET() {
   const result = await fetchShopListings()
@@ -24,7 +37,7 @@ export async function GET() {
        a 500 here would turn "no shop section today" into a red page. */
     return Response.json(
       { listings: [], configured: false },
-      { headers: { "cache-control": "public, s-maxage=300" } },
+      { headers: { "cache-control": "public, s-maxage=60" } },
     )
   }
 
@@ -34,6 +47,6 @@ export async function GET() {
        it was written on, and this is how the other two get retired on
        evidence rather than on somebody's guess about which one it was. */
     { listings: result.listings, configured: true, source: result.source },
-    { headers: { "cache-control": "public, s-maxage=900, stale-while-revalidate=3600" } },
+    { headers: { "cache-control": "public, s-maxage=120, stale-while-revalidate=600" } },
   )
 }

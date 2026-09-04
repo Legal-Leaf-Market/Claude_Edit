@@ -1,4 +1,5 @@
 import { headers } from "next/headers"
+import { ReverbShopGrid } from "@/components/shop/reverb-grid"
 import Link from "next/link"
 import { ArrowRight, Cable, CircuitBoard, Ear } from "lucide-react"
 import { InstagramStrip } from "@/components/instagram-strip"
@@ -99,6 +100,10 @@ export default async function HomePage() {
           </div>
         ))}
       </section>
+
+      <div className="mt-20">
+        <ReverbShopGrid heading="In the shop now" />
+      </div>
 
       <section className="mt-20">
         <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3">
