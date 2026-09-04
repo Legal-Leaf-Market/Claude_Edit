@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { ReverbShopGrid } from "@/components/shop/reverb-grid"
 import { sql } from "drizzle-orm"
 import { ArrowRight, BellRing, Cable, Disc3, LineChart, Search as SearchIcon } from "lucide-react"
 import { InstagramStrip } from "@/components/instagram-strip"
@@ -196,6 +197,8 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      <ReverbShopGrid />
 
       <section className="pb-12">
         <SectionHead title="Browse by category" href="/search" linkLabel="Everything" />
