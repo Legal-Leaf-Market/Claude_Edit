@@ -59,6 +59,6 @@ describe("the served document survived being embedded", () => {
     /* House rule. The only em dashes allowed are inside the listing parser's
        character classes, where they match what a seller typed. */
     const body = HTML.replace(/<script[\s\S]*?<\/script>/g, "")
-    expect(body).not.toContain("—")
+    expect(body).not.toContain("\u2014")
   })
 })

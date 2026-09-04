@@ -1334,7 +1334,7 @@ function parseMoney(line) {
   let m = line.match(/\\$\\s*(\\d{1,3}(?:,\\d{3})+|\\d+)(?:\\.(\\d{1,2}))?/);
   if (m) return { value: Number(m[1].replace(/,/g, "")) + (m[2] ? Number("0." + m[2]) : 0), guessed: false };
 
-  m = line.match(/(?:[-–—:@]|\\bfor\\b|\\basking\\b|\\bobo\\b)\\s*(\\d{2,5})(?:\\.(\\d{1,2}))?\\s*(?:each|ea\\.?|obo|firm|shipped|net|ono|\\+\\s*ship(?:ping)?)?\\s*$/i);
+  m = line.match(/(?:[-\\u2013\\u2014:@]|\\bfor\\b|\\basking\\b|\\bobo\\b)\\s*(\\d{2,5})(?:\\.(\\d{1,2}))?\\s*(?:each|ea\\.?|obo|firm|shipped|net|ono|\\+\\s*ship(?:ping)?)?\\s*$/i);
   if (m) return { value: Number(m[1]) + (m[2] ? Number("0." + m[2]) : 0), guessed: false };
 
   m = line.match(/(\\S+)\\s+(\\d{2,5})(?:\\.(\\d{1,2}))?\\s*(?:each|ea\\.?|obo|firm|shipped|net|ono|\\+\\s*ship(?:ping)?)?\\s*$/i);
@@ -1365,7 +1365,7 @@ function parseListing(text) {
   for (let raw of String(text).split(/\\r?\\n/)) {
     let line = raw.trim();
     if (!line) continue;
-    line = line.replace(/^[-*•·–—>]+\\s*/, "").replace(/^\\d{1,2}[.)]\\s+/, "").trim();
+    line = line.replace(/^[-*•·\\u2013\\u2014>]+\\s*/, "").replace(/^\\d{1,2}[.)]\\s+/, "").trim();
     if (!line) continue;
     if (!/[a-z]/i.test(line)) continue;                       /* a bare price line */
     if (/^(pedals?|for sale|prices?|selling|list|gear|my board|board)\\b[:\\s]*$/i.test(line)) continue;
@@ -1375,9 +1375,9 @@ function parseListing(text) {
     if (money) {
       name = line
         .replace(/\\$\\s*[\\d,]+(?:\\.\\d{1,2})?/, " ")
-        .replace(/(?:[-–—:@]|\\bfor\\b|\\basking\\b)?\\s*\\d{2,5}(?:\\.\\d{1,2})?\\s*(?:each|ea\\.?|obo|firm|shipped|net|ono|\\+\\s*ship(?:ping)?)?\\s*$/i, " ");
+        .replace(/(?:[-\\u2013\\u2014:@]|\\bfor\\b|\\basking\\b)?\\s*\\d{2,5}(?:\\.\\d{1,2})?\\s*(?:each|ea\\.?|obo|firm|shipped|net|ono|\\+\\s*ship(?:ping)?)?\\s*$/i, " ");
     }
-    name = name.replace(/\\s{2,}/g, " ").replace(/[\\s,\\-–—:]+$/, "").trim();
+    name = name.replace(/\\s{2,}/g, " ").replace(/[\\s,\\-\\u2013\\u2014:]+$/, "").trim();
     if (!name) name = line;
 
     const { brand, model } = splitBrand(name);
