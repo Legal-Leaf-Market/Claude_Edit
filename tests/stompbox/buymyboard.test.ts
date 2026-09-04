@@ -1,63 +1,80 @@
 import { describe, expect, it } from "vitest"
 import { BUY_MY_BOARD_HTML as HTML } from "@/app/stompbox/buymyboard/document"
+import { OUTREACH_HTML as TOOL } from "@/app/stompbox/outreach/document"
 
 /**
- * THE DOCUMENT IS EMBEDDED IN A TEMPLATE LITERAL, AND THAT IS THE RISK.
+ * THE PUBLIC PAGE AND THE OUTREACH SCRIPT MUST QUOTE THE SAME DEAL.
  *
- * `app/stompbox/buymyboard/document.ts` holds a whole HTML page as one string,
- * escaped mechanically from the standalone file. A bad escape does not throw:
- * it truncates the document, or swallows a closing tag, or turns part of the
- * page's own JavaScript into an interpolation that silently evaluates to
- * nothing. The served page then renders as a blank panel or half a form, on a
- * live domain, with nothing in any log.
- *
- * So this asserts the SHAPE of what gets served rather than its content. None
- * of it is about the sales copy, which changes; all of it is about whether the
- * string still is a document.
+ * They did not, briefly: the public page offered 60% cash while the message a
+ * seller received offered 65%, so anyone who got a message and then looked at
+ * the site was shown a worse number on the site. Nothing failed, because
+ * nothing was comparing them. This does.
  */
+describe("one rate card, two pages", () => {
+  it("quotes 65, 75 and 90 on the public page", () => {
+    expect(HTML).toMatch(/cashPct:\s*0\.65/)
+    expect(HTML).toMatch(/creditPct:\s*0\.75/)
+    expect(HTML).toMatch(/consignPct:\s*0\.90/)
+  })
+
+  it("uses the same three rates the outreach script quotes", () => {
+    for (const rate of ["0.65", "0.75", "0.90"]) {
+      expect(TOOL, `the outreach script no longer quotes ${rate}`).toContain(rate)
+    }
+  })
+
+  it("derives the store credit bump rather than stating one", () => {
+    /* A hardcoded "20% more than cash" is how the number on the card and the
+       number in the arithmetic quietly stop agreeing. */
+    expect(HTML).toMatch(/OFFER\.creditPct \/ OFFER\.cashPct/)
+  })
+
+  it("keeps no minimum, as a recorded decision rather than an absence", () => {
+    expect(HTML).toMatch(/minimum:\s*0/)
+  })
+})
+
 describe("the served document survived being embedded", () => {
   it("is a whole page, opened and closed", () => {
     expect(HTML.startsWith("<!doctype html>")).toBe(true)
     expect(HTML.trimEnd().endsWith("</html>")).toBe(true)
-    expect(HTML).toContain("<head>")
-    expect(HTML).toContain("</head>")
-    expect(HTML).toContain("<body>")
   })
 
   it("has balanced script and style tags", () => {
-    /* An unbalanced pair is exactly what a swallowed backtick produces, and
-       the browser recovers from it by eating the rest of the page as text. */
     expect((HTML.match(/<script/g) ?? []).length).toBe((HTML.match(/<\/script>/g) ?? []).length)
     expect((HTML.match(/<style/g) ?? []).length).toBe((HTML.match(/<\/style>/g) ?? []).length)
   })
 
-  it("still carries the parts the page is useless without", () => {
-    for (const id of ["fPedal", "paste", "rows", "m1", "m2", "m3", "xVerified"]) {
-      expect(HTML, `#${id} is missing from the served document`).toContain(`id="${id}"`)
+  it("still carries the controls the page is useless without", () => {
+    for (const id of ["items", "addItem", "amtCash", "amtCredit", "amtConsign", "summary", "ctaSend"]) {
+      expect(HTML, `#${id} is missing`).toContain(`id="${id}"`)
     }
-    expect(HTML).toContain("const NOTES = [")
-    expect(HTML).toContain("function parseListing")
+  })
+})
+
+describe("it never quotes a number it does not have", () => {
+  it("keeps the unpriced path, which excludes rather than zeroes", () => {
+    /* 31 of the pedals in the table deliberately carry no book price, because
+       a Big Muff is sixty dollars or nine hundred depending which one it is.
+       Those must stay out of the total rather than counting as zero. */
+    expect(HTML).toContain("price it by hand")
+    expect(HTML).toMatch(/if \(value === null\) byHand \+= 1/)
   })
 
-  it("keeps the three tiers at the rates they are quoted at", () => {
-    /* These percentages are an offer made to a stranger in writing. A silent
-       edit to one of them is a different deal under the same name. */
-    expect(HTML).toContain("0.65 * t.mv")
-    expect(HTML).toContain("0.75 * t.mv * f")
-    expect(HTML).toContain("0.90 * t.mv * f")
+  it("says on the page that the figures are estimates", () => {
+    expect(HTML).toContain("These are estimates.")
   })
+})
 
-  it("asks not to be indexed", () => {
-    /* Shareable and searchable are different things. The page carries the
-       shop's own margins and the scripts it sends sellers, so the link should
-       work when sent and never turn up in a search. The route sets the header
-       too; this is the half that travels with the standalone copy. */
-    expect(HTML).toMatch(/name="robots"\s+content="noindex/)
+describe("the call to action cannot point at nothing", () => {
+  it("degrades to a copy action when no Messenger handle is set", () => {
+    expect(HTML).toMatch(/if \(!MESSENGER\)/)
+    expect(HTML).toContain("Copy my quote to send")
   })
+})
 
+describe("house style", () => {
   it("has no em dash in anything the reader is shown", () => {
-    /* House rule. The only em dashes allowed are inside the listing parser's
-       character classes, where they match what a seller typed. */
     const body = HTML.replace(/<script[\s\S]*?<\/script>/g, "")
     expect(body).not.toContain("\u2014")
   })

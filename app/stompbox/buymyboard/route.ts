@@ -3,27 +3,23 @@ import { BUY_MY_BOARD_HTML } from "./document"
 /**
  * stompbox.world/buymyboard
  *
- * A ROUTE HANDLER RATHER THAN A PAGE, because what is served is a whole HTML
- * document rather than a fragment for the guide's layout to wrap. A page here
- * would inherit `app/stompbox/layout.tsx`, which brings the guide's chrome, its
- * canonical tag and a second <html> element's worth of assumptions to a
- * document that already has all three of its own.
+ * The PUBLIC page: a seller prices their own gear and picks how they want
+ * paid. The URL is the seller's own phrase, "buy my board", so it belongs to
+ * the page a seller lands on rather than to the tool we work from. That tool
+ * moved to `/outreach`, which reads like what it is.
  *
- * The middleware rewrite is what puts it on the guide's domain:
- * `stompbox.world/buymyboard` becomes `/stompbox/buymyboard` before it gets
- * here, exactly as every other page on that domain does. It is reachable at
- * `gearavail.com/stompbox/buymyboard` too, which is the same mirror
- * arrangement the rest of the subtree has.
+ * A ROUTE HANDLER RATHER THAN A PAGE. What is served is a whole HTML document
+ * with its own head, stylesheet and script; a page would wrap it in the
+ * guide's layout, chrome and canonical tag, all three of which it already has.
  *
- * NOINDEX, AND THAT IS NOT AN OVERSIGHT. This page carries the shop's own
- * margins and the scripts it sends sellers. Shareable and searchable are
- * different things, and only the first one is wanted: a link sent to somebody
- * opens fine, while a search for "sell my pedalboard" will never surface it.
- * The header below is the half that governs crawlers, and the document repeats
- * it in a meta tag for the standalone copy that is served without it.
+ * INDEXED, UNLIKE `/outreach`. This one exists to be found by somebody typing
+ * "sell my pedals", so it carries no robots header and is meant to rank. The
+ * operator tool carries the shop's own margins and stays out of search.
  *
- * It is deliberately absent from `app/sitemap.ts`, which lists only routes it
- * explicitly builds, so nothing has to be removed there.
+ * ONE RATE CARD ACROSS BOTH: 65 / 75 / 90, the same three the outreach script
+ * quotes. They were briefly 60 / cash+20% / 80-85 here, which showed a seller
+ * a worse number on the public page than the one they had been sent in a
+ * message. `tests/stompbox/sell.test.ts` holds the two together now.
  */
 export const dynamic = "force-static"
 
@@ -31,7 +27,6 @@ export function GET() {
   return new Response(BUY_MY_BOARD_HTML, {
     headers: {
       "content-type": "text/html; charset=utf-8",
-      "x-robots-tag": "noindex, nofollow",
       "cache-control": "public, max-age=0, must-revalidate",
     },
   })
