@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { ArrowLeft, ArrowRight, ChevronRight, GripVertical, X } from "lucide-react"
 import { ListingImage } from "@/components/listing-image"
-import { renderForGear } from "@/lib/board/pedal-render"
+import { fallbackImageryFor } from "@/lib/board/pedal-render"
 import { EFFECTS, EFFECT_TYPES, type EffectType } from "@/lib/pedalboard/chain"
 import { formatPrice, sourceLabel } from "@/lib/utils"
 import type { PedalSourceAvailability } from "@/lib/pedalboard/queries"
@@ -208,7 +208,7 @@ function PedalSlot({
         src={slot.imageUrl}
         alt={`${slot.brand} ${slot.model}`}
         className="h-24 w-full"
-        modelled={renderForGear(slot.brand, slot.model)}
+        {...fallbackImageryFor(slot.brand, slot.model)}
         fallbackLabel={meta.label}
         fallbackHue={meta.hue}
       />

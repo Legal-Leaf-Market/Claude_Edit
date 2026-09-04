@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Loader2, Plus, Search } from "lucide-react"
 import { ListingImage } from "@/components/listing-image"
-import { renderForGear } from "@/lib/board/pedal-render"
+import { fallbackImageryFor } from "@/lib/board/pedal-render"
 import { EFFECTS } from "@/lib/pedalboard/chain"
 import { formatPrice } from "@/lib/utils"
 import type { PedalSummary } from "@/lib/pedalboard/queries"
@@ -124,7 +124,7 @@ export function PedalSearch({
                     src={pedal.imageUrl}
                     alt=""
                     className="h-10 w-10 shrink-0 rounded-md"
-                    modelled={renderForGear(pedal.brand, pedal.model)}
+                    {...fallbackImageryFor(pedal.brand, pedal.model)}
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm text-[var(--text)]">

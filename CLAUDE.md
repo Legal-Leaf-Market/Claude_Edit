@@ -1741,6 +1741,17 @@ engine.
 - Do NOT add a map to a pedal material without adding it to the flattener in
   `lib/board/export-glb.ts`. A dropped map does not error: the export reports
   the file unchanged and the pedal ships flat.
+- Do NOT show one of our own bench photographs without saying it is a different
+  unit. It is a real object, so nothing about it announces that it is not the
+  item for sale, which is the same claim a silent render makes (section 24).
+- Do NOT hand-write a row into `lib/lab/photos.ts`. The importer writes them;
+  a mistyped intake id files one pedal's photo under another and nothing fails.
+- Do NOT publish a manufacturer's serial number alongside a lab photo. Our own
+  intake reference identifies the unit for us and means nothing to anybody else.
+- Do NOT put our own inventory in the comparison grid, or badge it, without the
+  four guarantees in section 24. Preferring the listing we earn most from is
+  ranking by payout, and our own price inside the median is marking our own
+  homework.
 - Do NOT point the test suite at a database you care about; it truncates.
 - Do NOT turn a capture into a `marketplace_listings` row because the capture
   exists. Reading a page you are on is research; republishing a catalogue is
@@ -2075,6 +2086,58 @@ photographed, and it independently measured the same 77.4 x 58.9 x 131.7 mm,
 which is a useful cross-check and not a new capability. What an engine buys is
 everything after the mesh exists. What makes a pedal look real is the ASSET:
 geometry, then PBR texture maps, which the DS-1 does not have yet.
+
+---
+
+## 24. Our own photographs, and the inventory question behind them
+
+`lib/lab/photos.ts`, `components/lab-photo.tsx`, `scripts/import-lab-photos.ts`.
+
+**GEAR PASSES THROUGH OUR HANDS, SO WE CAN PHOTOGRAPH IT.** Every listing with
+no seller photo falls back to a measured render, which is honest and is still a
+drawing; on `/used/effects-pedals` that was most of the page. A shot of the
+real object beats a drawing on every axis and carries no licence question at
+all, because we owned the pedal and took the picture. The order is now:
+
+    the seller's own photo    it is the unit being bought
+    OUR photograph            a real pedal, but a DIFFERENT unit
+    the measured render       a drawing, and it says so
+    the category silhouette   a true thing about the kind of gear
+
+**IT IS LABELLED, FOR THE REASON THE RENDER IS.** Ours is a real object, so
+nothing about it announces that it is not the unit in the listing, and a
+shopper who assumes otherwise has been misled about what arrives in the post.
+`LabPhotoImage` prints "Our photo, another unit" and the alt text says it at
+every size.
+
+**NO PROVENANCE, NO PHOTO.** `isPublishable` gates on the intake reference and
+the date, structurally, the way `isRenderable` gates on attribution in section
+13. And the rows are MACHINE-WRITTEN by the importer, never typed: filing a
+DS-1 shot under a DS-2 shows the wrong pedal confidently, on a page somebody is
+about to spend money from, with nothing failing anywhere.
+
+**THE INTAKE ID IS OURS, NOT THE MANUFACTURER'S SERIAL.** A serial identifies a
+real object that will have an owner after us, and publishing one beside
+"photographed at our HQ" says more than a picture needs to.
+
+**AND THE PART THAT IS NOT BUILT: OUR OWN STOCK IN THE COMPARISON GRID.** The
+operating brief proposes routing shoppers to inventory we hold, with a badge no
+other merchant can earn. That is a legitimate model and it is NOT what this
+site currently is: section 1 says we never take an order and never hold stock,
+and the footer promises commission never affects ranking. Our own listing pays
+100% margin against a competitor's 3%, so a preference for it is ranking by
+payout at its most extreme, and a badge inside a result set is exactly what
+section 19 refused for the DistroKid banner.
+
+There is also a arithmetic problem that would not announce itself. If our units
+land in `marketplace_listings` they enter the MEDIAN that judges deals, so we
+would be setting a price and also computing the market price that badges it
+(section 8). Four things make it honest, and none is optional: our listings are
+excluded from every median, they take no ranking preference, the badge says on
+itself that we are the seller, and the footer's promise is rewritten to match.
+Do not build it without all four.
+
+
 ---
 
 ## 21. The collector: capturing a catalogue from a page you are already on
