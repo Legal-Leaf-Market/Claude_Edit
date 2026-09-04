@@ -6,7 +6,7 @@ import { ExternalLink, MapPin, RotateCcw, Truck } from "lucide-react"
 import { AddToCartKnob } from "@/components/add-to-cart-button"
 import { Badge } from "@/components/ui/badge"
 import { ListingImage } from "./listing-image"
-import { renderForGear } from "@/lib/board/pedal-render"
+import { fallbackImageryFor } from "@/lib/board/pedal-render"
 import { formatMargin, formatPrice, sourceLabel, timeAgo } from "@/lib/utils"
 import type { Source } from "@/lib/db/schema"
 import type { SearchHit } from "@/lib/search/types"
@@ -40,7 +40,7 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
    * picture of a DS-1 alone, and `canonical_gear` is where "this listing is
    * that instrument" has already been decided once, properly.
    */
-  const modelled = renderForGear(hit.gearBrand, hit.gearModel)
+  const { labPhoto, modelled } = fallbackImageryFor(hit.gearBrand, hit.gearModel)
 
   return (
     <article className="flip-card h-full" data-flipped={flipped}>
@@ -54,6 +54,7 @@ export function ListingCard({ hit }: { hit: SearchHit }) {
             <ListingImage
               src={hit.primaryImageUrl}
               alt={hit.title}
+              labPhoto={labPhoto}
               modelled={modelled}
               category={hit.gearCategory}
               className="h-64 w-full sm:h-72"

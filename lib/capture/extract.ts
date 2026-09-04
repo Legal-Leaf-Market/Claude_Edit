@@ -768,11 +768,40 @@ export function captureSource(sourceDoc?: Document, sourceUrl?: string): Capture
     bodyText.match(/of\s+([\d,]{2,})\b/i)
   const claimedTotal = totalMatch ? Number.parseInt(totalMatch[1].replace(/,/g, ""), 10) : null
 
+  /*
+   * A NEXT PAGE IS ON THIS SITE. ANYTHING ELSE IS NOT PAGINATION.
+   *
+   * zZounds' effects category offered `https://www.google.com/storepages?q=
+   * zzounds.com&c=US` as its next page, and it was taken: a real capture of 70
+   * products reported a next page pointing at Google. The crawl walks whatever
+   * this returns, in a hidden frame, inside the operator's own session, so the
+   * cost of a loose match here is not a missing page. It is this tool fetching
+   * a search engine on somebody's behalf and reporting the result as the
+   * merchant's catalogue.
+   *
+   * Same-origin is the whole rule, and it is the right shape of rule for the
+   * same reason the challenge check reads the title only: the failure that
+   * matters is the false positive, and a merchant who genuinely paginates onto
+   * another hostname can be handled when one turns up, by somebody looking at
+   * it.
+   */
+  const sameSite = (candidate: Element | null | undefined): Element | null => {
+    const raw = candidate?.getAttribute("href")
+    if (!raw) return null
+    try {
+      return new URL(raw, href).origin === new URL(href).origin ? (candidate as Element) : null
+    } catch (error) {
+      return null
+    }
+  }
+
   const nextLink =
-    d.querySelector('link[rel="next"]') ??
-    d.querySelector('a[rel="next"]') ??
-    Array.from(d.querySelectorAll("a")).find((a) =>
-      /^(next|older|more)\b/i.test((a.textContent ?? "").trim()),
+    sameSite(d.querySelector('link[rel="next"]')) ??
+    sameSite(d.querySelector('a[rel="next"]')) ??
+    sameSite(
+      Array.from(d.querySelectorAll("a")).find(
+        (a) => /^(next|older|more)\b/i.test((a.textContent ?? "").trim()) && sameSite(a) != null,
+      ),
     )
 
   const pageLinks = Array.from(d.querySelectorAll("a[href]"))

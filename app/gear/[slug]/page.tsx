@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm"
 import { ExternalLink, MapPin, Truck } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ListingImage } from "@/components/listing-image"
-import { renderForGear } from "@/lib/board/pedal-render"
+import { fallbackImageryFor } from "@/lib/board/pedal-render"
 import { PriceHistoryChart } from "@/components/price-history-chart"
 import { GearCredits } from "@/components/rigs/gear-credits"
 import { db } from "@/lib/db"
@@ -13,6 +13,8 @@ import { canonicalGear } from "@/lib/db/schema"
 import { listingsForGear, priceHistoryFor } from "@/lib/deals/history"
 import { env } from "@/lib/env"
 import { formatMargin, formatPrice, sourceLabel, timeAgo } from "@/lib/utils"
+import { JsonLdScript } from "@/components/json-ld"
+import { breadcrumbs, productSchema } from "@/lib/seo/structured-data"
 
 type PageProps = { params: Promise<{ slug: string }> }
 
@@ -52,7 +54,7 @@ export default async function GearPage({ params }: PageProps) {
   const name = `${gear.brand} ${gear.model}`
   /* One lookup for the page: the hero and every listing row are all this same
      instrument, so a photograph missing anywhere on it means the same model. */
-  const modelled = renderForGear(gear.brand, gear.model)
+  const { labPhoto, modelled } = fallbackImageryFor(gear.brand, gear.model)
   const cheapest = listings[0]
   const cheapestCents = cheapest ? Number(cheapest.price_cents) : null
 
@@ -83,6 +85,7 @@ export default async function GearPage({ params }: PageProps) {
         <ListingImage
           src={gear.imageUrl}
           alt={name}
+          labPhoto={labPhoto}
           modelled={modelled}
           className="h-40 w-full rounded-lg sm:h-40 sm:w-40 sm:shrink-0"
         />
@@ -191,6 +194,7 @@ export default async function GearPage({ params }: PageProps) {
                   <ListingImage
                     src={row.primary_image_url ? String(row.primary_image_url) : null}
                     alt={String(row.title)}
+                    labPhoto={labPhoto}
                     modelled={modelled}
                     className="h-14 w-14 shrink-0 rounded-md"
                   />
@@ -241,34 +245,31 @@ export default async function GearPage({ params }: PageProps) {
         )}
       </section>
 
-      {/* Product structured data. Only emitted when there is a real live offer
-          behind it, because marking up an empty page is a manual action risk. */}
-      {cheapestCents != null && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Product",
-              name: `Used ${name}`,
-              brand: { "@type": "Brand", name: gear.brand },
-              category: gear.category,
-              image: gear.imageUrl ?? undefined,
-              gtin: gear.gtin ?? undefined,
-              mpn: gear.mpn ?? undefined,
-              offers: {
-                "@type": "AggregateOffer",
-                offerCount: listings.length,
-                lowPrice: (cheapestCents / 100).toFixed(2),
-                highPrice: (Number(listings[listings.length - 1].price_cents) / 100).toFixed(2),
-                priceCurrency: "USD",
-                availability: "https://schema.org/InStock",
-                url: `${env.site.url}/gear/${gear.slug}`,
-              },
-            }),
-          }}
-        />
-      )}
+      <JsonLdScript
+        data={[
+          productSchema({
+            name: `Used ${name}`,
+            brand: gear.brand,
+            category: gear.category,
+            image: gear.imageUrl,
+            gtin: gear.gtin,
+            mpn: gear.mpn,
+            path: `/gear/${gear.slug}`,
+            offers: listings.map((row) => ({
+              priceCents: Number(row.price_cents),
+              currency: row.currency ? String(row.currency) : null,
+              condition: row.condition ? String(row.condition) : null,
+            })),
+          }),
+          /* The same trail the <nav> above renders. A breadcrumb that
+             disagrees with the visible one describes a different page. */
+          breadcrumbs([
+            { name: "Home", path: "/" },
+            { name: gear.brand, path: `/search?brand=${encodeURIComponent(gear.brand)}` },
+            { name: gear.model },
+          ]),
+        ]}
+      />
     </div>
   )
 }

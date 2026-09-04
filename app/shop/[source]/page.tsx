@@ -11,6 +11,8 @@ import { SortSelect } from "@/components/sort-select"
 import { SubscribeForm } from "@/components/subscribe-form"
 import { STORES, storeFromSlug } from "@/lib/stores"
 import { paramsFromQuery, queryFromParams, search } from "@/lib/search"
+import { JsonLdScript } from "@/components/json-ld"
+import { breadcrumbs } from "@/lib/seo/structured-data"
 
 /**
  * Per-merchant showcase pages, one per ingested independent storefront.
@@ -64,18 +66,21 @@ export default async function StorePage({ params, searchParams }: PageProps) {
     return qs ? `/shop/${store.slug}?${qs}` : `/shop/${store.slug}`
   }
 
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: "https://gearavail.com/" },
-      { "@type": "ListItem", position: 2, name: store.name, item: `https://gearavail.com/shop/${store.slug}` },
-    ],
-  }
 
   return (
     <div className="shell py-8">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      {/* Was a hand-built object with the production hostname typed into it,
+          so every preview deploy emitted markup pointing at the live site.
+          Origins come from the deployment now, and a test scans every page
+          with markup on it for a literal hostname. */}
+      <JsonLdScript
+        data={[
+          breadcrumbs([
+            { name: "Home", path: "/" },
+            { name: store.name },
+          ]),
+        ]}
+      />
 
       <nav aria-label="Breadcrumb" className="mb-4 text-sm text-[var(--muted-foreground)]">
         <ol className="flex items-center gap-1.5">

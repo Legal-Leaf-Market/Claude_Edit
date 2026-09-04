@@ -17,3 +17,19 @@ coverage/
 # Backup archives. A 14MB zip of an unrelated project was committed here
 # once already; keep the next one out of the tree.
 *.zip
+
+# The GLB validation contact sheets. Diagnostics of a build artefact,
+# regenerated in seconds by scripts/gear-3d/validate-glb.mjs, and a folder of
+# renders beside public/pedals would read as though the site served them.
+scripts/gear-3d/validation/
+
+# The Blender master. `ds1.py` IS the source and rewrites this on every run, so
+# a committed copy is a 1MB binary that churns on every build and is the one
+# that goes stale, exactly like the collector's committed bundle. Open it
+# locally by running the script; the GLB it exports is the shipped artefact and
+# that one is committed, the same way public/pedals is.
+*.blend
+*.blend1
+
+# Godot writes its import cache and extracted materials inside the project; see
+# godot/rig-room/.gitignore for which of them are settings and which are cache.

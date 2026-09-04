@@ -3,11 +3,13 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ChevronRight, Disc3, Wrench } from "lucide-react"
 import { ListingImage } from "@/components/listing-image"
-import { renderForGear } from "@/lib/board/pedal-render"
+import { fallbackImageryFor } from "@/lib/board/pedal-render"
 import { EFFECTS } from "@/lib/pedalboard/chain"
 import { matchPedalsByName, pedalBoardDetails } from "@/lib/pedalboard/queries"
 import { hueFor, initialsFor, rigChainOrder, rigFromSlug, RIGS, type RigPedal } from "@/lib/rigs"
 import { formatPrice, sourceLabel } from "@/lib/utils"
+import { JsonLdScript } from "@/components/json-ld"
+import { articleSchema, breadcrumbs } from "@/lib/seo/structured-data"
 
 export const revalidate = 600
 
@@ -86,6 +88,25 @@ export default async function RigPage({ params }: PageProps) {
         </span>
         <span className="text-[var(--text)]">{rig.name}</span>
       </nav>
+
+      {/* Article, not Product: a documented board is writing ABOUT gear, and
+          section 13 is careful these pages never imply endorsement. The artist
+          is the subject and never the author. */}
+      <JsonLdScript
+        data={[
+          articleSchema({
+            headline: `${rig.name}'s pedalboard`,
+            description: `The pedals documented on ${rig.name}'s board with ${rig.context} (${rig.era}).`,
+            path: `/rigs/${rig.slug}`,
+            about: rig.name,
+          }),
+          breadcrumbs([
+            { name: "Home", path: "/" },
+            { name: "Rigs", path: "/rigs" },
+            { name: rig.name },
+          ]),
+        ]}
+      />
 
       <header className="flex flex-wrap items-start gap-4">
         <span
@@ -230,7 +251,7 @@ function PedalRow({ row, position, isLast }: { row: Row; position: number; isLas
           src={row.imageUrl}
           alt=""
           className="h-14 w-14 shrink-0 rounded-md"
-          modelled={renderForGear(row.pedal.brand, row.pedal.model)}
+          {...fallbackImageryFor(row.pedal.brand, row.pedal.model)}
           fallbackLabel={meta.label}
           fallbackHue={meta.hue}
         />

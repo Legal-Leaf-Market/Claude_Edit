@@ -1,0 +1,43 @@
+# EXPORTED, NOT AUTHORED. scripts/gear-3d/export-models-glb.mjs writes one GLB
+# per entry in lib/board/pedal-models.ts, out of the same renderer the website
+# draws them with. All eighty-nine comes to 60MB, because a knurled knob is two
+# dozen small meshes and every pedal carries three of them; the room needs
+# twelve, so twelve are committed and the rest are generated on demand.
+#
+# To add one: put its slug in ROOM in the exporter, run it, and give it a line
+# in world/room.gd.
+*.glb
+!boss--ds-1-distortion.glb
+!boss--bd-2-blues-driver.glb
+!boss--ge-7-equalizer.glb
+!ibanez--ts9-tube-screamer.glb
+!electro-harmonix--big-muff-pi.glb
+!electro-harmonix--deluxe-memory-man.glb
+!dunlop--cry-baby.glb
+!dunlop--fuzz-face.glb
+!mxr--phase-90.glb
+!proco--rat-2.glb
+!line-6--dl4-delay-modeler.glb
+!tc-electronic--hall-of-fame-2.glb
+
+# The .import file is the GLB's settings, so it ships with the GLB and not
+# without it. Two of those settings are load bearing and are NOT Godot's
+# defaults: materials/storage=0 keeps materials inside the imported scene and
+# keep_on_reimport=false lets a re-export replace them. Godot's defaults write
+# one .material file per material beside the asset and then REFUSE to
+# overwrite them, so the first import wins forever: twelve re-exported pedals
+# came back as twelve white bricks, correct in the file and correct in
+# three.js, wrong only in the engine, with nothing logged anywhere.
+*.glb.import
+!boss--ds-1-distortion.glb.import
+!boss--bd-2-blues-driver.glb.import
+!boss--ge-7-equalizer.glb.import
+!ibanez--ts9-tube-screamer.glb.import
+!electro-harmonix--big-muff-pi.glb.import
+!electro-harmonix--deluxe-memory-man.glb.import
+!dunlop--cry-baby.glb.import
+!dunlop--fuzz-face.glb.import
+!mxr--phase-90.glb.import
+!proco--rat-2.glb.import
+!line-6--dl4-delay-modeler.glb.import
+!tc-electronic--hall-of-fame-2.glb.import

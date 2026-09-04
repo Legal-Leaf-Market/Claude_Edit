@@ -337,9 +337,25 @@ const OPERATOR_SOURCE = `
   var CRAWL_DELAY_MS = 1200;
 
   function nextUrlFrom(result, currentUrl){
+    /* SAME ORIGIN, CHECKED AGAIN HERE. The extractor already refuses an
+       off-site rel=next, and this is the layer that actually navigates, so it
+       refuses one too: a capture can be pasted, replayed or produced by an
+       older build sitting in somebody's bookmarks bar, and the guard that
+       matters is the one next to the fetch. zZounds offered a google.com link
+       as its next page and an earlier build took it. */
+    function onSite(candidate){
+      if (!candidate) return null;
+      try {
+        return new URL(candidate, currentUrl).origin === new URL(currentUrl).origin
+          ? new URL(candidate, currentUrl).toString()
+          : null;
+      } catch (e) { return null; }
+    }
+
     /* The page's own declared next link is always preferred: it is the
        merchant telling us where page two is. */
-    if (result.coverage.nextPageUrl) return result.coverage.nextPageUrl;
+    var declared = onSite(result.coverage.nextPageUrl);
+    if (declared) return declared;
 
     /* Otherwise increment a page parameter, which covers numbered pagination
        with no rel=next. A URL with no such parameter gets ?page=2 tried once. */

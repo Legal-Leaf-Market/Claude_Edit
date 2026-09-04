@@ -1,4 +1,5 @@
 import { modelFor, PEDAL_MODELS, type PedalModel } from "@/lib/board/pedal-models"
+import { labPhotoForGear, type LabPhoto } from "@/lib/lab/photos"
 
 /**
  * THE MEASURED MODELS, PHOTOGRAPHED ONCE AND SERVED AS PICTURES.
@@ -103,4 +104,20 @@ export function renderForGear(
  */
 export function renderedModels(): PedalModel[] {
   return PEDAL_MODELS
+}
+
+/**
+ * BOTH FALLBACKS AT ONCE, IN THEIR ORDER.
+ *
+ * `labPhotoForGear` and `renderForGear` take the same resolved brand and model
+ * and answer the same question ("what do we show when the seller gave us
+ * nothing?"), so asking for them separately at nine call sites is nine places
+ * for the ORDER to be got wrong, and getting it wrong means a drawing shown in
+ * front of a photograph of the real object.
+ */
+export function fallbackImageryFor(
+  brand: string | null | undefined,
+  model: string | null | undefined,
+): { labPhoto: LabPhoto | null; modelled: { src: string; name: string; maker: string } | null } {
+  return { labPhoto: labPhotoForGear(brand, model), modelled: renderForGear(brand, model) }
 }

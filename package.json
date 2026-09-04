@@ -25,7 +25,8 @@
     "ingest:pinevillemusic": "tsx scripts/run-ingest.ts pinevillemusic",
     "ingest:store": "tsx scripts/run-ingest.ts",
     "search:reindex": "tsx scripts/reindex.ts",
-    "render:pedals": "tsx scripts/render-pedal-models.ts"
+    "render:pedals": "tsx scripts/render-pedal-models.ts",
+    "export:gear": "tsx scripts/gear-3d/export-models-glb.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",

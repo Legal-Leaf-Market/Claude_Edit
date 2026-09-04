@@ -4,7 +4,8 @@ import { Suspense, useEffect, useMemo, useRef } from "react"
 import { Canvas, useFrame, useThree, type ThreeElements } from "@react-three/fiber"
 import { OrbitControls, RoundedBox, ContactShadows } from "@react-three/drei"
 import * as THREE from "three"
-import type { ModelKnob, PedalModel } from "@/lib/board/pedal-models"
+import { SCENE_UNITS_PER_MM, type ModelKnob, type PedalModel } from "@/lib/board/pedal-models"
+import { powderCoatNormal } from "@/lib/board/surface"
 
 /**
  * A PEDAL YOU CAN ACTUALLY PICK UP.
@@ -36,7 +37,7 @@ import type { ModelKnob, PedalModel } from "@/lib/board/pedal-models"
  */
 
 /** Millimetres to scene units. One number, so the specs stay in real units. */
-const MM = 0.01
+const MM = SCENE_UNITS_PER_MM
 
 /**
  * How much of a face the printed decal covers.
@@ -89,6 +90,7 @@ function bodyMaterial(color: string) {
    * see it: what you see is paint, and paint is a dielectric. Raising this to
    * look "metal" is the single easiest way to make the whole thing read as tin.
    */
+  const grain = powderCoatNormal()
   return {
     color,
     roughness: 0.38,
@@ -96,8 +98,16 @@ function bodyMaterial(color: string) {
     clearcoat: 0.85,
     clearcoatRoughness: 0.18,
     envMapIntensity: 1.1,
+    /* The orange-peel of a cured powder coat. Shared, deterministic and 128px:
+       see lib/board/surface.ts for why each of those three matters. */
+    ...(grain ? { normalMap: grain, normalScale: NORMAL_SCALE } : {}),
   }
 }
+
+/* One vector, not one per material: this is spread into every body in every
+   pedal on the board, and a fresh Vector2 per call is eighty-eight of them a
+   frame for a value that never changes. */
+const NORMAL_SCALE = new THREE.Vector2(0.16, 0.16)
 
 /**
  * A STUDIO, BUILT IN CODE RATHER THAN FETCHED.
@@ -298,6 +308,20 @@ function useSilkscreen(model: PedalModel, face: { zMin: number; zMax: number; wi
  * glance; a dome is a plain cap. Drawing all three as cylinders is what made
  * the CSS version look like a diagram.
  */
+/**
+ * A control's name in the exported mesh.
+ *
+ * Upper snake case off the printed label, because that label is what the
+ * pedal itself calls the control and inventing a second vocabulary here is
+ * how the two stop agreeing. An unlabelled control still gets a slot number
+ * rather than nothing: a node with no name is a node the rig cannot bind, and
+ * it fails by silently having no knob rather than by erroring.
+ */
+function interactionName(prefix: string, label: string, index = 0): string {
+  const cleaned = (label || "").toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "")
+  return `${prefix}_${cleaned || index + 1}`
+}
+
 function Knob({ knob }: { knob: ModelKnob }) {
   const r = knob.radius * MM
   const h = knob.height * MM
@@ -305,6 +329,17 @@ function Knob({ knob }: { knob: ModelKnob }) {
 
   return (
     <group
+      /*
+       * NAMED, BECAUSE THE NAME IS THE INTERFACE ONCE THIS LEAVES THE BROWSER.
+       *
+       * The rig room's `gear_rig.gd` reads a convention off an exported mesh
+       * rather than carrying a script per product: CONTROL_<NAME> becomes a
+       * knob it can turn. That costs nothing here and it is what lets one
+       * exporter hand Godot every measured pedal with its controls already
+       * wired. A name is also the only part of this component that survives
+       * the trip: geometry and materials export, JSX does not.
+       */
+      name={interactionName("CONTROL", knob.label)}
       position={[knob.x * MM, 0, knob.z * MM]}
       rotation={[0, THREE.MathUtils.degToRad(-knob.angle), 0]}
     >
@@ -443,10 +478,10 @@ function Slider({ x, z, travel, at }: { x: number; z: number; travel: number; at
  * are certain you cannot set to a value in between, and the lever leaning to
  * one side is the whole of how you read it across a room.
  */
-function Toggle({ x, z }: { x: number; z: number }) {
+function Toggle({ x, z, index = 0 }: { x: number; z: number; index?: number }) {
   const r = 3 * MM
   return (
-    <group position={[x * MM, 0, z * MM]}>
+    <group name={`TOGGLE_${index + 1}`} position={[x * MM, 0, z * MM]}>
       {/* The hex bushing it is nutted through. */}
       <mesh castShadow position={[0, r * 0.3, 0]}>
         <cylinderGeometry args={[r, r, r * 0.6, 6]} />
@@ -585,10 +620,10 @@ function Jacks({ model }: { model: PedalModel }) {
 }
 
 /** The footswitch: a threaded collar with a stomped metal cap on top. */
-function Footswitch({ x, z, radius }: { x: number; z: number; radius: number }) {
+function Footswitch({ x, z, radius, index = 0 }: { x: number; z: number; radius: number; index?: number }) {
   const r = radius * MM
   return (
-    <group position={[x * MM, 0, z * MM]}>
+    <group name={`PEDAL_FOOTSWITCH_${index + 1}`} position={[x * MM, 0, z * MM]}>
       <mesh castShadow position={[0, r * 0.18, 0]}>
         <cylinderGeometry args={[r * 0.82, r * 0.92, r * 0.36, 28]} />
         <meshStandardMaterial color="#8b8f96" roughness={0.42} metalness={0.85} />
@@ -602,9 +637,9 @@ function Footswitch({ x, z, radius }: { x: number; z: number; radius: number }) 
 }
 
 /** The indicator. Emissive, so it actually throws light on the body. */
-function Led({ x, z, color, on }: { x: number; z: number; color: string; on: boolean }) {
+function Led({ x, z, color, on, index = 0 }: { x: number; z: number; color: string; on: boolean; index?: number }) {
   return (
-    <group position={[x * MM, 0, z * MM]}>
+    <group name={`LED_${index + 1}`} position={[x * MM, 0, z * MM]}>
       <mesh position={[0, 0.008, 0]}>
         <sphereGeometry args={[0.018, 20, 16]} />
         <meshStandardMaterial
@@ -769,8 +804,12 @@ function BossCompactBody({ model }: { model: PedalModel }) {
         </mesh>
       )}
 
-      {/* The tread plate, hinged at the shelf and sloping to the toe. */}
-      <group position={[0, -h / 2 + chassisH, -d / 2 + shelfDepth]} rotation={[0.075, 0, 0]}>
+      {/* The tread plate, hinged at the shelf and sloping to the toe. NAMED,
+          because on a BOSS compact this plate IS the footswitch and the rig
+          room binds a stomp to PEDAL_TREADLE. Its pivot is already the hinge,
+          which is what makes the bound rotation read as a stomp rather than a
+          seesaw. */}
+      <group name="PEDAL_TREADLE" position={[0, -h / 2 + chassisH, -d / 2 + shelfDepth]} rotation={[0.075, 0, 0]}>
         <RoundedBox
           args={[w * 0.95, h * 0.06, plateDepth]}
           radius={w * 0.02}
@@ -887,6 +926,11 @@ function TreadleBody({ model }: { model: PedalModel }) {
         difference between a treadle and a lid.
       */}
       <group
+        /* A wah's plate is its control, so it carries the same name a BOSS
+           compact's does. Exporting the one round pedal and the one treadle
+           with nothing bindable on them was how this gap showed up: the
+           exporter reports a model with no controls, and a wah has one. */
+        name="PEDAL_TREADLE"
         position={[0, h / 2 + tr.pivotY * MM, tr.pivotZ * MM]}
         rotation={[THREE.MathUtils.degToRad(-tr.tilt), 0, 0]}
       >
@@ -1020,7 +1064,7 @@ function WedgeBody({ model }: { model: PedalModel }) {
 
         {/* At the low end of the ramp, which is where a foot lands. */}
         {model.footswitches.map((sw, i) => (
-          <Footswitch key={i} {...sw} />
+          <Footswitch key={i} {...sw} index={i} />
         ))}
       </group>
     </>
@@ -1100,14 +1144,23 @@ function Pedal({
   engaged,
   fit,
   still,
+  onScene,
 }: {
   model: PedalModel
   engaged: boolean
   fit: number
   still: boolean
+  onScene?: (group: THREE.Group) => void
 }) {
   const group = useRef<THREE.Group>(null)
   const h = model.height * MM
+
+  /* AFTER THE FIRST FRAME, not on mount: the children are attached as the tree
+     commits, so a ref read during render hands the exporter an empty group and
+     the GLB comes out as a file containing nothing at all. */
+  useEffect(() => {
+    if (group.current && onScene) onScene(group.current)
+  }, [onScene, model])
 
   /* A hair of drift so it never looks frozen, far too slow to read as a spin.
      Section 16's "nothing spins at idle" is about attention-seeking motion;
@@ -1152,7 +1205,7 @@ function Pedal({
           <Knob key={i} knob={knob} />
         ))}
         {showControls &&
-          model.toggles?.map((toggle, i) => <Toggle key={i} x={toggle.x} z={toggle.z} />)}
+          model.toggles?.map((toggle, i) => <Toggle key={i} x={toggle.x} z={toggle.z} index={i} />)}
         {showControls && model.sliders?.map((fader, i) => <Slider key={i} {...fader} />)}
         {model.screen && <Screen {...model.screen} />}
         {model.led && (
@@ -1171,7 +1224,7 @@ function Pedal({
       {model.style !== "boss-compact" && model.style !== "wedge" && (
         <group position={[0, h / 2, 0]}>
           {model.footswitches.map((sw, i) => (
-            <Footswitch key={i} {...sw} />
+            <Footswitch key={i} {...sw} index={i} />
           ))}
         </group>
       )}
@@ -1187,6 +1240,7 @@ export function PedalViewer3D({
   model,
   engaged,
   still = false,
+  onScene,
 }: {
   model: PedalModel
   engaged: boolean
@@ -1203,6 +1257,14 @@ export function PedalViewer3D({
    * drift, and controls that could be nudged. Nothing user-facing passes it.
    */
   still?: boolean
+  /**
+   * Hand the built pedal out, for the offline GLB exporter.
+   *
+   * Called with the group holding this pedal and nothing else, so what the
+   * exporter writes is the object rather than the object plus a studio, a
+   * ground plane and four lamps. Bench only; nothing user-facing passes it.
+   */
+  onScene?: (group: THREE.Group) => void
 }) {
   /* The longest side on the floor decides the scale, so a wah lying along z
      and a wide 1590BB lying along x both end up filling the same frame. */
@@ -1253,7 +1315,7 @@ export function PedalViewer3D({
         <directionalLight position={[-2.4, 1.4, -1.2]} intensity={0.7} color="#9fc0ff" />
         <directionalLight position={[0, 0.6, -3]} intensity={0.5} color="#ffffff" />
 
-        <Pedal model={model} engaged={engaged} fit={fit} still={still} />
+        <Pedal model={model} engaged={engaged} fit={fit} still={still} onScene={onScene} />
 
         <ContactShadows
           /* Under the scaled pedal, not the unscaled one: a shadow floating

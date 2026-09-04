@@ -16,6 +16,8 @@ import {
 } from "@/lib/categories"
 import { paramsFromQuery, queryFromParams, search } from "@/lib/search"
 import { formatPrice } from "@/lib/utils"
+import { JsonLdScript } from "@/components/json-ld"
+import { breadcrumbs, itemListSchema } from "@/lib/seo/structured-data"
 
 /**
  * Programmatic category landing pages.
@@ -97,6 +99,25 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
           <li className="text-[var(--cream)]">Used {category}</li>
         </ol>
       </nav>
+
+      <JsonLdScript
+        data={[
+          /* The internal link mesh, as a list. Links rather than Product
+             nodes: a crawler that follows one gets the offers from the gear
+             page, and repeating a thinner copy here would be two answers to
+             the same question with the worse one sometimes winning. */
+          itemListSchema({
+            name: `Used ${category}`,
+            description: CATEGORY_INTRO[category],
+            path: `/used/${slug}`,
+            items: models.map((model) => ({
+              name: `${model.brand} ${model.model}`,
+              path: `/gear/${model.slug}`,
+            })),
+          }),
+          breadcrumbs([{ name: "Home", path: "/" }, { name: `Used ${category}` }]),
+        ]}
+      />
 
       <CategoryHero
         slug={slug}

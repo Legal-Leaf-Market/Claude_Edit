@@ -4,6 +4,8 @@ import { useCallback, useState } from "react"
 import { ImageOff } from "lucide-react"
 import { CategoryIcon, CATEGORY_HUE, FALLBACK_HUE } from "@/components/category-icon"
 import { ModelledRender } from "@/components/modelled-render"
+import { LabPhotoImage } from "@/components/lab-photo"
+import type { LabPhoto } from "@/lib/lab/photos"
 import { cn, slugifyCategory } from "@/lib/utils"
 
 /**
@@ -21,6 +23,7 @@ export function ListingImage({
   fallbackLabel,
   fallbackHue,
   modelled,
+  labPhoto,
   category,
 }: {
   src: string | null
@@ -37,6 +40,18 @@ export function ListingImage({
    * own unit, which is the thing being bought.
    */
   modelled?: { src: string; name: string } | null
+  /**
+   * One of our own bench photographs of this instrument.
+   *
+   * Sits AHEAD of `modelled` because a photograph of a real object beats a
+   * drawing of one, and BEHIND the seller's own `src` because that is the unit
+   * actually being bought. It carries a label saying it is a different unit,
+   * for the same reason the render says it is a drawing.
+   *
+   * Comes from `labPhotoForGear()`, so it is null for almost every listing
+   * until the bench has photographed that pedal, and that is the normal state.
+   */
+  labPhoto?: LabPhoto | null
   /**
    * What KIND of thing this is, for when nobody has measured the exact one.
    *
@@ -83,6 +98,10 @@ export function ListingImage({
   }, [])
 
   if (!src || failed) {
+    if (labPhoto) {
+      return <LabPhotoImage photo={labPhoto} className={className} />
+    }
+
     if (modelled) {
       return <ModelledRender src={modelled.src} name={modelled.name} className={className} />
     }

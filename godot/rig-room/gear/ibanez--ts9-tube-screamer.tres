@@ -1,0 +1,18 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://gear/gear_definition.gd" type="Script" id=1]
+
+; WRITTEN BY scripts/gear-3d/export-models-glb.mjs. The millimetres are the
+; EXPORTED mesh's own rather than the catalogue's, because gear_rig.gd checks
+; the two against each other at load and a figure typed by hand would only be
+; checking itself. Edit lib/board/pedal-models.ts and re-export.
+[resource]
+script = ExtResource( 1 )
+id = "ibanez--ts9-tube-screamer"
+manufacturer = "Ibanez"
+model = "TS9 Tube Screamer"
+category = "boss-compact"
+width_mm = 78
+depth_mm = 128.1
+height_mm = 66.7
+inspect_distance = 0.0

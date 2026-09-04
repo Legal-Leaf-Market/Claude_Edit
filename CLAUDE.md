@@ -1094,7 +1094,9 @@ dialog on a page whose DOM board, `/go` links, indexability and screen-reader
 path all survive untouched. three.js is about 150KB and mounts inside the
 existing React tree; Godot would ship tens of megabytes of WASM and its own
 export pipeline for the same job. Godot stays reserved for the separate rig
-room below, where physics and sound would actually earn it.
+room, and as of August 2026 that room EXISTS: `godot/rig-room` is a real Godot
+project with a first-person player, a reach raycast and an inspection mode, and
+`tools/verify.tscn` walks the whole loop and photographs it. See section 23.
 
 **THE CANVAS EXISTS ONLY INSIDE THE DIALOG, and that is what keeps section
 16's four guarantees.** The row of pedals is real DOM buttons, the outbound
@@ -1394,6 +1396,35 @@ the card. They are all inside it now, and MUTED AT REST RATHER THAN HIDDEN:
 opacity 0 until hover meant they did not exist on a touch screen and nobody
 found them on a desktop either.
 
+**THE FIRST RIG-ROOM ASSET IS A REAL MESH ON DISK, AND IT IS NOT THE SITE'S
+PEDAL.** `scripts/gear-3d/ds1.py` builds a BOSS DS-1 in headless Blender and
+exports it straight into `godot/rig-room/assets/`; `ds1-decals.mjs` rasterises
+its print.
+That is a different job from `lib/board/pedal-models.ts`, which describes
+eighty-eight pedals in numbers and lets ONE renderer draw them all, and the two
+must not be confused for each other: a hand-authored mesh per pedal is exactly
+the fork section 7 forbids at eighty-eight, and exactly what a single hero
+object for the rig room is worth. Nothing on the site loads this file yet.
+
+**NOTHING IS TRACED FROM SOMEBODY ELSE'S MODEL.** The brief pointed at a free
+CGTrader mesh; it is authored from the published external dimensions instead,
+so the asset is ours and there is no licence to check. Same rule section 13
+applies to imagery, for the same reason.
+
+**AND IT IS INSPECTED IN A NEUTRAL VIEWER, NOT IN THE TOOL THAT MADE IT.**
+`scripts/gear-3d/validate-glb.mjs` loads the exported GLB in three.js under
+studio light and photographs the nine angles the brief names, because Blender's
+preview reads the SCENE and ships the EXPORT, and the two disagree silently. It
+also asserts what is genuinely a number: the bounding box against the published
+millimetres, that the model sits ON the floor, and that the named interaction
+nodes (`PEDAL_TREADLE`, `CONTROL_*`, `SOCKET_*`, `LED_CHECK`) survived. Every
+one of those caught something the eye had already passed over. The bounding box
+was 85mm on a 73mm pedal because two side decals faced backward with their
+short axis across the body; the model stood 1.2mm through the floor; the tread
+plate had been built at HALF its stated size since the file was written, and
+its rest angle lifted the toe off the deck instead of laying it on. None of
+those threw, and the picture looked plausible with all four in it.
+
 **Godot is on the table for one thing only.** A separate 3D "rig room" (cables
 that hang, footswitches you stomp, knobs you hear) is a legitimate toy and a
 shareable. The planner itself stays in the DOM: it is indexable, and
@@ -1677,6 +1708,57 @@ engine.
 - Do NOT spread the fretboard's four interval hues to anything else. They are
   meaning on a diagram, bounded to the dots and their legend, and every dot
   prints its degree too.
+- Do NOT hand-author a mesh for a pedal that `lib/board/pedal-models.ts`
+  already describes. There is one renderer for the eighty-eight and one
+  hand-built hero asset for the rig room, and a per-pedal GLB is section 7
+  broken once per pedal (section 16).
+- Do NOT judge an exported GLB in Blender's viewport. It reads the scene rather
+  than the file, so it shows geometry the exporter dropped and normals that are
+  only right because Blender knew which side you meant. Run
+  `scripts/gear-3d/validate-glb.mjs` and look at the nine angles.
+- Do NOT commit the GLB validation renders. They are diagnostics of a build
+  artefact, they regenerate in seconds, and a folder of them beside
+  `public/pedals` reads as though the site served them.
+- Do NOT port the pedalboard planner into `godot/rig-room`. The four reasons in
+  section 16 are unchanged by the rig room existing (section 23).
+- Do NOT import anything under `godot/` from `app/`, `lib/` or `components/`,
+  or the catalogue from `godot/`. They share built assets and nothing else.
+- Do NOT write a per-product script in the rig room. A gear asset is a GLB with
+  the node naming convention, a `.tres`, and a line in `world/room.gd`.
+- Do NOT keep a second copy of a GLB. `scripts/gear-3d/` exports into the Godot
+  project and nowhere else; a copy nobody rebuilds goes stale without erroring.
+- Do NOT judge a model without turning it over. The underside z-fought for a
+  whole session because every validation angle looked at the top (section 23).
+- Do NOT hand-model a pedal for the rig room that `lib/board/pedal-models.ts`
+  already describes. It exports from the same renderer the website draws with,
+  and a second mesh of the same pedal is the fork section 7 forbids.
+- Do NOT export a pedal without flattening its materials to plain PBR, and do
+  NOT let Godot store an imported asset's materials in external files. Either
+  one renders the pedal white, in the engine only, silently (section 23).
+- Do NOT seed a generated texture from anything but a constant. The stills are
+  compared pixel by pixel, so a random seed rewrites all eighty-eight on every
+  run and the diff stops meaning anything (section 23).
+- Do NOT add a map to a pedal material without adding it to the flattener in
+  `lib/board/export-glb.ts`. A dropped map does not error: the export reports
+  the file unchanged and the pedal ships flat.
+- Do NOT show one of our own bench photographs without saying it is a different
+  unit. It is a real object, so nothing about it announces that it is not the
+  item for sale, which is the same claim a silent render makes (section 24).
+- Do NOT hand-write a row into `lib/lab/photos.ts`. The importer writes them;
+  a mistyped intake id files one pedal's photo under another and nothing fails.
+- Do NOT publish a manufacturer's serial number alongside a lab photo. Our own
+  intake reference identifies the unit for us and means nothing to anybody else.
+- Do NOT put our own inventory in the comparison grid, or badge it, without the
+  four guarantees in section 24. Preferring the listing we earn most from is
+  ranking by payout, and our own price inside the median is marking our own
+  homework.
+- Do NOT add rating, review or testimonial markup to any page. There are no
+  reviews on this site, a test scans for the vocabulary, and fabricated
+  reputation markup is a manual action against the whole domain (section 25).
+- Do NOT emit a `Product` node for gear with no live offer, and do NOT type a
+  hostname into structured data. Origins come from the deployment.
+- Do NOT put a single `priceCurrency` over rows that hold several. The
+  aggregate must describe one currency and count only those offers.
 - Do NOT point the test suite at a database you care about; it truncates.
 - Do NOT turn a capture into a `marketplace_listings` row because the capture
   exists. Reading a page you are on is research; republishing a catalogue is
@@ -1905,6 +1987,212 @@ copies of every route file, one per chrome, and a duplicated route tree is a far
 more expensive thing to keep honest than a cache miss. Crawlers get fully
 server-rendered HTML either way, so nothing about the SEO argument in section 16
 changes.
+
+
+---
+
+## 23. The rig room: a Godot game, not a second website
+
+`godot/rig-room`, and its own README carries the operating detail. What belongs
+here is why it is a separate program and what must not leak between them.
+
+**THE PLANNER IS NOT MOVING INTO IT.** Section 16's four reasons stand
+unchanged: `/pedalboard` is indexable and programmatic SEO is this site's growth
+model, the money path is `/go/[listingId]` as a real anchor in the DOM, the
+layout and power engines are TypeScript shared with the server, and a canvas has
+no DOM so no screen reader. The rig room is the thing an engine was always
+reserved FOR: picking gear up, turning it over, stomping a switch, and
+eventually cables that hang.
+
+**IT SHARES ASSETS WITH THE WEBSITE AND NO CODE.** `scripts/gear-3d/` builds the
+GLBs and exports them into the Godot project, which is their only consumer;
+there is deliberately no copy under `public/`, because the copy nobody rebuilds
+is the one that silently stops being the pedal you edited. Nothing in `app/`,
+`lib/` or `components/` reads anything under `godot/`, and nothing under
+`godot/` reads the catalogue.
+
+**A GEAR ASSET IS TWO FILES AND ONE LINE, NEVER A SCRIPT.**
+`gear/gear_rig.gd` reads a naming convention off the exported mesh:
+`CONTROL_<NAME>` becomes a knob, `PEDAL_TREADLE` a footswitch, `LED_<NAME>` an
+indicator, `SOCKET_*` a cable point. Nothing in `systems/` knows the word
+"pedal", so the first amplifier needs a GLB and a `.tres` and no code. A script
+per product is section 7's fork, and it is worse here than on the web side
+because it also has to be kept in step with an art pipeline somebody else edits.
+
+**THE HARNESS IS THE POINT, AND IT HAS ALREADY PAID.**
+`tools/verify.tscn` walks the player in, picks the pedal up, turns it over,
+zooms, works a knob, stomps the switch, checks the lamp followed, drops it, and
+asserts it landed back where it started, photographing every step. Turning the
+pedal over is what found the GLB's underside z-fighting: the casting's bottom
+face and the bottom plate were coplanar across the whole footprint, and nine
+fixed validation angles in three.js never looked at the bottom of the pedal. An
+inspection mode is a renderer that goes wherever it likes, which is exactly why
+it finds what a camera list cannot.
+
+**THE ROOM IS STOCKED FROM THE WEBSITE'S OWN RENDERER, NOT FROM BLENDER.**
+`scripts/gear-3d/export-models-glb.mjs` drives the same `/render-bench/<slug>`
+the still photographer drives and hands the pedal to three.js's GLTFExporter,
+so a measured model becomes a picture for the site and a mesh for the game out
+of ONE description and ONE renderer. Eighty-nine pedals export; twelve are
+committed and placed, because a knurled knob is two dozen small meshes and all
+eighty-nine is 60MB. The viewer names its parts (`CONTROL_<LABEL>`,
+`PEDAL_FOOTSWITCH_<n>`, `PEDAL_TREADLE`, `LED_<n>`), so an exported TS9 arrives
+in the game with DRIVE, TONE, LEVEL, a lamp and a switch already bound and no
+per-product script anywhere.
+
+**glTF IS METRES AND THE VIEWER IS NOT.** `SCENE_UNITS_PER_MM` is 0.01 so a
+pedal is not a speck under a default camera, and the exporter divides by that
+constant rather than by a 10 somebody typed. Exported raw, a DS-1 measured
+770 x 1326mm: it does not error, and on its own it looks like a coffee table.
+
+**AND TWO THINGS MADE TWELVE PEDALS ARRIVE WHITE, NEITHER OF WHICH LOGGED
+ANYTHING.** The export carried `KHR_materials_clearcoat`, because the viewer
+paints bodies with a physical material; the file was correct and three.js read
+it back as a green TS9 with its legends on. Godot drew it white. The export now
+flattens to plain PBR, which is what a game asset should be anyway. That was
+only half of it: Godot's scene importer defaults to `materials/storage=1` and
+`keep_on_reimport=true`, so it writes one `.material` file per material beside
+the asset and then REFUSES to overwrite them, and the first import wins
+forever. The committed `.import` files set both the other way, which is why
+they are committed at all. A generated asset must never have its materials
+stored in a file nobody regenerates.
+
+**THE ENCLOSURES ARE POWDER COATED NOW, AND THE SETTING IS MEASURED RATHER
+THAN CHOSEN.** `lib/board/surface.ts` builds one 128px tileable normal map from
+seeded value noise, shared by every body on the site and in the game. Three
+properties are load bearing. It is DETERMINISTIC, because the committed stills
+are compared at a tolerance of 0.05 against a renderer whose noise floor is
+zero, and a texture seeded from `Math.random` would rewrite all eighty-eight
+files on every run. It is SMALL, because every exported GLB embeds its own copy
+of the maps its materials use. And it is BUILT ONCE, because eighty-eight
+pedals are all the same paint process.
+
+**THE AMPLITUDE IS THE WHOLE JOB, and the first pass ignored the warning in its
+own comment.** At normalScale 0.5 with a repeat of 6, a TS9 came out looking
+like hammered paint: not a break-up of the highlight but a crocodile skin,
+which is a worse lie than the flat green it replaced. Powder coat is a texture
+you FEEL. What works is a low amplitude with a fine repeat (0.16 at 16), where
+the grain sits at the edge of visible and does its work by disturbing a
+reflection rather than by being seen.
+
+**AND A FLATTENER THAT DROPS A MAP REPORTS SUCCESS.** `exportPedalGlb` copies
+materials down to plain PBR, and the first version copied `color` and `map` and
+nothing else. The day the normal map arrived, the exporter wrote eighty-nine
+files, reported every one of them UNCHANGED, and every one was silently flat.
+It copies the whole set now, so the next map to arrive travels with it.
+
+**GODOT 3.5 IS A CONSTRAINT, NOT A CHOICE.** Godot 4 is the right target. No
+Godot 4 binary was reachable from the build environment, and unverified GDScript
+for an engine that cannot be launched is the failure this project keeps having.
+The README carries the porting table. Do not "upgrade" the project by rewriting
+it untested.
+
+**AND THE ENGINE WAS NEVER THE VARIABLE.** Godot renders meshes; it does not
+author them. It loads the same GLB Blender built and three.js already
+photographed, and it independently measured the same 77.4 x 58.9 x 131.7 mm,
+which is a useful cross-check and not a new capability. What an engine buys is
+everything after the mesh exists. What makes a pedal look real is the ASSET:
+geometry, then PBR texture maps, which the DS-1 does not have yet.
+
+
+---
+
+## 25. Structured data: markup is a claim
+
+`lib/seo/structured-data.ts`, `components/json-ld.tsx`.
+
+**EVERY CLAIM IN THE MARKUP HAS TO BE ONE THE PAGE ITSELF MAKES.** That is
+section 8's rule aimed at a crawler instead of a shopper: the site refuses to
+publish a market price under `MIN_SAMPLE_SIZE` because a number with nothing
+behind it is worse than none, and marking up an offer that does not exist is
+the same act. Google agrees, and the penalty is a manual action against the
+whole domain rather than one page.
+
+**NOTHING HERE CLAIMS A REPUTATION.** No star ratings, no testimonials, none of
+that vocabulary at all, and a test scans the module for it rather than trusting
+the intention. This site collects no opinions from anybody. Adding star markup
+is the single most common piece of SEO advice for a comparison site and it wins
+a rich result, which is exactly why it is tempting and exactly why it is
+fabricating evidence.
+
+**THE BUILDERS RETURN NULL, AND THAT IS THE COMMON ANSWER.** A canonical row
+with no live listing gets no `Product` node, because a Product with no offer is
+a page telling a crawler it sells something it does not. `JsonLdScript` takes
+the nulls, so no call site has to remember.
+
+**ONE CURRENCY PER `AggregateOffer`, AND THE PREVIOUS VERSION GOT THIS WRONG.**
+It hardcoded "USD" over whatever was in the rows. This catalogue is genuinely
+multi-currency (Anderton's in GBP, five Gear4music storefronts), so one British
+listing under an American one made the low price a number in the wrong money.
+The majority currency wins and the count reflects only those offers, so the
+figures and the count always describe the same set. It also took the highest
+price as the last row, which is only true while the query happens to sort by
+price ascending.
+
+**CONDITION IS STATED ONLY WHEN IT IS TRUE OF EVERY OFFER.** New and used are
+two markets; a page holding both claims neither rather than the one that reads
+better.
+
+**ORIGINS COME FROM THE DEPLOYMENT.** Two hand-rolled blocks existed before
+this and already disagreed: one built URLs from `SITE_URL`, the other had the
+production hostname typed in, so preview deploys emitted markup pointing at the
+live site. A test scans every page carrying markup for a literal hostname.
+
+**A RIG IS AN `Article`, AND THE ARTIST IS ITS SUBJECT, NEVER ITS AUTHOR.**
+Section 13 is careful these pages never imply endorsement, and structured data
+naming a musician as author of a page about gear is exactly that implication.
+
+
+---
+
+## 24. Our own photographs, and the inventory question behind them
+
+`lib/lab/photos.ts`, `components/lab-photo.tsx`, `scripts/import-lab-photos.ts`.
+
+**GEAR PASSES THROUGH OUR HANDS, SO WE CAN PHOTOGRAPH IT.** Every listing with
+no seller photo falls back to a measured render, which is honest and is still a
+drawing; on `/used/effects-pedals` that was most of the page. A shot of the
+real object beats a drawing on every axis and carries no licence question at
+all, because we owned the pedal and took the picture. The order is now:
+
+    the seller's own photo    it is the unit being bought
+    OUR photograph            a real pedal, but a DIFFERENT unit
+    the measured render       a drawing, and it says so
+    the category silhouette   a true thing about the kind of gear
+
+**IT IS LABELLED, FOR THE REASON THE RENDER IS.** Ours is a real object, so
+nothing about it announces that it is not the unit in the listing, and a
+shopper who assumes otherwise has been misled about what arrives in the post.
+`LabPhotoImage` prints "Our photo, another unit" and the alt text says it at
+every size.
+
+**NO PROVENANCE, NO PHOTO.** `isPublishable` gates on the intake reference and
+the date, structurally, the way `isRenderable` gates on attribution in section
+13. And the rows are MACHINE-WRITTEN by the importer, never typed: filing a
+DS-1 shot under a DS-2 shows the wrong pedal confidently, on a page somebody is
+about to spend money from, with nothing failing anywhere.
+
+**THE INTAKE ID IS OURS, NOT THE MANUFACTURER'S SERIAL.** A serial identifies a
+real object that will have an owner after us, and publishing one beside
+"photographed at our HQ" says more than a picture needs to.
+
+**AND THE PART THAT IS NOT BUILT: OUR OWN STOCK IN THE COMPARISON GRID.** The
+operating brief proposes routing shoppers to inventory we hold, with a badge no
+other merchant can earn. That is a legitimate model and it is NOT what this
+site currently is: section 1 says we never take an order and never hold stock,
+and the footer promises commission never affects ranking. Our own listing pays
+100% margin against a competitor's 3%, so a preference for it is ranking by
+payout at its most extreme, and a badge inside a result set is exactly what
+section 19 refused for the DistroKid banner.
+
+There is also a arithmetic problem that would not announce itself. If our units
+land in `marketplace_listings` they enter the MEDIAN that judges deals, so we
+would be setting a price and also computing the market price that badges it
+(section 8). Four things make it honest, and none is optional: our listings are
+excluded from every median, they take no ranking preference, the badge says on
+itself that we are the seller, and the footer's promise is rewritten to match.
+Do not build it without all four.
+
 
 ---
 
