@@ -70,7 +70,7 @@ export const BUY_MY_BOARD_HTML = `<!doctype html>
   --bubble:      #1c3a63;
   --bubble-ink:  #f2f6fc;
   --radius:      4px;
-  color-scheme: dark light;
+  color-scheme: dark;
 
   --display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
   --ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -80,7 +80,7 @@ export const BUY_MY_BOARD_HTML = `<!doctype html>
 }
 
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
+  :root[data-theme="system"] {
     --ground: #e7ecf3; --panel: #ffffff; --panel-2: #f1f4f9; --sunk: #dbe2ec;
     --edge: rgba(12,26,46,.14); --edge-hi: rgba(12,26,46,.30); --edge-accent: #2b4a7c;
     --text: #0c1a2e; --text-dim: #52678a; --text-faint: #7b8dab;
@@ -88,6 +88,7 @@ export const BUY_MY_BOARD_HTML = `<!doctype html>
     color-scheme: light;
   }
 }
+:root[data-theme="dark"] { color-scheme: dark; }
 :root[data-theme="light"] {
   --ground: #e7ecf3; --panel: #ffffff; --panel-2: #f1f4f9; --sunk: #dbe2ec;
   --edge: rgba(12,26,46,.14); --edge-hi: rgba(12,26,46,.30); --edge-accent: #2b4a7c;
@@ -397,6 +398,18 @@ table.lot-table { width: 100%; min-width: 520px; border-collapse: collapse; font
 </style>
 </head>
 <body>
+<script>
+/* Runs before the page paints. Without it a reader who chose light gets a
+   frame of dark first, which is the flash the site's own no-flash init script
+   exists to prevent. Deliberately not a module: those are deferred. */
+(function () {
+  var t = "dark";
+  try { var v = localStorage.getItem("stompbox-buymyboard/v1/theme");
+        if (v === "light" || v === "system") t = v; } catch (e) {}
+  document.documentElement.setAttribute("data-theme", t);
+})();
+</script>
+
 <div class="wrap">
 
   <header class="mast">
@@ -2011,13 +2024,18 @@ for (let n = 1; n <= 3; n += 1) {
 }
 
 /* --- theme: a toggle cycles rather than picking a position --------------- */
-const THEMES = ["system", "light", "dark"];
+const THEMES = ["dark", "light", "system"];
 let themeIdx = 0;
-try { themeIdx = Math.max(0, THEMES.indexOf(localStorage.getItem(KEY + "/theme") || "system")); } catch (_) {}
+try {
+  const stored = localStorage.getItem(KEY + "/theme");
+  const i = THEMES.indexOf(stored || "");
+  if (i >= 0) themeIdx = i;
+} catch (_) { /* private window: dark, which is the default anyway */ }
 function applyTheme() {
   const t = THEMES[themeIdx];
-  if (t === "system") document.documentElement.removeAttribute("data-theme");
-  else document.documentElement.setAttribute("data-theme", t);
+  /* Always stamped, "system" included. Absence means dark, so the attribute
+     is what carries a deliberate choice to follow the OS. */
+  document.documentElement.setAttribute("data-theme", t);
   $("themeLabel").textContent = t === "system" ? "Auto" : t === "light" ? "Light" : "Dark";
   try { localStorage.setItem(KEY + "/theme", t); } catch (_) {}
 }
