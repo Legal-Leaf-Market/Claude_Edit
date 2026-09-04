@@ -140,6 +140,20 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 .stomp.lit{border-color:var(--led);box-shadow:0 0 0 1px var(--led-glow)}
 .fineprint{margin-top:12px;font-size:13px;color:var(--text-faint);max-width:66ch}
 
+/* --- our own shop ---------------------------------------------------- */
+.shop{margin-top:34px}
+.shop-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(158px,1fr))}
+.shop-card{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--edge);border-radius:var(--radius);overflow:hidden;text-decoration:none;color:inherit;transition:border-color .12s,transform .12s}
+.shop-card:hover{border-color:var(--edge-accent);transform:translateY(-2px)}
+.shop-card .shot{aspect-ratio:1;background:var(--sunk);display:block;width:100%;object-fit:contain}
+.shop-card .meta{padding:10px 11px 12px;display:flex;flex-direction:column;gap:4px;flex:1}
+.shop-card .t{font-size:13px;line-height:1.3;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.shop-card .row{margin-top:auto;display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding-top:6px}
+.shop-card .p{font-family:var(--display);font-weight:700;font-size:16px;color:var(--text);font-variant-numeric:tabular-nums}
+.shop-card .c{font-family:var(--display);font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)}
+.shop-more{margin-top:13px;font-size:13.5px;color:var(--text-faint)}
+.shop-more a{color:var(--accent-text)}
+
 .sitefoot{margin-top:44px;padding-top:16px;border-top:1px solid var(--edge);display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-family:var(--display);font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)}
 .sitefoot .mark{width:16px;height:16px}
 .sitefoot .dot{opacity:.5}
@@ -242,6 +256,21 @@ document.documentElement.setAttribute("data-theme",t)})();
         agreed, and you keep your gear until you have a label in hand.
       </p>
     </div>
+  </section>
+
+  <section class="step shop" id="shop" hidden>
+    <div class="step-head">
+      <span class="step-n" aria-hidden="true">&#9835;</span>
+      <h2>What we have live right now</h2>
+      <span class="hint">On our Reverb shop</span>
+    </div>
+    <div class="shop-grid" id="shopGrid"></div>
+    <p class="shop-more">
+      This is our own stock, listed and shipped by us. It is here so you can see
+      we actually move gear, and it is priced independently of anything you were
+      just quoted.
+      <a id="shopLink" href="https://reverb.com/shop/deans-boutique-505" target="_blank" rel="noopener">See the whole shop</a>
+    </p>
   </section>
 
   <footer class="sitefoot">
@@ -599,6 +628,64 @@ function applyTheme() {
 }
 $("theme").addEventListener("click", () => { themeIdx = (themeIdx + 1) % THEMES.length; applyTheme(); });
 applyTheme();
+
+/* ===========================================================================
+   OUR OWN SHOP.
+
+   Read from our own API route, which holds the token. Nothing here touches
+   the quote above it: these are our listings at our asking prices, and the
+   seller's estimate is computed from a book price. Keeping the two visibly
+   separate is the point of the paragraph under the grid.
+
+   IT FAILS BY DISAPPEARING. No shop, no section. A page whose whole job is
+   quoting somebody for their gear must not show an error because a
+   decorative strip could not load, and the offline copy of this file has no
+   API to call at all.
+   =========================================================================== */
+async function loadShop() {
+  try {
+    const res = await fetch("/api/reverb/shop", { headers: { accept: "application/json" } });
+    if (!res.ok) return;
+    const data = await res.json();
+    const rows = Array.isArray(data.listings) ? data.listings.slice(0, 8) : [];
+    if (!rows.length) return;
+
+    const grid = $("shopGrid");
+    grid.textContent = "";
+    for (const row of rows) {
+      const a = document.createElement("a");
+      a.className = "shop-card";
+      a.href = row.url; a.target = "_blank"; a.rel = "noopener";
+
+      if (row.photo) {
+        const img = document.createElement("img");
+        img.className = "shot"; img.src = row.photo; img.alt = row.title;
+        img.loading = "lazy"; img.decoding = "async";
+        /* A dead image link leaves a grey box with a broken glyph in it,
+           which looks worse than the card simply being tighter. */
+        img.addEventListener("error", () => img.remove());
+        a.appendChild(img);
+      }
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      const t = document.createElement("span");
+      t.className = "t"; t.textContent = row.title;
+      const rowEl = document.createElement("span");
+      rowEl.className = "row";
+      const p = document.createElement("span");
+      p.className = "p"; p.textContent = row.price || "";
+      const c = document.createElement("span");
+      c.className = "c"; c.textContent = row.condition || "";
+      rowEl.append(p, c);
+      meta.append(t, rowEl);
+      a.appendChild(meta);
+      grid.appendChild(a);
+    }
+    $("shop").hidden = false;
+  } catch (_) { /* no shop section today, and nothing else is affected */ }
+}
+loadShop();
 
 /* --- boot ----------------------------------------------------------- */
 /* A shared link wins over saved state: somebody following a quote wants the
