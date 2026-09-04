@@ -29,7 +29,11 @@ export async function GET() {
   }
 
   return Response.json(
-    { listings: result.listings, configured: true },
+    /* `source` names the endpoint that answered. Three candidates ship
+       because this could not be checked against the live API from the machine
+       it was written on, and this is how the other two get retired on
+       evidence rather than on somebody's guess about which one it was. */
+    { listings: result.listings, configured: true, source: result.source },
     { headers: { "cache-control": "public, s-maxage=900, stale-while-revalidate=3600" } },
   )
 }

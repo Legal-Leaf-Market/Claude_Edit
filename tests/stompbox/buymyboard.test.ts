@@ -73,6 +73,23 @@ describe("the call to action cannot point at nothing", () => {
   })
 })
 
+describe("our own shop sits beside the quote, never inside it", () => {
+  it("fails by disappearing rather than by erroring", () => {
+    /* A page whose whole job is quoting somebody for their gear must not show
+       an error because a decorative strip could not load, and the offline
+       copy of this file has no API to call at all. */
+    expect(HTML).toMatch(/\$\("shop"\)\.hidden = false/)
+    expect(HTML).toMatch(/catch \(_\) \{ \/\* no shop section today/)
+  })
+
+  it("says the shop is our own stock, priced apart from the quote", () => {
+    /* Our asking prices and a seller's estimate are two different numbers on
+       one page. Saying so is what stops the grid reading as a comparison. */
+    expect(HTML).toContain("This is our own stock")
+    expect(HTML).toContain("priced independently of anything you were")
+  })
+})
+
 describe("house style", () => {
   it("has no em dash in anything the reader is shown", () => {
     const body = HTML.replace(/<script[\s\S]*?<\/script>/g, "")
