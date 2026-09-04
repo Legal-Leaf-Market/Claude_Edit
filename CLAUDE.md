@@ -248,6 +248,8 @@ app/
   alerts/, sign-in/, sign-up/
   chord-teacher/            Guitar harmony, all computed (section 22)
   stompbox/               THE GUIDE. /stompbox/* here, / on stompbox.world (section 20)
+  stompbox/buymyboard/    PUBLIC. A seller prices their own gear (section 26)
+  stompbox/outreach/      OURS. Price their lot, write the messages (section 26)
   render-bench/[slug]/      The offline renderer's subject. 404s unless RENDER_BENCH=1
   api/
     health                  Freshness and config, read this first when confused
@@ -306,6 +308,18 @@ These are not preferences. Each one is a term of service.
   aggregated". Aggregating their catalogue through it is a breach on two
   counts. `lib/ingestion/reverb-awin.ts` reads the Awin datafeed or it no-ops.
   It has no fallback path, deliberately, so nobody can add one "temporarily".
+- **OUR OWN SHOP IS THE ONE THING THE REVERB API IS FOR, and that is not a
+  loophole.** The rule above bans it for building the CATALOGUE, and the reason
+  it gives is the carve-out: the API is scoped to managing *your own* shop. So
+  `lib/reverb/shop.ts` reads Dean's Boutique, our own shop, to show our own
+  listings on our own site, which is the single use it was published for. The
+  distance from ingestion is structural rather than a promise: nothing it
+  returns ever reaches `marketplace_listings`, a median, or a deal badge, and
+  `tests/reverb-shop.test.ts` asserts the module holds no database import, no
+  upsert and no write of any kind. Section 24 explains why that matters: our
+  own stock inside the median means setting a price and also computing the
+  market price that judges it. Do not delete that module on a fast read of the
+  rule above, and do not widen it to any shop that is not ours.
 - **`LINKCONNECTOR_SWEETWATER_FEED_URL` unset is the EXPECTED state**, not a
   bug to route around. `AWIN_REVERB_FEED_URL` and `AWIN_GEAR4MUSIC_FEED_URL`
   are a different case as of 10 Aug 2026: both feeds are confirmed to exist in
@@ -643,6 +657,7 @@ process, and the accident is far likelier.
 | `CJ_ZZOUNDS_FEED_URL` / `CJ_FULLCOMPASS_FEED_URL` / `CJ_PINEVILLEMUSIC_FEED_URL` | Three independent CJ Affiliate programmes. Each no-ops when unset. |
 | `IMPACT_ANDERTONS_FTP_*` | Anderton's via Impact.com, ingested by `lib/ingestion/andertons-impact.ts`. Impact delivers catalogues by FTP drop, NOT over an HTTPS feed URL like Awin/CJ/LinkConnector, so this is a host/user/password/path quartet. `hasAndertonsFeed` gates on the credential pair, since host and path have defaults. **The credentials are a dedicated pair Impact mails on request** ("Email Product Catalog FTP Username and Password", needs Technical Settings permission), not the Impact account login, and **the host comes from the platform's own "Download via FTP" panel** rather than from this file: `products.impact.com` is the default here but is documented on the brand UPLOAD side, so treat it as a starting guess. See the FTP note below the table. |
 | `GOAFFPRO_*_REF_PARAM` / `GOAFFPRO_*_REF_CODE` | One pair per small independent Shopify/WooCommerce seller (Folkcraft, Acoustic Guitar, Jamstik, Jackson Audio, Eminence Digital, Haze Guitar, EART Guitar, Play With Authority, Pures Music, Squaver, Eason Music Store, Go Kalimba). Catalogue ingestion needs no credential at all; an unset code just means a null `affiliate_url` until the referral is confirmed. |
+| `REVERB_SHOP_TOKEN` / `REVERB_SHOP_SLUG` | Dean's Boutique, OUR OWN Reverb shop, read by `lib/reverb/shop.ts` and served as public JSON by `/api/reverb/shop`. This is not the exception to section 2 that it looks like: see the note under that section. The token is a Personal Access Token from the shop's own API settings and belongs in the deployment, never in this repository. The slug is not a secret and defaults to `deans-boutique-505`. Unset is fully supported and the section simply does not render. |
 | `GROQ_API_KEY` / `GROQ_MODEL` | The Ask assistant (section 14). Unset means /api/ask 503s and the button never renders. The model default is overridable because Groq retires models often. |
 | `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
 | `REDIS_URL` | BullMQ queues and the shared rate-limit counter. Optional. |
@@ -1895,25 +1910,19 @@ cannot race itself.** The fetch, its cache tag, `stompbox.world/api/revalidate`
 and the Vercel webhook that called it are all gone. `lib/stompbox/catalog.ts`
 calls `liveModels()` in process.
 
-**THE DOMAIN HAS MOVED. THE OLD PROJECT HAS NOT BEEN DELETED, and it is now
-failing a build on every push.** Checked against Vercel on 22 Aug 2026:
+**THE DOMAIN HAS MOVED AND THE OLD PROJECT IS GONE.** For a while after the
+merge the dead `stompbox-world` project stayed linked to this repository, so
+every push to any branch fired a build there that died in about two seconds on
+a root directory the merge had removed. It burned a build per push and put a
+red check beside every commit, for a deployment nobody could reach. It was
+deleted on 4 Sep 2026, along with the webhook that pointed at its
+`/api/revalidate`.
+
 `stompbox.world` and `www.stompbox.world` are aliases on the `musictime`
-deployment, and the `stompbox-world` project holds nothing but its two
-generated `.vercel.app` names, so deleting it cannot take the guide down.
-
-What it is still doing is worse than nothing. It stays linked to this
-repository, so every push to any branch fires a build there, and every one of
-them dies in about two seconds on:
-
-```
-The specified Root Directory "stompbox.world" does not exist.
-```
-
-That directory was what the merge removed. So the project is burning a build
-per push and putting a red check beside every commit, for a deployment nobody
-can reach. Delete it in the Vercel dashboard (Settings, then Delete Project);
-nothing in this repo can, and no tool the agent has can either. The webhook
-that pointed at its `/api/revalidate` should go with it.
+deployment and always were, which is why deleting the other project could not
+take the guide down. **There is now exactly one Vercel project building this
+repository.** If a second one ever appears, this is the failure it causes, and
+it announces itself as a red check rather than as anything a test can catch.
 
 **WHAT THE CREDENTIAL BOUNDARY BECAME, and it is a real downgrade.** The guide
 could not reach the database because it had no connection string. That was
@@ -2464,3 +2473,76 @@ stops per string is an obstacle rather than access.
 
 **It sells nothing and links out nowhere**, which is fine: section 17's promise
 is that payout is not why something is here.
+
+
+---
+
+## 26. The two trade-in tools, and the one rate card between them
+
+`app/stompbox/buymyboard/`, `app/stompbox/outreach/`. Two pages serving the
+two ends of the same transaction: somebody selling us their pedals.
+
+| | what it is | indexed |
+|---|---|---|
+| `/buymyboard` | the PUBLIC quote page. A seller adds pedals, picks a condition per item, and sees cash, store credit and consignment side by side, then copies a summary to send us. | yes |
+| `/outreach` | the tool WE work from. Paste a Marketplace listing, it parses the lot, prices it, and writes the three Messenger messages. | **no** |
+
+**THE URL BELONGS TO THE SELLER, WHICH IS WHY THEY SWAPPED.** "Buy my board"
+is what a seller says, and it spent its first day serving the operator tool.
+Anybody following that link expecting to sell us something would have landed
+on our own sales scripts, which reads as a mistake rather than as a private
+page. `/outreach` describes itself.
+
+**ONE RATE CARD, 65 / 75 / 90, AND A TEST HOLDS THE TWO TOGETHER.** The public
+page briefly quoted 60 / cash plus 20% / 80-85 while the message a seller
+received quoted 65 / 75 / 90, so anyone who got a message and then visited the
+site was shown a WORSE number on the site than the one they had been sent.
+Nothing failed, because nothing was comparing them; `tests/stompbox/
+buymyboard.test.ts` compares the two documents now. The store credit line is
+DERIVED from the two rates rather than stating a bump, because a hardcoded
+"20% more than cash" is how the number on the card and the number in the
+arithmetic quietly stop agreeing.
+
+**NEITHER PAGE MAY QUOTE A NUMBER IT DOES NOT HAVE.** This is section 8 aimed
+at a seller instead of a shopper, and it is the rule the whole thing rests on.
+The pedal table carries a book price for a clean example of about eighty
+pedals and DELIBERATELY carries none for another thirty, because a Big Muff is
+sixty dollars or nine hundred depending which one it is and an average is
+wrong for both. Those come back as "we will price this by hand", are EXCLUDED
+from the total rather than counted as zero, and are named in the summary. On
+`/outreach` there is a second guard: figures reach the message only after
+somebody ticks the box saying they checked the comps, because an unverified
+seed quoted at a seller is a number nobody stands behind.
+
+**BOTH ARE ONE HTML DOCUMENT SERVED BY A ROUTE HANDLER, NOT A PAGE.** Each has
+its own head, stylesheet and script, and a page would wrap it in the guide's
+layout, chrome and canonical tag. Each is also handed out as a file that runs
+off a laptop with no server, so the document is embedded as a literal rather
+than ported to a component: two copies of a page this size is section 7's fork
+with the drift hidden inside sales copy rather than inside an error.
+
+**WHICH MAKES THE ESCAPING THE RISK, AND IT IS TESTED.** A swallowed backtick
+in an 80KB template literal does not throw. It truncates the document or eats
+a closing tag, and the page renders as half a form on a live domain with
+nothing in any log. The tests assert SHAPE rather than copy: opened and
+closed, balanced tags, the controls the page is useless without, and the three
+payout rates.
+
+**THE LISTING PARSER REFUSES TO INVENT A PRICE.** A dollar sign wins outright,
+a separator then a number wins, and a bare trailing number is taken ONLY when
+the word in front of it is not the kind a model number follows. That is why
+"Boss DS-1 45" reads as $45 and "MXR Phase 90" does not read as $90. Anything
+from that third rule is shown in amber, because it is the one class of number
+nobody typed and nobody confirmed. Asking price and market value are separate
+columns and must stay that way: a seller asks high, and merging them inflates
+every offer computed downstream.
+
+**AND THE PARSER'S DASHES ARE ESCAPED, NOT TYPED.** `tests/stompbox/
+house-style.test.ts` forbids a literal em dash anywhere in the guide's source
+and the parser has to match one, because sellers type them. The character
+classes carry `–` and `—`, so the regex still matches and the rule
+still holds. Do not exempt the file instead.
+
+**A CALL TO ACTION MAY NOT POINT AT NOTHING.** With no Messenger handle
+configured, `/buymyboard`'s button becomes a copy action and relabels itself.
+A dead CTA on a live public page is worse than an honest one.
