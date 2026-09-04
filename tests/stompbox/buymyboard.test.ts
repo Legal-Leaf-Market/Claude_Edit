@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { BUY_MY_BOARD_HTML as HTML } from "@/app/stompbox/buymyboard/document"
-import { OUTREACH_HTML as TOOL } from "@/app/stompbox/outreach/document"
+import { OUTREACH_HTML as TOOL } from "@/app/admin/outreach/document"
 
 /**
  * THE PUBLIC PAGE AND THE OUTREACH SCRIPT MUST QUOTE THE SAME DEAL.
