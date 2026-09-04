@@ -7,6 +7,8 @@ import { db } from "@/lib/db"
 import { canonicalGear } from "@/lib/db/schema"
 import { search } from "@/lib/search"
 import { formatPrice } from "@/lib/utils"
+import { JsonLdScript } from "@/components/json-ld"
+import { breadcrumbs } from "@/lib/seo/structured-data"
 
 /**
  * Per-model deal pages: /deals/fender-player-stratocaster.
@@ -106,6 +108,19 @@ export default async function DealsPage({ params }: PageProps) {
           <li className="text-[var(--cream)]">Deals</li>
         </ol>
       </nav>
+
+      {/* Breadcrumbs only. The gear page already carries this instrument's
+          Product node with its offers; a second one here would be two answers
+          to the same question. */}
+      <JsonLdScript
+        data={[
+          breadcrumbs([
+            { name: "Home", path: "/" },
+            { name, path: `/gear/${gear.slug}` },
+            { name: "Deals" },
+          ]),
+        ]}
+      />
 
       <header className="mb-8 max-w-3xl">
         <h1 className="text-3xl font-bold tracking-tight text-[var(--cream)]">

@@ -13,6 +13,8 @@ import { canonicalGear } from "@/lib/db/schema"
 import { listingsForGear, priceHistoryFor } from "@/lib/deals/history"
 import { env } from "@/lib/env"
 import { formatMargin, formatPrice, sourceLabel, timeAgo } from "@/lib/utils"
+import { JsonLdScript } from "@/components/json-ld"
+import { breadcrumbs, productSchema } from "@/lib/seo/structured-data"
 
 type PageProps = { params: Promise<{ slug: string }> }
 
@@ -243,34 +245,31 @@ export default async function GearPage({ params }: PageProps) {
         )}
       </section>
 
-      {/* Product structured data. Only emitted when there is a real live offer
-          behind it, because marking up an empty page is a manual action risk. */}
-      {cheapestCents != null && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Product",
-              name: `Used ${name}`,
-              brand: { "@type": "Brand", name: gear.brand },
-              category: gear.category,
-              image: gear.imageUrl ?? undefined,
-              gtin: gear.gtin ?? undefined,
-              mpn: gear.mpn ?? undefined,
-              offers: {
-                "@type": "AggregateOffer",
-                offerCount: listings.length,
-                lowPrice: (cheapestCents / 100).toFixed(2),
-                highPrice: (Number(listings[listings.length - 1].price_cents) / 100).toFixed(2),
-                priceCurrency: "USD",
-                availability: "https://schema.org/InStock",
-                url: `${env.site.url}/gear/${gear.slug}`,
-              },
-            }),
-          }}
-        />
-      )}
+      <JsonLdScript
+        data={[
+          productSchema({
+            name: `Used ${name}`,
+            brand: gear.brand,
+            category: gear.category,
+            image: gear.imageUrl,
+            gtin: gear.gtin,
+            mpn: gear.mpn,
+            path: `/gear/${gear.slug}`,
+            offers: listings.map((row) => ({
+              priceCents: Number(row.price_cents),
+              currency: row.currency ? String(row.currency) : null,
+              condition: row.condition ? String(row.condition) : null,
+            })),
+          }),
+          /* The same trail the <nav> above renders. A breadcrumb that
+             disagrees with the visible one describes a different page. */
+          breadcrumbs([
+            { name: "Home", path: "/" },
+            { name: gear.brand, path: `/search?brand=${encodeURIComponent(gear.brand)}` },
+            { name: gear.model },
+          ]),
+        ]}
+      />
     </div>
   )
 }

@@ -1752,6 +1752,13 @@ engine.
   four guarantees in section 24. Preferring the listing we earn most from is
   ranking by payout, and our own price inside the median is marking our own
   homework.
+- Do NOT add rating, review or testimonial markup to any page. There are no
+  reviews on this site, a test scans for the vocabulary, and fabricated
+  reputation markup is a manual action against the whole domain (section 25).
+- Do NOT emit a `Product` node for gear with no live offer, and do NOT type a
+  hostname into structured data. Origins come from the deployment.
+- Do NOT put a single `priceCurrency` over rows that hold several. The
+  aggregate must describe one currency and count only those offers.
 - Do NOT point the test suite at a database you care about; it truncates.
 - Do NOT turn a capture into a `marketplace_listings` row because the capture
   exists. Reading a page you are on is research; republishing a catalogue is
@@ -2086,6 +2093,55 @@ photographed, and it independently measured the same 77.4 x 58.9 x 131.7 mm,
 which is a useful cross-check and not a new capability. What an engine buys is
 everything after the mesh exists. What makes a pedal look real is the ASSET:
 geometry, then PBR texture maps, which the DS-1 does not have yet.
+
+
+---
+
+## 25. Structured data: markup is a claim
+
+`lib/seo/structured-data.ts`, `components/json-ld.tsx`.
+
+**EVERY CLAIM IN THE MARKUP HAS TO BE ONE THE PAGE ITSELF MAKES.** That is
+section 8's rule aimed at a crawler instead of a shopper: the site refuses to
+publish a market price under `MIN_SAMPLE_SIZE` because a number with nothing
+behind it is worse than none, and marking up an offer that does not exist is
+the same act. Google agrees, and the penalty is a manual action against the
+whole domain rather than one page.
+
+**NOTHING HERE CLAIMS A REPUTATION.** No star ratings, no testimonials, none of
+that vocabulary at all, and a test scans the module for it rather than trusting
+the intention. This site collects no opinions from anybody. Adding star markup
+is the single most common piece of SEO advice for a comparison site and it wins
+a rich result, which is exactly why it is tempting and exactly why it is
+fabricating evidence.
+
+**THE BUILDERS RETURN NULL, AND THAT IS THE COMMON ANSWER.** A canonical row
+with no live listing gets no `Product` node, because a Product with no offer is
+a page telling a crawler it sells something it does not. `JsonLdScript` takes
+the nulls, so no call site has to remember.
+
+**ONE CURRENCY PER `AggregateOffer`, AND THE PREVIOUS VERSION GOT THIS WRONG.**
+It hardcoded "USD" over whatever was in the rows. This catalogue is genuinely
+multi-currency (Anderton's in GBP, five Gear4music storefronts), so one British
+listing under an American one made the low price a number in the wrong money.
+The majority currency wins and the count reflects only those offers, so the
+figures and the count always describe the same set. It also took the highest
+price as the last row, which is only true while the query happens to sort by
+price ascending.
+
+**CONDITION IS STATED ONLY WHEN IT IS TRUE OF EVERY OFFER.** New and used are
+two markets; a page holding both claims neither rather than the one that reads
+better.
+
+**ORIGINS COME FROM THE DEPLOYMENT.** Two hand-rolled blocks existed before
+this and already disagreed: one built URLs from `SITE_URL`, the other had the
+production hostname typed in, so preview deploys emitted markup pointing at the
+live site. A test scans every page carrying markup for a literal hostname.
+
+**A RIG IS AN `Article`, AND THE ARTIST IS ITS SUBJECT, NEVER ITS AUTHOR.**
+Section 13 is careful these pages never imply endorsement, and structured data
+naming a musician as author of a page about gear is exactly that implication.
+
 
 ---
 
