@@ -132,6 +132,10 @@ export function normalizeAwinRow(row: Record<string, string>): NewMarketplaceLis
     priceCents,
     currency: (pick(row, FIELD_ALIASES.currency) || "USD").slice(0, 10),
     condition: normalizeReverbCondition(pick(row, FIELD_ALIASES.condition)),
+    // The merchant's own taxonomy, stored verbatim and interpreted later by
+    // lib/canonical/feed-category.ts. The alias has been declared here since
+    // this reader was written and the value was being dropped on the floor.
+    feedCategory: pick(row, FIELD_ALIASES.category).slice(0, 200) || null,
     brand: pick(row, FIELD_ALIASES.brand).slice(0, 100) || null,
     gtin: (ean || upc).slice(0, 20) || null,
     // EPIDs are an eBay concept; a Reverb row never has one and must not

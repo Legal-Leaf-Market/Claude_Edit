@@ -542,3 +542,143 @@ describe("upsertListings", () => {
     expect(rows[0].affiliateUrl).toBe("https://ebay.com/itm/1?campid=5338")
   })
 })
+
+/* -------------------------------------------------------------------------- */
+/*  The merchant's category beats the title guess                             */
+/* -------------------------------------------------------------------------- */
+
+describe("category resolution", () => {
+  it("uses the merchant's category when the title says nothing useful", async () => {
+    // The case this was built for. Nothing in "Ibanez TS9 Tube Screamer" is a
+    // word the old title patterns matched, so the gear landed in "Other" and
+    // was absent from /used/effects-pedals, from liveModels() and from the
+    // guide's shelf, with nothing failing anywhere.
+    const result = await resolveCanonicalGear({
+      title: "Ibanez TS9 Tube Screamer",
+      brand: "Ibanez",
+      gtin: null,
+      epid: null,
+      mpn: "TS9",
+      primaryImageUrl: null,
+      feedCategory: "Effects and Pedals / Overdrive and Boost",
+    })
+    expect(result).not.toBeNull()
+    const [gear] = await db
+      .select()
+      .from(canonicalGear)
+      .where(sql`${canonicalGear.id} = ${result!.gearId}`)
+    expect(gear.category).toBe("Effects Pedals")
+  })
+
+  it("falls back to the title when the merchant's path means nothing to us", async () => {
+    // categoryFromFeed returns null rather than "Other" precisely so this
+    // still works: an unmapped taxonomy must leave the title parse alone
+    // rather than overwrite it with a worse answer.
+    const result = await resolveCanonicalGear({
+      title: "Fender Player Stratocaster Electric Guitar",
+      brand: "Fender",
+      gtin: null,
+      epid: null,
+      mpn: "0144502506",
+      primaryImageUrl: null,
+      feedCategory: "Miscellaneous / Sundries",
+    })
+    const [gear] = await db
+      .select()
+      .from(canonicalGear)
+      .where(sql`${canonicalGear.id} = ${result!.gearId}`)
+    expect(gear.category).toBe("Electric Guitars")
+  })
+
+  it("upgrades gear stuck on Other when a feed later says what it is", async () => {
+    // A canonical row is created by whichever listing arrives first. If that
+    // was an eBay row with an unhelpful title the gear sits on "Other", and
+    // without this every later Reverb listing would resolve onto it and leave
+    // it there, off its own category page forever.
+    const first = await resolveCanonicalGear({
+      title: "EarthQuaker Devices Plumes",
+      brand: "EarthQuaker Devices",
+      gtin: null,
+      epid: null,
+      mpn: "EQD-PLUMES",
+      primaryImageUrl: null,
+      feedCategory: null,
+    })
+    const [before] = await db
+      .select()
+      .from(canonicalGear)
+      .where(sql`${canonicalGear.id} = ${first!.gearId}`)
+    expect(before.category).toBe("Other")
+
+    const second = await resolveCanonicalGear({
+      title: "EarthQuaker Devices Plumes",
+      brand: "EarthQuaker Devices",
+      gtin: null,
+      epid: null,
+      mpn: "EQD-PLUMES",
+      primaryImageUrl: null,
+      feedCategory: "Effects and Pedals / Overdrive and Boost",
+    })
+    expect(second!.gearId).toBe(first!.gearId)
+
+    const [after] = await db
+      .select()
+      .from(canonicalGear)
+      .where(sql`${canonicalGear.id} = ${first!.gearId}`)
+    expect(after.category).toBe("Effects Pedals")
+  })
+
+  it("never lets a title guess overwrite a category a feed stated", async () => {
+    // The upgrade above is one-directional. Only a mapped feed category may
+    // replace "Other", and nothing may replace a real category at all.
+    const first = await resolveCanonicalGear({
+      title: "Strymon Timeline",
+      brand: "Strymon",
+      gtin: null,
+      epid: null,
+      mpn: "STRY-TIMELINE",
+      primaryImageUrl: null,
+      feedCategory: "Effects and Pedals / Delay",
+    })
+    await resolveCanonicalGear({
+      title: "Strymon Timeline Rack Unit",
+      brand: "Strymon",
+      gtin: null,
+      epid: null,
+      mpn: "STRY-TIMELINE",
+      primaryImageUrl: null,
+      feedCategory: null,
+    })
+    const [gear] = await db
+      .select()
+      .from(canonicalGear)
+      .where(sql`${canonicalGear.id} = ${first!.gearId}`)
+    expect(gear.category).toBe("Effects Pedals")
+  })
+
+  it("carries the feed category from an upsert through to the gear", async () => {
+    // End to end through the real write path: the column has to survive the
+    // insert, the COALESCE in the conflict clause and the resolver's re-read.
+    await upsertListings([
+      listing({
+        source: "reverb",
+        externalId: "rvb-ts9",
+        title: "Ibanez TS9 Tube Screamer",
+        brand: "Ibanez",
+        mpn: "TS9",
+        condition: "Excellent",
+        feedCategory: "Effects and Pedals / Overdrive and Boost",
+        rawUrl: "https://reverb.com/item/ts9",
+      }),
+    ])
+    const [stored] = await db.select().from(marketplaceListings)
+    expect(stored.feedCategory).toBe("Effects and Pedals / Overdrive and Boost")
+
+    const result = await resolveCanonicalGear(stored)
+    const [gear] = await db
+      .select()
+      .from(canonicalGear)
+      .where(sql`${canonicalGear.id} = ${result!.gearId}`)
+    expect(gear.category).toBe("Effects Pedals")
+  })
+})

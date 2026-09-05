@@ -286,6 +286,7 @@ lib/
   ingestion/upsert.ts       Idempotent writes, price history, run bookkeeping
   canonical/resolve.ts      Four-tier entity resolution (section 4)
   canonical/model-parse.ts  Brand/model/category from keyword-soup titles
+  canonical/feed-category.ts  The merchant's own category, mapped (section 4)
   catalog/live-models.ts    ONE definition of what a category has in stock (section 20)
   pedalboard/chain.ts       The planner's chain. Its ORDER is the guide's (section 20)
   deals/pricing.ts          Rolling median, deal threshold
@@ -412,6 +413,49 @@ price. An unscoped `similarity()` search happily merges them.
 Paid embeddings are deliberately NOT wired up. `resolveByEmbedding()` is a
 marked stub. Structured fields carry the vast majority of rows; do not spend on
 embeddings before the `needs_review` queue proves a miss rate that justifies it.
+
+**CATEGORY IS NOT RESOLVED THE SAME WAY, AND THE ORDER IS THE OTHER WAY ROUND
+FROM IDENTITY.** Identity trusts the title last, because a title is keyword
+soup. Category used to trust it FIRST, and only, through `detectCategory()`.
+Measured against twenty-five real Reverb pedal titles that put twenty-two of
+them in "Other", and filed a Keeley Compressor Plus under Recording & Audio.
+A pedal in "Other" is not on `/used/effects-pedals`, so it is not in
+`liveModels()`, so it is not on the guide's shelf either, and nothing throws.
+
+Meanwhile every feed reader here had declared an alias for the merchant's own
+category column since the day it was written, and not one of them stored the
+value. Reverb publishes "Effects and Pedals / Fuzz" beside the title we were
+guessing from. So `marketplace_listings.feed_category` holds it verbatim,
+`lib/canonical/feed-category.ts` maps it onto our own vocabulary, and the title
+parse is the fallback. Same rule as section 3's `inferredBrand`: an explicit
+field beats an inferred one.
+
+Three things about that mapper are load bearing:
+
+- **It returns null, never "Other".** Null means "nothing here we recognise"
+  and hands the decision back to the title. Answering "Other" would replace a
+  guess with a worse guess, confidently, on every unmapped taxonomy.
+- **It reads the LAST path segment first, then each parent.** Merchant
+  taxonomies run general to specific, so the leaf carries the most information
+  and the department is the safety net.
+- **Genuinely ambiguous words are in NO pattern at all.** "Compressor",
+  "reverb", "delay", "EQ" and "preamp" name a pedal and a rack unit equally
+  well, so they match nothing and the parent segment decides: "Effects and
+  Pedals / Compressors" resolves on the department, and "Pro Audio / Outboard
+  Gear / Compressors" on its own. Adding `compressor` to the pedal pattern to
+  win the first would silently take the second with it.
+
+**eBay is deliberately not wired into this.** Its feed gives a numeric
+`categoryId` rather than a name, and turning that into a category means the
+Taxonomy API and a lookup table nobody has built. A number in that column would
+map to nothing and only look like coverage.
+
+**And a stated category may upgrade gear stuck on "Other", one way only.** The
+canonical row is created by whichever listing arrives first; if that was an
+eBay row with an unhelpful title, every later Reverb listing resolves onto it
+and would leave it in "Other" forever. `enrichGear` treats "Other" as empty for
+exactly this, and only a mapped FEED category is allowed through: a title guess
+can never overwrite a category a merchant stated.
 
 **Bias throughout: under-merge rather than over-merge.** An unmatched listing
 still shows up in search on its own text. A bad merge corrupts the price
@@ -559,6 +603,15 @@ Never fork the logic between them. Add work to the job function.
   used median is precisely what manufactures deals that do not exist. A null
   condition is the exception and stays used, since the retail feeds all set the
   field explicitly.
+- **B-STOCK IS IN THAT GROUP TOO, as of the Reverb wiring, and it was not
+  before.** It is factory stock with a cosmetic blemish sold by a dealer, which
+  is the open-box case wearing a different word, so the asymmetry above applies
+  to it unchanged. The reason it had to move rather than stay a judgement call:
+  `reverb-awin.ts` normalises "B-Stock" to "Refurbished" before storing it, so
+  a Reverb row was already being classed NEW while the identical words arriving
+  from any other feed were classed used. One vocabulary, two answers, and
+  nothing anywhere failed. Both halves of the classifier now carry it, and the
+  spaced spelling too.
 - **The classifier exists three times (JS, the deal-flagging UPDATE, and the
   search projections) and they must agree.** A divergence throws nothing; it
   just starts flagging listings against a median built from a population they
@@ -1511,6 +1564,20 @@ engine.
   (`components/listing-image.tsx`, `components/board/pedal-photo.tsx`) with the
   already-failed ref check, and the optimizer is a bonus.
 - Do NOT let an `inferred*` field win over an explicit one.
+- Do NOT classify a listing's category from its title when the feed states one.
+  The title is the fallback, and on a peer marketplace it is wrong far more
+  often than it is right (section 4).
+- Do NOT make `categoryFromFeed()` return "Other". Null is what hands an
+  unrecognised taxonomy back to the title parse; "Other" would overwrite it
+  with a worse answer and look decisive doing it.
+- Do NOT add an ambiguous word to a category pattern to win one case.
+  "compressor", "reverb" and "delay" name a pedal and a rack unit equally well;
+  they belong in no pattern, so the parent segment decides.
+- Do NOT put a brand in a category pattern. Line 6 and Universal Audio each
+  sell pedals, amps and interfaces under one name, so a brand rule files an
+  interface as a pedal with total confidence.
+- Do NOT let a title guess overwrite a category a merchant stated. The "Other"
+  upgrade in `enrichGear` is one-directional on purpose.
 - Do NOT unscope MPN or fuzzy matching from the brand.
 - Do NOT publish a market price below `MIN_SAMPLE_SIZE`.
 - Do NOT let the cron guard fail open.

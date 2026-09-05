@@ -191,6 +191,26 @@ export const marketplaceListings = pgTable(
      */
     platformVariantId: varchar("platform_variant_id", { length: 50 }),
 
+    /**
+     * The merchant's OWN category string, stored verbatim: "Effects and Pedals
+     * / Fuzz", "Guitars > Electric Guitars > Solid Body", a Shopify
+     * product_type, a CJ CATEGORY column.
+     *
+     * WHY IT IS WORTH A COLUMN. Categories used to be inferred from the title
+     * alone, and on a peer marketplace that is mostly a guess: "Ibanez TS9 Tube
+     * Screamer" contains no word the pedal pattern matches, so it landed in
+     * "Other" and never appeared on /used/effects-pedals. Twenty-two of
+     * twenty-five real pedal titles failed that way. The merchant already
+     * publishes the answer in the feed and every reader here already declared
+     * an alias for it; none of them stored it.
+     *
+     * It is EVIDENCE, not a decision. lib/canonical/feed-category.ts maps it
+     * onto our own buckets and the title parse stays as the fallback, which is
+     * section 3's rule that an explicit field beats an inferred one, applied to
+     * a field we were throwing away.
+     */
+    feedCategory: varchar("feed_category", { length: 200 }),
+
     /** 'active' | 'sold' | 'expired'. */
     listingStatus: varchar("listing_status", { length: 20 }).notNull().default("active"),
 

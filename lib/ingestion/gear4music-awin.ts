@@ -123,6 +123,10 @@ export function normalizeGear4MusicRow(row: Record<string, string>): NewMarketpl
     priceCents,
     currency: (pick(row, FIELD_ALIASES.currency) || "USD").slice(0, 10),
     condition: normalizeGear4MusicCondition(pick(row, FIELD_ALIASES.condition)),
+    // The merchant's own taxonomy, stored verbatim and interpreted later by
+    // lib/canonical/feed-category.ts. The alias has been declared here since
+    // this reader was written and the value was being dropped on the floor.
+    feedCategory: pick(row, FIELD_ALIASES.category).slice(0, 200) || null,
     brand: pick(row, FIELD_ALIASES.brand).slice(0, 100) || null,
     gtin: (ean || upc).slice(0, 20) || null,
     // EPIDs are an eBay concept; a Gear4music row never has one.

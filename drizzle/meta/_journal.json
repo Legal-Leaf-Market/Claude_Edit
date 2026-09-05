@@ -57,6 +57,13 @@
       "when": 1787535583815,
       "tag": "0007_product_captures",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788625485593,
+      "tag": "0008_steady_terror",
+      "breakpoints": true
     }
   ]
 }

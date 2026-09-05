@@ -55,6 +55,7 @@ type WooCommercePrices = {
 }
 type WooCommerceImage = { src?: string }
 type WooCommerceBrand = { name?: string }
+type WooCommerceCategory = { name?: string }
 type WooCommerceProduct = {
   id: number | string
   name?: string
@@ -66,6 +67,7 @@ type WooCommerceProduct = {
   images?: WooCommerceImage[]
   brands?: WooCommerceBrand[]
   is_in_stock?: boolean
+  categories?: WooCommerceCategory[]
   is_purchasable?: boolean
 }
 
@@ -146,6 +148,16 @@ export function normalizeWooCommerceProduct(
       currency: (product.prices?.currency_code ?? "USD").slice(0, 10),
       // These are small new-inventory retailers, not peer marketplaces.
       condition: "New",
+      // WooCommerce's Store API returns a FLAT list of category names rather
+      // than a path, and `type` is "simple"/"variable" rather than a category
+      // at all. Joining the names gives feed-category.ts several segments to
+      // try, which is what it already does with a real path.
+      feedCategory:
+        (product.categories ?? [])
+          .map((c) => c.name?.trim())
+          .filter(Boolean)
+          .join(" / ")
+          .slice(0, 200) || null,
       brand: product.brands?.[0]?.name?.slice(0, 100) || null,
       gtin: null,
       epid: null,
