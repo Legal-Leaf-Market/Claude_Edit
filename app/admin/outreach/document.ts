@@ -1546,7 +1546,7 @@ function buildOffers(c, headIdx, closeIdx, m) {
   }
 
   if (!m && c.comps) {
-    parts.push(\`When I say market value I mean what these actually go for used on \${c.market}, not what people are asking. I'll show you the comps so you can see where the number came from.\`);
+    parts.push(\`When I say market value I mean what these are really going for on \${c.market} right now, not what people are asking. If you need any details on that, let me know.\`);
   }
 
   const steer = steerLine(c, m);
