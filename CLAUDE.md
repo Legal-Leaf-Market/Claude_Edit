@@ -2541,10 +2541,23 @@ month when we're ready to make some big purchases." THERE IS NO ASK-FOR-THE-LIST
 CLOSE ANY MORE: the owner pulled "Send me a list..." first and the standard
 replaced the rest. "Same Work as #2" and the Max Payout clause are computed
 against which tiers are on, so switching one off cannot leave a dangling
-reference. The first setup variant is his verbatim too ("we're 4 dudes opening
-a store", "our shop (in Columbus, IN)" from the location field). A "big but"
-with emojis was tried on max payout first and pulled the same day as a little
-too much.
+reference. A "big but" with emojis was tried on max payout first and pulled the
+same day as a little too much.
+
+**MESSAGE TWO HAS TEN VERSIONS AND ARROWS (owner, 2026-09-05, late).** The
+owner sent one setup text cold to ten sellers in a day and Facebook capped his
+messaging until the next day, which is what happens to any account that sends
+the same text to many strangers in a short window. He asked for ten
+near-identical versions of his setup and they are `SETUPS`: his wording, same
+facts, same emojis, verbs and adjectives moved around. The message two panel
+carries prev and next arrows and a "3 / 10" readout, and the chosen version
+persists per device (`setup` in the saved state) so he knows which one he went
+with. Word swaps alone do not make a bulk pattern invisible, and the tool's
+own sequence is the durable answer: message one names the seller's specific
+pedal with a gear note and is different every time, and the setup goes out
+only after a reply. That advice went with the variants; the variants were
+what was asked for. The location field fills "(in Columbus, IN)" and blank
+degrades to plain "our shop"; the month names come from the clock as before.
 
 **THE VOICE IS ONE DUDE MESSAGING ANOTHER (owner, 2026-09-05).** The sellers
 are rockers on Marketplace and so is the person writing to them, and a
