@@ -1486,7 +1486,6 @@ const HEADS_PRICED = [
 ];
 
 const CLOSES = [
-  "Send me a list of what you've got and I'll price every one of them out. You'll see real numbers before you commit to anything.",
   "What's the full list? I'll run comps on each one and send back exactly what each option pays you. No obligation either way.",
   "Send over what you've got, even just a pic of the board. I'll come back with real numbers on all three so you can pick.",
   "Give me the list and I'll do the legwork. You get actual numbers for each option and go from there, no pressure.",
