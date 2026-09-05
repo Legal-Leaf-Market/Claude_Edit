@@ -1416,19 +1416,19 @@ function parseListing(text) {
    MESSAGE COPY.
 --------------------------------------------------------------------------- */
 const OPENERS_ANY = [
-  c => \`\${c.hey}is the \${c.pedal} still available?\`,
+  c => \`\${c.hey}you still got the \${c.pedal}?\`,
   c => \`\${c.hey}saw the \${c.pedal}. Still around?\`,
-  c => \`\${c.hey}that \${c.pedal} caught my eye. Still got it?\`,
+  c => \`\${c.hey}that \${c.pedal} still up for grabs?\`,
   c => \`\${c.hey}quick one, is the \${c.pedal} still up?\`,
-  c => \`\${c.hey}is the \${c.pedal} spoken for yet?\`,
+  c => \`\${c.hey}anybody grab the \${c.pedal} yet?\`,
   c => \`\${c.hey}is the \${c.pedal} still going?\`,
-  c => \`\${c.hey}good taste. Is the \${c.pedal} still there?\`,
+  c => \`\${c.hey}good taste man. \${c.pedal} still there?\`,
 ];
 const OPENERS_LOT = [
-  c => \`\${c.hey}are you selling these one at a time or would you do the lot?\`,
-  c => \`\${c.hey}nice board. Is the \${c.pedal} still up?\`,
-  c => \`\${c.hey}is the \${c.pedal} still there, and is there more where that came from?\`,
-  c => \`\${c.hey}is the whole lot still available or has it been picked over?\`,
+  c => \`\${c.hey}you selling these one at a time or would you do the whole lot?\`,
+  c => \`\${c.hey}sick board. Is the \${c.pedal} still up?\`,
+  c => \`\${c.hey}is the \${c.pedal} still there? And is there more where that came from?\`,
+  c => \`\${c.hey}is the whole lot still up or has it been picked over?\`,
 ];
 /* When the gear note ends in a question, the opener must NOT also ask one.
    Two questions in a first message from a stranger gets one answer at best. */
@@ -1436,66 +1436,66 @@ const OPENERS_FLAT = [
   c => \`\${c.hey}just saw your \${c.pedal} listing.\`,
   c => \`\${c.hey}nice, a \${c.pedal}.\`,
   c => \`\${c.hey}spotted the \${c.pedal} in your listing.\`,
-  c => \`\${c.hey}good to see a \${c.pedal} come up.\`,
+  c => \`\${c.hey}always good to see a \${c.pedal} pop up.\`,
 ];
 
 const SETUPS = [
   c =>
-\`So, quick context: we are opening a store. An actual brick and mortar location. I buy gear for \${c.shop}, we already have a growing online presence, and now we are filling shelves.
+\`So quick heads up on who you're dealing with. We're opening a store. Like an actual brick and mortar spot. I buy gear for \${c.shop}, we've got a decent online thing going already, and now we're filling shelves.
 
-Our next round of purchasing is later this month. \${c.lotCap} would you be up for doing a deal with us on whatever is still unsold at the end of \${c.month} or the start of \${c.nextMonth}? For the right deal we can move sooner than that.
+Next round of buying is later this month. \${c.lotCap} would you be down to do a deal on whatever's still sitting there at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal we can move quicker than that.
 
-Depends what you are after though. Some people want cash in hand this week. Some want the most money possible and do not mind waiting a few weeks for it. We do both.\`,
-
-  c =>
-\`Before you answer, I should say I am not just a guy buying one pedal. We are opening a physical store. I buy for \${c.shop}, and on top of the online side we are building the inventory for a real location.
-
-We are doing our next round of buying later this month. \${c.lotCap} anything still sitting unsold at the end of \${c.month} or the start of \${c.nextMonth} is something I would like first shot at, and for the right deal we can do it sooner.
-
-We run a different model than most shops. Rather than lowball gear off people we work with them on it. Really it comes down to one question: do you want money now, or do you want the most money?\`,
+Really depends what you're after though. Some people want cash in hand this week. Some want the most money possible and don't mind waiting a few weeks for it. We do both, no stress either way.\`,
 
   c =>
-\`Quick context so I am not wasting your time. We are opening a brick and mortar store. I buy for \${c.shop}, we already sell online, and now we need stock on actual shelves.
+\`Before you answer, I should say I'm not just some guy buying one pedal. We're opening a store, a real physical one. I buy for \${c.shop}, and on top of the online stuff we're building up inventory for the actual location.
 
-Next round of purchasing is later this month. \${c.lotCap} I would rather talk about the whole thing than haggle over one pedal, and if any of it is still unsold at the end of \${c.month} or the start of \${c.nextMonth} we would like to do a deal on it. For the right deal, sooner.
+We're doing our next round of buying later this month. \${c.lotCap} anything still sitting there at the end of \${c.month} or start of \${c.nextMonth}, I'd love first crack at. And if it's the right deal we can just do it now.
 
-We can buy the lot outright and pay you up front, or we can list them for you and pay you as they sell, which works out to quite a bit more. Your call which is worth more to you.\`,
+We do things a little different than most shops. Not really into lowballing people, we'd rather work something out. Honestly it comes down to one thing: you want money now, or you want the most money?\`,
 
   c =>
-\`Bit of context first. We are opening a store, a physical one, and I am the one filling it. I buy for \${c.shop}, we have a growing online presence, and the next round of purchasing for the shop floor is later this month.
+\`Quick context so I'm not wasting your time. We're opening a brick and mortar shop. I buy for \${c.shop}, we already sell online, and now we need actual stuff on actual shelves.
 
-\${c.lotCap} I would rather take the whole thing off your hands than pick one pedal off you. Anything still unsold at the end of \${c.month} or the start of \${c.nextMonth}, we would like to do a deal on. For the right deal we can move faster than that.
+Next buying round is later this month. \${c.lotCap} I'd rather talk about the whole thing than haggle over one pedal, and if any of it's still around at the end of \${c.month} or start of \${c.nextMonth} we'd love to do a deal on it. Right deal, sooner.
 
-There are three ways we can do that, and which one is best depends entirely on whether you want cash now or top dollar later.\`,
+We can buy the lot outright and pay you up front, or we list them for you and pay you as they sell, which works out to a good bit more. Totally your call which one's worth more to you.\`,
+
+  c =>
+\`Bit of context first. We're opening a store, a physical one, and I'm the guy filling it. I buy for \${c.shop}, we've got a growing online side, and the next round of buying for the shop floor is later this month.
+
+\${c.lotCap} I'd honestly rather take the whole thing off your hands than pick one pedal off you. Whatever's still sitting there at the end of \${c.month} or start of \${c.nextMonth}, we'd like to do a deal on. Right deal, we'll move faster.
+
+There's three ways we can do that, and which one's best really just depends on whether you want cash now or top dollar later.\`,
 ];
 
 /* The count is passed in rather than written, because two of the three
    tiers can be switched off and "Three options" above two of them reads as
    a mistake the seller can see. */
 const HEADS = [
-  n => \`Here is how I do it. \${n} options:\`,
+  n => \`Here's how I do it. \${n} options:\`,
   n => \`\${n} ways to do this:\`,
-  n => \`Okay, here is the menu. \${n} ways:\`,
-  n => \`\${n} options, pick whichever fits:\`,
+  n => \`Okay so here's the menu. \${n} ways:\`,
+  n => \`\${n} options, whichever fits:\`,
 ];
 const HEADS_PRICED = [
-  "Okay, I went through your list. Here is where I land.",
-  "Right, I have priced the lot out. Here is what I have got.",
-  "Ran the whole list. Here are the numbers.",
-  "Went through everything you listed. Here is what it comes to.",
+  "Okay so I went through your list. Here's where I land.",
+  "Alright, priced the whole lot out. Here's what I've got.",
+  "Ran the whole list. Here's the numbers.",
+  "Went through everything you listed. Here's what it comes to.",
 ];
 
 const CLOSES = [
-  "Send me a list of what you have got and I will price every one of them out. You will see real numbers before you commit to anything.",
-  "What is the full list? I will run comps on each one and send back exactly what each option pays you. No obligation either way.",
-  "Send over what you have got, even just a photo of the board. I will come back with real numbers on all three so you can pick.",
-  "Give me the list and I will do the work. You get actual figures for each option and you decide from there, no pressure.",
+  "Send me a list of what you've got and I'll price every one of them out. You'll see real numbers before you commit to anything.",
+  "What's the full list? I'll run comps on each one and send back exactly what each option pays you. No obligation either way.",
+  "Send over what you've got, even just a pic of the board. I'll come back with real numbers on all three so you can pick.",
+  "Give me the list and I'll do the legwork. You get actual numbers for each option and go from there, no pressure.",
 ];
 const CLOSES_PRICED = [
-  "Any of those sound workable? Happy to walk through where any individual number came from if you want to see it.",
-  "Which of those is closest to what you had in mind? No pressure either way, and I am happy to show you the comps on any of them.",
-  "Does any of that work for you? If a particular pedal looks light to you, tell me which and I will show you what I am seeing.",
-  "Let me know which way you want to go, or tell me if something looks off and I will take another run at it.",
+  "Any of those sound workable? Happy to walk you through where any number came from.",
+  "Which of those is closest to what you had in mind? No pressure either way, and I can show you the comps on any of them.",
+  "Does any of that work for you? If a pedal looks light, tell me which one and I'll show you what I'm seeing.",
+  "Let me know which way you wanna go, or if something looks off I'll take another run at it.",
 ];
 
 const money = n => "$" + Math.round(n).toLocaleString("en-US");
@@ -1504,13 +1504,13 @@ function offerBlocks(c, m) {
   const out = [];
   if (c.o1) out.push(
 \`Cash up front, zero work for you
-\${m ? \`\${money(m.o1)} cash today, which is 60% of market and in line with most shops. \` : "60% of market value, cash today, which is in line with most shops. "}Ship them to us and you are done.\${c.pickup ? \` If you are near \${c.city} I will just come grab them and pay you on the spot.\` : ""}\`);
+\${m ? \`\${money(m.o1)} cash today, which is 60% of market and pretty standard for any shop. \` : "60% of market value, cash today, which is pretty standard for any shop. "}Ship 'em to us and you're done.\${c.pickup ? \` If you're near \${c.city} I'll just come grab them and pay you on the spot.\` : ""}\`);
   if (c.o2) out.push(
 \`Half now, the rest as they sell
-\${m ? \`\${money(m.o2)} total, which is 80% of market after \${c.market} fees. \${money(m.o2up)} the day we agree\` : \`80% of market after \${c.market} fees. Half of that the day we agree\`} and the pedals stay with you. We list and sell them. When one sells I email you a prepaid label, you put the pedal in a free USPS flat rate box with some bubble wrap and drop it anywhere that takes packages. The rest is paid as they go.\`);
+\${m ? \`\${money(m.o2)} total, which is 80% of market after \${c.market} fees. \${money(m.o2up)} the day we shake on it\` : \`80% of market after \${c.market} fees. Half of that the day we shake on it\`} and the pedals stay at your place. We list them and sell them. When one goes I email you a prepaid label, you throw the pedal in a free USPS flat rate box with some bubble wrap and drop it anywhere that takes packages. The rest gets paid as they go.\`);
   if (c.o3) out.push(
 \`Max payout
-\${m ? \`\${money(m.o3)} total, which is 90% of market after \${c.market} fees. \` : \`90% of market after \${c.market} fees. \`}\${c.o2 ? "Same as the one above with nothing up front." : "Nothing up front. The pedals stay with you, we list and sell them, and I email you a prepaid label for each one."} Paid as each one sells.\${c.deposit ? \` If you would rather have something in hand first, we will put \${m ? money(m.o3dep) : "a 10% deposit"} down up front as good faith.\` : ""}\`);
+\${m ? \`\${money(m.o3)} total, which is 90% of market after \${c.market} fees. \` : \`90% of market after \${c.market} fees. \`}\${c.o2 ? "Same deal as the one above, just nothing up front." : "Nothing up front. Pedals stay with you, we list them and sell them, and I email you a prepaid label for each one."} You get paid as each one sells.\${c.deposit ? \` If you'd rather have something in hand first, we'll put \${m ? money(m.o3dep) : "a 10% deposit"} down up front as good faith.\` : ""}\`);
   return out;
 }
 
@@ -1518,9 +1518,9 @@ function steerLine(c, m) {
   if (!c.steer) return null;
   if (m && c.o1 && c.o3) {
     const gap = m.o3 - m.o1;
-    if (gap > 0) return \`The gap between the first one and the last is about \${money(gap)}, so really it comes down to whether that is worth waiting a few weeks for.\`;
+    if (gap > 0) return \`Gap between the first one and the last is about \${money(gap)}, so really it just comes down to whether that's worth waiting a few weeks for.\`;
   }
-  if (c.o1 && c.o3) return "Less up front, more overall. Your call.";
+  if (c.o1 && c.o3) return "Less up front, more overall. Totally your call.";
   return null;
 }
 
@@ -1531,22 +1531,22 @@ function buildOffers(c, headIdx, closeIdx, m) {
   if (m) parts.push(HEADS_PRICED[headIdx % HEADS_PRICED.length]);
 
   if (m && c.comps) {
-    parts.push(\`Market on the lot comes to about \${money(m.mv)}\${m.count ? \` across the \${m.count} \${m.count === 1 ? "pedal" : "pedals"} you had\` : ""}. That is what these are actually going for on \${c.market} right now, which is where we sell primarily. I am happy to show you how I came up with any of those numbers.\`);
+    parts.push(\`Market on the lot comes to about \${money(m.mv)}\${m.count ? \` across the \${m.count} \${m.count === 1 ? "pedal" : "pedals"} you had\` : ""}. That's what these are actually going for on \${c.market} right now. Happy to show you how I came up with any of those numbers.\`);
   }
 
   if (!blocks.length) {
-    parts.push("Here is what I would do.");
+    parts.push("Here's what I'd do.");
   } else if (blocks.length === 1) {
-    parts.push(m ? "So here is what I can do:" : "Here is what I would do:");
+    parts.push(m ? "So here's what I can do:" : "Here's what I'd do:");
     parts.push(blocks[0]);
   } else {
     const n = blocks.length === 2 ? "Two" : "Three";
-    parts.push(m ? \`There are \${n.toLowerCase()} ways we can do this:\` : HEADS[headIdx % HEADS.length](n));
+    parts.push(m ? \`There's \${n.toLowerCase()} ways we can do this:\` : HEADS[headIdx % HEADS.length](n));
     blocks.forEach((b, i) => parts.push(\`\${i + 1}. \${b}\`));
   }
 
   if (!m && c.comps) {
-    parts.push(\`Market value means what these actually sell for used on \${c.market}, not what people ask for them. I will show you the comps so you can see where the number came from.\`);
+    parts.push(\`When I say market value I mean what these actually go for used on \${c.market}, not what people are asking. I'll show you the comps so you can see where the number came from.\`);
   }
 
   const steer = steerLine(c, m);
@@ -1666,12 +1666,12 @@ function ctx() {
   const scope = state.scope;
   const n = state.lot.length;
   const lot = scope === "one"
-    ? "If that one is part of a bigger clear out,"
+    ? "If that one's part of a bigger clear out,"
     : scope === "few"
       ? "If those are part of a bigger clear out,"
       : n >= 5
-        ? \`Since you have got \${n} pieces going,\`
-        : "Since you have got the whole board going,";
+        ? \`Since you've got \${n} pedals going,\`
+        : "Since you've got the whole board going,";
   const where = els.where.value.trim();
   return {
     hey: name ? \`Hey \${name}, \` : "Hey, ",

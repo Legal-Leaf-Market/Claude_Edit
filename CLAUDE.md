@@ -2517,10 +2517,12 @@ physical store and buying stock for it" is the reason to answer. Every setup
 variant opens on the brick and mortar location, names the next purchasing
 round as later this month, and asks for a deal on whatever is still unsold at
 the end of this month or the start of next. THE MESSAGE NEVER SAYS WHERE WE
-SELL (owner, same day): we are the middleman, one person on Messenger, and a
-seller has no reason to know where our listings live. The marketplace name
-still appears in the offers, but only as the basis for fees and comps, which
-is about the market price and not about us. No store credit, no trade or
+SELL (owner, same day, said twice): we are the middleman, one person on
+Messenger, and a seller has no reason to know where our listings live. The
+marketplace name still appears in the offers, but only as the price book
+("what these are going for on Reverb right now", "after Reverb fees"):
+sellers already treat Reverb as the blue book, and that we price from it is
+all they need to know about our pricing or our model. No store credit, no trade or
 bundle line: both wait for the automated outreach that grows off the site and
 Instagram, and until then a seller who wants a bundle can ask. THOSE TWO MONTH NAMES COME FROM
 THE CLOCK (`monthNames()`), not from the copy: "the end of September" is right
@@ -2528,7 +2530,17 @@ for one month and then quietly wrong, and the tool is used for longer than
 that. The three offer blocks are the owner's short form: cash today, in line
 with most shops; half now, with the pedals staying put and a prepaid label per
 sale; max payout as the same seat with nothing up front. The unpriced steer
-line is the owner's closer, "Less up front, more overall. Your call."
+line is the owner's closer, "Less up front, more overall. Totally your call."
+
+**THE VOICE IS ONE DUDE MESSAGING ANOTHER (owner, 2026-09-05).** The sellers
+are rockers on Marketplace and so is the person writing to them, and a
+business pitch is the one thing that reads wrong in that thread. So the
+message scaffold (openers, setups, heads, offer blocks, steer, closes) is
+written the way he talks: contractions on purpose, "man" and "sick board"
+allowed, nothing that sounds like a brochure. The gear notes were already in
+that register. What does not loosen: the three percentages, "after fees",
+half up front, the prepaid label and USPS flat rate box, and the month names
+from the clock. Casual is the voice, not the terms.
 
 **NEITHER PAGE MAY QUOTE A NUMBER IT DOES NOT HAVE.** This is section 8 aimed
 at a seller instead of a shopper, and it is the rule the whole thing rests on.
