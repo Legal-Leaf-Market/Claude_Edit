@@ -2563,6 +2563,12 @@ question shape and a statement shape (the statement is used when the gear
 note under it already ends in a question), two of them board-aware with a
 single-pedal fallback, arrows and a "N / 10" readout, pick persisted. The
 gear note keeps its own "Next line" knob; the arrows move the opener only.
+Message three followed: ten versions in \`OFFERS3\`, each a set of wording
+pieces that one assembly drops the figures, tier toggles, pickup and deposit
+lines into, so a version can never disagree with the arithmetic. Version one
+is the standard verbatim; the others move verbs and adjectives and keep every
+fact and every emoji in place. Arrows, readout, pick persisted, same as the
+other two.
 
 **THE VOICE IS ONE DUDE MESSAGING ANOTHER (owner, 2026-09-05).** The sellers
 are rockers on Marketplace and so is the person writing to them, and a
