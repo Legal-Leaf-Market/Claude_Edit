@@ -2529,8 +2529,11 @@ THE CLOCK (`monthNames()`), not from the copy: "the end of September" is right
 for one month and then quietly wrong, and the tool is used for longer than
 that. The three offer blocks are the owner's short form: cash today, in line
 with most shops; half now, with the pedals staying put and a prepaid label per
-sale; max payout as the same seat with nothing up front. The unpriced steer
-line is the owner's closer, "Less up front, more overall. Totally your call."
+sale; max payout as the same seat with nothing up front, plus the owner's sales
+caveat (2026-09-05): we can set max payout up TODAY, building the listings off
+the seller's own post and asking for pics or details as needed, with a "big
+but" and emojis on purpose, it only starts today if they say go. The unpriced
+steer line is the owner's closer, "Less up front, more overall. Totally your call."
 
 **THE VOICE IS ONE DUDE MESSAGING ANOTHER (owner, 2026-09-05).** The sellers
 are rockers on Marketplace and so is the person writing to them, and a
