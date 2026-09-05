@@ -11,16 +11,26 @@ import { OUTREACH_HTML as TOOL } from "@/app/admin/outreach/document"
  * nothing was comparing them. This does.
  */
 describe("one rate card, two pages", () => {
-  it("quotes 65, 75 and 90 on the public page", () => {
-    expect(HTML).toMatch(/cashPct:\s*0\.65/)
+  it("quotes 60, 75 and 90 on the public page", () => {
+    expect(HTML).toMatch(/cashPct:\s*0\.60/)
     expect(HTML).toMatch(/creditPct:\s*0\.75/)
     expect(HTML).toMatch(/consignPct:\s*0\.90/)
   })
 
-  it("uses the same three rates the outreach script quotes", () => {
-    for (const rate of ["0.65", "0.75", "0.90"]) {
-      expect(TOOL, `the outreach script no longer quotes ${rate}`).toContain(rate)
-    }
+  it("quotes the same cash and consignment rates the outreach script quotes", () => {
+    /* Read out of both documents rather than typed a second time here, so
+       this is a comparison and not a third copy of the card that can drift on
+       its own. The middle tier is deliberately not compared: it is store
+       credit on the site and the half-now consignment split in the message,
+       two different products that happen to sit in the same column. */
+    const publicCash = HTML.match(/cashPct:\s*(0\.\d+)/)?.[1]
+    const publicConsign = HTML.match(/consignPct:\s*(0\.\d+)/)?.[1]
+    const toolCash = TOOL.match(/o1:\s*(0\.\d+) \* t\.mv/)?.[1]
+    const toolConsign = TOOL.match(/o3:\s*(0\.\d+) \* t\.mv \* f/)?.[1]
+    expect(publicCash, "the public page lost its cash rate").toBeDefined()
+    expect(publicConsign, "the public page lost its consignment rate").toBeDefined()
+    expect(toolCash, "the outreach script's cash rate differs from the public page").toBe(publicCash)
+    expect(toolConsign, "the outreach script's consignment rate differs from the public page").toBe(publicConsign)
   })
 
   it("derives the store credit bump rather than stating one", () => {

@@ -42,8 +42,8 @@ describe("the served document survived being embedded", () => {
   it("keeps the three tiers at the rates they are quoted at", () => {
     /* These percentages are an offer made to a stranger in writing. A silent
        edit to one of them is a different deal under the same name. */
-    expect(HTML).toContain("0.65 * t.mv")
-    expect(HTML).toContain("0.75 * t.mv * f")
+    expect(HTML).toContain("0.60 * t.mv")
+    expect(HTML).toContain("0.80 * t.mv * f")
     expect(HTML).toContain("0.90 * t.mv * f")
   })
 

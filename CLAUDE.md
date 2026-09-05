@@ -2493,15 +2493,59 @@ Anybody following that link expecting to sell us something would have landed
 on our own sales scripts, which reads as a mistake rather than as a private
 page. `/outreach` describes itself.
 
-**ONE RATE CARD, 65 / 75 / 90, AND A TEST HOLDS THE TWO TOGETHER.** The public
-page briefly quoted 60 / cash plus 20% / 80-85 while the message a seller
-received quoted 65 / 75 / 90, so anyone who got a message and then visited the
-site was shown a WORSE number on the site than the one they had been sent.
-Nothing failed, because nothing was comparing them; `tests/stompbox/
-buymyboard.test.ts` compares the two documents now. The store credit line is
-DERIVED from the two rates rather than stating a bump, because a hardcoded
-"20% more than cash" is how the number on the card and the number in the
-arithmetic quietly stop agreeing.
+**ONE RATE CARD, AND A TEST HOLDS THE TWO TOGETHER.** The message quotes
+60 / 80 / 90 (cash, half now, max payout: the owner's numbers as of
+2026-09-05, down from 65 / 75 / 90) and the public page quotes cash 60, store
+credit 75, consignment 90. Cash and consignment are the same two numbers on
+both, and `tests/stompbox/buymyboard.test.ts` READS them out of both documents
+and compares, rather than carrying a third copy that can drift on its own. The
+middle tier is the one deliberate difference: store credit is a thing only the
+site can offer, and the message's middle tier is half-now consignment, so the
+two share a column and not a number. The history is why the test exists: the
+public page briefly quoted 60 / cash plus 20% / 80-85 while the message quoted
+65 / 75 / 90, so anyone who got a message and then visited the site was shown
+a WORSE number on the site than the one they had been sent, and nothing failed
+because nothing was comparing them. The store credit line is DERIVED from the
+two rates rather than stating a bump, because a hardcoded "20% more than cash"
+is how the number on the card and the number in the arithmetic quietly stop
+agreeing; the page's meta description and the pre-script placeholder state no
+percentage for the same reason.
+
+**THE SETUP MESSAGE LEADS WITH THE STORE (owner directive, 2026-09-05).** A
+seller on Marketplace does not care that we sell on Reverb; "we are opening a
+physical store and buying stock for it" is the reason to answer. Every setup
+variant opens on the brick and mortar location, names the next purchasing
+round as later this month, and asks for a deal on whatever is still unsold at
+the end of this month or the start of next. THE MESSAGE NEVER SAYS WHERE WE
+SELL (owner, same day, said twice): we are the middleman, one person on
+Messenger, and a seller has no reason to know where our listings live. The
+marketplace name still appears in the offers, but only as the price book
+("what these are going for on Reverb right now", "after Reverb fees"):
+sellers already treat Reverb as the blue book, and that we price from it is
+all they need to know about our pricing or our model. No store credit, no trade or
+bundle line: both wait for the automated outreach that grows off the site and
+Instagram, and until then a seller who wants a bundle can ask. THOSE TWO MONTH NAMES COME FROM
+THE CLOCK (`monthNames()`), not from the copy: "the end of September" is right
+for one month and then quietly wrong, and the tool is used for longer than
+that. The three offer blocks are the owner's short form: cash today, in line
+with most shops; half now, with the pedals staying put and a prepaid label per
+sale; max payout as the same seat with nothing up front, plus the owner's sales
+caveat (2026-09-05): we can set max payout up TODAY, building the listings off
+the seller's own post and asking for pics or details as needed, closing on
+the trust line: we get that it's a lot of trust in us, but if the model
+interests you, we're down. (A "big but" with emojis was tried first and
+pulled the same day as a little too much.) The unpriced
+steer line is the owner's closer, "Less up front, more overall. Totally your call."
+
+**THE VOICE IS ONE DUDE MESSAGING ANOTHER (owner, 2026-09-05).** The sellers
+are rockers on Marketplace and so is the person writing to them, and a
+business pitch is the one thing that reads wrong in that thread. So the
+message scaffold (openers, setups, heads, offer blocks, steer, closes) is
+written the way he talks: contractions on purpose, "man" and "sick board"
+allowed, nothing that sounds like a brochure. The gear notes were already in
+that register. What does not loosen: the three percentages, "after fees",
+half up front, the prepaid label and USPS flat rate box, and the month names
+from the clock. Casual is the voice, not the terms.
 
 **NEITHER PAGE MAY QUOTE A NUMBER IT DOES NOT HAVE.** This is section 8 aimed
 at a seller instead of a shopper, and it is the rule the whole thing rests on.
