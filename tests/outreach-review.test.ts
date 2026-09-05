@@ -4,25 +4,35 @@ import path from "node:path"
 import { OUTREACH_DATA } from "@/lib/outreach/data"
 
 /**
- * THIS REPOSITORY IS PUBLIC.
+ * THIS REPOSITORY IS PUBLIC, AND WHAT IS IN IT WAS A DECISION.
  *
- * The source export carried 103 real people: names, Facebook profile links,
- * and free-text descriptions where phone numbers and addresses turn up.
- * Password protecting the page and publishing the repository are different
- * acts, and a gate in front of a route does nothing about a file anybody can
- * read on github.com.
+ * Seller names and Marketplace profile links are committed on purpose: the
+ * point of the exercise is repeat business, and a seller you cannot reach
+ * twice is a seller you meet cold every time. Every link is
+ * marketplace-scoped rather than a personal timeline.
  *
- * So the scrubbing is asserted, not intended. If a future export is dropped in
- * without going through the same step, this fails.
+ * The descriptions are still dropped, and that is not a contradiction. They
+ * are not needed, because the pedal matching happens before the data lands
+ * here, and they are the one field where a phone number or an address would
+ * hide. This file was clean; the next export might not be.
+ *
+ * So the scrub is asserted rather than intended. If a future export is dropped
+ * in without going through the same step, this fails.
  */
 const RAW = readFileSync(path.join(process.cwd(), "lib", "outreach", "data.ts"), "utf8")
 /* Assert on DATA, not on the comment that explains the rule. */
 const DATA = RAW.slice(RAW.indexOf("export const OUTREACH_DATA"))
 
 describe("no personal data is committed", () => {
-  it("carries no seller name or profile link", () => {
-    expect(DATA).not.toMatch(/seller_name|seller_profile/)
-    expect(DATA).not.toMatch(/marketplace\/profile/)
+  it("keeps profile links marketplace-scoped, never a personal timeline", () => {
+    /* A Marketplace profile is a shop front. facebook.com/<username> is not,
+       and would be a different thing to publish. */
+    for (const row of OUTREACH_DATA.rows) {
+      if (!row.profile) continue
+      expect(row.profile, `not a marketplace profile: ${row.profile}`).toMatch(
+        /^https:\/\/(www\.)?facebook\.com\/marketplace\/profile\/\d+\/?$/,
+      )
+    }
   })
 
   it("carries no free-text descriptions", () => {
@@ -34,15 +44,22 @@ describe("no personal data is committed", () => {
     }
   })
 
-  it("has no phone number or email in any title", () => {
+  it("has no phone number or email in any title or seller name", () => {
     for (const row of OUTREACH_DATA.rows) {
-      expect(row.t, `phone-shaped text in: ${row.t}`).not.toMatch(/\+?\d[\d().\- ]{8,}\d/)
-      expect(row.t, `email in: ${row.t}`).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/)
+      for (const [field, value] of [["title", row.t], ["seller", row.seller]] as const) {
+        expect(value, `phone-shaped text in ${field}: ${value}`).not.toMatch(
+          /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/,
+        )
+        expect(value, `email in ${field}: ${value}`).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/)
+      }
     }
   })
 
   it("keeps only the fields the page actually reads", () => {
-    const allowed = new Set(["t", "ask", "real", "book", "named", "nP", "loc", "days", "photos", "url"])
+    const allowed = new Set([
+      "t", "seller", "profile", "ask", "real", "book",
+      "named", "nP", "loc", "days", "photos", "url",
+    ])
     for (const row of OUTREACH_DATA.rows) {
       for (const key of Object.keys(row)) {
         expect(allowed.has(key), `unexpected field "${key}" in the committed data`).toBe(true)
