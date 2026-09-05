@@ -505,9 +505,9 @@ table.lot-table { width: 100%; min-width: 520px; border-collapse: collapse; font
       <div class="legend">Offers to show</div>
       <div class="checks">
         <label class="check"><input type="checkbox" id="o1" checked><span class="led"></span>
-          <span>Cash up front, 65%<small>You take the lot, they do nothing</small></span></label>
+          <span>Cash up front, 60%<small>You take the lot, they do nothing</small></span></label>
         <label class="check"><input type="checkbox" id="o2" checked><span class="led"></span>
-          <span>Half now, 75% total<small>They hold and ship, you true up</small></span></label>
+          <span>Half now, 80% total<small>They hold and ship, you true up</small></span></label>
         <label class="check"><input type="checkbox" id="o3" checked><span class="led"></span>
           <span>Max payout, 90%<small>You broker for 10%, no capital out</small></span></label>
       </div>
@@ -574,12 +574,12 @@ table.lot-table { width: 100%; min-width: 520px; border-collapse: collapse; font
           <div class="tile" id="tile1">
             <div class="tile-h">Cash up front</div>
             <div class="tile-n" id="n1">-</div>
-            <div class="tile-s">65% of market, paid now</div>
+            <div class="tile-s">60% of market, paid now</div>
           </div>
           <div class="tile" id="tile2">
             <div class="tile-h">Half now</div>
             <div class="tile-n" id="n2">-</div>
-            <div class="tile-s" id="n2s">75% after fees</div>
+            <div class="tile-s" id="n2s">80% after fees</div>
           </div>
           <div class="tile best" id="tile3">
             <div class="tile-h">Max payout</div>
@@ -1441,39 +1441,42 @@ const OPENERS_FLAT = [
 
 const SETUPS = [
   c =>
-\`So, quick context. I source gear for \${c.shop}. We are not really a storefront, we run a bit differently than most shops and we sell online, mostly on \${c.market}.
+\`So, quick context: we are opening a store. An actual brick and mortar location. I buy gear for \${c.shop}, we already have a growing online presence (mostly \${c.market}), and now we are filling shelves.
 
-\${c.lotCap} I can usually get you more for them than you would clear picking them off one at a time on here.
+Our next round of purchasing is later this month. \${c.lotCap} would you be up for doing a deal with us on whatever is still unsold at the end of \${c.month} or the start of \${c.nextMonth}? For the right deal we can move sooner than that.
 
 Depends what you are after though. Some people want cash in hand this week. Some want the most money possible and do not mind waiting a few weeks for it. We do both.\`,
 
   c =>
-\`Before you answer, I should say I am not just a guy buying one pedal. I source for \${c.shop}.
+\`Before you answer, I should say I am not just a guy buying one pedal. We are opening a physical store. I buy for \${c.shop}, and on top of the online side (mostly \${c.market}) we are building the inventory for a real location.
 
-We run a different model than most shops. Rather than lowball gear off people we work with them on it, and we sell online, mostly \${c.market}.
+We are doing our next round of buying later this month. \${c.lotCap} anything still sitting unsold at the end of \${c.month} or the start of \${c.nextMonth} is something I would like first shot at, and for the right deal we can do it sooner.
 
-\${c.lotCap} there is a better way to do this than one at a time on Marketplace. Really it comes down to one question: do you want money now, or do you want the most money?\`,
+We run a different model than most shops. Rather than lowball gear off people we work with them on it. Really it comes down to one question: do you want money now, or do you want the most money?\`,
 
   c =>
-\`Quick context so I am not wasting your time. I source for \${c.shop} and we sell online, mostly on \${c.market}.
+\`Quick context so I am not wasting your time. We are opening a brick and mortar store. I buy for \${c.shop}, we already sell online, mostly on \${c.market}, and now we need stock on actual shelves.
 
-\${c.lotCap} I would rather talk about the whole thing than haggle over one pedal.
+Next round of purchasing is later this month. \${c.lotCap} I would rather talk about the whole thing than haggle over one pedal, and if any of it is still unsold at the end of \${c.month} or the start of \${c.nextMonth} we would like to do a deal on it. For the right deal, sooner.
 
 We can buy the lot outright and pay you up front, or we can list them for you and pay you as they sell, which works out to quite a bit more. Your call which is worth more to you.\`,
 
   c =>
-\`Bit of context first. I source gear for \${c.shop}, and we do it a little differently than most shops. We sell online rather than out of a storefront, mostly on \${c.market}.
+\`Bit of context first. We are opening a store, a physical one, and I am the one filling it. I buy for \${c.shop}, we have a growing online presence on \${c.market}, and the next round of purchasing for the shop floor is later this month.
 
-\${c.lotCap} I would rather take the whole thing off your hands than pick one pedal off you.
+\${c.lotCap} I would rather take the whole thing off your hands than pick one pedal off you. Anything still unsold at the end of \${c.month} or the start of \${c.nextMonth}, we would like to do a deal on. For the right deal we can move faster than that.
 
 There are three ways we can do that, and which one is best depends entirely on whether you want cash now or top dollar later.\`,
 ];
 
+/* The count is passed in rather than written, because two of the three
+   tiers can be switched off and "Three options" above two of them reads as
+   a mistake the seller can see. */
 const HEADS = [
-  "Here is how I do it. Three options:",
-  "Three ways to do this:",
-  "Okay, here is the menu. Three ways:",
-  "Three options, pick whichever fits:",
+  n => \`Here is how I do it. \${n} options:\`,
+  n => \`\${n} ways to do this:\`,
+  n => \`Okay, here is the menu. \${n} ways:\`,
+  n => \`\${n} options, pick whichever fits:\`,
 ];
 const HEADS_PRICED = [
   "Okay, I went through your list. Here is where I land.",
@@ -1501,13 +1504,13 @@ function offerBlocks(c, m) {
   const out = [];
   if (c.o1) out.push(
 \`Cash up front, zero work for you
-\${m ? \`\${money(m.o1)} in your hand up front, before anything sells. That is 65% of market. \` : "We pay you 65% of market value, upfront, before anything sells. "}You ship them to us and you are done. We handle listing, photos, shipping, all of it.\${c.pickup ? \` If you are near \${c.city} I will just come grab them and pay you on the spot.\` : ""}\`);
+\${m ? \`\${money(m.o1)} cash today, which is 60% of market and in line with most shops. \` : "60% of market value, cash today, which is in line with most shops. "}Ship them to us and you are done.\${c.pickup ? \` If you are near \${c.city} I will just come grab them and pay you on the spot.\` : ""}\`);
   if (c.o2) out.push(
 \`Half now, the rest as they sell
-\${m ? \`\${money(m.o2)} total, which is 75% of market after \${c.market} fees. We send you \${money(m.o2up)} the day we agree\` : \`75% of market after \${c.market} fees. We pay you half of that the day we agree\`} and you keep the pedals at your place. When one sells I email you the shipping label, you put it in a free USPS flat rate box with some bubble wrap and hand it to the post office. Once they are all gone we true you up to the rest.\`);
+\${m ? \`\${money(m.o2)} total, which is 80% of market after \${c.market} fees. \${money(m.o2up)} the day we agree\` : \`80% of market after \${c.market} fees. Half of that the day we agree\`} and the pedals stay with you. We list and sell them. When one sells I email you a prepaid label, you put the pedal in a free USPS flat rate box with some bubble wrap and drop it anywhere that takes packages. The rest is paid as they go.\`);
   if (c.o3) out.push(
 \`Max payout
-\${m ? \`\${money(m.o3)} total, which is 90% of market after \${c.market} fees. \` : \`90% of market after \${c.market} fees. \`}We only take 10% for brokering it. You handle the packing and shipping. We run the whole sales process and send you all the labels, so you just print and ship. We pay you out as the individual pedals sell, up to your 90% total.\${c.deposit ? \` If you would rather have something in hand first, we will put \${m ? money(m.o3dep) : "a 10% deposit"} down up front as good faith.\` : ""}\`);
+\${m ? \`\${money(m.o3)} total, which is 90% of market after \${c.market} fees. \` : \`90% of market after \${c.market} fees. \`}\${c.o2 ? "Same as the one above with nothing up front." : "Nothing up front. The pedals stay with you, we list and sell them, and I email you a prepaid label for each one."} Paid as each one sells.\${c.deposit ? \` If you would rather have something in hand first, we will put \${m ? money(m.o3dep) : "a 10% deposit"} down up front as good faith.\` : ""}\`);
   return out;
 }
 
@@ -1517,7 +1520,7 @@ function steerLine(c, m) {
     const gap = m.o3 - m.o1;
     if (gap > 0) return \`The gap between the first one and the last is about \${money(gap)}, so really it comes down to whether that is worth waiting a few weeks for.\`;
   }
-  if (c.o1 && c.o3) return "Most people take the first one if they need the money this week, and the last one if they do not.";
+  if (c.o1 && c.o3) return "Less up front, more overall. Your call.";
   return null;
 }
 
@@ -1537,7 +1540,8 @@ function buildOffers(c, headIdx, closeIdx, m) {
     parts.push(m ? "So here is what I can do:" : "Here is what I would do:");
     parts.push(blocks[0]);
   } else {
-    parts.push(m ? "Three ways we can do this:" : HEADS[headIdx % HEADS.length]);
+    const n = blocks.length === 2 ? "Two" : "Three";
+    parts.push(m ? \`\${n} ways we can do this:\` : HEADS[headIdx % HEADS.length](n));
     blocks.forEach((b, i) => parts.push(\`\${i + 1}. \${b}\`));
   }
 
@@ -1638,12 +1642,22 @@ function offerMath() {
   const f = 1 - feeRate();
   return {
     mv: t.mv, count: t.count,
-    o1: 0.65 * t.mv,
-    o2: 0.75 * t.mv * f,
-    o2up: 0.75 * t.mv * f / 2,
+    o1: 0.60 * t.mv,
+    o2: 0.80 * t.mv * f,
+    o2up: 0.80 * t.mv * f / 2,
     o3: 0.90 * t.mv * f,
     o3dep: 0.10 * (0.90 * t.mv * f),
   };
+}
+
+/* "The end of September or the start of October" is right for one month and
+   then quietly wrong, and this tool is used for longer than that, so the two
+   names come from the clock on the day the message is written. */
+function monthNames() {
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const name = d => d.toLocaleString("en-US", { month: "long" });
+  return { month: name(now), nextMonth: name(next) };
 }
 
 function ctx() {
@@ -1672,6 +1686,7 @@ function ctx() {
     deposit: els.xDeposit.checked,
     pickup: els.xPickup.checked && els.city.value.trim().length > 0,
     city: els.city.value.trim(),
+    ...monthNames(),
   };
 }
 
@@ -1771,7 +1786,7 @@ function renderOffers() {
 
   if (!m) {
     for (const id of ["n1", "n2", "n3"]) $(id).textContent = "-";
-    $("n2s").textContent = "75% after fees";
+    $("n2s").textContent = "80% after fees";
     $("n3s").textContent = els.xDeposit.checked ? "90% after fees, 10% deposit" : "90% after fees, paid as they sell";
     sp.textContent = state.lot.length
       ? "No market values filled in yet, so there is nothing to compute."
@@ -1782,7 +1797,7 @@ function renderOffers() {
   $("n1").textContent = money(m.o1);
   $("n2").textContent = money(m.o2);
   $("n3").textContent = money(m.o3);
-  $("n2s").textContent = money(m.o2up) + " up front, 75% after fees";
+  $("n2s").textContent = money(m.o2up) + " up front, 80% after fees";
   $("n3s").textContent = els.xDeposit.checked
     ? "90% after fees, " + money(m.o3dep) + " deposit"
     : "90% after fees, paid as they sell";

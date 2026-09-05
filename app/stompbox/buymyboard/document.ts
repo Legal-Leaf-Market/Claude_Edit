@@ -23,7 +23,7 @@ export const BUY_MY_BOARD_HTML = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Get an instant estimate on your pedals. Cash, store credit or consignment. No minimum, free prepaid shipping label, and we take single pedals as happily as a whole board.">
 <meta property="og:title" content="Sell Us Your Pedals | Stompbox World">
-<meta property="og:description" content="Instant estimate on your pedals. Cash, store credit worth 20% more, or consignment for the highest return. No minimum order.">
+<meta property="og:description" content="Instant estimate on your pedals. Cash, more in store credit, or consignment for the highest return. No minimum order.">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=&apos;http://www.w3.org/2000/svg&apos; viewBox=&apos;0 0 32 32&apos;%3E%3Crect width=&apos;32&apos; height=&apos;32&apos; rx=&apos;5&apos; fill=&apos;%231c3a63&apos;/%3E%3Crect x=&apos;3.5&apos; y=&apos;3.5&apos; width=&apos;25&apos; height=&apos;25&apos; rx=&apos;3.5&apos; fill=&apos;none&apos; stroke=&apos;%23fff&apos; stroke-width=&apos;1.6&apos;/%3E%3Ccircle cx=&apos;16&apos; cy=&apos;20&apos; r=&apos;5&apos; fill=&apos;none&apos; stroke=&apos;%23fff&apos; stroke-width=&apos;2.2&apos;/%3E%3Ccircle cx=&apos;16&apos; cy=&apos;9.5&apos; r=&apos;1.8&apos; fill=&apos;%233fe07c&apos;/%3E%3C/svg%3E">
@@ -224,7 +224,7 @@ document.documentElement.setAttribute("data-theme",t)})();
       <div class="offer" id="oCredit">
         <span class="tag">Store credit</span>
         <span class="amt" id="amtCredit">$0</span>
-        <span class="sub" id="subCredit">20% more than cash</span>
+        <span class="sub" id="subCredit">More than cash, spend it here</span>
         <span class="why">Spend it on anything we have. Worth taking if you are buying anyway.</span>
       </div>
       <div class="offer best" id="oConsign">
@@ -288,13 +288,17 @@ document.documentElement.setAttribute("data-theme",t)})();
    THE DIALS. Everything commercial is here and nowhere else.
    =========================================================================== */
 const OFFER = {
-  /* THESE THREE ARE THE RATE CARD, and they are the same three the outreach
-     script quotes on /buymyboard. They were 60 / cash+20% / 80-85 here and
-     65 / 75 / 90 there, which meant a seller who got a message and then
-     visited the site was shown a WORSE number on the site than in the
-     message. One set now, and the copy below derives from it rather than
-     restating it, so the two cannot drift apart again. */
-  cashPct:      0.65,   // cash, as a share of estimated market value
+  /* THESE THREE ARE THE RATE CARD. Cash and consignment are the same two
+     numbers the outreach script quotes (60 and 90). They were briefly
+     60 / cash+20% / 80-85 here and 65 / 75 / 90 there, which meant a seller
+     who got a message and then visited the site was shown a WORSE number on
+     the site than in the message; tests/stompbox/buymyboard.test.ts now reads
+     both documents and fails if either drifts. The middle tier is the one
+     place the two pages differ on purpose: here it is store credit, a thing
+     only the site can offer, while the message's middle tier is half-now
+     consignment at 80, which is not a store credit rate. The copy below
+     derives from these rather than restating them. */
+  cashPct:      0.60,   // cash, as a share of estimated market value
   creditPct:    0.75,   // store credit, as a share of estimated market value
   consignPct:   0.90,   // consignment, as a share of the sale AFTER fees
   feeRate:      0.085,  // marketplace fee, taken off before the consignment split
