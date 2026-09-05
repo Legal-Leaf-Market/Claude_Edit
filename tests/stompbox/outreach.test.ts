@@ -32,7 +32,7 @@ describe("the served document survived being embedded", () => {
   })
 
   it("still carries the parts the page is useless without", () => {
-    for (const id of ["fPedal", "paste", "rows", "m1", "m2", "m3", "xVerified", "pick2"]) {
+    for (const id of ["fPedal", "paste", "rows", "m1", "m2", "m3", "xVerified", "pick1", "pick2"]) {
       expect(HTML, `#${id} is missing from the served document`).toContain(`id="${id}"`)
     }
     expect(HTML).toContain("const NOTES = [")
@@ -47,12 +47,15 @@ describe("the served document survived being embedded", () => {
     expect(HTML).toContain("0.90 * t.mv * f")
   })
 
-  it("steps message two through its versions rather than shuffling blind", () => {
-    /* Ten near-identical setups, and the owner needs to know which one he
-       sent. Arrows plus a readout, and the readout is in the served page. */
-    expect(HTML).toContain('data-step="-1"')
-    expect(HTML).toContain('data-step="1"')
-    expect(HTML).toMatch(/\$\("pick2"\)\.textContent/)
+  it("steps messages one and two through their versions rather than shuffling blind", () => {
+    /* Ten openers and ten setups, and the owner needs to know which one he
+       sent. Arrows plus a readout per message, and the readouts are in the
+       served page. */
+    for (const n of ["1", "2"]) {
+      expect(HTML).toContain(`data-step="-1" data-for="${n}"`)
+      expect(HTML).toContain(`data-step="1" data-for="${n}"`)
+      expect(HTML).toMatch(new RegExp(`\\$\\("pick${n}"\\)\\.textContent`))
+    }
   })
 
   it("asks not to be indexed", () => {

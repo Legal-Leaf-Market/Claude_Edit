@@ -619,7 +619,9 @@ table.lot-table { width: 100%; min-width: 520px; border-collapse: collapse; font
                 <span class="dirty" id="d1" hidden>Edited</span>
                 <span class="count" id="c1">0</span>
                 <span class="spacer"></span>
-                <button class="mini" data-shuffle="1">Shuffle</button>
+                <button class="mini arrow" data-step="-1" data-for="1" aria-label="Previous version of message one" title="Previous version">&lsaquo;</button>
+                <span class="pick" id="pick1" aria-live="polite">1 / 10</span>
+                <button class="mini arrow" data-step="1" data-for="1" aria-label="Next version of message one" title="Next version">&rsaquo;</button>
                 <button class="mini" data-copy="1">Copy</button>
               </div>
             </div>
@@ -635,9 +637,9 @@ table.lot-table { width: 100%; min-width: 520px; border-collapse: collapse; font
                 <span class="dirty" id="d2" hidden>Edited</span>
                 <span class="count" id="c2">0</span>
                 <span class="spacer"></span>
-                <button class="mini arrow" data-step="-1" aria-label="Previous version of message two" title="Previous version">&lsaquo;</button>
+                <button class="mini arrow" data-step="-1" data-for="2" aria-label="Previous version of message two" title="Previous version">&lsaquo;</button>
                 <span class="pick" id="pick2" aria-live="polite">1 / 10</span>
-                <button class="mini arrow" data-step="1" aria-label="Next version of message two" title="Next version">&rsaquo;</button>
+                <button class="mini arrow" data-step="1" data-for="2" aria-label="Next version of message two" title="Next version">&rsaquo;</button>
                 <button class="mini" data-copy="2">Copy</button>
               </div>
             </div>
@@ -1419,28 +1421,33 @@ function parseListing(text) {
 /* ---------------------------------------------------------------------------
    MESSAGE COPY.
 --------------------------------------------------------------------------- */
-const OPENERS_ANY = [
-  c => \`\${c.hey}you still got the \${c.pedal}?\`,
-  c => \`\${c.hey}saw the \${c.pedal}. Still around?\`,
-  c => \`\${c.hey}that \${c.pedal} still up for grabs?\`,
-  c => \`\${c.hey}quick one, is the \${c.pedal} still up?\`,
-  c => \`\${c.hey}anybody grab the \${c.pedal} yet?\`,
-  c => \`\${c.hey}is the \${c.pedal} still going?\`,
-  c => \`\${c.hey}good taste man. \${c.pedal} still there?\`,
-];
-const OPENERS_LOT = [
-  c => \`\${c.hey}you selling these one at a time or would you do the whole lot?\`,
-  c => \`\${c.hey}sick board. Is the \${c.pedal} still up?\`,
-  c => \`\${c.hey}is the \${c.pedal} still there? And is there more where that came from?\`,
-  c => \`\${c.hey}is the whole lot still up or has it been picked over?\`,
-];
-/* When the gear note ends in a question, the opener must NOT also ask one.
-   Two questions in a first message from a stranger gets one answer at best. */
-const OPENERS_FLAT = [
-  c => \`\${c.hey}just saw your \${c.pedal} listing.\`,
-  c => \`\${c.hey}nice, a \${c.pedal}.\`,
-  c => \`\${c.hey}spotted the \${c.pedal} in your listing.\`,
-  c => \`\${c.hey}always good to see a \${c.pedal} pop up.\`,
+/* TEN OPENERS, each in two shapes. \`q\` asks whether the pedal is still there;
+   \`flat\` is the statement form, used when the gear note underneath already
+   ends in a question, because two questions in a first message from a
+   stranger gets one answer at best. Two versions are board-aware and fall
+   back to a single-pedal line when the lot is one item. The arrows on the
+   panel step through them; the pick persists per device. */
+const OPENERS = [
+  { q: c => \`\${c.hey}you still got the \${c.pedal}?\`,
+    flat: c => \`\${c.hey}just saw your \${c.pedal} listing.\` },
+  { q: c => \`\${c.hey}saw the \${c.pedal}. Still around?\`,
+    flat: c => \`\${c.hey}nice, a \${c.pedal}.\` },
+  { q: c => \`\${c.hey}that \${c.pedal} still up for grabs?\`,
+    flat: c => \`\${c.hey}spotted the \${c.pedal} in your listing.\` },
+  { q: c => \`\${c.hey}quick one, is the \${c.pedal} still up?\`,
+    flat: c => \`\${c.hey}always good to see a \${c.pedal} pop up.\` },
+  { q: c => \`\${c.hey}anybody grab the \${c.pedal} yet?\`,
+    flat: c => \`\${c.hey}saw the \${c.pedal} come up.\` },
+  { q: c => \`\${c.hey}is the \${c.pedal} still going?\`,
+    flat: c => \`\${c.hey}that \${c.pedal} caught my eye.\` },
+  { q: c => \`\${c.hey}good taste man. \${c.pedal} still there?\`,
+    flat: c => \`\${c.hey}good taste man. Nice \${c.pedal}.\` },
+  { q: c => \`\${c.hey}is the \${c.pedal} spoken for yet?\`,
+    flat: c => \`\${c.hey}nice \${c.pedal} you've got up.\` },
+  { q: c => c.scope === "one" ? \`\${c.hey}is the \${c.pedal} still available?\` : \`\${c.hey}you selling these one at a time or would you do the whole lot?\`,
+    flat: c => c.scope === "one" ? \`\${c.hey}saw your \${c.pedal}.\` : \`\${c.hey}sick board.\` },
+  { q: c => c.scope === "one" ? \`\${c.hey}is the \${c.pedal} still there?\` : \`\${c.hey}is the whole lot still up or has it been picked over?\`,
+    flat: c => c.scope === "one" ? \`\${c.hey}saw the \${c.pedal}.\` : \`\${c.hey}nice board, saw the \${c.pedal} in there.\` },
 ];
 
 /* TEN VERSIONS, THE OWNER'S WORDS (2026-09-05). Same facts, same emojis,
@@ -1690,6 +1697,7 @@ function save() {
       xSteer: els.xSteer.checked, xPickup: els.xPickup.checked,
       xDeposit: els.xDeposit.checked,
       setup: state.pick.setup % SETUPS.length,
+      open: state.pick.open % OPENERS.length,
     }));
   } catch (_) { /* private window or blocked site data. Not worth telling anyone. */ }
 }
@@ -1707,6 +1715,7 @@ function load() {
     state.wear = v.wear ?? "worn";
     state.lot = Array.isArray(v.lot) ? v.lot : [];
     state.pick.setup = Number.isInteger(v.setup) ? v.setup : 0;
+    state.pick.open = Number.isInteger(v.open) ? v.open : 0;
     els.xVerified.checked = Boolean(v.verified);
     for (const k of ["o1","o2","o3","xNote","xComps","xSteer","xPickup","xDeposit"]) {
       if (typeof v[k] === "boolean") els[k].checked = v[k];
@@ -1989,13 +1998,12 @@ function render(only) {
 
   if ((!only || only === 1) && !state.dirty[1]) {
     const asksAlready = Boolean(note) && /\\?\\s*$/.test(note.trim());
-    const pool = asksAlready
-      ? OPENERS_FLAT
-      : (c.scope === "one" ? OPENERS_ANY : OPENERS_ANY.concat(OPENERS_LOT));
-    let text = pool[state.pick.open % pool.length](c);
+    const o = OPENERS[state.pick.open % OPENERS.length];
+    let text = (asksAlready ? o.flat : o.q)(c);
     if (note) text += "\\n\\n" + note;
     setMsg(1, text);
   }
+  $("pick1").textContent = (state.pick.open % OPENERS.length + 1) + " / " + OPENERS.length;
   if ((!only || only === 2) && !state.dirty[2]) setMsg(2, SETUPS[state.pick.setup % SETUPS.length](c));
   $("pick2").textContent = (state.pick.setup % SETUPS.length + 1) + " / " + SETUPS.length;
   if ((!only || only === 3) && !state.dirty[3]) setMsg(3, buildOffers(c, state.pick.head, state.pick.close, m));
@@ -2100,10 +2108,11 @@ $("clearLot").addEventListener("click", () => {
 document.addEventListener("click", (e) => {
   const st = e.target.closest("[data-step]");
   if (st) {
-    const d = Number(st.dataset.step);
-    state.pick.setup = (state.pick.setup + d + SETUPS.length) % SETUPS.length;
-    state.dirty[2] = false;
-    render(2);
+    const d = Number(st.dataset.step), n = Number(st.dataset.for);
+    if (n === 1) state.pick.open = (state.pick.open + d + OPENERS.length) % OPENERS.length;
+    if (n === 2) state.pick.setup = (state.pick.setup + d + SETUPS.length) % SETUPS.length;
+    state.dirty[n] = false;
+    render(n);
     save();
     return;
   }

@@ -2558,6 +2558,11 @@ pedal with a gear note and is different every time, and the setup goes out
 only after a reply. That advice went with the variants; the variants were
 what was asked for. The location field fills "(in Columbus, IN)" and blank
 degrades to plain "our shop"; the month names come from the clock as before.
+Message one got the same treatment the same night: ten openers, each in a
+question shape and a statement shape (the statement is used when the gear
+note under it already ends in a question), two of them board-aware with a
+single-pedal fallback, arrows and a "N / 10" readout, pick persisted. The
+gear note keeps its own "Next line" knob; the arrows move the opener only.
 
 **THE VOICE IS ONE DUDE MESSAGING ANOTHER (owner, 2026-09-05).** The sellers
 are rockers on Marketplace and so is the person writing to them, and a
