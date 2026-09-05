@@ -2527,15 +2527,24 @@ bundle line: both wait for the automated outreach that grows off the site and
 Instagram, and until then a seller who wants a bundle can ask. THOSE TWO MONTH NAMES COME FROM
 THE CLOCK (`monthNames()`), not from the copy: "the end of September" is right
 for one month and then quietly wrong, and the tool is used for longer than
-that. The three offer blocks are the owner's short form: cash today, in line
-with most shops; half now, with the pedals staying put and a prepaid label per
-sale; max payout as the same seat with nothing up front, plus the owner's sales
-caveat (2026-09-05): we can set max payout up TODAY, building the listings off
-the seller's own post and asking for pics or details as needed, closing on
-the trust line: we get that it's a lot of trust in us, but if the model
-interests you, we're down. (A "big but" with emojis was tried first and
-pulled the same day as a little too much.) The unpriced
-steer line is the owner's closer, "Less up front, more overall. Totally your call."
+that. **MESSAGE THREE IS THE OWNER'S STANDARD, VERBATIM (2026-09-05, evening).** He
+rewrote it in the panel and handed it back as the standard, so the tool
+generates his text and the code adds only the figures, the count in
+"3 options:", and the knobs. Shape: three titled tiers with emojis ("Cash Up
+Front, Minimal Work", "More Cash Total, Half Cash Up Front, More Work",
+"MAX PAYOUT, Nothing Up Front, Same Work as #2"), then "Less Up Front, More
+Overall" (the steer line; the priced form appends the dollar gap), then the
+market value note (unpriced form; the priced form carries the same wording on
+its market line at the top), then one close: "Totally your call. If you wanna
+try out the Max Payout option TODAY, or I can pencil you in for the end of the
+month when we're ready to make some big purchases." THERE IS NO ASK-FOR-THE-LIST
+CLOSE ANY MORE: the owner pulled "Send me a list..." first and the standard
+replaced the rest. "Same Work as #2" and the Max Payout clause are computed
+against which tiers are on, so switching one off cannot leave a dangling
+reference. The first setup variant is his verbatim too ("we're 4 dudes opening
+a store", "our shop (in Columbus, IN)" from the location field). A "big but"
+with emojis was tried on max payout first and pulled the same day as a little
+too much.
 
 **THE VOICE IS ONE DUDE MESSAGING ANOTHER (owner, 2026-09-05).** The sellers
 are rockers on Marketplace and so is the person writing to them, and a

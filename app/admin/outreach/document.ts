@@ -1441,11 +1441,11 @@ const OPENERS_FLAT = [
 
 const SETUPS = [
   c =>
-\`So quick heads up on who you're dealing with. We're opening a store. Like an actual brick and mortar spot. I buy gear for \${c.shop}, we've got a decent online thing going already, and now we're filling shelves.
+\`So quick heads up on who you're dealing with...we're 4 dudes opening a store. Like an actual brick and mortar spot. I buy gear for \${c.shop}, we've got a decent online thing going already, and now we're filling shelves.
 
-Next round of buying is later this month. \${c.lotCap} would you be down to do a deal on whatever's still sitting there at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal we can move quicker than that.
+Next round of buying is later this month. \${c.lotCap} would you be down to do a deal on whatever you're still sitting on at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal we may be able to move quicker than that.
 
-Really depends what you're after though. Some people want cash in hand this week. Some want the most money possible and don't mind waiting a few weeks for it. We do both, no stress either way.\`,
+Next, it really depends what you're after. Some people want cash in hand this week. Some want the most money possible and don't mind waiting a few weeks for it. We do both, no stress either way.\`,
 
   c =>
 \`Before you answer, I should say I'm not just some guy buying one pedal. We're opening a store, a real physical one. I buy for \${c.shop}, and on top of the online stuff we're building up inventory for the actual location.
@@ -1469,15 +1469,6 @@ We can buy the lot outright and pay you up front, or we list them for you and pa
 There's three ways we can do that, and which one's best really just depends on whether you want cash now or top dollar later.\`,
 ];
 
-/* The count is passed in rather than written, because two of the three
-   tiers can be switched off and "Three options" above two of them reads as
-   a mistake the seller can see. */
-const HEADS = [
-  n => \`Here's how I do it. \${n} options:\`,
-  n => \`\${n} ways to do this:\`,
-  n => \`Okay so here's the menu. \${n} ways:\`,
-  n => \`\${n} options, whichever fits:\`,
-];
 const HEADS_PRICED = [
   "Okay so I went through your list. Here's where I land.",
   "Alright, priced the whole lot out. Here's what I've got.",
@@ -1485,43 +1476,39 @@ const HEADS_PRICED = [
   "Went through everything you listed. Here's what it comes to.",
 ];
 
-const CLOSES = [
-  "Send me a list of what you've got and I'll price every one of them out. You'll see real numbers before you commit to anything.",
-  "What's the full list? I'll run comps on each one and send back exactly what each option pays you. No obligation either way.",
-  "Send over what you've got, even just a pic of the board. I'll come back with real numbers on all three so you can pick.",
-  "Give me the list and I'll do the legwork. You get actual numbers for each option and go from there, no pressure.",
-];
-const CLOSES_PRICED = [
-  "Any of those sound workable? Happy to walk you through where any number came from.",
-  "Which of those is closest to what you had in mind? No pressure either way, and I can show you the comps on any of them.",
-  "Does any of that work for you? If a pedal looks light, tell me which one and I'll show you what I'm seeing.",
-  "Let me know which way you wanna go, or if something looks off I'll take another run at it.",
-];
+/* ONE CLOSE, THE OWNER'S, and no ask for the list: he pulled that first and
+   then handed over the standard. The Max Payout clause only appears when that
+   tier is switched on, so it cannot point at an option the seller never saw. */
+const CLOSE = c => c.o3
+  ? "Totally your call. If you wanna try out the Max Payout option TODAY, or I can pencil you in for the end of the month when we're ready to make some big purchases."
+  : "Totally your call. I can pencil you in for the end of the month when we're ready to make some big purchases.";
 
 const money = n => "$" + Math.round(n).toLocaleString("en-US");
 
 function offerBlocks(c, m) {
+  /* THE OWNER'S STANDARD, VERBATIM (2026-09-05). The code adds the figures,
+     the pickup and deposit knobs, and the tier numbers; the words are his. */
   const out = [];
   if (c.o1) out.push(
-\`Cash up front, zero work for you
-\${m ? \`\${money(m.o1)} cash today, which is 60% of market and pretty standard for any shop. \` : "60% of market value, cash today, which is pretty standard for any shop. "}Ship 'em to us and you're done.\${c.pickup ? \` If you're near \${c.city} I'll just come grab them and pay you on the spot.\` : ""}\`);
+\`Cash Up Front, Minimal Work 🍹
+\${m ? \`\${money(m.o1)} cash today, which is 60% of market value and pretty standard for any shop. \` : "60% of market value, cash today, which is pretty standard for any shop. "}Ship 'em to us and you're done.\${c.pickup ? \` If you're near \${c.city} I'll just come grab them and pay you on the spot.\` : ""}\`);
   if (c.o2) out.push(
-\`Half now, the rest as they sell
-\${m ? \`\${money(m.o2)} total, which is 80% of market after \${c.market} fees. \${money(m.o2up)} the day we shake on it\` : \`80% of market after \${c.market} fees. Half of that the day we shake on it\`} and the pedals stay at your place. We list them and sell them. When one goes I email you a prepaid label, you throw the pedal in a free USPS flat rate box with some bubble wrap and drop it anywhere that takes packages. The rest gets paid as they go.\`);
+\`More Cash Total, Half Cash Up Front, More Work 💪
+\${m ? \`\${money(m.o2)} total, which is 80% of market value after \${c.market} fees. \${money(m.o2up)} of that you get on the day we make the deal\` : \`80% of market value after \${c.market} fees in total. Half of that, you get on the day we make the deal\`}, and the pedals stay at your place. We list them and sell them on our channels. When one sells, I email you a prepaid label, you throw the pedal in a free USPS flat rate box (or similar) with some bubble wrap and drop it anywhere that takes pre-paid packages. You get paid out the remainder of the 80% as the pedals sell.\`);
   if (c.o3) out.push(
-\`Max payout
-\${m ? \`\${money(m.o3)} total, which is 90% of market after \${c.market} fees. \` : \`90% of market after \${c.market} fees. \`}\${c.o2 ? "Same deal as the one above, just nothing up front." : "Nothing up front. Pedals stay with you, we list them and sell them, and I email you a prepaid label for each one."} You get paid as each one sells. And honestly we can set this one up today 🚀 I'll build your listings off what's already in your post and just hit you up if I need any pics or details. We get that it's putting a lot of trust in us. But if this model interests you, we're down.\${c.deposit ? \` If you'd rather have something in hand first, we'll put \${m ? money(m.o3dep) : "a 10% deposit"} down up front as good faith.\` : ""}\`);
+\`MAX PAYOUT, Nothing Up Front\${c.o2 ? \`, Same Work as #\${c.o1 ? 2 : 1}\` : ""} 💵💰💲💸
+\${m ? \`\${money(m.o3)} total, which is 90% of market value after \${c.market} fees. \` : \`90% of market value after \${c.market} fees in total. \`}\${c.o2 ? "Same labor deal as the one above, just nothing up front and much more in your pocket." : "Nothing up front. The pedals stay at your place, we list them and sell them on our channels, and I email you a prepaid label for each one. Much more in your pocket."} You get paid as each one sells. And honestly, we can set this one up today 🚀
+
+I'll build your listings off what's already in your post and just hit you up if I need any pics or details. We get that it's putting a lot of trust in us. But if this model interests you, we're down and have done this a few times.\${c.deposit ? \` If you'd rather have something in hand first, we'll put \${m ? money(m.o3dep) : "a 10% deposit"} down up front as good faith.\` : ""}\`);
   return out;
 }
 
 function steerLine(c, m) {
-  if (!c.steer) return null;
-  if (m && c.o1 && c.o3) {
-    const gap = m.o3 - m.o1;
-    if (gap > 0) return \`Gap between the first one and the last is about \${money(gap)}, so really it just comes down to whether that's worth waiting a few weeks for.\`;
-  }
-  if (c.o1 && c.o3) return "Less up front, more overall. Totally your call.";
-  return null;
+  if (!c.steer || !(c.o1 && c.o3)) return null;
+  const gap = m ? m.o3 - m.o1 : 0;
+  return gap > 0
+    ? \`Less Up Front, More Overall. The gap between the first one and the last is about \${money(gap)}, so really it just comes down to whether that's worth waiting a few weeks for.\`
+    : "Less Up Front, More Overall";
 }
 
 function buildOffers(c, headIdx, closeIdx, m) {
@@ -1531,7 +1518,7 @@ function buildOffers(c, headIdx, closeIdx, m) {
   if (m) parts.push(HEADS_PRICED[headIdx % HEADS_PRICED.length]);
 
   if (m && c.comps) {
-    parts.push(\`Market on the lot comes to about \${money(m.mv)}\${m.count ? \` across the \${m.count} \${m.count === 1 ? "pedal" : "pedals"} you had\` : ""}. That's what these are actually going for on \${c.market} right now. Happy to show you how I came up with any of those numbers.\`);
+    parts.push(\`Market on the lot comes to about \${money(m.mv)}\${m.count ? \` across the \${m.count} \${m.count === 1 ? "pedal" : "pedals"} you had\` : ""}. That's what they are really selling for recently on \${c.market}, not necessarily the prices you see currently listed. I would be happy to provide any details.\`);
   }
 
   if (!blocks.length) {
@@ -1540,21 +1527,18 @@ function buildOffers(c, headIdx, closeIdx, m) {
     parts.push(m ? "So here's what I can do:" : "Here's what I'd do:");
     parts.push(blocks[0]);
   } else {
-    const n = blocks.length === 2 ? "Two" : "Three";
-    parts.push(m ? \`There's \${n.toLowerCase()} ways we can do this:\` : HEADS[headIdx % HEADS.length](n));
+    parts.push(\`\${blocks.length} options:\`);
     blocks.forEach((b, i) => parts.push(\`\${i + 1}. \${b}\`));
-  }
-
-  if (!m && c.comps) {
-    parts.push(\`When I say market value I mean what these are really going for on \${c.market} right now, not what people are asking. If you need any details on that, let me know.\`);
   }
 
   const steer = steerLine(c, m);
   if (steer) parts.push(steer);
 
-  parts.push(m
-    ? CLOSES_PRICED[closeIdx % CLOSES_PRICED.length]
-    : CLOSES[closeIdx % CLOSES.length]);
+  if (!m && c.comps) {
+    parts.push(\`**note** - when I say market value I mean what they are really selling for recently on \${c.market}, not necessarily the prices you see currently listed. I would be happy to provide any details.\`);
+  }
+
+  parts.push(CLOSE(c));
   return parts.join("\\n\\n");
 }
 
@@ -1675,9 +1659,9 @@ function ctx() {
   const where = els.where.value.trim();
   return {
     hey: name ? \`Hey \${name}, \` : "Hey, ",
-    /* Blank location degrades to the true, vaguer sentence rather than
-       printing "a shop here in ". */
-    shop: where ? \`a shop here in \${where}\` : "a local shop",
+    /* Blank location degrades to the true, vaguer phrase rather than
+       printing "our shop (in )". Owner's wording, 2026-09-05. */
+    shop: where ? \`our shop (in \${where})\` : "our shop",
     market: els.market.value.trim() || "Reverb",
     pedal, scope, lot,
     lotCap: lot.charAt(0).toUpperCase() + lot.slice(1),
@@ -1888,7 +1872,7 @@ function render(only) {
       ? (t.unpriced
           ? \`In the message now. \${t.unpriced} row\${t.unpriced === 1 ? "" : "s"} still have no value and are not counted in the total.\`
           : "In the message now. You are quoting these to a stranger as fact.")
-      : "Until this is on, message three asks for the list instead of quoting a total.";
+      : "Until this is on, message three quotes percentages only. Tick it and the dollar figures go in.";
   }
 
   if ((!only || only === 1) && !state.dirty[1]) {
