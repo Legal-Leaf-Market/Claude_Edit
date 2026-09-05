@@ -84,8 +84,8 @@ export type ShopResult =
  * that answers with listings wins and the result names it, so the next person
  * can delete the others once the real one is known.
  */
-const ENDPOINTS = (slug: string) => [
-  `https://api.reverb.com/api/my/listings?state=live&per_page=100`,
+const ENDPOINTS = (slug: string, state: string) => [
+  `https://api.reverb.com/api/my/listings?state=${state}&per_page=100`,
   `https://api.reverb.com/api/shops/${encodeURIComponent(slug)}/listings?per_page=100`,
   `https://api.reverb.com/api/listings?shop_slug=${encodeURIComponent(slug)}&per_page=100`,
 ]
@@ -144,7 +144,13 @@ function normalize(raw: Record<string, unknown>): ShopListing | null {
  * Unset is a fully supported state, the same shape as Sweetwater's feed gate.
  * An unconfigured deploy is missing a section rather than showing a broken one.
  */
-export async function fetchShopListings(): Promise<ShopResult> {
+/**
+ * `state` is a parameter because cost lives on the LISTING and realised margin
+ * needs it after the thing has sold, at which point the listing is no longer
+ * live. Asking only for live stock made every sold pedal look like it cost
+ * nothing.
+ */
+export async function fetchShopListings(state = "live"): Promise<ShopResult> {
   const { token, slug } = env.reverbShop
   if (!token) return { ok: false, reason: "REVERB_SHOP_TOKEN is not set" }
 
@@ -156,7 +162,7 @@ export async function fetchShopListings(): Promise<ShopResult> {
   }
 
   const failures: string[] = []
-  for (const url of ENDPOINTS(slug)) {
+  for (const url of ENDPOINTS(slug, state)) {
     try {
       const res = await fetch(url, { headers, next: { revalidate: 900 } })
       if (!res.ok) {
