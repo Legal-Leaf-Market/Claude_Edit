@@ -32,7 +32,7 @@ describe("the served document survived being embedded", () => {
   })
 
   it("still carries the parts the page is useless without", () => {
-    for (const id of ["fPedal", "paste", "rows", "m1", "m2", "m3", "xVerified"]) {
+    for (const id of ["fPedal", "paste", "rows", "m1", "m2", "m3", "xVerified", "pick2"]) {
       expect(HTML, `#${id} is missing from the served document`).toContain(`id="${id}"`)
     }
     expect(HTML).toContain("const NOTES = [")
@@ -45,6 +45,14 @@ describe("the served document survived being embedded", () => {
     expect(HTML).toContain("0.60 * t.mv")
     expect(HTML).toContain("0.80 * t.mv * f")
     expect(HTML).toContain("0.90 * t.mv * f")
+  })
+
+  it("steps message two through its versions rather than shuffling blind", () => {
+    /* Ten near-identical setups, and the owner needs to know which one he
+       sent. Arrows plus a readout, and the readout is in the served page. */
+    expect(HTML).toContain('data-step="-1"')
+    expect(HTML).toContain('data-step="1"')
+    expect(HTML).toMatch(/\$\("pick2"\)\.textContent/)
   })
 
   it("asks not to be indexed", () => {

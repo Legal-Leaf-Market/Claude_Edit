@@ -366,6 +366,8 @@ table.lot-table { width: 100%; min-width: 520px; border-collapse: collapse; font
 }
 .meta .spacer { flex: 1; }
 .meta .mini { padding: 5px 9px; }
+.meta .mini.arrow { padding: 3px 9px; font-size: 16px; line-height: 1; }
+.meta .pick { min-width: 48px; text-align: center; color: var(--text-dim); }
 
 /* The pause between messages is information: two goes after they answer,
    three goes straight after two. */
@@ -633,7 +635,9 @@ table.lot-table { width: 100%; min-width: 520px; border-collapse: collapse; font
                 <span class="dirty" id="d2" hidden>Edited</span>
                 <span class="count" id="c2">0</span>
                 <span class="spacer"></span>
-                <button class="mini" data-shuffle="2">Shuffle</button>
+                <button class="mini arrow" data-step="-1" aria-label="Previous version of message two" title="Previous version">&lsaquo;</button>
+                <span class="pick" id="pick2" aria-live="polite">1 / 10</span>
+                <button class="mini arrow" data-step="1" aria-label="Next version of message two" title="Next version">&rsaquo;</button>
                 <button class="mini" data-copy="2">Copy</button>
               </div>
             </div>
@@ -1439,38 +1443,139 @@ const OPENERS_FLAT = [
   c => \`\${c.hey}always good to see a \${c.pedal} pop up.\`,
 ];
 
+/* TEN VERSIONS, THE OWNER'S WORDS (2026-09-05). Same facts, same emojis,
+   verbs and adjectives moved around. The arrows on the panel step through
+   them and the readout shows which is up; the pick persists per device. */
 const SETUPS = [
   c =>
-\`So quick heads up on who you're dealing with...we're 4 dudes opening a store. Like an actual brick and mortar spot. I buy gear for \${c.shop}, we've got a decent online thing going already, and now we're filling physical shelves!
+\`Hey there!
 
-Next round of buying is later this month. \${c.lotCap} would you be down to do a deal on whatever you're still sitting on at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal we may be able to move quicker than that.
+I'm one of 4 dudes opening a store. Like, an actual brick and mortar spot. I handle buying gear for \${c.shop}, we've got a decent online thing going already, and now we're filling physical shelves soon!
 
-Next, it really depends what you're after. Some people want cash in hand this week. Some want the most money possible and don't mind waiting a few weeks for it. We do both, no stress either way.
+Our next round of buying is later this month. Since you've got a few pedals listed, would you be open to doing a deal on whatever you're still sitting on at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal, we might be able to move quicker than that, just low on funds atm.
+
+After that, it really depends what you're after. Some people want cash in hand now. Some want the most money possible and don't mind waiting a few weeks for it. We do both, no stress either way.
 
 If you can wait on the cash, and want to maximize what you get...we can start moving TODAY 💰💵💪
 
 Wanna hear more?\`,
 
   c =>
-\`Before you answer, I should say I'm not just some guy buying one pedal. We're opening a store, a real physical one. I buy for \${c.shop}, and on top of the online stuff we're building up inventory for the actual location.
+\`Hey!
 
-We're doing our next round of buying later this month. \${c.lotCap} anything still sitting there at the end of \${c.month} or start of \${c.nextMonth}, I'd love first crack at. And if it's the right deal we can just do it now.
+I represent 4 dudes starting a store. A real brick and mortar spot. I buy gear for \${c.shop}, we've already got a solid online thing going, and now we're stocking physical shelves soon!
 
-We do things a little different than most shops. Not really into lowballing people, we'd rather work something out. Honestly it comes down to one thing: you want money now, or you want the most money?\`,
+Next round of buying happens later this month. Since you have a few pedals up, would you be down to work out a deal on whatever's still unsold at the end of \${c.month} or start of \${c.nextMonth}? If the deal's right, we may be able to move faster than that, just a little low on funds atm.
+
+Beyond that, it really comes down to what you're after. Some folks want cash in hand now. Others want the most money possible and are fine waiting a few weeks for it. We do both, no pressure either way.
+
+If waiting on the cash is fine and you want to max out what you get...we can start moving TODAY 💰💵💪
+
+Want to hear more?\`,
 
   c =>
-\`Quick context so I'm not wasting your time. We're opening a brick and mortar shop. I buy for \${c.shop}, we already sell online, and now we need actual stuff on actual shelves.
+\`Hey, what's up!
 
-Next buying round is later this month. \${c.lotCap} I'd rather talk about the whole thing than haggle over one pedal, and if any of it's still around at the end of \${c.month} or start of \${c.nextMonth} we'd love to do a deal on it. Right deal, sooner.
+There's 4 of us dudes opening a store. Like, an actual brick and mortar place. I'm the one buying gear for \${c.shop}, we've got a pretty good online thing rolling already, and now we're filling real shelves soon!
 
-We can buy the lot outright and pay you up front, or we list them for you and pay you as they sell, which works out to a good bit more. Totally your call which one's worth more to you.\`,
+We've got another round of buying later this month. Seeing you've got some pedals listed, would you be up for a deal on whatever you're still holding at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal, we might be able to move sooner than that, just low on funds atm.
+
+Next, it really depends on what you want. Some people want cash in hand right away. Some want the most money possible and don't mind a few weeks' wait. We do both, zero stress either way.
+
+If you're okay waiting on the cash, and want to get the most out of it...we can get moving TODAY 💰💵💪
+
+Wanna hear the details?\`,
 
   c =>
-\`Bit of context first. We're opening a store, a physical one, and I'm the guy filling it. I buy for \${c.shop}, we've got a growing online side, and the next round of buying for the shop floor is later this month.
+\`Hey man!
 
-\${c.lotCap} I'd honestly rather take the whole thing off your hands than pick one pedal off you. Whatever's still sitting there at the end of \${c.month} or start of \${c.nextMonth}, we'd like to do a deal on. Right deal, we'll move faster.
+I'm speaking for 4 dudes launching a store. An actual brick and mortar spot. I do the gear buying for \${c.shop}, we've got a decent online presence already, and now we're loading up physical shelves soon!
 
-There's three ways we can do that, and which one's best really just depends on whether you want cash now or top dollar later.\`,
+Next batch of buying is later this month. Since you've got a handful of pedals posted, would you be interested in doing a deal on whatever hasn't sold by the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal, we may be able to move quicker than that, just low on funds at the moment.
+
+Past that, it really depends what you're after. Some people want the cash in hand now. Some want the most money possible and are cool waiting a few weeks for it. We do both, no stress either way.
+
+If you can hold off on the cash, and want to maximize what you get...we can start moving TODAY 💰💵💪
+
+Interested in hearing more?\`,
+
+  c =>
+\`Hi there!
+
+Me and 3 other dudes are opening a store. Like, a legit brick and mortar spot. I buy gear for \${c.shop}, we've got a decent online thing going already, and now we're filling physical shelves shortly!
+
+Our next round of purchasing is later this month. Since you've got a few pedals listed, would you be down to do a deal on whatever you're still sitting on come the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal, we could maybe move quicker than that, just low on funds atm.
+
+Next, it really depends what you're going for. Some people want cash in hand now. Some want the biggest payout possible and don't mind waiting a few weeks for it. We do both, no stress either way.
+
+If you can wait on the cash, and want to squeeze the most out of it...we can start moving TODAY 💰💵💪
+
+Wanna know more?\`,
+
+  c =>
+\`Hey hey!
+
+I represent 4 dudes getting a store off the ground. An actual brick and mortar spot. I source gear for \${c.shop}, we already have a decent online thing going, and now we're filling up physical shelves soon!
+
+Next round of buying is later this month. Since you've got a few pedals up for sale, would you be open to a deal on whatever you still have left at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal, we may be able to move quicker than that, just running low on funds atm.
+
+Then it really depends what you're after. Some people want cash in hand today. Some want the most money possible and don't mind waiting a few weeks on it. We do both, no stress whichever way.
+
+If you can wait on the cash, and want to maximize the return...we can start moving TODAY 💰💵💪
+
+Wanna hear more?\`,
+
+  c =>
+\`What's up!
+
+I'm one of 4 dudes opening up a shop. Like, an actual brick and mortar location. I buy gear for our store\${c.whereParen}, we've got a decent online side going already, and now we're filling physical shelves soon!
+
+Next round of buying lands later this month. Since you've got a few pedals listed, would you be cool with making a deal on whatever's still hanging around at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal, we might be able to move quicker than that, just low on funds atm.
+
+Next, it really just depends what you're after. Some people want cash in hand now. Some want the most money possible and can wait a few weeks for it. We do both, no stress either way.
+
+If you can wait on the cash, and want to get the most for your gear...we can start moving TODAY 💰💵💪
+
+Want the details?\`,
+
+  c =>
+\`Hey, quick one!
+
+I represent 4 dudes opening a store. Like, an actual brick and mortar storefront. I'm buying gear for \${c.shop}, we've got a decent online thing happening already, and now we're filling physical shelves soon!
+
+Next round of buying is coming later this month. Since you've got a few pedals listed, would you be down to strike a deal on whatever you're still sitting on at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal, we may be able to jump on it quicker than that, just low on funds atm.
+
+Next, it really depends what matters to you. Some people want cash in hand now. Some want the most money possible and don't mind waiting a couple few weeks for it. We do both, no stress either way.
+
+If you can wait on the cash, and want to maximize what you walk away with...we can start moving TODAY 💰💵💪
+
+Wanna hear more?\`,
+
+  c =>
+\`Yo!
+
+There's 4 of us dudes opening a store. A real deal brick and mortar spot. I handle the gear buying for \${c.shop}, we've got a decent online thing going already, and now we're stocking up physical shelves soon!
+
+Next round of buying is later this month. Since you've got a few pedals posted, would you be up for doing a deal on whatever you're still sitting on at the end of \${c.month} or early \${c.nextMonth}? If it's the right deal, we may be able to move a bit quicker than that, just low on funds atm.
+
+Next, it really depends what you're after. Some people want cash in hand now. Some want the most money they can get and don't mind waiting a few weeks for it. We do both, no stress either way.
+
+If you can wait on the cash, and want to maximize what you get...we can start moving TODAY 💰💵💪
+
+Curious to hear more?\`,
+
+  c =>
+\`Hey there!
+
+I represent 4 dudes opening a store. Like, an actual brick and mortar spot. I buy the gear for \${c.shop}, we've got a decent online thing going already, and now we're getting physical shelves filled soon!
+
+Next round of buying is later this month. Since you've got a few pedals listed, would you be down to do a deal on whatever you're still sitting on at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal, we may be able to move quicker than that, just low on funds atm.
+
+Next, it really depends what you're after. Some people want cash in hand now. Some want the most money possible and don't mind waiting a few weeks for it. We do both, no stress either way.
+
+If you can wait on the cash, and want to maximize what you get...we can start moving TODAY 💰💵💪
+
+Wanna hear more?\`,
 ];
 
 const HEADS_PRICED = [
@@ -1584,6 +1689,7 @@ function save() {
       xNote: els.xNote.checked, xComps: els.xComps.checked,
       xSteer: els.xSteer.checked, xPickup: els.xPickup.checked,
       xDeposit: els.xDeposit.checked,
+      setup: state.pick.setup % SETUPS.length,
     }));
   } catch (_) { /* private window or blocked site data. Not worth telling anyone. */ }
 }
@@ -1600,6 +1706,7 @@ function load() {
     state.cat = v.cat ?? "auto";
     state.wear = v.wear ?? "worn";
     state.lot = Array.isArray(v.lot) ? v.lot : [];
+    state.pick.setup = Number.isInteger(v.setup) ? v.setup : 0;
     els.xVerified.checked = Boolean(v.verified);
     for (const k of ["o1","o2","o3","xNote","xComps","xSteer","xPickup","xDeposit"]) {
       if (typeof v[k] === "boolean") els[k].checked = v[k];
@@ -1666,6 +1773,7 @@ function ctx() {
     /* Blank location degrades to the true, vaguer phrase rather than
        printing "our shop (in )". Owner's wording, 2026-09-05. */
     shop: where ? \`our shop (in \${where})\` : "our shop",
+    whereParen: where ? \` (in \${where})\` : "",
     market: els.market.value.trim() || "Reverb",
     pedal, scope, lot,
     lotCap: lot.charAt(0).toUpperCase() + lot.slice(1),
@@ -1889,6 +1997,7 @@ function render(only) {
     setMsg(1, text);
   }
   if ((!only || only === 2) && !state.dirty[2]) setMsg(2, SETUPS[state.pick.setup % SETUPS.length](c));
+  $("pick2").textContent = (state.pick.setup % SETUPS.length + 1) + " / " + SETUPS.length;
   if ((!only || only === 3) && !state.dirty[3]) setMsg(3, buildOffers(c, state.pick.head, state.pick.close, m));
 
   const nm = els.name.value.trim();
@@ -1989,6 +2098,15 @@ $("clearLot").addEventListener("click", () => {
 });
 
 document.addEventListener("click", (e) => {
+  const st = e.target.closest("[data-step]");
+  if (st) {
+    const d = Number(st.dataset.step);
+    state.pick.setup = (state.pick.setup + d + SETUPS.length) % SETUPS.length;
+    state.dirty[2] = false;
+    render(2);
+    save();
+    return;
+  }
   const sh = e.target.closest("[data-shuffle]");
   if (sh) {
     const n = Number(sh.dataset.shuffle);
