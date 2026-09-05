@@ -1441,11 +1441,15 @@ const OPENERS_FLAT = [
 
 const SETUPS = [
   c =>
-\`So quick heads up on who you're dealing with...we're 4 dudes opening a store. Like an actual brick and mortar spot. I buy gear for \${c.shop}, we've got a decent online thing going already, and now we're filling shelves.
+\`So quick heads up on who you're dealing with...we're 4 dudes opening a store. Like an actual brick and mortar spot. I buy gear for \${c.shop}, we've got a decent online thing going already, and now we're filling physical shelves!
 
 Next round of buying is later this month. \${c.lotCap} would you be down to do a deal on whatever you're still sitting on at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal we may be able to move quicker than that.
 
-Next, it really depends what you're after. Some people want cash in hand this week. Some want the most money possible and don't mind waiting a few weeks for it. We do both, no stress either way.\`,
+Next, it really depends what you're after. Some people want cash in hand this week. Some want the most money possible and don't mind waiting a few weeks for it. We do both, no stress either way.
+
+If you can wait on the cash, and want to maximize what you get...we can start moving TODAY 💰💵💪
+
+Wanna hear more?\`,
 
   c =>
 \`Before you answer, I should say I'm not just some guy buying one pedal. We're opening a store, a real physical one. I buy for \${c.shop}, and on top of the online stuff we're building up inventory for the actual location.
@@ -1654,8 +1658,8 @@ function ctx() {
     : scope === "few"
       ? "If those are part of a bigger clear out,"
       : n >= 5
-        ? \`Since you've got \${n} pedals going,\`
-        : "Since you've got the whole board going,";
+        ? \`Since you've got \${n} pedals listed,\`
+        : "Since you've got the whole board listed,";
   const where = els.where.value.trim();
   return {
     hey: name ? \`Hey \${name}, \` : "Hey, ",
