@@ -50,8 +50,34 @@ export async function GET(request: Request) {
     const priceish = Object.fromEntries(
       Object.entries(raw).filter(([key]) => /price|amount|offer|sale|discount/i.test(key)),
     )
+
+    /*
+     * THE FIELD WAS NEVER THE PROBLEM. Reverb returns `price`, `buyer_price`
+     * and `seller_price` and all three agree, with no original-price field
+     * anywhere in the response. So a shop total that disagrees with the
+     * owner's own figure is a disagreement about WHICH LISTINGS came back,
+     * not about what each one costs.
+     *
+     * Hence the roll-up: count, total, and every row's price. Whatever is
+     * missing shows up as a name that is not in this list, which is a thing
+     * somebody can look at and recognise in a second.
+     */
+    const listings = result.ok ? result.listings : []
+    const cents = (p: string | null) => {
+      const n = Number(String(p ?? "").replace(/[^\d.]/g, ""))
+      return Number.isFinite(n) ? n : 0
+    }
+    const total = listings.reduce((sum, row) => sum + cents(row.price), 0)
+
     return Response.json(
-      { keys: Object.keys(raw).sort(), priceish },
+      {
+        count: listings.length,
+        total: "$" + total.toLocaleString("en-US"),
+        prices: listings.map((row) => ({ title: row.title, price: row.price })),
+        source: result.ok ? result.source : null,
+        keys: Object.keys(raw).sort(),
+        priceish,
+      },
       { headers: { "cache-control": "private, no-store" } },
     )
   }

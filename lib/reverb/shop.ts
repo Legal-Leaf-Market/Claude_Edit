@@ -38,6 +38,11 @@ export type ShopResult =
 /**
  * Candidate endpoints, most specific first.
  *
+ * `per_page=100` rather than 24, because a page size smaller than the shop is
+ * indistinguishable from a shop that size: the total just comes up short and
+ * nothing says why. 24 was never hit at nine listings, and would have been the
+ * silent explanation the moment stock grew past it.
+ *
  * Written as a list rather than a single URL because this could not be
  * verified against the live API from the machine it was written on, and a
  * single wrong guess ships a dead section that fails silently. The first one
@@ -45,9 +50,9 @@ export type ShopResult =
  * can delete the others once the real one is known.
  */
 const ENDPOINTS = (slug: string) => [
-  `https://api.reverb.com/api/my/listings?state=live&per_page=24`,
-  `https://api.reverb.com/api/shops/${encodeURIComponent(slug)}/listings?per_page=24`,
-  `https://api.reverb.com/api/listings?shop_slug=${encodeURIComponent(slug)}&per_page=24`,
+  `https://api.reverb.com/api/my/listings?state=live&per_page=100`,
+  `https://api.reverb.com/api/shops/${encodeURIComponent(slug)}/listings?per_page=100`,
+  `https://api.reverb.com/api/listings?shop_slug=${encodeURIComponent(slug)}&per_page=100`,
 ]
 
 function pickPhoto(raw: Record<string, unknown>): string | null {
