@@ -1441,28 +1441,28 @@ const OPENERS_FLAT = [
 
 const SETUPS = [
   c =>
-\`So, quick context: we are opening a store. An actual brick and mortar location. I buy gear for \${c.shop}, we already have a growing online presence (mostly \${c.market}), and now we are filling shelves.
+\`So, quick context: we are opening a store. An actual brick and mortar location. I buy gear for \${c.shop}, we already have a growing online presence, and now we are filling shelves.
 
 Our next round of purchasing is later this month. \${c.lotCap} would you be up for doing a deal with us on whatever is still unsold at the end of \${c.month} or the start of \${c.nextMonth}? For the right deal we can move sooner than that.
 
 Depends what you are after though. Some people want cash in hand this week. Some want the most money possible and do not mind waiting a few weeks for it. We do both.\`,
 
   c =>
-\`Before you answer, I should say I am not just a guy buying one pedal. We are opening a physical store. I buy for \${c.shop}, and on top of the online side (mostly \${c.market}) we are building the inventory for a real location.
+\`Before you answer, I should say I am not just a guy buying one pedal. We are opening a physical store. I buy for \${c.shop}, and on top of the online side we are building the inventory for a real location.
 
 We are doing our next round of buying later this month. \${c.lotCap} anything still sitting unsold at the end of \${c.month} or the start of \${c.nextMonth} is something I would like first shot at, and for the right deal we can do it sooner.
 
 We run a different model than most shops. Rather than lowball gear off people we work with them on it. Really it comes down to one question: do you want money now, or do you want the most money?\`,
 
   c =>
-\`Quick context so I am not wasting your time. We are opening a brick and mortar store. I buy for \${c.shop}, we already sell online, mostly on \${c.market}, and now we need stock on actual shelves.
+\`Quick context so I am not wasting your time. We are opening a brick and mortar store. I buy for \${c.shop}, we already sell online, and now we need stock on actual shelves.
 
 Next round of purchasing is later this month. \${c.lotCap} I would rather talk about the whole thing than haggle over one pedal, and if any of it is still unsold at the end of \${c.month} or the start of \${c.nextMonth} we would like to do a deal on it. For the right deal, sooner.
 
 We can buy the lot outright and pay you up front, or we can list them for you and pay you as they sell, which works out to quite a bit more. Your call which is worth more to you.\`,
 
   c =>
-\`Bit of context first. We are opening a store, a physical one, and I am the one filling it. I buy for \${c.shop}, we have a growing online presence on \${c.market}, and the next round of purchasing for the shop floor is later this month.
+\`Bit of context first. We are opening a store, a physical one, and I am the one filling it. I buy for \${c.shop}, we have a growing online presence, and the next round of purchasing for the shop floor is later this month.
 
 \${c.lotCap} I would rather take the whole thing off your hands than pick one pedal off you. Anything still unsold at the end of \${c.month} or the start of \${c.nextMonth}, we would like to do a deal on. For the right deal we can move faster than that.
 

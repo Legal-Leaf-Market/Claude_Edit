@@ -2516,7 +2516,13 @@ seller on Marketplace does not care that we sell on Reverb; "we are opening a
 physical store and buying stock for it" is the reason to answer. Every setup
 variant opens on the brick and mortar location, names the next purchasing
 round as later this month, and asks for a deal on whatever is still unsold at
-the end of this month or the start of next. THOSE TWO MONTH NAMES COME FROM
+the end of this month or the start of next. THE MESSAGE NEVER SAYS WHERE WE
+SELL (owner, same day): we are the middleman, one person on Messenger, and a
+seller has no reason to know where our listings live. The marketplace name
+still appears in the offers, but only as the basis for fees and comps, which
+is about the market price and not about us. No store credit, no trade or
+bundle line: both wait for the automated outreach that grows off the site and
+Instagram, and until then a seller who wants a bundle can ask. THOSE TWO MONTH NAMES COME FROM
 THE CLOCK (`monthNames()`), not from the copy: "the end of September" is right
 for one month and then quietly wrong, and the tool is used for longer than
 that. The three offer blocks are the owner's short form: cash today, in line
