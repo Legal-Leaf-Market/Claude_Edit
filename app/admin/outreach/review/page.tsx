@@ -45,6 +45,22 @@ export default async function OutreachReviewPage() {
   const unpricedNamed = candidates.reduce((n, r) => n + (r.named.length - r.nP), 0)
 
   const gaps = freq.filter(([name]) => typeof (mv as Record<string, unknown>)[name] !== "number")
+
+  /* THE SELLER IS THE ENTITY, NOT THE LISTING. One export is nearly one
+     listing each, so the repeat column looks trivial today. It is the reason
+     the seller and their profile link are stored at all: the second export is
+     where "we have spoken to this person before" starts being worth money,
+     and that only works if the first one kept the link. */
+  const bySeller = new Map<string, { seller: string; profile: string; n: number }>()
+  for (const row of rows) {
+    if (!row.seller) continue
+    const found = bySeller.get(row.seller) ?? { seller: row.seller, profile: row.profile, n: 0 }
+    found.n += 1
+    if (!found.profile && row.profile) found.profile = row.profile
+    bySeller.set(row.seller, found)
+  }
+  const sellers = [...bySeller.values()]
+  const repeats = sellers.filter((s) => s.n > 1).sort((a, b) => b.n - a.n)
   const stMax = states[0]?.[1] ?? 1
   const fqMax = freq[0]?.[1] ?? 1
 
@@ -52,6 +68,7 @@ export default async function OutreachReviewPage() {
     ["Messages sent", String(rows.length), "one per seller", false],
     ["Pipeline asked", usd(totalAsk), `${real.length} with a real price`, false],
     ["Median ask", usd(median), "half are under this", false],
+    ["Sellers", String(sellers.length), `${repeats.length} messaged more than once`, false],
     ["Replies logged", "0", "the export records no outcome", true],
   ]
 
@@ -60,8 +77,10 @@ export default async function OutreachReviewPage() {
       <h1 className="text-2xl font-black uppercase tracking-wide">Outreach review</h1>
       <p className="mt-2 max-w-[68ch] text-sm text-[var(--text-dim)]">
         {source}, priced against the same book table the outreach tool quotes from. Generated{" "}
-        {generated}. Seller names, profile links and descriptions are stripped before this data
-        reaches the repository, so nothing personal is stored here.
+        {generated}. Seller names and Marketplace profile links are kept so the same person can be
+        reached twice. Free-text descriptions are dropped: the pedal matching runs before this
+        data is stored, so they are not needed, and they are the one field a phone number hides
+        in.
       </p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -116,7 +135,7 @@ export default async function OutreachReviewPage() {
             <thead>
               <tr className="bg-[var(--panel-2)] text-[10px] uppercase tracking-[.12em] text-[var(--text-faint)]">
                 <th className="p-2.5 text-left">Listing</th>
-                <th className="p-2.5 text-left">Where</th>
+                <th className="p-2.5 text-left">Seller</th>
                 <th className="p-2.5 text-right">Asking</th>
                 <th className="p-2.5 text-right">Book</th>
                 <th className="p-2.5 text-right">Ratio</th>
@@ -153,7 +172,17 @@ export default async function OutreachReviewPage() {
                       ) : null}
                     </div>
                   </td>
-                  <td className="p-2.5 text-xs text-[var(--text-dim)]">{row.loc}</td>
+                  <td className="p-2.5 text-xs text-[var(--text-dim)]">
+                    {row.profile ? (
+                      <a href={row.profile} target="_blank" rel="noopener"
+                        className="text-[var(--text)] hover:underline">
+                        {row.seller}
+                      </a>
+                    ) : (
+                      <span className="text-[var(--text)]">{row.seller}</span>
+                    )}
+                    <div>{row.loc}</div>
+                  </td>
                   <td className="p-2.5 text-right tabular-nums">{usd(row.ask as number)}</td>
                   <td className="p-2.5 text-right tabular-nums">{usd(row.book)}</td>
                   <td
@@ -188,6 +217,36 @@ export default async function OutreachReviewPage() {
           max={fqMax}
         />
       </div>
+
+      <section className="mt-8">
+        <h2 className="text-lg font-black uppercase tracking-wide">Sellers</h2>
+        <p className="mt-1 max-w-[72ch] text-sm text-[var(--text-dim)]">
+          {sellers.length} people across {rows.length} listings, each linked to their Marketplace
+          profile.{" "}
+          {repeats.length ? (
+            <>
+              <b className="text-[var(--text)]">{repeats.length}</b>{" "}
+              {repeats.length === 1 ? "has" : "have"} been messaged more than once.
+            </>
+          ) : (
+            "Nobody has been messaged twice yet."
+          )}{" "}
+          That count is the point of keeping the link: the second export is where a name you
+          already know starts being worth something, and it only works if the first one kept it.
+        </p>
+        {repeats.length ? (
+          <ul className="mt-3 flex list-none flex-wrap gap-2 pl-0">
+            {repeats.map((s) => (
+              <li key={s.seller}>
+                <a href={s.profile || undefined} target="_blank" rel="noopener"
+                  className="inline-block rounded-full border border-[var(--edge)] px-3 py-1 text-sm hover:border-[var(--edge-accent)]">
+                  {s.seller} <span className="text-[var(--text-faint)]">&times;{s.n}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
 
       <section className="mt-8">
         <h2 className="text-lg font-black uppercase tracking-wide">Next</h2>
