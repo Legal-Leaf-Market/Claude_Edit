@@ -64,6 +64,35 @@ describe("what the route publishes", () => {
   })
 })
 
+describe("cost is ours and never leaves the building", () => {
+  it("is projected out of the published shape", () => {
+    /* The route used to return the reader's rows straight through, which was
+       fine while the two shapes were the same object and would have quietly
+       published our margin the moment they were not. */
+    const route = readFileSync(
+      path.join(process.cwd(), "app", "api", "reverb", "shop", "route.ts"),
+      "utf8",
+    )
+    expect(route).toMatch(/\.map\(toPublic\)/)
+    expect(route).not.toMatch(/listings: result\.listings,/)
+  })
+
+  it("is absent from the public type", () => {
+    /* PublicListing is a Pick, so a new private field cannot join it by
+       accident: it has to be named to be published. */
+    expect(SOURCE).toMatch(/export type PublicListing = Pick<[\s\S]{0,200}?>/)
+    const pick = SOURCE.slice(SOURCE.indexOf("export type PublicListing"))
+      .slice(0, 260)
+    expect(pick).not.toMatch(/costCents/)
+  })
+
+  it("does arithmetic in cents rather than parsing display text", () => {
+    /* A total built by parsing "$1,234.56" back out is a rounding bug waiting
+       for the first four figure pedal. */
+    expect(SOURCE).toMatch(/amount_cents/)
+  })
+})
+
 describe("unset is a supported state", () => {
   afterEach(() => vi.unstubAllEnvs())
 

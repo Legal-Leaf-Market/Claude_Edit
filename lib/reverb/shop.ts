@@ -21,14 +21,49 @@ import { env } from "@/lib/env"
  * whoever asked and writes nothing, anywhere.
  */
 
+/**
+ * TWO SHAPES, AND THE DIFFERENCE IS COST.
+ *
+ * `ShopListing` is what this module reads and carries `costCents`, which is
+ * our own purchase price kept in Reverb's `seller_cost` field. `PublicListing`
+ * is what the endpoint publishes and does not.
+ *
+ * The route used to return `result.listings` straight through, which was fine
+ * while the two were the same object and would have quietly published our
+ * margin the moment they were not. Naming the public fields is what makes
+ * adding a private one safe, and `tests/reverb-shop.test.ts` fails if cost
+ * ever appears in the published shape.
+ */
 export type ShopListing = {
   id: string
   title: string
   condition: string | null
   price: string | null
+  priceCents: number | null
   currency: string | null
   photo: string | null
   url: string
+  /** OURS. Never published. */
+  costCents: number | null
+  state: string | null
+  sku: string | null
+}
+
+export type PublicListing = Pick<
+  ShopListing,
+  "id" | "title" | "condition" | "price" | "currency" | "photo" | "url"
+>
+
+export function toPublic(row: ShopListing): PublicListing {
+  return {
+    id: row.id,
+    title: row.title,
+    condition: row.condition,
+    price: row.price,
+    currency: row.currency,
+    photo: row.photo,
+    url: row.url,
+  }
 }
 
 export type ShopResult =
@@ -79,6 +114,14 @@ function normalize(raw: Record<string, unknown>): ShopListing | null {
 
   const price = (raw.price ?? {}) as Record<string, unknown>
   const condition = (raw.condition ?? {}) as Record<string, unknown>
+  const cost = (raw.seller_cost ?? {}) as Record<string, unknown>
+  const state = (raw.state ?? {}) as Record<string, unknown>
+
+  /* Reverb reports money as both a string and cents. Cents is the one to do
+     arithmetic in: a total built by parsing "$1,234.56" back out of display
+     text is a rounding bug waiting for the first four figure pedal. */
+  const cents = (money: Record<string, unknown>): number | null =>
+    typeof money.amount_cents === "number" ? money.amount_cents : null
 
   return {
     id: String(raw.id ?? url),
@@ -86,9 +129,14 @@ function normalize(raw: Record<string, unknown>): ShopListing | null {
     condition: typeof condition.display_name === "string" ? condition.display_name : null,
     price: typeof price.display === "string" ? price.display
       : typeof price.amount === "string" ? price.amount : null,
+    priceCents: cents(price),
     currency: typeof price.currency === "string" ? price.currency : null,
     photo: pickPhoto(raw),
     url,
+    costCents: cents(cost),
+    state: typeof state.slug === "string" ? state.slug
+      : typeof raw.state === "string" ? raw.state : null,
+    sku: typeof raw.sku === "string" && raw.sku.trim() ? raw.sku.trim() : null,
   }
 }
 
