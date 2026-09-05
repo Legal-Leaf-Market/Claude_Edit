@@ -1531,7 +1531,7 @@ function buildOffers(c, headIdx, closeIdx, m) {
   if (m) parts.push(HEADS_PRICED[headIdx % HEADS_PRICED.length]);
 
   if (m && c.comps) {
-    parts.push(\`Market on the lot comes to about \${money(m.mv)}\${m.count ? \` across the \${m.count} \${m.count === 1 ? "piece" : "pieces"} you listed\` : ""}. That is what these actually sell for used on \${c.market}, sold prices rather than what people ask, and I am happy to show you the comps on any of them.\`);
+    parts.push(\`Market on the lot comes to about \${money(m.mv)}\${m.count ? \` across the \${m.count} \${m.count === 1 ? "pedal" : "pedals"} you had\` : ""}. That is what these are actually going for on \${c.market} right now, which is where we sell primarily. I am happy to show you how I came up with any of those numbers.\`);
   }
 
   if (!blocks.length) {
@@ -1541,7 +1541,7 @@ function buildOffers(c, headIdx, closeIdx, m) {
     parts.push(blocks[0]);
   } else {
     const n = blocks.length === 2 ? "Two" : "Three";
-    parts.push(m ? \`\${n} ways we can do this:\` : HEADS[headIdx % HEADS.length](n));
+    parts.push(m ? \`There are \${n.toLowerCase()} ways we can do this:\` : HEADS[headIdx % HEADS.length](n));
     blocks.forEach((b, i) => parts.push(\`\${i + 1}. \${b}\`));
   }
 
