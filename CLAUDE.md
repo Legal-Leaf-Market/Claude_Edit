@@ -2531,8 +2531,10 @@ that. The three offer blocks are the owner's short form: cash today, in line
 with most shops; half now, with the pedals staying put and a prepaid label per
 sale; max payout as the same seat with nothing up front, plus the owner's sales
 caveat (2026-09-05): we can set max payout up TODAY, building the listings off
-the seller's own post and asking for pics or details as needed, with a "big
-but" and emojis on purpose, it only starts today if they say go. The unpriced
+the seller's own post and asking for pics or details as needed, closing on
+the trust line: we get that it's a lot of trust in us, but if the model
+interests you, we're down. (A "big but" with emojis was tried first and
+pulled the same day as a little too much.) The unpriced
 steer line is the owner's closer, "Less up front, more overall. Totally your call."
 
 **THE VOICE IS ONE DUDE MESSAGING ANOTHER (owner, 2026-09-05).** The sellers
