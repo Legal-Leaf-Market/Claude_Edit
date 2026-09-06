@@ -294,6 +294,22 @@ table.lot-table { width: 100%; min-width: 520px; border-collapse: collapse; font
 /* A pulled number is neither a guess nor a hand-typed answer, so it reads as
    neither: the LED means "this one is backed by something". */
 .lot-table input.sourced { color: var(--accent-text); }
+.listing-read { margin-top: 8px; display: grid; gap: 3px; }
+.read-line { font-size: 12.5px; color: var(--text-dim); }
+.read-line b { color: var(--text-faint); font-weight: 600; }
+.read-line.hit b { color: var(--accent-text); }
+.read-line.warnish b, .read-line.miss b { color: var(--warn); }
+/* The tier and grade sit with the row rather than in columns of their own:
+   two more columns on a table this narrow costs more than they are worth. */
+.lot-table td.brand { position: relative; }
+.lot-table .chip {
+  display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 3px;
+  border: 1px solid var(--edge); font-size: 10px; line-height: 15px;
+  color: var(--text-faint); vertical-align: middle;
+}
+.lot-table .chip.a { color: var(--accent-text); border-color: var(--accent-text); }
+.lot-table .chip.c { opacity: .55; }
+.lot-table .chip.sold { color: var(--warn); border-color: var(--warn); }
 .lot-table tr.eviRow td {
   border-top: 0; padding: 0 10px 8px; font-size: 12px; color: var(--text-faint);
 }
@@ -560,6 +576,10 @@ table.lot-table { width: 100%; min-width: 520px; border-collapse: collapse; font
           <button class="mini" id="compsBtn">Pull comps</button>
           <span class="parse-note" id="parseNote"></span>
           <span class="parse-note" id="compsNote"></span>
+        </div>
+
+        <div class="listing-read" id="listingRead" hidden></div>
+        <div style="display:none">
         </div>
 
         <div class="tablewrap" id="tableWrap" hidden>
@@ -1388,48 +1408,283 @@ function splitBrand(name) {
   return { brand: "", model: name };
 }
 
+/* ---------------------------------------------------------------------------
+   THE LISTING READER.
+
+   PORTED FROM THE FLIP-SHEET SCRIPT THE OWNER WROTE AND HAS ACTUALLY USED, and
+   it is a real upgrade on the line-by-line reader it replaces. That one asked
+   one question per line: is there a price on it. Sellers do not write that way.
+   They write a name on one line and the price on the next, they list a power
+   supply next to nine pedals, they say SOLD beside three of them, and they put
+   "shipping is $12" and "all for $600" in the middle of it.
+
+   WHAT IT ADDS, each of which changed the answer on real listings:
+
+     - The name-on-a-PREVIOUS-line format, looking back up to four lines and
+       carrying the skipped lines down as the note.
+     - Rejection of price lines that are not pedals: shipping, Venmo, "all for",
+       retail references, "goes for on Reverb".
+     - Brand tiers. A Strymon and a Behringer at the same price are not the same
+       opportunity, and the tier is the single strongest signal in the file.
+     - SOLD and PENDING, which are the difference between a lot worth a message
+       and one that has already been picked over.
+     - Accessories, scored down rather than dropped, because a power supply in
+       the lot is real and is not what we are buying.
+     - Why they are selling, and how hard the no-go language is.
+
+   WHAT IT DELIBERATELY DOES NOT DO: guess a market value. Every number it
+   produces is either the seller's own price or a score about the OPPORTUNITY.
+   The market column stays empty until the book table seeds it or somebody
+   presses Pull comps, because section 26's rule is that neither page may quote
+   a number it does not have.
+--------------------------------------------------------------------------- */
+
+/* Resale tiers. A is boutique that holds value, C is budget that does not. */
+const TIER_A = ["strymon","chase bliss","eventide","meris","walrus","earthquaker","jhs","origin effects","analogman","klon","king tone","benson","lovepedal","fairfield","empress","source audio","universal audio","uafx","hologram","red panda","gamechanger","beetronics","old blood","dr scientist","death by audio","pigtronix","1981 inventions","wampler","keeley","xotic","darkglass","neural dsp","helix","fractal","kemper","neunaber","jackson audio","dsm","thorpy","browne","revv","friedman","bogner","fulltone","greer","vemuram","free the tone","providence","lehle","maestro","tone bender"];
+const TIER_B = ["boss","mxr","electro-harmonix","electro harmonix","ehx","tc electronic","digitech","ibanez","dunlop","way huge","maxon","catalinbread","proco","pro co","morley","dod","seymour duncan","vox","danelectro","zvex","subdecay","malekko","solidgoldfx","mooer"];
+const TIER_C = ["behringer","donner","caline","joyo","nux","flamma","valeton","rowin","tomsline","azor","ammoon","glarry","biyang","mosky","sonicake","hotone"];
+
+function brandTier(name) {
+  const n = String(name).toLowerCase();
+  for (const b of TIER_A) if (n.includes(b)) return { tier: "A", brand: b };
+  for (const b of TIER_B) if (n.includes(b)) return { tier: "B", brand: b };
+  for (const b of TIER_C) if (n.includes(b)) return { tier: "C", brand: b };
+  return { tier: "?", brand: "" };
+}
+
+const SOLD_RE = /\\b(sold|pending|on hold|holding|spoken for|gone|no longer available)\\b/i;
+const PEND_RE = /\\b(pending|on hold|holding|spoken for)\\b/i;
+
+/* Lines that carry a price and are not a pedal. */
+/* "Reverb" is the one word here that names a marketplace AND an effect, so it
+   is matched only in its marketplace sense. Bare, it threw away every reverb
+   pedal in the lot; absent, "these go for $90 on Reverb" became a $90 pedal.
+   Sweetwater and Guitar Center need no such care: nothing is called those. */
+const NOT_PEDAL = /\\b(shipping|ships|ship for|paypal|venmo|cash ?app|zelle|total|bundle price|take (?:it )?all|all for|everything for|retail|msrp|go(?:es)? for|sells for|ebay|sweetwater|guitar center|price drop|delivery|meet)\\b|\\b(?:on|check|per)\\s+reverb\\b|\\breverb\\s+(?:prices?|sold|comps?)\\b/i;
+/* ...unless the same line clearly names a pedal anyway. "Reverb" and "verb"
+   are NOT in here, for the reason above: they are what a price reference says
+   as often as what a pedal is. A known BRAND is the stronger escape hatch and
+   is checked alongside this, so "Strymon BigSky, goes for $400 new, asking
+   $250" survives while "these go for $90 on Reverb" does not. */
+const PEDAL_ANYWAY = /pedal|drive|fuzz|delay|chorus|comp|boost|wah|phaser|flanger|trem|octave|looper|tuner|eq\\b/i;
+
+const ACCESSORY_RE = /\\b(one ?spot|1 ?spot|cioks|truetone|isolated power|power ?supply|psu\\b|wall wart|adapter|patch cable|cables?\\b|velcro|dual ?lock|pedal ?board|pedaltrain|pedal ?train|flight case|soft case|gig ?bag|\\bbag\\b|\\bcase\\b|riser|junction box|snake|strap|picks?\\b|stand\\b|rack\\b|patch bay)\\b/i;
+
+const PEDAL_NOUN = /\\b(over)?drive|distortion|fuzz|delay|reverb|chorus|flanger|phas(er|e)|tremolo|trem\\b|vibrato|octave|looper|loop\\b|tuner|compressor|comp\\b|boost|wah|\\beq\\b|equali[sz]er|filter|synth|pitch|harmoni|preamp|\\bamp\\b|\\bcab\\b|noise gate|\\bgate\\b|univibe|rotary|leslie|whammy|talk ?box|volume|expression|switcher|pedal|\\bfx\\b|echo|slap|spring|plate|shifter|sustain|envelope|auto ?wah|ring mod|bit ?crush|freeze|shimmer|modul/i;
+
+const FILLER_RE = /^\\s*(?:[-*\\u2022\\u25cf]\\s*)?(?:(?:like |almost |practically |basically )?new\\b|mint\\b|excellent\\b|great\\b|good\\b|fair\\b|(?:very )?clean\\b|barely|hardly|lightly|gently|rarely|works?\\b|working\\b|tested\\b|includes?\\b|included\\b|comes? with\\b|w\\/\\s?box|with (?:original )?box|original box|no velcro|velcro|condition\\b|cosmetic|used\\b|sounds?\\b|price[ds]?\\b|asking\\b|obo\\b|firm\\b|cash\\b)/i;
+
+const SECTION_RE = /^\\s*[-*\\u2022\\u25cf]?\\s*(pedals?|gear|amps?|accessor|available|for sale|misc|others?|guitars?|pedal ?boards?|power|cables?|items?|list|inventory)\\b\\s*[:\\-\\u2013]?\\s*$/i;
+
+/* Is this line plausibly a pedal NAME rather than a condition blurb? */
+function looksLikeName(txt) {
+  const t = String(txt || "").trim();
+  if (t.length < 3) return false;
+  if (SECTION_RE.test(t)) return false;
+  if (/^[([]/.test(t)) return false;
+  if (brandTier(t).tier !== "?") return true;
+  if (FILLER_RE.test(t) && !PEDAL_NOUN.test(t)) return false;
+  if (PEDAL_NOUN.test(t)) return true;
+  const words = t.split(/\\s+/);
+  if (words.length >= 1 && words.length <= 7) {
+    const caps = words.filter(w => w[0] && w[0] === w[0].toUpperCase() && /[A-Za-z]/.test(w[0])).length;
+    if (caps >= Math.max(1, Math.floor(words.length / 2))) return true;
+  }
+  return false;
+}
+
+const MOTIVES = [
+  [/\\bmoving\\b|\\brelocat|\\bmove (?:out|across|to|away)\\b|\\bleaving (?:town|the state|the country)\\b|\\bpcs\\b|\\bdeploy/i, "Moving", 3],
+  [/\\bmust go\\b|\\bneed(?:s|ed)? (?:to |it )?gone\\b|\\basap\\b|\\bquick(?:ly)? (?:sale|before)\\b|\\bby (?:friday|monday|the weekend|end of (?:the )?(?:week|month))\\b/i, "Urgent deadline", 3],
+  [/\\bneed(?:s|ed)? (?:the )?(?:cash|money)\\b|\\bshort on cash\\b|\\braising (?:cash|funds)\\b|\\bbills?\\b|\\brent\\b(?!al)|\\bhard times\\b/i, "Needs cash", 3],
+  [/\\bdivorce|\\bestate\\b|\\bpassed away\\b|\\bmy (?:late |dad|father|husband|son|brother|uncle)/i, "Estate or family sale", 3],
+  [/\\bquit(?:ting)? playing\\b|\\bno longer play|\\bdon.?t play (?:anymore|any more|much)\\b|\\bgave up\\b|\\bstopped playing\\b|\\bhanging (?:it|them) up\\b/i, "No longer playing", 3],
+  [/\\bband (?:broke up|split|ended)\\b|\\bnot gigging\\b|\\bstopped gigging\\b|\\bdone gigging\\b/i, "Stopped gigging", 2],
+  [/\\bfund(?:ing|s)? (?:a|an|another|my|other|new)\\b|\\bto fund\\b|\\bsaving (?:up )?for\\b|\\bpay(?:ing)? for (?:a|an|another)\\b/i, "Funding another purchase", 2],
+  [/\\bswitch(?:ed|ing)? (?:from .{0,30})?to (?:a )?(?:digital|modeler|modelling|modeling|helix|kemper|quad ?cortex|tonex|amp ?sim|plugins?|fractal)\\b|\\bwent digital\\b|\\bgoing digital\\b/i, "Switched to digital", 2],
+  [/\\brig change|\\bchanged? (?:my |the )?rig\\b|\\bnew (?:rig|setup|board)\\b|\\brebuild(?:ing)? (?:my |the )?(?:board|rig)\\b|\\bno longer need|\\bdon.?t need\\b|\\bnot needed\\b/i, "Rig change", 2],
+  [/\\bupgrad(?:ed|ing)\\b|\\bbought (?:a )?(?:new|better)\\b|\\breplaced (?:it|these|them|with)\\b|\\bmoving on to\\b/i, "Upgraded", 2],
+  [/\\bdownsiz|\\bmaking room|\\bclearing (?:out|space|house)|\\bclean(?:ing)? (?:out|house|up)\\b|\\bcleanout\\b|\\bclean out\\b|\\bpurge\\b|\\bdeclutter|\\bsimplif|\\bpar(?:ing|e) down\\b|\\bthinning (?:out|the herd)\\b|\\bconsolidat|\\btoo many pedals\\b|\\bselling off\\b/i, "Downsizing the board", 2],
+  [/\\bnew baby\\b|\\bbaby (?:on the way|coming)\\b|\\bexpecting\\b|\\bnew house\\b|\\bnew job\\b|\\bcollege\\b/i, "Life change", 2],
+  [/\\bnever use[d]?\\b|\\bdon.?t use\\b|\\bcollecting dust\\b|\\bsitting (?:in|around|unused)\\b|\\bhaven.?t used\\b|\\bbarely (?:used|touched)\\b/i, "Collecting dust", 2],
+  [/\\bstore\\b|\\bshop\\b|\\bdealer\\b|\\bb.?stock\\b|\\binventory\\b|\\bwholesale\\b|\\bbrand new in box\\b|\\bnib\\b/i, "Dealer inventory", 1],
+];
+
+const NOGOS = [
+  [/\\bprices?\\s+(?:are\\s+|is\\s+)?firm\\b|\\bfirm on (?:the )?price|\\bi.?m firm\\b/i, "Prices firm", 3],
+  [/\\bnon.?negotiable\\b|\\bnot negotiable\\b|\\bno negotiat|\\bno haggl|\\bprices? are set\\b|\\bwon.?t go (?:any )?lower\\b|\\bno lower\\b/i, "Non-negotiable", 3],
+  [/\\bno (?:low ?ball|lowball)|\\blow ?ball(?:ers|ing)?\\b|\\bno low offers\\b|\\bdon.?t insult\\b/i, "Anti-lowball warning", 2],
+  [/\\bno offers\\b|\\bnot (?:taking|accepting) offers\\b|\\bprice is the price\\b|\\bas listed\\b/i, "No offers accepted", 3],
+  [/\\bi know what (?:i|it|these|they) (?:have|is|are|.?s worth)\\b|\\bpriced? (?:to|below|under|according to|based on) (?:recent )?(?:reverb|sold|market)|\\bcheck reverb\\b|\\breverb (?:prices?|sold)\\b|\\bbelow (?:market|retail)\\b|\\bpriced fairly\\b|\\bpriced to sell\\b|\\bmarket value\\b/i, "Seller is comp-aware", 3],
+  [/\\bno trades?\\b|\\bnot (?:looking for|interested in|doing) trades?\\b/i, "No trades", 1],
+  [/\\bno holds?\\b|\\bwill not hold\\b|\\bfirst come,? first serve/i, "No holds", 1],
+  [/\\bserious (?:inquiries|buyers) only\\b|\\bdon.?t ask if (?:it.?s )?(?:still )?available\\b|\\bno (?:scammers|spam|bots)\\b/i, "Low-patience seller", 1],
+  [/\\bno ship|\\bwill not ship\\b|\\blocal (?:pickup|pick ?up)? ?only\\b|\\bpick ?up only\\b|\\bcash only\\b/i, "Local or cash only", 1],
+  [/\\bfor trade only\\b|\\btrade only\\b|\\bfsot\\b|\\bonly (?:willing to )?trade\\b/i, "Trade-oriented", 2],
+];
+
+function readMotivation(desc) {
+  const hits = MOTIVES.filter(m => m[0].test(desc));
+  if (!hits.length) return { labels: [], level: "Unknown", strength: 0 };
+  const strength = Math.max.apply(null, hits.map(h => h[2]));
+  return {
+    labels: hits.map(h => h[1]).filter((v, i, a) => a.indexOf(v) === i),
+    level: strength === 3 ? "High" : strength === 2 ? "Medium" : "Low",
+    strength,
+  };
+}
+
+function readNoGo(desc) {
+  const hits = NOGOS.filter(n => n[0].test(desc));
+  const weight = hits.reduce((n, h) => n + h[2], 0);
+  return {
+    flags: hits.map(h => h[1]),
+    weight,
+    verdict: weight >= 4 ? "NO-GO" : weight >= 2 ? "CAUTION" : "",
+  };
+}
+
+/* 0-100, and it is about the OPPORTUNITY rather than the pedal's worth. It
+   says which rows are worth pulling comps on first, nothing more. */
+function flipScore(row, ctx) {
+  let s = 40;
+  s += { A: 22, B: 10, C: -18, "?": 0 }[row.tier];
+  const p = row.ask || 0;
+  if (p < 30) s += 4; else if (p < 80) s += 8; else if (p < 200) s += 6; else if (p < 400) s += 2; else s -= 4;
+  if (ctx.count >= 10) s += 12; else if (ctx.count >= 6) s += 8; else if (ctx.count >= 3) s += 4;
+  s += { 0: 0, 1: 0, 2: 8, 3: 16 }[ctx.motivation];
+  if (/\\bobo\\b|\\bor best offer\\b|\\bnegotiable\\b|\\bmake (?:me )?an offer\\b|\\boffers? welcome\\b|\\bwilling to (?:deal|negotiate)\\b/i.test(ctx.desc)) s += 8;
+  if (/\\bdiscount\\b|\\bdeal (?:on|for) (?:multiple|the lot|all)\\b|\\bcheaper if you take\\b|\\bbundle\\b/i.test(ctx.desc)) s += 6;
+  s -= ctx.nogoWeight * 4;
+  if (row.sold) s -= 25;
+  if (row.pending) s -= 12;
+  if (row.accessory) s -= 22;
+  if (/\\bbroken\\b|\\bnot working\\b|\\bfor parts\\b|\\bas.?is\\b|\\bdoesn.?t work\\b|\\bneeds repair\\b/i.test(row.model + " " + (row.note || ""))) s -= 20;
+  return Math.max(0, Math.min(100, Math.round(s)));
+}
+
+function gradeFor(s) {
+  return s >= 78 ? "A" : s >= 66 ? "B" : s >= 54 ? "C" : s >= 42 ? "D" : "F";
+}
+
+function cleanName(s) {
+  return String(s).replace(/^[\\s\\t\\-\\u2013\\u2014:\\u2022*\\u00b7.=>]+/, "")
+    .replace(/[\\s\\t\\-\\u2013\\u2014:\\u2022*\\u00b7.=>]+$/, "")
+    .replace(/\\s{2,}/g, " ").trim();
+}
+
 function parseListing(text) {
   const rows = [];
   let guessedCount = 0;
   let noPrice = 0;
+  let soldCount = 0;
 
-  for (let raw of String(text).split(/\\r?\\n/)) {
-    let line = raw.trim();
+  const full = String(text);
+  const lines = full.split(/\\r?\\n/).map(l => l.trim());
+  const usedAsName = new Set();
+
+  for (let idx = 0; idx < lines.length; idx += 1) {
+    const raw = lines[idx];
+    if (!raw) continue;
+    let line = raw.replace(/^[-*\\u2022\\u00b7\\u2013\\u2014>]+\\s*/, "").replace(/^\\d{1,2}[.)]\\s+/, "").trim();
     if (!line) continue;
-    line = line.replace(/^[-*•·\\u2013\\u2014>]+\\s*/, "").replace(/^\\d{1,2}[.)]\\s+/, "").trim();
-    if (!line) continue;
-    if (!/[a-z]/i.test(line)) continue;                       /* a bare price line */
-    if (/^(pedals?|for sale|prices?|selling|list|gear|my board|board)\\b[:\\s]*$/i.test(line)) continue;
+    if (SECTION_RE.test(line)) continue;
 
     const money = parseMoney(line);
-    let name = line;
-    if (money) {
-      name = line
-        .replace(/\\$\\s*[\\d,]+(?:\\.\\d{1,2})?/, " ")
-        .replace(/(?:[-\\u2013\\u2014:@]|\\bfor\\b|\\basking\\b)?\\s*\\d{2,5}(?:\\.\\d{1,2})?\\s*(?:each|ea\\.?|obo|firm|shipped|net|ono|\\+\\s*ship(?:ping)?)?\\s*$/i, " ");
+
+    if (!money) {
+      /* A sold entry with no price still tells us the lot has been picked
+         over, which is what the exclusion below is built on. */
+      if (SOLD_RE.test(line)) {
+        const stem = cleanName(line.split(SOLD_RE)[0] || "");
+        if (looksLikeName(stem)) soldCount += 1;
+      }
+      /* Only a line that READS like a pedal counts as one we could not price.
+         Counting every prose line reported "4 with no price found" on a
+         listing whose only real miss was none, which teaches the reader to
+         ignore the number. */
+      if (looksLikeName(line)) noPrice += 1;
+      continue;
     }
-    name = name.replace(/\\s{2,}/g, " ").replace(/[\\s,\\-\\u2013\\u2014:]+$/, "").trim();
-    if (!name) name = line;
+
+    let name = line
+      .replace(/\\$\\s*[\\d,]+(?:\\.\\d{1,2})?/, " ")
+      .replace(/(?:[-\\u2013\\u2014:@]|\\bfor\\b|\\basking\\b)?\\s*\\d{2,5}(?:\\.\\d{1,2})?\\s*(?:each|ea\\.?|obo|firm|shipped|net|ono|\\+\\s*ship(?:ping)?)?\\s*$/i, " ");
+    name = cleanName(name);
+    let note = "";
+    let whole = raw;
+
+    /* The name-on-a-previous-line format. Walk back up to four lines for
+       something that reads like a product, carrying what we skip as the note. */
+    if (!looksLikeName(name)) {
+      const carried = name ? [name] : [];
+      let j = idx - 1;
+      while (j >= 0 && idx - j <= 4) {
+        const cand = lines[j];
+        if (!cand || usedAsName.has(j) || /\\$\\s*\\d/.test(cand)) { j -= 1; continue; }
+        if (looksLikeName(cand)) {
+          usedAsName.add(j);
+          if (carried.length) note = carried.join(" ").trim();
+          name = cleanName(cand);
+          whole = lines.slice(j, idx + 1).join(" ");
+          break;
+        }
+        carried.unshift(cand);
+        j -= 1;
+      }
+    }
+
+    /* Not every priced line is a pedal. */
+    if (NOT_PEDAL.test(whole) && !PEDAL_ANYWAY.test(whole) && brandTier(whole).tier === "?") continue;
+    if (name.length < 2 || name.length > 90) continue;
+    if (!/[A-Za-z]{2}/.test(name)) continue;
+
+    const sold = SOLD_RE.test(whole);
+    if (sold) soldCount += 1;
+
+    /* The marker is a flag on the row, so it should not also be part of the
+       name: "Big Muff - SOLD" is not what the pedal is called, and it would
+       travel into the message and into the comps lookup. */
+    name = cleanName(name.replace(SOLD_RE, " ").replace(/\\s{2,}/g, " "));
+    if (name.length < 2) continue;
 
     const { brand, model } = splitBrand(name);
     const hit = noteFor(name);
     const seed = hit && Object.prototype.hasOwnProperty.call(MV, hit.n) ? MV[hit.n] : undefined;
-
-    if (money && money.guessed) guessedCount += 1;
-    if (!money) noPrice += 1;
+    if (money.guessed) guessedCount += 1;
 
     rows.push({
       brand, model,
-      ask: money ? money.value : null,
-      askGuessed: Boolean(money && money.guessed),
+      ask: money.value,
+      askGuessed: Boolean(money.guessed),
       mv: typeof seed === "number" ? seed : null,
       mvSeeded: typeof seed === "number",
       mvSpread: hit ? seed === null : false,
       mvSourced: false,
       evi: null,
+      tier: brandTier(name).tier,
+      sold,
+      pending: PEND_RE.test(whole),
+      accessory: ACCESSORY_RE.test(name),
+      note,
     });
   }
-  return { rows, guessedCount, noPrice };
+
+  /* Listing-level reading, from the whole text rather than any one line. */
+  const motivation = readMotivation(full);
+  const nogo = readNoGo(full);
+  const ctx = {
+    count: rows.length,
+    motivation: motivation.strength,
+    desc: full,
+    nogoWeight: nogo.weight,
+  };
+  for (const r of rows) {
+    r.score = flipScore(r, ctx);
+    r.grade = gradeFor(r.score);
+  }
+
+  return { rows, guessedCount, noPrice, soldCount, motivation, nogo };
 }
 
 /* ---------------------------------------------------------------------------
@@ -2064,6 +2319,32 @@ function renderLot() {
 
     const b = cell(r.brand, "", "brand");
     b.input.addEventListener("input", () => { r.brand = b.input.value; recompute(); });
+
+    /* Tier, sold and accessory, where the eye already is. A Strymon and a
+       Behringer at the same asking price are not the same opportunity, and
+       that is the single strongest signal the parser produces. */
+    const chip = (text, cls, title) => {
+      const sp = document.createElement("span");
+      sp.className = "chip" + (cls ? " " + cls : "");
+      sp.textContent = text;
+      if (title) sp.title = title;
+      b.td.appendChild(sp);
+    };
+    if (r.tier && r.tier !== "?") {
+      chip(r.tier, r.tier.toLowerCase(),
+        r.tier === "A" ? "Boutique, holds value" : r.tier === "B" ? "Solid mid-tier" : "Budget, low resale");
+    }
+    if (r.sold) chip("SOLD", "sold", "Already gone, and it drags the lot's score down");
+    else if (r.pending) chip("PEND", "sold", "Pending");
+    if (r.accessory) chip("acc", "c", "An accessory rather than a pedal");
+    /* The SCORE rather than its letter grade, because the tier chip beside it
+       is already a letter and "A A" reads as one thing said twice when it is
+       two different claims: what the brand is worth, and whether this row is
+       worth a message. */
+    if (typeof r.score === "number") {
+      chip(String(r.score), r.score >= 66 ? "a" : r.score < 42 ? "c" : "",
+        "Flip score out of 100 (" + r.grade + "), about the opportunity rather than the pedal's worth");
+    }
     tr.appendChild(b.td);
 
     const mo = cell(r.model, "", "model");
@@ -2357,7 +2638,7 @@ $("noteCycle").addEventListener("click", () => {
 });
 
 function doParse() {
-  const { rows, guessedCount, noPrice } = parseListing(els.paste.value);
+  const { rows, guessedCount, noPrice, soldCount, motivation, nogo } = parseListing(els.paste.value);
   const note = $("parseNote");
   if (!rows.length) {
     note.textContent = els.paste.value.trim()
@@ -2384,8 +2665,42 @@ function doParse() {
   const spread = rows.filter(r => r.mvSpread).length;
   if (seeded) bits.push(\`\${seeded} market estimate\${seeded === 1 ? "" : "s"} seeded.\`);
   if (spread) bits.push(\`\${spread} left blank on purpose, vintage spread too wide to guess.\`);
+  if (soldCount) bits.push(\`\${soldCount} already sold or pending.\`);
   note.textContent = bits.join(" ");
   note.className = "parse-note" + (guessedCount ? " warn" : "");
+
+  /* THE LISTING-LEVEL READING, which is about the SELLER rather than the gear.
+     Why they are selling moves what an offer should be; the no-go language
+     decides whether to send one at all. Both come out of the whole description
+     rather than any single line, so they belong here rather than in a column. */
+  const read = $("listingRead");
+  read.textContent = "";
+  const parts = [];
+  if (motivation.labels.length) {
+    parts.push(["Why", motivation.labels.join(", ") + " (" + motivation.level + ")",
+      motivation.strength >= 3 ? "hit" : ""]);
+  }
+  if (nogo.flags.length) {
+    parts.push([nogo.verdict || "Watch", nogo.flags.join(", "),
+      nogo.verdict === "NO-GO" ? "miss" : nogo.verdict ? "warnish" : ""]);
+  }
+  const graded = rows.filter(r => r.grade);
+  if (graded.length) {
+    const best = graded.slice().sort((a, b) => b.score - a.score)[0];
+    parts.push(["Best row", (best.brand + " " + best.model).trim() + " (" + best.grade + ")", ""]);
+  }
+  if (!parts.length) parts.push(["Read", "Nothing in the text about why they are selling.", ""]);
+
+  for (const [label, value, cls] of parts) {
+    const div = document.createElement("div");
+    div.className = "read-line" + (cls ? " " + cls : "");
+    const b = document.createElement("b");
+    b.textContent = label + ": ";
+    div.appendChild(b);
+    div.appendChild(document.createTextNode(value));
+    read.appendChild(div);
+  }
+  read.hidden = false;
 
   renderLot();
   recompute();
