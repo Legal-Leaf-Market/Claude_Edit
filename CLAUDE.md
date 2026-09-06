@@ -2812,6 +2812,29 @@ nothing in any log. The tests assert SHAPE rather than copy: opened and
 closed, balanced tags, the controls the page is useless without, and the three
 payout rates.
 
+**THE PARSER IS THE OWNER'S FLIP-SHEET SCRIPT, PORTED.** The reader it replaced
+asked one question per line: is there a price on it. Sellers do not write that
+way. The ported one handles the name-on-a-PREVIOUS-line format, rejects priced
+lines that are not pedals (shipping, Venmo, "all for", retail references), tags
+a brand TIER because a Strymon and a Behringer at one price are not one
+opportunity, reads SOLD and PENDING, marks accessories rather than dropping
+them, and pulls the seller's motivation and their no-go language out of the
+whole description. Every row gets a flip score, which is about the OPPORTUNITY
+and never about what the pedal is worth: the market column stays empty until
+the book table seeds it or somebody presses Pull comps.
+
+**IT IS TESTED AS SHIPPED, by pulling the real function out of the real HTML
+and evaluating it**, the same technique the collector test uses on the
+bookmarklet. A second copy in a module would be section 7's fork with the drift
+hidden inside a regex.
+
+**TWO WORDS IN IT ARE AMBIGUOUS AND BOTH COST A BUG.** "Reverb" names a
+marketplace and an effect: bare in the reject list it threw away every reverb
+pedal, and absent from it "these go for $90 on Reverb" became a $90 pedal. It
+is matched only in its marketplace sense now ("on reverb", "reverb prices"),
+and a known BRAND rather than the word "reverb" is what rescues a real pedal
+line that also mentions what it goes for new.
+
 **THE LISTING PARSER REFUSES TO INVENT A PRICE.** A dollar sign wins outright,
 a separator then a number wins, and a bare trailing number is taken ONLY when
 the word in front of it is not the kind a model number follows. That is why
@@ -2820,6 +2843,13 @@ from that third rule is shown in amber, because it is the one class of number
 nobody typed and nobody confirmed. Asking price and market value are separate
 columns and must stay that way: a seller asks high, and merging them inflates
 every offer computed downstream.
+
+**AND A REGEX IN THAT DOCUMENT NEEDS ITS BACKSLASHES DOUBLED, WHICH IS ITS OWN
+CLASS OF BUG.** The file is a template literal, so a pattern written `\\s` in
+the source arrives as `\s` in the browser and one written `\s` arrives as
+`s`. That is not a syntax error and nothing throws: `/\s{2,}/` shipped as
+`/s{2,}/` and quietly rewrote "Boss DS-1" as "Bo DS-1". A test pins that exact
+string.
 
 **AND THE PARSER'S DASHES ARE ESCAPED, NOT TYPED.** `tests/stompbox/
 house-style.test.ts` forbids a literal em dash anywhere in the guide's source
