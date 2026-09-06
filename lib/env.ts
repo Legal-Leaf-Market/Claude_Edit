@@ -51,6 +51,8 @@ function int(name: string, fallback: number): number {
 
 /** eBay's sandbox host. Production is api.ebay.com and requires an approved keyset. */
 const EBAY_SANDBOX_BASE = "https://api.sandbox.ebay.com/buy/feed/v1_beta"
+/** eBay's API host. Selling uses several paths off it, so this is the origin. */
+const EBAY_SANDBOX_ORIGIN = "https://api.sandbox.ebay.com"
 
 export const env = {
   databaseUrl: str("DATABASE_URL"),
@@ -85,6 +87,42 @@ export const env = {
     },
     get isSandbox(): boolean {
       return env.ebay.baseUrl.includes("sandbox")
+    },
+  },
+
+  /**
+   * SELLING ON EBAY, WHICH IS A DIFFERENT API AND A DIFFERENT GRANT.
+   *
+   * `env.ebay` above is the BUY Feed API: bulk catalogue for the aggregator,
+   * read only, Limited Release. This is the SELL Inventory API, which creates
+   * listings in our own eBay account. They share a marketplace id and nothing
+   * else: different base paths, different OAuth scopes (sell.inventory and
+   * sell.account), and an approval that is granted separately. A token minted
+   * for one will not work on the other, and the failure reads like a bad
+   * credential rather than a wrong scope, so they are deliberately not one
+   * variable.
+   *
+   * SANDBOX BY DEFAULT, the same rule the feed follows and for the same reason:
+   * a misconfigured deploy must not create real listings in a real shop.
+   *
+   * The token is a USER access token rather than an application one, because
+   * creating a listing acts on behalf of a seller. It expires in about two
+   * hours, so `EBAY_SELL_REFRESH_TOKEN` plus the app credentials are what keeps
+   * this working unattended; with only an access token set it works until that
+   * token lapses and then says so.
+   */
+  ebaySell: {
+    origin: str("EBAY_SELL_API_ORIGIN", EBAY_SANDBOX_ORIGIN),
+    accessToken: str("EBAY_SELL_ACCESS_TOKEN"),
+    refreshToken: str("EBAY_SELL_REFRESH_TOKEN"),
+    clientId: str("EBAY_SELL_CLIENT_ID"),
+    clientSecret: str("EBAY_SELL_CLIENT_SECRET"),
+    marketplaceId: str("EBAY_SELL_MARKETPLACE_ID", "EBAY_US"),
+    get isConfigured(): boolean {
+      return Boolean(env.ebaySell.accessToken || env.ebaySell.refreshToken)
+    },
+    get isSandbox(): boolean {
+      return env.ebaySell.origin.includes("sandbox")
     },
   },
 

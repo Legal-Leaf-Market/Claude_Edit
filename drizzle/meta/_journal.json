@@ -64,6 +64,13 @@
       "when": 1788625485593,
       "tag": "0008_steady_terror",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788705418645,
+      "tag": "0009_bizarre_slapstick",
+      "breakpoints": true
     }
   ]
 }

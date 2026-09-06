@@ -723,6 +723,7 @@ process, and the accident is far likelier.
 | `IMPACT_ANDERTONS_FTP_*` | Anderton's via Impact.com, ingested by `lib/ingestion/andertons-impact.ts`. Impact delivers catalogues by FTP drop, NOT over an HTTPS feed URL like Awin/CJ/LinkConnector, so this is a host/user/password/path quartet. `hasAndertonsFeed` gates on the credential pair, since host and path have defaults. **The credentials are a dedicated pair Impact mails on request** ("Email Product Catalog FTP Username and Password", needs Technical Settings permission), not the Impact account login, and **the host comes from the platform's own "Download via FTP" panel** rather than from this file: `products.impact.com` is the default here but is documented on the brand UPLOAD side, so treat it as a starting guess. See the FTP note below the table. |
 | `GOAFFPRO_*_REF_PARAM` / `GOAFFPRO_*_REF_CODE` | One pair per small independent Shopify/WooCommerce seller (Folkcraft, Acoustic Guitar, Jamstik, Jackson Audio, Eminence Digital, Haze Guitar, EART Guitar, Play With Authority, Pures Music, Squaver, Eason Music Store, Go Kalimba). Catalogue ingestion needs no credential at all; an unset code just means a null `affiliate_url` until the referral is confirmed. |
 | `REVERB_PRICE_GUIDE` | Reverb's price guide, read by `lib/reverb/price-guide.ts` for the outreach tool's comps. **OFF by default and its own switch**, deliberately not riding along on the shop token: it is the one place the Reverb API is asked about gear that is not ours. What keeps it inside section 2 is structural rather than a promise, and `tests/reverb-price-guide.test.ts` holds each part: the module imports no database at all, only `lib/outreach/comps.ts` may import it, and nothing it returns reaches `marketplace_listings`, a median, a deal badge or any public page. It informs one admin deciding what to offer somebody. Withdrawable in one variable, without a deploy. |
+| `EBAY_SELL_*` | Listing on eBay from `/admin/listings`, via the **Sell Inventory API**. A DIFFERENT API and a different OAuth grant from `EBAY_*` above, which is the read-only Buy Feed the aggregator ingests: different base path, different scopes (`sell.inventory`, `sell.account`), separate approval. `EBAY_SELL_API_ORIGIN` defaults to **sandbox** for the same reason the feed does. The access token is a USER token and lapses in about two hours, so the refresh token plus the client id and secret are what keep it working unattended. |
 | `REVERB_SHOP_TOKEN` / `REVERB_SHOP_SLUG` | Dean's Boutique, OUR OWN Reverb shop, read by `lib/reverb/shop.ts` and served as public JSON by `/api/reverb/shop`. This is not the exception to section 2 that it looks like: see the note under that section. The token is a Personal Access Token from the shop's own API settings and belongs in the deployment, never in this repository. The slug is not a secret and defaults to `deans-boutique-505`. Unset is fully supported and the section simply does not render. |
 | `GROQ_API_KEY` / `GROQ_MODEL` | The Ask assistant (section 14). Unset means /api/ask 503s and the button never renders. The model default is overridable because Groq retires models often. |
 | `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
@@ -1854,6 +1855,20 @@ engine.
   a mistyped intake id files one pedal's photo under another and nothing fails.
 - Do NOT publish a manufacturer's serial number alongside a lab photo. Our own
   intake reference identifies the unit for us and means nothing to anybody else.
+- Do NOT import `marketplaceListings` or `canonicalGear` from anywhere under
+  `lib/listing/`. Our own stock inside the median means setting a price and also
+  computing the market price that judges it (section 24).
+- Do NOT publish to a channel without checking `readinessFor` first, and do NOT
+  let a second push reach a marketplace. The unique index on (draft, channel) is
+  what stops two listings of one physical pedal, and eBay's offer POST needs its
+  own lookup because only the SKU-keyed PUT before it is idempotent.
+- Do NOT record a failed takedown as ended. It is still live and still buyable,
+  and marking it ended is how one unit gets sold twice with nothing failing.
+- Do NOT send `cost_cents` or `offer_floor_cents` to any marketplace. They are
+  what we paid and the least we will take, and both are ours alone.
+- Do NOT use `EBAY_OAUTH_TOKEN` for selling or `EBAY_SELL_ACCESS_TOKEN` for the
+  feed. Different APIs, different scopes, and the failure reads like a bad
+  credential rather than a wrong one.
 - Do NOT put our own inventory in the comparison grid, or badge it, without the
   four guarantees in section 24. Preferring the listing we earn most from is
   ranking by payout, and our own price inside the median is marking our own
@@ -2284,6 +2299,42 @@ and the footer promises commission never affects ranking. Our own listing pays
 100% margin against a competitor's 3%, so a preference for it is ranking by
 payout at its most extreme, and a badge inside a result set is exactly what
 section 19 refused for the DistroKid banner.
+
+**WHAT IS BUILT AS OF SEPTEMBER 2026 IS THE LISTING SIDE, AND ONLY THAT.**
+`/admin/listings`, `lib/listing/`, `listing_drafts` and `listing_publications`.
+It writes a unit once and pushes it to Reverb and eBay, which is selling on
+other people's marketplaces rather than putting our stock in our own grid, so
+none of the four guarantees below are engaged by it. What keeps that true is
+structural and tested: nothing in `lib/listing/` imports `marketplaceListings`
+or `canonicalGear`, and nothing it does reaches a median or a deal badge.
+
+**A ROW IS A PHYSICAL UNIT, NOT A LISTING, and `sku` is ours.** One pedal on the
+bench is one row, published to two marketplaces as two listings of the same
+object. Modelling it per listing makes the copies drift the moment somebody
+fixes a typo and leaves nothing to hang "it sold, take it down" off. The SKU is
+the join key because both marketplaces accept a seller SKU and hand it back.
+
+**TWO FAILURES COST REAL MONEY HERE AND NOTHING ELSE DOES.** Pushing twice puts
+two listings of one pedal on one marketplace; selling on one channel and leaving
+the other live oversells it. So the unique index on `(draft, channel)` is a
+guard rather than bookkeeping, eBay's offer step is preceded by a lookup because
+it is a POST and not idempotent the way the SKU-keyed PUT before it is, and a
+FAILED takedown stays marked published, because it still is. Recording it as
+ended is exactly how a unit sells twice while the tool reports success.
+
+**THE READINESS CHECK IS NOT A CONVENIENCE.** A marketplace rejects an
+incomplete listing in its own vocabulary naming its own fields, and eBay in
+particular answers with an aspect nobody has heard of. `lib/listing/readiness.ts`
+says what is missing in our words before anything is sent. It is also what keeps
+the master record honest: the moment a channel wants something the form does not
+ask for, that is where it shows up.
+
+**THE REVERB WRITE IS THE SAME CARVE-OUT AS THE READ.** Section 2 bans that API
+for building the catalogue and the reason it gives is that it is scoped to
+managing your own shop. `lib/reverb/shop.ts` reads ours; `lib/listing/channels/
+reverb.ts` writes ours. Ending a listing sends `not_sold` when it went elsewhere,
+because telling Reverb it sold there inflates their sold data and ours, and our
+own order history is the top-ranked source in the comps lookup.
 
 There is also a arithmetic problem that would not announce itself. If our units
 land in `marketplace_listings` they enter the MEDIAN that judges deals, so we
