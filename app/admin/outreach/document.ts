@@ -374,6 +374,8 @@ table.lot-table { width: 100%; min-width: 520px; border-collapse: collapse; font
 }
 .meta .spacer { flex: 1; }
 .meta .mini { padding: 5px 9px; }
+.meta .mini.arrow { padding: 3px 9px; font-size: 16px; line-height: 1; }
+.meta .pick { min-width: 48px; text-align: center; color: var(--text-dim); }
 
 /* The pause between messages is information: two goes after they answer,
    three goes straight after two. */
@@ -627,7 +629,9 @@ table.lot-table { width: 100%; min-width: 520px; border-collapse: collapse; font
                 <span class="dirty" id="d1" hidden>Edited</span>
                 <span class="count" id="c1">0</span>
                 <span class="spacer"></span>
-                <button class="mini" data-shuffle="1">Shuffle</button>
+                <button class="mini arrow" data-step="-1" data-for="1" aria-label="Previous version of message one" title="Previous version">&lsaquo;</button>
+                <span class="pick" id="pick1" aria-live="polite">1 / 10</span>
+                <button class="mini arrow" data-step="1" data-for="1" aria-label="Next version of message one" title="Next version">&rsaquo;</button>
                 <button class="mini" data-copy="1">Copy</button>
               </div>
             </div>
@@ -643,7 +647,9 @@ table.lot-table { width: 100%; min-width: 520px; border-collapse: collapse; font
                 <span class="dirty" id="d2" hidden>Edited</span>
                 <span class="count" id="c2">0</span>
                 <span class="spacer"></span>
-                <button class="mini" data-shuffle="2">Shuffle</button>
+                <button class="mini arrow" data-step="-1" data-for="2" aria-label="Previous version of message two" title="Previous version">&lsaquo;</button>
+                <span class="pick" id="pick2" aria-live="polite">1 / 10</span>
+                <button class="mini arrow" data-step="1" data-for="2" aria-label="Next version of message two" title="Next version">&rsaquo;</button>
                 <button class="mini" data-copy="2">Copy</button>
               </div>
             </div>
@@ -659,7 +665,9 @@ table.lot-table { width: 100%; min-width: 520px; border-collapse: collapse; font
                 <span class="dirty" id="d3" hidden>Edited</span>
                 <span class="count" id="c3">0</span>
                 <span class="spacer"></span>
-                <button class="mini" data-shuffle="3">Shuffle</button>
+                <button class="mini arrow" data-step="-1" data-for="3" aria-label="Previous version of message three" title="Previous version">&lsaquo;</button>
+                <span class="pick" id="pick3" aria-live="polite">1 / 10</span>
+                <button class="mini arrow" data-step="1" data-for="3" aria-label="Next version of message three" title="Next version">&rsaquo;</button>
                 <button class="mini" data-copy="3">Copy</button>
               </div>
             </div>
@@ -1427,123 +1435,434 @@ function parseListing(text) {
 /* ---------------------------------------------------------------------------
    MESSAGE COPY.
 --------------------------------------------------------------------------- */
-const OPENERS_ANY = [
-  c => \`\${c.hey}you still got the \${c.pedal}?\`,
-  c => \`\${c.hey}saw the \${c.pedal}. Still around?\`,
-  c => \`\${c.hey}that \${c.pedal} still up for grabs?\`,
-  c => \`\${c.hey}quick one, is the \${c.pedal} still up?\`,
-  c => \`\${c.hey}anybody grab the \${c.pedal} yet?\`,
-  c => \`\${c.hey}is the \${c.pedal} still going?\`,
-  c => \`\${c.hey}good taste man. \${c.pedal} still there?\`,
-];
-const OPENERS_LOT = [
-  c => \`\${c.hey}you selling these one at a time or would you do the whole lot?\`,
-  c => \`\${c.hey}sick board. Is the \${c.pedal} still up?\`,
-  c => \`\${c.hey}is the \${c.pedal} still there? And is there more where that came from?\`,
-  c => \`\${c.hey}is the whole lot still up or has it been picked over?\`,
-];
-/* When the gear note ends in a question, the opener must NOT also ask one.
-   Two questions in a first message from a stranger gets one answer at best. */
-const OPENERS_FLAT = [
-  c => \`\${c.hey}just saw your \${c.pedal} listing.\`,
-  c => \`\${c.hey}nice, a \${c.pedal}.\`,
-  c => \`\${c.hey}spotted the \${c.pedal} in your listing.\`,
-  c => \`\${c.hey}always good to see a \${c.pedal} pop up.\`,
+/* TEN OPENERS, each in two shapes. \`q\` asks whether the pedal is still there;
+   \`flat\` is the statement form, used when the gear note underneath already
+   ends in a question, because two questions in a first message from a
+   stranger gets one answer at best. Two versions are board-aware and fall
+   back to a single-pedal line when the lot is one item. The arrows on the
+   panel step through them; the pick persists per device. */
+const OPENERS = [
+  { q: c => \`\${c.hey}you still got the \${c.pedal}?\`,
+    flat: c => \`\${c.hey}just saw your \${c.pedal} listing.\` },
+  { q: c => \`\${c.hey}saw the \${c.pedal}. Still around?\`,
+    flat: c => \`\${c.hey}nice, a \${c.pedal}.\` },
+  { q: c => \`\${c.hey}that \${c.pedal} still up for grabs?\`,
+    flat: c => \`\${c.hey}spotted the \${c.pedal} in your listing.\` },
+  { q: c => \`\${c.hey}quick one, is the \${c.pedal} still up?\`,
+    flat: c => \`\${c.hey}always good to see a \${c.pedal} pop up.\` },
+  { q: c => \`\${c.hey}anybody grab the \${c.pedal} yet?\`,
+    flat: c => \`\${c.hey}saw the \${c.pedal} come up.\` },
+  { q: c => \`\${c.hey}is the \${c.pedal} still going?\`,
+    flat: c => \`\${c.hey}that \${c.pedal} caught my eye.\` },
+  { q: c => \`\${c.hey}good taste man. \${c.pedal} still there?\`,
+    flat: c => \`\${c.hey}good taste man. Nice \${c.pedal}.\` },
+  { q: c => \`\${c.hey}is the \${c.pedal} spoken for yet?\`,
+    flat: c => \`\${c.hey}nice \${c.pedal} you've got up.\` },
+  { q: c => c.scope === "one" ? \`\${c.hey}is the \${c.pedal} still available?\` : \`\${c.hey}you selling these one at a time or would you do the whole lot?\`,
+    flat: c => c.scope === "one" ? \`\${c.hey}saw your \${c.pedal}.\` : \`\${c.hey}sick board.\` },
+  { q: c => c.scope === "one" ? \`\${c.hey}is the \${c.pedal} still there?\` : \`\${c.hey}is the whole lot still up or has it been picked over?\`,
+    flat: c => c.scope === "one" ? \`\${c.hey}saw the \${c.pedal}.\` : \`\${c.hey}nice board, saw the \${c.pedal} in there.\` },
 ];
 
+/* TEN VERSIONS, THE OWNER'S WORDS (2026-09-05). Same facts, same emojis,
+   verbs and adjectives moved around. The arrows on the panel step through
+   them and the readout shows which is up; the pick persists per device. */
 const SETUPS = [
   c =>
-\`So quick heads up on who you're dealing with. We're opening a store. Like an actual brick and mortar spot. I buy gear for \${c.shop}, we've got a decent online thing going already, and now we're filling shelves.
+\`Hey there!
 
-Next round of buying is later this month. \${c.lotCap} would you be down to do a deal on whatever's still sitting there at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal we can move quicker than that.
+I'm one of 4 dudes opening a store. Like, an actual brick and mortar spot. I handle buying gear for \${c.shop}, we've got a decent online thing going already, and now we're filling physical shelves soon!
 
-Really depends what you're after though. Some people want cash in hand this week. Some want the most money possible and don't mind waiting a few weeks for it. We do both, no stress either way.\`,
+Our next round of buying is later this month. Since you've got a few pedals listed, would you be open to doing a deal on whatever you're still sitting on at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal, we might be able to move quicker than that, just low on funds atm.
 
-  c =>
-\`Before you answer, I should say I'm not just some guy buying one pedal. We're opening a store, a real physical one. I buy for \${c.shop}, and on top of the online stuff we're building up inventory for the actual location.
+After that, it really depends what you're after. Some people want cash in hand now. Some want the most money possible and don't mind waiting a few weeks for it. We do both, no stress either way.
 
-We're doing our next round of buying later this month. \${c.lotCap} anything still sitting there at the end of \${c.month} or start of \${c.nextMonth}, I'd love first crack at. And if it's the right deal we can just do it now.
+If you can wait on the cash, and want to maximize what you get...we can start moving TODAY 💰💵💪
 
-We do things a little different than most shops. Not really into lowballing people, we'd rather work something out. Honestly it comes down to one thing: you want money now, or you want the most money?\`,
-
-  c =>
-\`Quick context so I'm not wasting your time. We're opening a brick and mortar shop. I buy for \${c.shop}, we already sell online, and now we need actual stuff on actual shelves.
-
-Next buying round is later this month. \${c.lotCap} I'd rather talk about the whole thing than haggle over one pedal, and if any of it's still around at the end of \${c.month} or start of \${c.nextMonth} we'd love to do a deal on it. Right deal, sooner.
-
-We can buy the lot outright and pay you up front, or we list them for you and pay you as they sell, which works out to a good bit more. Totally your call which one's worth more to you.\`,
+Wanna hear more?\`,
 
   c =>
-\`Bit of context first. We're opening a store, a physical one, and I'm the guy filling it. I buy for \${c.shop}, we've got a growing online side, and the next round of buying for the shop floor is later this month.
+\`Hey!
 
-\${c.lotCap} I'd honestly rather take the whole thing off your hands than pick one pedal off you. Whatever's still sitting there at the end of \${c.month} or start of \${c.nextMonth}, we'd like to do a deal on. Right deal, we'll move faster.
+I represent 4 dudes starting a store. A real brick and mortar spot. I buy gear for \${c.shop}, we've already got a solid online thing going, and now we're stocking physical shelves soon!
 
-There's three ways we can do that, and which one's best really just depends on whether you want cash now or top dollar later.\`,
+Next round of buying happens later this month. Since you have a few pedals up, would you be down to work out a deal on whatever's still unsold at the end of \${c.month} or start of \${c.nextMonth}? If the deal's right, we may be able to move faster than that, just a little low on funds atm.
+
+Beyond that, it really comes down to what you're after. Some folks want cash in hand now. Others want the most money possible and are fine waiting a few weeks for it. We do both, no pressure either way.
+
+If waiting on the cash is fine and you want to max out what you get...we can start moving TODAY 💰💵💪
+
+Want to hear more?\`,
+
+  c =>
+\`Hey, what's up!
+
+There's 4 of us dudes opening a store. Like, an actual brick and mortar place. I'm the one buying gear for \${c.shop}, we've got a pretty good online thing rolling already, and now we're filling real shelves soon!
+
+We've got another round of buying later this month. Seeing you've got some pedals listed, would you be up for a deal on whatever you're still holding at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal, we might be able to move sooner than that, just low on funds atm.
+
+Next, it really depends on what you want. Some people want cash in hand right away. Some want the most money possible and don't mind a few weeks' wait. We do both, zero stress either way.
+
+If you're okay waiting on the cash, and want to get the most out of it...we can get moving TODAY 💰💵💪
+
+Wanna hear the details?\`,
+
+  c =>
+\`Hey man!
+
+I'm speaking for 4 dudes launching a store. An actual brick and mortar spot. I do the gear buying for \${c.shop}, we've got a decent online presence already, and now we're loading up physical shelves soon!
+
+Next batch of buying is later this month. Since you've got a handful of pedals posted, would you be interested in doing a deal on whatever hasn't sold by the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal, we may be able to move quicker than that, just low on funds at the moment.
+
+Past that, it really depends what you're after. Some people want the cash in hand now. Some want the most money possible and are cool waiting a few weeks for it. We do both, no stress either way.
+
+If you can hold off on the cash, and want to maximize what you get...we can start moving TODAY 💰💵💪
+
+Interested in hearing more?\`,
+
+  c =>
+\`Hi there!
+
+Me and 3 other dudes are opening a store. Like, a legit brick and mortar spot. I buy gear for \${c.shop}, we've got a decent online thing going already, and now we're filling physical shelves shortly!
+
+Our next round of purchasing is later this month. Since you've got a few pedals listed, would you be down to do a deal on whatever you're still sitting on come the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal, we could maybe move quicker than that, just low on funds atm.
+
+Next, it really depends what you're going for. Some people want cash in hand now. Some want the biggest payout possible and don't mind waiting a few weeks for it. We do both, no stress either way.
+
+If you can wait on the cash, and want to squeeze the most out of it...we can start moving TODAY 💰💵💪
+
+Wanna know more?\`,
+
+  c =>
+\`Hey hey!
+
+I represent 4 dudes getting a store off the ground. An actual brick and mortar spot. I source gear for \${c.shop}, we already have a decent online thing going, and now we're filling up physical shelves soon!
+
+Next round of buying is later this month. Since you've got a few pedals up for sale, would you be open to a deal on whatever you still have left at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal, we may be able to move quicker than that, just running low on funds atm.
+
+Then it really depends what you're after. Some people want cash in hand today. Some want the most money possible and don't mind waiting a few weeks on it. We do both, no stress whichever way.
+
+If you can wait on the cash, and want to maximize the return...we can start moving TODAY 💰💵💪
+
+Wanna hear more?\`,
+
+  c =>
+\`What's up!
+
+I'm one of 4 dudes opening up a shop. Like, an actual brick and mortar location. I buy gear for our store\${c.whereParen}, we've got a decent online side going already, and now we're filling physical shelves soon!
+
+Next round of buying lands later this month. Since you've got a few pedals listed, would you be cool with making a deal on whatever's still hanging around at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal, we might be able to move quicker than that, just low on funds atm.
+
+Next, it really just depends what you're after. Some people want cash in hand now. Some want the most money possible and can wait a few weeks for it. We do both, no stress either way.
+
+If you can wait on the cash, and want to get the most for your gear...we can start moving TODAY 💰💵💪
+
+Want the details?\`,
+
+  c =>
+\`Hey, quick one!
+
+I represent 4 dudes opening a store. Like, an actual brick and mortar storefront. I'm buying gear for \${c.shop}, we've got a decent online thing happening already, and now we're filling physical shelves soon!
+
+Next round of buying is coming later this month. Since you've got a few pedals listed, would you be down to strike a deal on whatever you're still sitting on at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal, we may be able to jump on it quicker than that, just low on funds atm.
+
+Next, it really depends what matters to you. Some people want cash in hand now. Some want the most money possible and don't mind waiting a couple few weeks for it. We do both, no stress either way.
+
+If you can wait on the cash, and want to maximize what you walk away with...we can start moving TODAY 💰💵💪
+
+Wanna hear more?\`,
+
+  c =>
+\`Yo!
+
+There's 4 of us dudes opening a store. A real deal brick and mortar spot. I handle the gear buying for \${c.shop}, we've got a decent online thing going already, and now we're stocking up physical shelves soon!
+
+Next round of buying is later this month. Since you've got a few pedals posted, would you be up for doing a deal on whatever you're still sitting on at the end of \${c.month} or early \${c.nextMonth}? If it's the right deal, we may be able to move a bit quicker than that, just low on funds atm.
+
+Next, it really depends what you're after. Some people want cash in hand now. Some want the most money they can get and don't mind waiting a few weeks for it. We do both, no stress either way.
+
+If you can wait on the cash, and want to maximize what you get...we can start moving TODAY 💰💵💪
+
+Curious to hear more?\`,
+
+  c =>
+\`Hey there!
+
+I represent 4 dudes opening a store. Like, an actual brick and mortar spot. I buy the gear for \${c.shop}, we've got a decent online thing going already, and now we're getting physical shelves filled soon!
+
+Next round of buying is later this month. Since you've got a few pedals listed, would you be down to do a deal on whatever you're still sitting on at the end of \${c.month} or start of \${c.nextMonth}? If it's the right deal, we may be able to move quicker than that, just low on funds atm.
+
+Next, it really depends what you're after. Some people want cash in hand now. Some want the most money possible and don't mind waiting a few weeks for it. We do both, no stress either way.
+
+If you can wait on the cash, and want to maximize what you get...we can start moving TODAY 💰💵💪
+
+Wanna hear more?\`,
 ];
 
-/* The count is passed in rather than written, because two of the three
-   tiers can be switched off and "Three options" above two of them reads as
-   a mistake the seller can see. */
-const HEADS = [
-  n => \`Here's how I do it. \${n} options:\`,
-  n => \`\${n} ways to do this:\`,
-  n => \`Okay so here's the menu. \${n} ways:\`,
-  n => \`\${n} options, whichever fits:\`,
-];
-const HEADS_PRICED = [
-  "Okay so I went through your list. Here's where I land.",
-  "Alright, priced the whole lot out. Here's what I've got.",
-  "Ran the whole list. Here's the numbers.",
-  "Went through everything you listed. Here's what it comes to.",
-];
+/* TEN VERSIONS OF MESSAGE THREE. Each is a set of wording pieces; one
+   assembly (offerBlocks, steerLine, buildOffers) drops the figures, the tier
+   toggles, the pickup and deposit lines into whichever is picked. Version
+   one is the owner's standard verbatim (2026-09-05); the rest move verbs and
+   adjectives and keep every fact and every emoji where it was: 60, 80 after
+   fees, 90 after fees, half on deal day, prepaid label, flat rate box, set
+   up today, the trust line. The arrows on the panel step through them. */
+const OFFERS3 = [
+  { lead: "Okay so I went through your list. Here's where I land.",
+    market: (mv, across, mk) => \`Market on the lot comes to about \${mv}\${across}. That's what they are really selling for recently on \${mk}, not necessarily the prices you see currently listed. I would be happy to provide any details.\`,
+    head: n => \`\${n} options:\`,
+    t1title: "Cash Up Front, Minimal Work 🍹",
+    t1priced: o1 => \`\${o1} cash today, which is 60% of market value and pretty standard for any shop. \`,
+    t1unpriced: "60% of market value, cash today, which is pretty standard for any shop. ",
+    t1tail: "Ship 'em to us and you're done.",
+    t2title: "More Cash Total, Half Cash Up Front, More Work 💪",
+    t2priced: (o2, o2up, mk) => \`\${o2} total, which is 80% of market value after \${mk} fees. \${o2up} of that you get on the day we make the deal\`,
+    t2unpriced: mk => \`80% of market value after \${mk} fees in total. Half of that, you get on the day we make the deal\`,
+    t2tail: ", and the pedals stay at your place. We list them and sell them on our channels. When one sells, I email you a prepaid label, you throw the pedal in a free USPS flat rate box (or similar) with some bubble wrap and drop it anywhere that takes pre-paid packages. You get paid out the remainder of the 80% as the pedals sell.",
+    t3title: sw => \`MAX PAYOUT, Nothing Up Front\${sw} 💵💰💲💸\`,
+    t3priced: (o3, mk) => \`\${o3} total, which is 90% of market value after \${mk} fees. \`,
+    t3unpriced: mk => \`90% of market value after \${mk} fees in total. \`,
+    t3same: "Same labor deal as the one above, just nothing up front and much more in your pocket.",
+    t3alone: "Nothing up front. The pedals stay at your place, we list them and sell them on our channels, and I email you a prepaid label for each one. Much more in your pocket.",
+    t3tail: " You get paid as each one sells. And honestly, we can set this one up today 🚀\\n\\nI'll build your listings off what's already in your post and just hit you up if I need any pics or details. We get that it's putting a lot of trust in us. But if this model interests you, we're down and have done this a few times.",
+    steer: "Less Up Front, More Overall",
+    note: mk => \`**note** - when I say market value I mean what they are really selling for recently on \${mk}, not necessarily the prices you see currently listed. I would be happy to provide any details.\`,
+    close: "Totally your call. If you wanna try out the Max Payout option TODAY, or I can pencil you in for the end of the month when we're ready to make some big purchases.",
+    closeNoMax: "Totally your call. I can pencil you in for the end of the month when we're ready to make some big purchases." },
 
-const CLOSES = [
-  "Send me a list of what you've got and I'll price every one of them out. You'll see real numbers before you commit to anything.",
-  "What's the full list? I'll run comps on each one and send back exactly what each option pays you. No obligation either way.",
-  "Send over what you've got, even just a pic of the board. I'll come back with real numbers on all three so you can pick.",
-  "Give me the list and I'll do the legwork. You get actual numbers for each option and go from there, no pressure.",
-];
-const CLOSES_PRICED = [
-  "Any of those sound workable? Happy to walk you through where any number came from.",
-  "Which of those is closest to what you had in mind? No pressure either way, and I can show you the comps on any of them.",
-  "Does any of that work for you? If a pedal looks light, tell me which one and I'll show you what I'm seeing.",
-  "Let me know which way you wanna go, or if something looks off I'll take another run at it.",
+  { lead: "Alright, priced the whole lot out. Here's what I've got.",
+    market: (mv, across, mk) => \`Market on the lot lands around \${mv}\${across}. That's what they're actually selling for lately on \${mk}, not necessarily the asking prices you see up right now. Happy to share any details.\`,
+    head: n => \`\${n} ways to go:\`,
+    t1title: "Cash Up Front, Barely Any Work 🍹",
+    t1priced: o1 => \`\${o1} cash today, which is 60% of market value and about what any shop would offer. \`,
+    t1unpriced: "60% of market value, cash today, about what any shop would offer. ",
+    t1tail: "Ship 'em to us and that's it.",
+    t2title: "More Cash Overall, Half Up Front, A Little Work 💪",
+    t2priced: (o2, o2up, mk) => \`\${o2} total, which is 80% of market value after \${mk} fees. \${o2up} of that lands the day we make the deal\`,
+    t2unpriced: mk => \`80% of market value after \${mk} fees in total. Half of that lands the day we make the deal\`,
+    t2tail: ", and the pedals stay with you. We list them and sell them through our channels. When one sells, I email you a prepaid label, you drop the pedal in a free USPS flat rate box (or similar) with some bubble wrap and leave it anywhere that takes pre-paid packages. The rest of the 80% gets paid out as the pedals sell.",
+    t3title: sw => \`MAX PAYOUT, Zero Up Front\${sw} 💵💰💲💸\`,
+    t3priced: (o3, mk) => \`\${o3} total, which is 90% of market value after \${mk} fees. \`,
+    t3unpriced: mk => \`90% of market value after \${mk} fees in total. \`,
+    t3same: "Same labor deal as the one above, just zero up front and a lot more in your pocket.",
+    t3alone: "Zero up front. The pedals stay with you, we list and sell them through our channels, and I email you a prepaid label for each one. A lot more in your pocket.",
+    t3tail: " You get paid as each one sells. And honestly, we can set this up today 🚀\\n\\nI'll build your listings off what's already in your post and just ping you if I need any pics or details. We know it's asking for a lot of trust. But if this model sounds good to you, we're down and have done it a few times.",
+    steer: "Less Up Front, More In Total",
+    note: mk => \`**note** - by market value I mean what they're really selling for lately on \${mk}, not necessarily the prices currently listed. Happy to share any details.\`,
+    close: "Totally your call. If you wanna give the Max Payout option a shot TODAY, or I can pencil you in for the end of the month when we're ready to do some big buying.",
+    closeNoMax: "Totally your call. I can pencil you in for the end of the month when we're ready to do some big buying." },
+
+  { lead: "Ran the whole list. Here's the numbers.",
+    market: (mv, across, mk) => \`Market on the lot comes out to roughly \${mv}\${across}. That's what these have really been going for recently on \${mk}, not necessarily what you see listed right now. Glad to walk through any of it.\`,
+    head: n => \`\${n} options here:\`,
+    t1title: "Cash Now, Minimal Work 🍹",
+    t1priced: o1 => \`\${o1} cash today, which is 60% of market value and pretty standard for a shop. \`,
+    t1unpriced: "60% of market value, cash today, pretty standard for a shop. ",
+    t1tail: "Send 'em to us and you're done.",
+    t2title: "More Cash Total, Half Now, More Work 💪",
+    t2priced: (o2, o2up, mk) => \`\${o2} total, which is 80% of market value after \${mk} fees. You get \${o2up} of that the day we shake on it\`,
+    t2unpriced: mk => \`80% of market value after \${mk} fees in total. You get half of that the day we shake on it\`,
+    t2tail: ", and the pedals stay at your place. We list and sell them on our channels. When one sells, I email you a prepaid label, you pack the pedal in a free USPS flat rate box (or similar) with some bubble wrap and drop it anywhere that accepts pre-paid packages. The remainder of the 80% gets paid out as the pedals sell.",
+    t3title: sw => \`MAX PAYOUT, Nothing Down\${sw} 💵💰💲💸\`,
+    t3priced: (o3, mk) => \`\${o3} total, which is 90% of market value after \${mk} fees. \`,
+    t3unpriced: mk => \`90% of market value after \${mk} fees in total. \`,
+    t3same: "Same labor deal as the one above, just nothing down and way more in your pocket.",
+    t3alone: "Nothing down. The pedals stay at your place, we list and sell them on our channels, and I email you a prepaid label for each one. Way more in your pocket.",
+    t3tail: " You get paid as each one sells. And honestly, we could set this one up today 🚀\\n\\nI'll build your listings from what's already in your post and hit you up if I need any pics or details. We get that it's a lot of trust to put in us. But if this model interests you, we're down and have done this before.",
+    steer: "Less Now, More Overall",
+    note: mk => \`**note** - when I say market value I mean what they've really been selling for recently on \${mk}, not necessarily the prices listed at the moment. Glad to walk through any of it.\`,
+    close: "Totally your call. If you wanna try the Max Payout option TODAY, or I can pencil you in for the end of the month when we're ready to make some bigger purchases.",
+    closeNoMax: "Totally your call. I can pencil you in for the end of the month when we're ready to make some bigger purchases." },
+
+  { lead: "Went through everything you listed. Here's what it comes to.",
+    market: (mv, across, mk) => \`Market on the lot is right around \${mv}\${across}. That's what they're genuinely selling for recently on \${mk}, not necessarily the prices you see posted right now. Happy to provide any details.\`,
+    head: n => \`\${n} options for you:\`,
+    t1title: "Cash Up Front, Least Work 🍹",
+    t1priced: o1 => \`\${o1} cash today, which is 60% of market value and pretty much standard for any shop. \`,
+    t1unpriced: "60% of market value, cash today, pretty much standard for any shop. ",
+    t1tail: "Ship 'em over and you're done.",
+    t2title: "More Cash Total, Half Cash Up Front, Some Work 💪",
+    t2priced: (o2, o2up, mk) => \`\${o2} total, which is 80% of market value after \${mk} fees. \${o2up} of that comes to you the day we make the deal\`,
+    t2unpriced: mk => \`80% of market value after \${mk} fees in total. Half of that comes to you the day we make the deal\`,
+    t2tail: ", and the pedals stay put at your place. We list them and sell them on our channels. When one sells, I email you a prepaid label, you toss the pedal in a free USPS flat rate box (or similar) with some bubble wrap and drop it off anywhere that takes pre-paid packages. You get paid the remainder of the 80% as the pedals sell.",
+    t3title: sw => \`MAX PAYOUT, Nothing Up Front\${sw} 💵💰💲💸\`,
+    t3priced: (o3, mk) => \`\${o3} total, which is 90% of market value after \${mk} fees. \`,
+    t3unpriced: mk => \`90% of market value after \${mk} fees in total. \`,
+    t3same: "Same labor deal as the one above, just nothing up front and a whole lot more in your pocket.",
+    t3alone: "Nothing up front. The pedals stay put at your place, we list them and sell them on our channels, and I email you a prepaid label for each one. A whole lot more in your pocket.",
+    t3tail: " You get paid as each one sells. And honestly, we can get this one going today 🚀\\n\\nI'll build your listings off what's already in your post and just hit you up if I need any pics or details. We understand it's putting a lot of trust in us. But if this model interests you, we're down and have done this a few times now.",
+    steer: "Less Up Front, More Overall",
+    note: mk => \`**note** - when I say market value I mean what they're genuinely selling for recently on \${mk}, not necessarily the prices posted right now. Happy to provide any details.\`,
+    close: "Totally your call. If you wanna try out the Max Payout option TODAY, or I can pencil you in for the end of the month when we're set to make some big purchases.",
+    closeNoMax: "Totally your call. I can pencil you in for the end of the month when we're set to make some big purchases." },
+
+  { lead: "Okay, went through your list. Here's where it shakes out.",
+    market: (mv, across, mk) => \`Market on the lot works out to about \${mv}\${across}. That's what they're really selling for these days on \${mk}, not necessarily what's currently listed. I'd be happy to provide any details.\`,
+    head: n => \`\${n} options:\`,
+    t1title: "Cash Up Front, Minimal Effort 🍹",
+    t1priced: o1 => \`\${o1} cash today, which is 60% of market value and standard for pretty much any shop. \`,
+    t1unpriced: "60% of market value, cash today, standard for pretty much any shop. ",
+    t1tail: "Ship 'em to us and you're all set.",
+    t2title: "More Cash Total, Half Cash Up Front, More Effort 💪",
+    t2priced: (o2, o2up, mk) => \`\${o2} total, which is 80% of market value after \${mk} fees. \${o2up} of that is yours the day we make the deal\`,
+    t2unpriced: mk => \`80% of market value after \${mk} fees in total. Half of that is yours the day we make the deal\`,
+    t2tail: ", and the pedals stay at your place. We list them and sell them on our channels. When one sells, I email you a prepaid label, you throw the pedal in a free USPS flat rate box (or similar) with some bubble wrap and drop it anywhere that handles pre-paid packages. You get paid out the rest of the 80% as the pedals sell.",
+    t3title: sw => \`MAX PAYOUT, Nothing Up Front\${sw} 💵💰💲💸\`,
+    t3priced: (o3, mk) => \`\${o3} total, which is 90% of market value after \${mk} fees. \`,
+    t3unpriced: mk => \`90% of market value after \${mk} fees in total. \`,
+    t3same: "Same labor deal as the one above, just nothing up front and much more in your pocket.",
+    t3alone: "Nothing up front. The pedals stay at your place, we list them and sell them on our channels, and I email you a prepaid label for each one. Much more in your pocket.",
+    t3tail: " You get paid as each one sells. And honestly, we can set this one up today 🚀\\n\\nI'll put your listings together off what's already in your post and just hit you up if I need any pics or details. We get that it's a lot of trust to put in us. But if this model interests you, we're down and have done it a few times.",
+    steer: "Less Up Front, More Overall",
+    note: mk => \`**note** - when I say market value I mean what they're really selling for these days on \${mk}, not necessarily what's currently listed. I'd be happy to provide any details.\`,
+    close: "Totally your call. If you wanna try out the Max Payout option TODAY, or I can pencil you in for the end of the month when we're ready to make some big purchases.",
+    closeNoMax: "Totally your call. I can pencil you in for the end of the month when we're ready to make some big purchases." },
+
+  { lead: "Alright, I went through your list. Here's where I land.",
+    market: (mv, across, mk) => \`Market on the lot comes to about \${mv}\${across}. That's what they are really selling for recently on \${mk}, not the prices you see currently listed. I'd be glad to provide any details.\`,
+    head: n => \`\${n} options:\`,
+    t1title: "Cash Up Front, Minimal Work 🍹",
+    t1priced: o1 => \`\${o1} cash today, which is 60% of market value and pretty typical for any shop. \`,
+    t1unpriced: "60% of market value, cash today, pretty typical for any shop. ",
+    t1tail: "Ship 'em to us and you're done.",
+    t2title: "More Cash Total, Half Cash Up Front, More Work 💪",
+    t2priced: (o2, o2up, mk) => \`\${o2} total, which is 80% of market value after \${mk} fees. \${o2up} of that you get the day we make the deal\`,
+    t2unpriced: mk => \`80% of market value after \${mk} fees in total. Half of that you get the day we make the deal\`,
+    t2tail: ", and the pedals stay at your place. We list them and sell them on our channels. When one sells, I send you a prepaid label, you throw the pedal in a free USPS flat rate box (or similar) with some bubble wrap and drop it anywhere that takes pre-paid packages. You get paid out the remainder of the 80% as the pedals move.",
+    t3title: sw => \`MAX PAYOUT, Nothing Up Front\${sw} 💵💰💲💸\`,
+    t3priced: (o3, mk) => \`\${o3} total, which is 90% of market value after \${mk} fees. \`,
+    t3unpriced: mk => \`90% of market value after \${mk} fees in total. \`,
+    t3same: "Same labor deal as the one above, just nothing up front and much more in your pocket.",
+    t3alone: "Nothing up front. The pedals stay at your place, we list them and sell them on our channels, and I email you a prepaid label for each one. Much more in your pocket.",
+    t3tail: " You get paid as each one sells. And honestly, we can set this one up today 🚀\\n\\nI'll build your listings off what's already in your post and just hit you up if I need any pics or details. We know it's putting a lot of trust in us. But if this model interests you, we're down and we've done this a few times.",
+    steer: "Less Up Front, More Overall",
+    note: mk => \`**note** - when I say market value I mean what they are really selling for recently on \${mk}, not the prices you see currently listed. I'd be glad to provide any details.\`,
+    close: "Totally your call. If you wanna try the Max Payout option out TODAY, or I can pencil you in for the end of the month when we're ready to make some big purchases.",
+    closeNoMax: "Totally your call. I can pencil you in for the end of the month when we're ready to make some big purchases." },
+
+  { lead: "Okay so I ran through your list. Here's what I'm seeing.",
+    market: (mv, across, mk) => \`Market on the lot comes in around \${mv}\${across}. That's what they are really selling for lately on \${mk}, not necessarily the prices currently listed. Happy to provide details on any of it.\`,
+    head: n => \`\${n} options on the table:\`,
+    t1title: "Cash Up Front, Minimal Work 🍹",
+    t1priced: o1 => \`\${o1} in cash today, which is 60% of market value and pretty standard for any shop. \`,
+    t1unpriced: "60% of market value in cash today, which is pretty standard for any shop. ",
+    t1tail: "Ship 'em to us and you're finished.",
+    t2title: "More Cash Total, Half Up Front, More Work 💪",
+    t2priced: (o2, o2up, mk) => \`\${o2} total, which is 80% of market value after \${mk} fees. \${o2up} of that you get on the day we do the deal\`,
+    t2unpriced: mk => \`80% of market value after \${mk} fees in total. Half of that, you get on the day we do the deal\`,
+    t2tail: ", and the pedals stay at your place. We list them and sell them on our channels. When one sells, I email you a prepaid label, you throw the pedal in a free USPS flat rate box (or similar) with some bubble wrap and drop it anywhere that takes pre-paid packages. The remainder of the 80% gets paid out to you as the pedals sell.",
+    t3title: sw => \`MAX PAYOUT, Nothing Up Front\${sw} 💵💰💲💸\`,
+    t3priced: (o3, mk) => \`\${o3} total, which is 90% of market value after \${mk} fees. \`,
+    t3unpriced: mk => \`90% of market value after \${mk} fees in total. \`,
+    t3same: "Same labor deal as the one above, just nothing up front and much more cash in your pocket.",
+    t3alone: "Nothing up front. The pedals stay at your place, we list them and sell them on our channels, and I email you a prepaid label for each one. Much more cash in your pocket.",
+    t3tail: " You get paid as each one sells. And honestly, we can set this one up today 🚀\\n\\nI'll build your listings off what's already in your post and just hit you up if I need any pics or details. We get that it's putting a lot of trust in us. But if this model interests you, we're down and have done this plenty of times.",
+    steer: "Less Up Front, More Overall",
+    note: mk => \`**note** - when I say market value I mean what they are really selling for lately on \${mk}, not necessarily the prices currently listed. Happy to provide details on any of it.\`,
+    close: "Totally your call. If you wanna test out the Max Payout option TODAY, or I can pencil you in for the end of the month when we're ready to make some big purchases.",
+    closeNoMax: "Totally your call. I can pencil you in for the end of the month when we're ready to make some big purchases." },
+
+  { lead: "Priced everything on your list. Here's how it lands.",
+    market: (mv, across, mk) => \`Market on the lot totals about \${mv}\${across}. That's what they are really selling for recently on \${mk}, not necessarily the prices you see listed at the moment. I would be happy to provide any details.\`,
+    head: n => \`\${n} options:\`,
+    t1title: "Cash Up Front, Hardly Any Work 🍹",
+    t1priced: o1 => \`\${o1} cash today, which is 60% of market value and pretty standard for any shop. \`,
+    t1unpriced: "60% of market value, cash today, which is pretty standard for any shop. ",
+    t1tail: "Ship 'em our way and you're done.",
+    t2title: "More Cash Total, Half Cash Up Front, More Work 💪",
+    t2priced: (o2, o2up, mk) => \`\${o2} total, which is 80% of market value after \${mk} fees. \${o2up} of that you get on the day we make the deal\`,
+    t2unpriced: mk => \`80% of market value after \${mk} fees in total. Half of that, you get on the day we make the deal\`,
+    t2tail: ", and the pedals stay at your place. We list them and sell them on our channels. When one sells, I email you a prepaid label, you throw the pedal in a free USPS flat rate box (or similar) with a bit of bubble wrap and drop it anywhere that takes pre-paid packages. You get paid out the remainder of the 80% as each pedal sells.",
+    t3title: sw => \`MAX PAYOUT, Nothing Up Front\${sw} 💵💰💲💸\`,
+    t3priced: (o3, mk) => \`\${o3} total, which is 90% of market value after \${mk} fees. \`,
+    t3unpriced: mk => \`90% of market value after \${mk} fees in total. \`,
+    t3same: "Same labor deal as the one above, just nothing up front and much more in your pocket at the end.",
+    t3alone: "Nothing up front. The pedals stay at your place, we list them and sell them on our channels, and I email you a prepaid label for each one. Much more in your pocket at the end.",
+    t3tail: " You get paid as each one sells. And honestly, we can set this one up today 🚀\\n\\nI'll build your listings off what's already in your post and just hit you up if I need any pics or details. We realize it's putting a lot of trust in us. But if this model interests you, we're down and have done this a few times.",
+    steer: "Less Up Front, More Overall",
+    note: mk => \`**note** - when I say market value I mean what they are really selling for recently on \${mk}, not necessarily the prices you see listed at the moment. I would be happy to provide any details.\`,
+    close: "Totally your call. If you wanna try out the Max Payout option TODAY, or I can pencil you in for the end of the month when we're ready to do some big purchasing.",
+    closeNoMax: "Totally your call. I can pencil you in for the end of the month when we're ready to do some big purchasing." },
+
+  { lead: "Okay so I went over your list. Here's where I come out.",
+    market: (mv, across, mk) => \`Market on the lot comes to about \${mv}\${across}. That's what they're really selling for recently on \${mk}, not necessarily the prices you're seeing listed right now. Happy to provide any details you want.\`,
+    head: n => \`\${n} options:\`,
+    t1title: "Cash Up Front, Minimal Work 🍹",
+    t1priced: o1 => \`\${o1} cash today, which is 60% of market value and pretty standard for any shop out there. \`,
+    t1unpriced: "60% of market value, cash today, which is pretty standard for any shop out there. ",
+    t1tail: "Ship 'em to us and you're done.",
+    t2title: "More Cash Total, Half Cash Up Front, More Work 💪",
+    t2priced: (o2, o2up, mk) => \`\${o2} total, which is 80% of market value after \${mk} fees. \${o2up} of that you get on the day we make the deal\`,
+    t2unpriced: mk => \`80% of market value after \${mk} fees in total. Half of that, you get on the day we make the deal\`,
+    t2tail: ", and the pedals stay at your place. We handle listing them and selling them on our channels. When one sells, I email you a prepaid label, you throw the pedal in a free USPS flat rate box (or similar) with some bubble wrap and drop it anywhere that takes pre-paid packages. You get paid out the remainder of the 80% as the pedals sell.",
+    t3title: sw => \`MAX PAYOUT, Nothing Up Front\${sw} 💵💰💲💸\`,
+    t3priced: (o3, mk) => \`\${o3} total, which is 90% of market value after \${mk} fees. \`,
+    t3unpriced: mk => \`90% of market value after \${mk} fees in total. \`,
+    t3same: "Same labor deal as the one above, just nothing up front and much more in your pocket.",
+    t3alone: "Nothing up front. The pedals stay at your place, we list them and sell them on our channels, and I email you a prepaid label for each one. Much more in your pocket.",
+    t3tail: " You get paid as each one sells. And honestly, we can set this one up today 🚀\\n\\nI'll build your listings off what's already in your post and just reach out if I need any pics or details. We get that it's putting a lot of trust in us. But if this model interests you, we're down and have done this a few times.",
+    steer: "Less Up Front, More Overall",
+    note: mk => \`**note** - when I say market value I mean what they're really selling for recently on \${mk}, not necessarily the prices you're seeing listed right now. Happy to provide any details you want.\`,
+    close: "Totally your call. If you wanna try out the Max Payout option TODAY, or I can pencil you in for the end of the month when we're ready to make some big purchases.",
+    closeNoMax: "Totally your call. I can pencil you in for the end of the month when we're ready to make some big purchases." },
+
+  { lead: "Okay so I went through your list. Here's where I land.",
+    market: (mv, across, mk) => \`Market on the lot comes to about \${mv}\${across}. That's what they are really selling for recently on \${mk}, not necessarily the prices you see currently listed. I would be happy to provide any details.\`,
+    head: n => \`\${n} options:\`,
+    t1title: "Cash Up Front, Minimal Work 🍹",
+    t1priced: o1 => \`\${o1} cash today, which is 60% of market value and pretty standard for any shop. \`,
+    t1unpriced: "60% of market value, cash today, which is pretty standard for any shop. ",
+    t1tail: "Ship 'em to us and you're all done.",
+    t2title: "More Cash Total, Half Cash Up Front, More Work 💪",
+    t2priced: (o2, o2up, mk) => \`\${o2} total, which is 80% of market value after \${mk} fees. \${o2up} of that you get on the day we make the deal\`,
+    t2unpriced: mk => \`80% of market value after \${mk} fees in total. Half of that, you get on the day we make the deal\`,
+    t2tail: ", and the pedals stay at your place. We list them and sell them on our channels. When one sells, I email you a prepaid label, you throw the pedal in a free USPS flat rate box (or similar) with some bubble wrap and drop it anywhere that takes pre-paid packages. You get paid out the rest of the 80% as the pedals sell.",
+    t3title: sw => \`MAX PAYOUT, Nothing Up Front\${sw} 💵💰💲💸\`,
+    t3priced: (o3, mk) => \`\${o3} total, which is 90% of market value after \${mk} fees. \`,
+    t3unpriced: mk => \`90% of market value after \${mk} fees in total. \`,
+    t3same: "Same labor deal as the one above, just nothing up front and much more in your pocket.",
+    t3alone: "Nothing up front. The pedals stay at your place, we list them and sell them on our channels, and I email you a prepaid label for each one. Much more in your pocket.",
+    t3tail: " You get paid as each one sells. And honestly, we can set this one up today 🚀\\n\\nI'll build your listings off what's already in your post and just hit you up if I need any pics or details. We get that it's putting a lot of trust in us. But if this model interests you, we're down and have done this a few times.",
+    steer: "Less Up Front, More Overall",
+    note: mk => \`**note** - when I say market value I mean what they are really selling for recently on \${mk}, not necessarily the prices you see currently listed. I would be happy to provide any details.\`,
+    close: "Totally your call. If you wanna try out the Max Payout option TODAY, or I can pencil you in for the end of the month when we're ready to make some big purchases.",
+    closeNoMax: "Totally your call. I can pencil you in for the end of the month when we're ready to make some big purchases." },
 ];
 
 const money = n => "$" + Math.round(n).toLocaleString("en-US");
 
-function offerBlocks(c, m) {
+function offerBlocks(c, m, V) {
+  /* The words come from the picked version; the figures, the tier numbers
+     and the pickup and deposit knobs are dropped in here. */
   const out = [];
   if (c.o1) out.push(
-\`Cash up front, zero work for you
-\${m ? \`\${money(m.o1)} cash today, which is 60% of market and pretty standard for any shop. \` : "60% of market value, cash today, which is pretty standard for any shop. "}Ship 'em to us and you're done.\${c.pickup ? \` If you're near \${c.city} I'll just come grab them and pay you on the spot.\` : ""}\`);
+\`\${V.t1title}
+\${m ? V.t1priced(money(m.o1)) : V.t1unpriced}\${V.t1tail}\${c.pickup ? \` If you're near \${c.city} I'll just come grab them and pay you on the spot.\` : ""}\`);
   if (c.o2) out.push(
-\`Half now, the rest as they sell
-\${m ? \`\${money(m.o2)} total, which is 80% of market after \${c.market} fees. \${money(m.o2up)} the day we shake on it\` : \`80% of market after \${c.market} fees. Half of that the day we shake on it\`} and the pedals stay at your place. We list them and sell them. When one goes I email you a prepaid label, you throw the pedal in a free USPS flat rate box with some bubble wrap and drop it anywhere that takes packages. The rest gets paid as they go.\`);
+\`\${V.t2title}
+\${m ? V.t2priced(money(m.o2), money(m.o2up), c.market) : V.t2unpriced(c.market)}\${V.t2tail}\`);
   if (c.o3) out.push(
-\`Max payout
-\${m ? \`\${money(m.o3)} total, which is 90% of market after \${c.market} fees. \` : \`90% of market after \${c.market} fees. \`}\${c.o2 ? "Same deal as the one above, just nothing up front." : "Nothing up front. Pedals stay with you, we list them and sell them, and I email you a prepaid label for each one."} You get paid as each one sells. And honestly we can set this one up today 🚀 I'll build your listings off what's already in your post and just hit you up if I need any pics or details. We get that it's putting a lot of trust in us. But if this model interests you, we're down.\${c.deposit ? \` If you'd rather have something in hand first, we'll put \${m ? money(m.o3dep) : "a 10% deposit"} down up front as good faith.\` : ""}\`);
+\`\${V.t3title(c.o2 ? \`, Same Work as #\${c.o1 ? 2 : 1}\` : "")}
+\${m ? V.t3priced(money(m.o3), c.market) : V.t3unpriced(c.market)}\${c.o2 ? V.t3same : V.t3alone}\${V.t3tail}\${c.deposit ? \` If you'd rather have something in hand first, we'll put \${m ? money(m.o3dep) : "a 10% deposit"} down up front as good faith.\` : ""}\`);
   return out;
 }
 
-function steerLine(c, m) {
-  if (!c.steer) return null;
-  if (m && c.o1 && c.o3) {
-    const gap = m.o3 - m.o1;
-    if (gap > 0) return \`Gap between the first one and the last is about \${money(gap)}, so really it just comes down to whether that's worth waiting a few weeks for.\`;
-  }
-  if (c.o1 && c.o3) return "Less up front, more overall. Totally your call.";
-  return null;
+function steerLine(c, m, V) {
+  if (!c.steer || !(c.o1 && c.o3)) return null;
+  const gap = m ? m.o3 - m.o1 : 0;
+  return gap > 0
+    ? \`\${V.steer}. The gap between the first one and the last is about \${money(gap)}, so really it just comes down to whether that's worth waiting a few weeks for.\`
+    : V.steer;
 }
 
 function buildOffers(c, headIdx, closeIdx, m) {
-  const blocks = offerBlocks(c, m);
+  const V = OFFERS3[state.pick.offer % OFFERS3.length];
+  const blocks = offerBlocks(c, m, V);
   const parts = [];
 
-  if (m) parts.push(HEADS_PRICED[headIdx % HEADS_PRICED.length]);
+  if (m) parts.push(V.lead);
 
   if (m && c.comps) {
-    parts.push(\`Market on the lot comes to about \${money(m.mv)}\${m.count ? \` across the \${m.count} \${m.count === 1 ? "pedal" : "pedals"} you had\` : ""}. That's what these are actually going for on \${c.market} right now. Happy to show you how I came up with any of those numbers.\`);
+    parts.push(V.market(money(m.mv), m.count ? \` across the \${m.count} \${m.count === 1 ? "pedal" : "pedals"} you had\` : "", c.market));
   }
 
   if (!blocks.length) {
@@ -1552,21 +1871,16 @@ function buildOffers(c, headIdx, closeIdx, m) {
     parts.push(m ? "So here's what I can do:" : "Here's what I'd do:");
     parts.push(blocks[0]);
   } else {
-    const n = blocks.length === 2 ? "Two" : "Three";
-    parts.push(m ? \`There's \${n.toLowerCase()} ways we can do this:\` : HEADS[headIdx % HEADS.length](n));
+    parts.push(V.head(blocks.length));
     blocks.forEach((b, i) => parts.push(\`\${i + 1}. \${b}\`));
   }
 
-  if (!m && c.comps) {
-    parts.push(\`When I say market value I mean what these are really going for on \${c.market} right now, not what people are asking. If you need any details on that, let me know.\`);
-  }
-
-  const steer = steerLine(c, m);
+  const steer = steerLine(c, m, V);
   if (steer) parts.push(steer);
 
-  parts.push(m
-    ? CLOSES_PRICED[closeIdx % CLOSES_PRICED.length]
-    : CLOSES[closeIdx % CLOSES.length]);
+  if (!m && c.comps) parts.push(V.note(c.market));
+
+  parts.push(c.o3 ? V.close : V.closeNoMax);
   return parts.join("\\n\\n");
 }
 
@@ -1593,7 +1907,7 @@ const state = {
   cat: "auto",
   wear: "worn",
   lot: [],
-  pick: { open: 0, note: 0, setup: 0, head: 0, close: 0 },
+  pick: { open: 0, note: 0, setup: 0, head: 0, close: 0, offer: 0 },
   dirty: { 1: false, 2: false, 3: false },
 };
 
@@ -1609,6 +1923,9 @@ function save() {
       xNote: els.xNote.checked, xComps: els.xComps.checked,
       xSteer: els.xSteer.checked, xPickup: els.xPickup.checked,
       xDeposit: els.xDeposit.checked,
+      setup: state.pick.setup % SETUPS.length,
+      open: state.pick.open % OPENERS.length,
+      offer: state.pick.offer % OFFERS3.length,
     }));
   } catch (_) { /* private window or blocked site data. Not worth telling anyone. */ }
 }
@@ -1625,6 +1942,9 @@ function load() {
     state.cat = v.cat ?? "auto";
     state.wear = v.wear ?? "worn";
     state.lot = Array.isArray(v.lot) ? v.lot : [];
+    state.pick.setup = Number.isInteger(v.setup) ? v.setup : 0;
+    state.pick.open = Number.isInteger(v.open) ? v.open : 0;
+    state.pick.offer = Number.isInteger(v.offer) ? v.offer : 0;
     els.xVerified.checked = Boolean(v.verified);
     for (const k of ["o1","o2","o3","xNote","xComps","xSteer","xPickup","xDeposit"]) {
       if (typeof v[k] === "boolean") els[k].checked = v[k];
@@ -1683,14 +2003,15 @@ function ctx() {
     : scope === "few"
       ? "If those are part of a bigger clear out,"
       : n >= 5
-        ? \`Since you've got \${n} pedals going,\`
-        : "Since you've got the whole board going,";
+        ? \`Since you've got \${n} pedals listed,\`
+        : "Since you've got the whole board listed,";
   const where = els.where.value.trim();
   return {
     hey: name ? \`Hey \${name}, \` : "Hey, ",
-    /* Blank location degrades to the true, vaguer sentence rather than
-       printing "a shop here in ". */
-    shop: where ? \`a shop here in \${where}\` : "a local shop",
+    /* Blank location degrades to the true, vaguer phrase rather than
+       printing "our shop (in )". Owner's wording, 2026-09-05. */
+    shop: where ? \`our shop (in \${where})\` : "our shop",
+    whereParen: where ? \` (in \${where})\` : "",
     market: els.market.value.trim() || "Reverb",
     pedal, scope, lot,
     lotCap: lot.charAt(0).toUpperCase() + lot.slice(1),
@@ -1969,20 +2290,21 @@ function render(only) {
       ? (t.unpriced
           ? \`In the message now. \${t.unpriced} row\${t.unpriced === 1 ? "" : "s"} still have no value and are not counted in the total.\`
           : "In the message now. You are quoting these to a stranger as fact.")
-      : "Until this is on, message three asks for the list instead of quoting a total.";
+      : "Until this is on, message three quotes percentages only. Tick it and the dollar figures go in.";
   }
 
   if ((!only || only === 1) && !state.dirty[1]) {
     const asksAlready = Boolean(note) && /\\?\\s*$/.test(note.trim());
-    const pool = asksAlready
-      ? OPENERS_FLAT
-      : (c.scope === "one" ? OPENERS_ANY : OPENERS_ANY.concat(OPENERS_LOT));
-    let text = pool[state.pick.open % pool.length](c);
+    const o = OPENERS[state.pick.open % OPENERS.length];
+    let text = (asksAlready ? o.flat : o.q)(c);
     if (note) text += "\\n\\n" + note;
     setMsg(1, text);
   }
+  $("pick1").textContent = (state.pick.open % OPENERS.length + 1) + " / " + OPENERS.length;
   if ((!only || only === 2) && !state.dirty[2]) setMsg(2, SETUPS[state.pick.setup % SETUPS.length](c));
+  $("pick2").textContent = (state.pick.setup % SETUPS.length + 1) + " / " + SETUPS.length;
   if ((!only || only === 3) && !state.dirty[3]) setMsg(3, buildOffers(c, state.pick.head, state.pick.close, m));
+  $("pick3").textContent = (state.pick.offer % OFFERS3.length + 1) + " / " + OFFERS3.length;
 
   const nm = els.name.value.trim();
   $("headName").textContent = nm || "Seller";
@@ -2187,13 +2509,24 @@ async function pullComps() {
 els.compsBtn.addEventListener("click", pullComps);
 
 document.addEventListener("click", (e) => {
+  const st = e.target.closest("[data-step]");
+  if (st) {
+    const d = Number(st.dataset.step), n = Number(st.dataset.for);
+    if (n === 1) state.pick.open = (state.pick.open + d + OPENERS.length) % OPENERS.length;
+    if (n === 2) state.pick.setup = (state.pick.setup + d + SETUPS.length) % SETUPS.length;
+    if (n === 3) state.pick.offer = (state.pick.offer + d + OFFERS3.length) % OFFERS3.length;
+    state.dirty[n] = false;
+    render(n);
+    save();
+    return;
+  }
   const sh = e.target.closest("[data-shuffle]");
   if (sh) {
     const n = Number(sh.dataset.shuffle);
     state.dirty[n] = false;
     if (n === 1) { state.pick.open += 1; state.pick.note += 1; }
     if (n === 2) state.pick.setup += 1;
-    if (n === 3) { state.pick.head += 1; state.pick.close += 1; }
+    if (n === 3) { state.pick.head += 1; state.pick.close += 1; state.pick.offer += 1; }
     render(n);
     return;
   }
@@ -2216,7 +2549,7 @@ document.addEventListener("click", (e) => {
 $("shuffleAll").addEventListener("click", () => {
   state.dirty = { 1: false, 2: false, 3: false };
   state.pick.open += 1; state.pick.note += 1; state.pick.setup += 1;
-  state.pick.head += 1; state.pick.close += 1;
+  state.pick.head += 1; state.pick.close += 1; state.pick.offer += 1;
   render();
 });
 
