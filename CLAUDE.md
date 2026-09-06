@@ -1578,6 +1578,14 @@ engine.
   interface as a pedal with total confidence.
 - Do NOT let a title guess overwrite a category a merchant stated. The "Other"
   upgrade in `enrichGear` is one-directional on purpose.
+- Do NOT let the comps lookup suggest a price from the NEW median, or from a
+  sample under `MIN_SAMPLE_SIZE`. Both inflate an offer made to a real person,
+  and a refusal that names what was missing is the honest answer (section 26).
+- Do NOT let a pulled comp overwrite a market value somebody typed, and do NOT
+  tick the verified box on their behalf. The box means a person checked.
+- Do NOT build the evidence row out of an HTML string. The matched name comes
+  from `canonical_gear`, which came from a merchant's feed, and assembling
+  markup from it is how a feed row executes on the admin page.
 - Do NOT unscope MPN or fuzzy matching from the brand.
 - Do NOT publish a market price below `MIN_SAMPLE_SIZE`.
 - Do NOT let the cron guard fail open.
@@ -2613,6 +2621,37 @@ allowed, nothing that sounds like a brochure. The gear notes were already in
 that register. What does not loosen: the three percentages, "after fees",
 half up front, the prepaid label and USPS flat rate box, and the month names
 from the clock. Casual is the voice, not the terms.
+
+**AND THE MARKET COLUMN CAN NOW BE PULLED RATHER THAN REMEMBERED.**
+`lib/outreach/comps.ts`, behind a "Pull comps" button and the admin-gated
+`/api/admin/outreach/comps`, prices a lot from evidence: our own Reverb sold
+prices first, then the catalogue's used median, with the sample size, the live
+count and the low-to-high spread printed under each row so a number can be
+judged rather than trusted. Four rules keep it compatible with the paragraph
+below rather than an exception to it.
+
+- **`MIN_SAMPLE_SIZE` decides here too.** Under the floor it suggests nothing
+  and names what was missing. The public site refuses to publish a market price
+  on a thin sample; refusing to quote a seller one is the same rule where it
+  costs somebody money instead of a page view.
+- **It never suggests from the NEW median.** New retail sits well above used,
+  so an offer computed off it is inflated on every row, in the direction that
+  costs us. The new median is reported as context and is never the answer.
+- **It never overwrites a number a person typed.** Only empty and still-seeded
+  cells are filled. Somebody who has looked at the comps knows something the
+  query does not, and silently replacing their figure on a refresh is how a
+  checked number becomes an unchecked one.
+- **It does not tick the verified box.** A median with a sample behind it is
+  better evidence than the seed it replaced and is still not somebody having
+  looked, which is what that box claims.
+
+**OUR OWN SALES OUTRANK THE CATALOGUE, because of what each one measures.** The
+catalogue holds ASKING prices, which is what sellers hope for. Our Reverb order
+history holds what somebody actually paid us for that exact pedal. For deciding
+what to pay for one, a real sale beats a hopeful ask. Reading our own shop's
+orders is the section 2 carve-out rather than an exception to it, and the route
+is `private, no-store` behind the passcode because the response carries our
+cost and our margin.
 
 **NEITHER PAGE MAY QUOTE A NUMBER IT DOES NOT HAVE.** This is section 8 aimed
 at a seller instead of a shopper, and it is the rule the whole thing rests on.

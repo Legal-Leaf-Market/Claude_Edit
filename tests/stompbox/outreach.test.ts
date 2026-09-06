@@ -39,6 +39,47 @@ describe("the served document survived being embedded", () => {
     expect(HTML).toContain("function parseListing")
   })
 
+  it("carries the comps button and the code behind it", () => {
+    for (const id of ["compsBtn", "compsNote"]) {
+      expect(HTML, `#${id} is missing from the served document`).toContain(`id="${id}"`)
+    }
+    expect(HTML).toContain("async function pullComps")
+    expect(HTML).toContain("/api/admin/outreach/comps")
+  })
+
+  it("never overwrites a market value somebody typed", () => {
+    // The rule, asserted on the source because the alternative is a person
+    // noticing that their checked figure quietly moved. Only an empty or
+    // still-seeded cell may be filled.
+    expect(HTML).toContain("const untouched = r.mv === null || r.mvSeeded;")
+  })
+
+  it("does not tick the verified box on the reader's behalf", () => {
+    // A pulled median is better evidence than the seed it replaced and is
+    // still not somebody having looked, which is what that box claims.
+    const pull = HTML.slice(HTML.indexOf("async function pullComps"))
+    const body = pull.slice(0, pull.indexOf("els.compsBtn.addEventListener"))
+    expect(body).not.toContain("xVerified.checked = true")
+  })
+
+  it("builds the evidence row from nodes, never from an HTML string", () => {
+    // The matched name comes out of canonical_gear, which came from a
+    // merchant's feed. Assembling markup from it is how a feed row executes
+    // on the admin page.
+    const start = HTML.indexOf('er.className = "eviRow"')
+    expect(start).toBeGreaterThan(-1)
+    const row = HTML.slice(start, HTML.indexOf("tb.appendChild(er)", start))
+    expect(row).not.toContain("innerHTML")
+    expect(row).toContain("textContent")
+  })
+
+  it("says so rather than breaking when there is no server behind it", () => {
+    // The document is also handed out as a file that runs off a laptop, where
+    // a fetch fails at the network layer and every button that assumed one
+    // would silently do nothing.
+    expect(HTML).toContain("No server to ask.")
+  })
+
   it("keeps the three tiers at the rates they are quoted at", () => {
     /* These percentages are an offer made to a stranger in writing. A silent
        edit to one of them is a different deal under the same name. */
