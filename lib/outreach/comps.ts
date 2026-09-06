@@ -2,6 +2,8 @@ import { sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { MIN_SAMPLE_SIZE, median } from "@/lib/deals/pricing"
 import { fetchSoldOrders, type SoldOrder } from "@/lib/reverb/orders"
+import { fetchPriceGuide, type PriceGuideHit } from "@/lib/reverb/price-guide"
+import { env } from "@/lib/env"
 
 /**
  * What is this pedal actually worth, and what is the evidence.
@@ -29,6 +31,16 @@ import { fetchSoldOrders, type SoldOrder } from "@/lib/reverb/orders"
  * direction that costs us. The new median is reported because it is useful
  * context for a boxed pedal, and it is never the suggestion.
  *
+ * THERE ARE THREE SOURCES, RANKED BY HOW CLOSE EACH ONE IS TO THE QUESTION.
+ *
+ *   1. What WE sold that exact pedal for, on Reverb. Most specific: our
+ *      channel, our buyers, our achieved price.
+ *   2. Reverb's price guide, when REVERB_PRICE_GUIDE is on. Real sold money
+ *      across the whole market, so a bigger sample and a less specific one.
+ *      See lib/reverb/price-guide.ts for why reading it is not the thing
+ *      section 2 forbids.
+ *   3. The catalogue's used median. Asking prices, and last for that reason.
+ *
  * OUR OWN SALES OUTRANK THE CATALOGUE, and the reason is what each one measures.
  * The catalogue holds ASKING prices: what sellers hope for. Our Reverb order
  * history holds what somebody actually paid us, in our own channel, for that
@@ -43,7 +55,7 @@ export type CompSample = {
   sampleSize: number
 }
 
-export type CompSource = "our-sales" | "catalogue-used" | "none"
+export type CompSource = "our-sales" | "price-guide" | "catalogue-used" | "none"
 
 export type Comp = {
   /** Echoed back so the caller can line results up with the rows it sent. */
@@ -56,6 +68,8 @@ export type Comp = {
   fresh: CompSample
   live: { count: number; lowCents: number | null; highCents: number | null }
   ourSales: { count: number; medianCents: number | null; lastSoldAt: string | null }
+  /** Reverb's own sold range, when the price guide is switched on. */
+  guide: PriceGuideHit | null
   suggestedCents: number | null
   source: CompSource
   /** In words, what the suggestion rests on, or why there is not one. */
@@ -66,6 +80,8 @@ export type CompsResult = {
   comps: Comp[]
   /** Whether our own Reverb order history was readable this run, and why not. */
   salesNote: string
+  /** Whether the price guide ran, and why not. Empty when it is switched off. */
+  guideNote: string
 }
 
 /** A sale is a data point; two is the least that can be called a pattern. */
@@ -209,6 +225,17 @@ function describe(comp: Omit<Comp, "basis" | "suggestedCents" | "source">): {
       basis: `Median of ${comp.ourSales.count} we actually sold on Reverb.`,
     }
   }
+  if (comp.guide?.midCents != null) {
+    const range =
+      comp.guide.lowCents != null && comp.guide.highCents != null
+        ? ` (${Math.round(comp.guide.lowCents / 100)} to ${Math.round(comp.guide.highCents / 100)})`
+        : ""
+    return {
+      suggestedCents: comp.guide.midCents,
+      source: "price-guide",
+      basis: `Reverb's price guide for ${comp.guide.title}${range}. Sold prices, mid of the range.`,
+    }
+  }
   if (comp.used.medianCents != null) {
     return {
       suggestedCents: comp.used.medianCents,
@@ -280,7 +307,36 @@ export async function pullComps(rows: { brand: string; model: string }[]): Promi
     salesNote = "Our own sales were not readable this run."
   }
 
-  const comps = rows.map((row) => {
+  /**
+   * The price guide is per pedal, so it is one request per row rather than one
+   * for the lot. Run in parallel and capped by the route's MAX_ROWS, and every
+   * failure is swallowed into a null: this is the optional source, and a Reverb
+   * outage must not take the catalogue half of the lookup down with it.
+   */
+  let guideNote = ""
+  let guides: (PriceGuideHit | null)[] = rows.map(() => null)
+  if (env.reverbShop.hasPriceGuide) {
+    const results = await Promise.all(
+      rows.map(async (row) => {
+        const name = fullName(row)
+        if (!name) return { hit: null, reason: "" }
+        try {
+          const r = await fetchPriceGuide(name)
+          return r.ok ? { hit: r.hit, reason: "" } : { hit: null, reason: r.reason }
+        } catch {
+          return { hit: null, reason: "the price guide request failed" }
+        }
+      }),
+    )
+    guides = results.map((r) => r.hit)
+    const found = guides.filter(Boolean).length
+    const firstReason = results.find((r) => r.reason)?.reason
+    guideNote = found
+      ? `Reverb price guide matched ${found} of ${rows.length}.`
+      : `Reverb price guide matched nothing${firstReason ? `: ${firstReason}` : ""}.`
+  }
+
+  const comps = rows.map((row, i) => {
     const gear = bestMatch(row, candidates)
     const partial = {
       brand: row.brand,
@@ -301,9 +357,10 @@ export async function pullComps(rows: { brand: string; model: string }[]): Promi
         highCents: gear?.high_cents ?? null,
       },
       ourSales: ownSales(row, orders),
+      guide: guides[i] ?? null,
     }
     return { ...partial, ...describe(partial) }
   })
 
-  return { comps, salesNote }
+  return { comps, salesNote, guideNote }
 }

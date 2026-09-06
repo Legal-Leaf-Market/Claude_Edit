@@ -1822,6 +1822,12 @@ function renderLot() {
         bit(r.evi.ourSales.count + " sold by us" +
           (r.evi.ourSales.medianCents ? " at " + dollars(r.evi.ourSales.medianCents) : ""));
       }
+      if (r.evi.guide && r.evi.guide.midCents) {
+        bit("Reverb guide " + dollars(r.evi.guide.midCents) +
+          (r.evi.guide.lowCents && r.evi.guide.highCents
+            ? " (" + dollars(r.evi.guide.lowCents) + " to " + dollars(r.evi.guide.highCents) + ")"
+            : "") + ", sold");
+      }
       if (r.evi.used.sampleSize) {
         bit("used median " +
           (r.evi.used.medianCents ? dollars(r.evi.used.medianCents) : "withheld") +
@@ -2173,7 +2179,8 @@ async function pullComps() {
   if (kept) bits.push(kept + " left as you set " + (kept === 1 ? "it" : "them"));
   if (!filled && !kept) bits.push("nothing to fill in");
   if (refused) bits.push(refused + " for you to price by hand");
-  compsNote(bits.join(", ") + ". " + (data.salesNote || ""), refused > 0);
+  const notes = [data.salesNote, data.guideNote].filter(Boolean).join(" ");
+  compsNote(bits.join(", ") + ". " + notes, refused > 0);
   els.compsBtn.disabled = false;
 }
 

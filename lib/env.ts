@@ -403,6 +403,32 @@ export const env = {
     get isConfigured(): boolean {
       return Boolean(env.reverbShop.token)
     },
+
+    /**
+     * REVERB'S PRICE GUIDE, OFF BY DEFAULT AND DELIBERATELY ITS OWN SWITCH.
+     *
+     * This is the one place the Reverb API is asked about gear that is not
+     * ours, so it does not ride along on REVERB_SHOP_TOKEN being present. It
+     * reads Reverb's own published price guide, which is what a seller sees on
+     * reverb.com/price-guide, to tell an operator what a pedal actually SOLD
+     * for before offering somebody money for theirs.
+     *
+     * THE BOUNDARY THAT MAKES IT DEFENSIBLE, and every part is enforced in
+     * lib/reverb/price-guide.ts rather than promised here: it is reachable
+     * only from the admin-gated outreach tool, nothing it returns is written
+     * anywhere, and no value from it reaches marketplace_listings, a median, a
+     * deal badge or any public page. It informs one person deciding what to
+     * pay. That is a different act from building a catalogue out of it, which
+     * section 2 forbids and which nothing here does.
+     *
+     * It is a switch rather than a constant because the call belongs to the
+     * owner and can be withdrawn in one environment variable, without a
+     * deploy, if Reverb ever says otherwise.
+     */
+    priceGuide: bool("REVERB_PRICE_GUIDE", false),
+    get hasPriceGuide(): boolean {
+      return Boolean(env.reverbShop.token) && env.reverbShop.priceGuide
+    },
   },
 
   groq: {

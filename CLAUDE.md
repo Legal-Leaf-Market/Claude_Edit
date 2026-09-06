@@ -321,6 +321,18 @@ These are not preferences. Each one is a term of service.
   own stock inside the median means setting a price and also computing the
   market price that judges it. Do not delete that module on a fast read of the
   rule above, and do not widen it to any shop that is not ours.
+- **AND THE PRICE GUIDE IS THE SECOND CARVE-OUT, narrower still and switched
+  off by default.** `lib/reverb/price-guide.ts` asks Reverb what a pedal SOLD
+  for, so that an operator can decide what to offer somebody for theirs. That
+  is the one source on this site measuring sold prices rather than asking
+  prices, and it is genuinely gear that is not ours, which is why it needed a
+  decision rather than an inference. What keeps it inside the rule is the same
+  shape as the shop reader: read for ourselves, never republished. The module
+  imports no database, a test pins `lib/outreach/comps.ts` as its only
+  importer, nothing it returns reaches `marketplace_listings` or any public
+  page, and `REVERB_PRICE_GUIDE` withdraws it in one variable without a
+  deploy. Do NOT widen it into ingestion, and do NOT let a value from it be
+  stored anywhere.
 - **`LINKCONNECTOR_SWEETWATER_FEED_URL` unset is the EXPECTED state**, not a
   bug to route around. `AWIN_REVERB_FEED_URL` and `AWIN_GEAR4MUSIC_FEED_URL`
   are a different case as of 10 Aug 2026: both feeds are confirmed to exist in
@@ -710,6 +722,7 @@ process, and the accident is far likelier.
 | `CJ_ZZOUNDS_FEED_URL` / `CJ_FULLCOMPASS_FEED_URL` / `CJ_PINEVILLEMUSIC_FEED_URL` | Three independent CJ Affiliate programmes. Each no-ops when unset. |
 | `IMPACT_ANDERTONS_FTP_*` | Anderton's via Impact.com, ingested by `lib/ingestion/andertons-impact.ts`. Impact delivers catalogues by FTP drop, NOT over an HTTPS feed URL like Awin/CJ/LinkConnector, so this is a host/user/password/path quartet. `hasAndertonsFeed` gates on the credential pair, since host and path have defaults. **The credentials are a dedicated pair Impact mails on request** ("Email Product Catalog FTP Username and Password", needs Technical Settings permission), not the Impact account login, and **the host comes from the platform's own "Download via FTP" panel** rather than from this file: `products.impact.com` is the default here but is documented on the brand UPLOAD side, so treat it as a starting guess. See the FTP note below the table. |
 | `GOAFFPRO_*_REF_PARAM` / `GOAFFPRO_*_REF_CODE` | One pair per small independent Shopify/WooCommerce seller (Folkcraft, Acoustic Guitar, Jamstik, Jackson Audio, Eminence Digital, Haze Guitar, EART Guitar, Play With Authority, Pures Music, Squaver, Eason Music Store, Go Kalimba). Catalogue ingestion needs no credential at all; an unset code just means a null `affiliate_url` until the referral is confirmed. |
+| `REVERB_PRICE_GUIDE` | Reverb's price guide, read by `lib/reverb/price-guide.ts` for the outreach tool's comps. **OFF by default and its own switch**, deliberately not riding along on the shop token: it is the one place the Reverb API is asked about gear that is not ours. What keeps it inside section 2 is structural rather than a promise, and `tests/reverb-price-guide.test.ts` holds each part: the module imports no database at all, only `lib/outreach/comps.ts` may import it, and nothing it returns reaches `marketplace_listings`, a median, a deal badge or any public page. It informs one admin deciding what to offer somebody. Withdrawable in one variable, without a deploy. |
 | `REVERB_SHOP_TOKEN` / `REVERB_SHOP_SLUG` | Dean's Boutique, OUR OWN Reverb shop, read by `lib/reverb/shop.ts` and served as public JSON by `/api/reverb/shop`. This is not the exception to section 2 that it looks like: see the note under that section. The token is a Personal Access Token from the shop's own API settings and belongs in the deployment, never in this repository. The slug is not a secret and defaults to `deans-boutique-505`. Unset is fully supported and the section simply does not render. |
 | `GROQ_API_KEY` / `GROQ_MODEL` | The Ask assistant (section 14). Unset means /api/ask 503s and the button never renders. The model default is overridable because Groq retires models often. |
 | `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
@@ -1583,6 +1596,9 @@ engine.
   and a refusal that names what was missing is the honest answer (section 26).
 - Do NOT let a pulled comp overwrite a market value somebody typed, and do NOT
   tick the verified box on their behalf. The box means a person checked.
+- Do NOT import `lib/reverb/price-guide.ts` from anywhere but
+  `lib/outreach/comps.ts`, and do NOT store a value it returns. It is the
+  narrow carve-out in section 2, and it stays narrow because a test says so.
 - Do NOT build the evidence row out of an HTML string. The matched name comes
   from `canonical_gear`, which came from a merchant's feed, and assembling
   markup from it is how a feed row executes on the admin page.
@@ -2634,6 +2650,13 @@ below rather than an exception to it.
   and names what was missing. The public site refuses to publish a market price
   on a thin sample; refusing to quote a seller one is the same rule where it
   costs somebody money instead of a page view.
+- **Reverb's own price guide is the middle tier, and it is off by default.**
+  `REVERB_PRICE_GUIDE` turns it on. It is the only source here measuring SOLD
+  prices rather than asking prices, which is why it outranks the catalogue, and
+  it sits below our own sales because those are our channel and our achieved
+  price. Reading it is not the thing section 2 forbids: that rule bans building
+  the CATALOGUE out of the Reverb API, and the boundary keeping this apart from
+  ingestion is enforced rather than promised. See `lib/reverb/price-guide.ts`.
 - **It never suggests from the NEW median.** New retail sits well above used,
   so an offer computed off it is inflated on every row, in the direction that
   costs us. The new median is reported as context and is never the answer.

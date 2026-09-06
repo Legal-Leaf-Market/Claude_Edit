@@ -19,6 +19,12 @@ vi.mock("@/lib/reverb/orders", () => ({
   fetchSoldOrders: vi.fn(async () => ({ ok: false as const, reason: "not configured in tests" })),
 }))
 
+// Off in tests, which is also its default everywhere. A test that quietly
+// reached Reverb would be a test that fails when somebody's token expires.
+vi.mock("@/lib/reverb/price-guide", () => ({
+  fetchPriceGuide: vi.fn(async () => ({ ok: false as const, reason: "REVERB_PRICE_GUIDE is not set" })),
+}))
+
 async function truncate() {
   await db.execute(
     sql`TRUNCATE listing_price_history, marketplace_listings, canonical_gear RESTART IDENTITY CASCADE`,
@@ -142,6 +148,16 @@ describe("pullComps", () => {
     const { comps } = await pullComps([{ brand: "", model: "Boss DS-1" }])
     expect(comps[0].matchedAs).toContain("DS-1")
     expect(comps[0].suggestedCents).not.toBeNull()
+  })
+
+  it("says nothing about the price guide while it is switched off", async () => {
+    // Off is the default, and the note has to stay empty rather than reporting
+    // a failure for something nobody asked to run.
+    await seedPedal(MIN_SAMPLE_SIZE + 1, 6_000)
+    const { comps, guideNote } = await pullComps([{ brand: "Boss", model: "DS-1" }])
+    expect(guideNote).toBe("")
+    expect(comps[0].guide).toBeNull()
+    expect(comps[0].source).toBe("catalogue-used")
   })
 
   it("takes no rows without falling over", async () => {
