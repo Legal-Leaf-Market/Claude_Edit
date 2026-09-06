@@ -47,6 +47,26 @@ export type ShopListing = {
   costCents: number | null
   state: string | null
   sku: string | null
+  /**
+   * The rest of what Reverb holds, added for the listing importer.
+   *
+   * PRIVATE BY CONSTRUCTION, like costCents: `PublicListing` names its fields
+   * one by one, so anything added here stays out of `/api/reverb/shop` unless
+   * somebody deliberately adds it there too. That is the property the comment
+   * above promised and this is the first thing to lean on it.
+   *
+   * None of it is secret. It is simply not what a shop page needs, and the
+   * importer does: a draft with no description or photos is a draft that
+   * cannot be pushed anywhere.
+   */
+  description: string | null
+  make: string | null
+  model: string | null
+  photos: string[]
+  year: string | null
+  finish: string | null
+  offersEnabled: boolean
+  shippingCents: number | null
 }
 
 export type PublicListing = Pick<
@@ -90,11 +110,8 @@ const ENDPOINTS = (slug: string, state: string) => [
   `https://api.reverb.com/api/listings?shop_slug=${encodeURIComponent(slug)}&per_page=100`,
 ]
 
-function pickPhoto(raw: Record<string, unknown>): string | null {
-  const photos = raw.photos
-  if (!Array.isArray(photos) || !photos.length) return null
-  const first = photos[0] as Record<string, unknown>
-  const links = (first?._links ?? {}) as Record<string, { href?: string }>
+function photoHref(entry: unknown): string | null {
+  const links = ((entry as Record<string, unknown>)?._links ?? {}) as Record<string, { href?: string }>
   return (
     links.large_crop?.href ??
     links.full?.href ??
@@ -102,6 +119,17 @@ function pickPhoto(raw: Record<string, unknown>): string | null {
     links.thumbnail?.href ??
     null
   )
+}
+
+/** Every photo, in Reverb's own order, which is the order they were arranged in. */
+function pickPhotos(raw: Record<string, unknown>): string[] {
+  const photos = raw.photos
+  if (!Array.isArray(photos)) return []
+  return photos.map(photoHref).filter((h): h is string => Boolean(h))
+}
+
+function pickPhoto(raw: Record<string, unknown>): string | null {
+  return pickPhotos(raw)[0] ?? null
 }
 
 function normalize(raw: Record<string, unknown>): ShopListing | null {
@@ -137,6 +165,14 @@ function normalize(raw: Record<string, unknown>): ShopListing | null {
     state: typeof state.slug === "string" ? state.slug
       : typeof raw.state === "string" ? raw.state : null,
     sku: typeof raw.sku === "string" && raw.sku.trim() ? raw.sku.trim() : null,
+    description: typeof raw.description === "string" ? raw.description : null,
+    make: typeof raw.make === "string" ? raw.make : null,
+    model: typeof raw.model === "string" ? raw.model : null,
+    photos: pickPhotos(raw),
+    year: typeof raw.year === "string" ? raw.year : null,
+    finish: typeof raw.finish === "string" ? raw.finish : null,
+    offersEnabled: raw.offers_enabled !== false,
+    shippingCents: cents((raw.shipping ?? {}) as Record<string, unknown>),
   }
 }
 

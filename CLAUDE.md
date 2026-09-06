@@ -1862,6 +1862,14 @@ engine.
   let a second push reach a marketplace. The unique index on (draft, channel) is
   what stops two listings of one physical pedal, and eBay's offer POST needs its
   own lookup because only the SKU-keyed PUT before it is idempotent.
+- Do NOT import a live Reverb listing without writing its publication row. The
+  unit is already for sale there, and a plain draft offers to list it again.
+- Do NOT make the Reverb import refresh fields on an existing draft. It is
+  create-only because the master record wins, and a refresh would quietly undo
+  a description rewritten for another channel.
+- Do NOT add a field to `PublicListing` to make it available to the importer.
+  The reader's private half is what the importer reads, and that split is what
+  keeps our cost and our notes off `/api/reverb/shop`.
 - Do NOT record a failed takedown as ended. It is still live and still buyable,
   and marking it ended is how one unit gets sold twice with nothing failing.
 - Do NOT send `cost_cents` or `offer_floor_cents` to any marketplace. They are
@@ -2321,6 +2329,25 @@ guard rather than bookkeeping, eBay's offer step is preceded by a lookup because
 it is a POST and not idempotent the way the SKU-keyed PUT before it is, and a
 FAILED takedown stays marked published, because it still is. Recording it as
 ended is exactly how a unit sells twice while the tool reports success.
+
+**THE STOCK ALREADY ON REVERB CAME IN THROUGH AN IMPORT, AND THE PUBLICATION
+ROW IS THE POINT OF IT.** `lib/listing/import-reverb.ts` reads the live shop
+and writes one draft per unit, carrying the description, every photo and the
+cost, which was already ours in Reverb's `seller_cost`. Each one also gets a
+`listing_publications` row marked published with Reverb's own id and URL,
+because an imported unit IS already for sale there: written as a plain draft it
+would show a working "Push to Reverb" button and pressing it would list the
+same pedal twice. It is CREATE-ONLY, so a second run adds what is new and
+leaves edits alone. Reverb is downstream of the master record now, not upstream
+of it, and refreshing fields on every run would silently undo a description
+rewritten here for eBay.
+
+**THE SHOP READER GREW PRIVATE FIELDS RATHER THAN A SECOND READER.**
+`ShopListing` now carries description, make, model, every photo, year, finish
+and shipping, none of which a shop page needs and all of which the importer
+does. That is safe because `PublicListing` names its published fields one by
+one, which is exactly the property `costCents` established: adding a field here
+cannot leak it through `/api/reverb/shop` unless somebody adds it there too.
 
 **THE READINESS CHECK IS NOT A CONVENIENCE.** A marketplace rejects an
 incomplete listing in its own vocabulary naming its own fields, and eBay in

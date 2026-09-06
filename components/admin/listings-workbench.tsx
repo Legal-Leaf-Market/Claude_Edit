@@ -3,6 +3,7 @@
 import { useState } from "react"
 import type { ListingDraft, ListingPublication } from "@/lib/db/schema"
 import type { Readiness } from "@/lib/listing/readiness"
+import { ListingForm } from "@/components/admin/listing-form"
 
 /**
  * The workbench. One record per physical unit, and a push button per channel.
@@ -38,6 +39,31 @@ const CHANNEL_LABEL: Record<string, string> = { reverb: "Reverb", ebay: "eBay" }
 export function ListingsWorkbench({ rows, channelStatus }: Props) {
   const [busy, setBusy] = useState<string | null>(null)
   const [notes, setNotes] = useState<Record<string, string>>({})
+  const [open, setOpen] = useState<string | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [importNote, setImportNote] = useState("")
+
+  async function importShop() {
+    setImporting(true)
+    setImportNote("")
+    try {
+      const res = await fetch("/api/admin/listings/import", { method: "POST" })
+      const data = await res.json()
+      if (!res.ok || data.ok === false) {
+        setImportNote(data.error ?? data.reason ?? `The import answered ${res.status}.`)
+        return
+      }
+      const bits = [`${data.created} imported`]
+      if (data.skipped) bits.push(`${data.skipped} already here`)
+      if (data.problems?.length) bits.push(`${data.problems.length} could not be read`)
+      setImportNote(bits.join(", ") + ".")
+      if (data.created > 0) setTimeout(() => window.location.reload(), 900)
+    } catch {
+      setImportNote("The request did not get through. Nothing was imported.")
+    } finally {
+      setImporting(false)
+    }
+  }
 
   async function act(key: string, body: Record<string, unknown>) {
     setBusy(key)
@@ -107,11 +133,40 @@ export function ListingsWorkbench({ rows, channelStatus }: Props) {
         ))}
       </div>
 
-      {rows.length === 0 ? (
-        <p className="mt-8 rounded border border-[var(--edge)] bg-[var(--panel)] p-4 text-sm text-[var(--text-dim)]">
-          No listings yet. Create one by POSTing a SKU and a title to{" "}
-          <code className="text-[var(--text)]">/api/admin/listings</code>, or add the form below
-          once the first few are in and the shape has settled.
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setOpen(open === "new" ? null : "new")}
+          className="rounded border border-[var(--edge)] bg-[var(--panel)] px-3 py-1.5 text-sm font-semibold"
+        >
+          {open === "new" ? "Cancel" : "New listing"}
+        </button>
+        <button
+          type="button"
+          onClick={importShop}
+          disabled={importing}
+          className="rounded border border-[var(--edge)] px-3 py-1.5 text-sm disabled:opacity-50"
+        >
+          {importing ? "Importing..." : "Import the live Reverb shop"}
+        </button>
+        {importNote ? <span className="text-sm text-[var(--text-dim)]">{importNote}</span> : null}
+      </div>
+
+      <p className="mt-2 max-w-[70ch] text-xs text-[var(--text-faint)]">
+        The import creates one record per live Reverb listing and marks it as already live there, so
+        it can never be pushed to Reverb a second time. It only adds what is missing: anything you
+        have edited here stays as you left it.
+      </p>
+
+      {open === "new" ? (
+        <div className="mt-4">
+          <ListingForm />
+        </div>
+      ) : null}
+
+      {rows.length === 0 && open !== "new" ? (
+        <p className="mt-6 rounded border border-[var(--edge)] bg-[var(--panel)] p-4 text-sm text-[var(--text-dim)]">
+          Nothing here yet. Import what is already on Reverb, or start one from scratch.
         </p>
       ) : null}
 
@@ -127,10 +182,25 @@ export function ListingsWorkbench({ rows, channelStatus }: Props) {
                   {draft.costCents != null ? ` · cost ${money(draft.costCents)}` : ""}
                 </div>
               </div>
-              <span className="rounded border border-[var(--edge)] px-2 py-0.5 text-[10px] uppercase tracking-[.12em] text-[var(--text-faint)]">
-                {draft.status}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="rounded border border-[var(--edge)] px-2 py-0.5 text-[10px] uppercase tracking-[.12em] text-[var(--text-faint)]">
+                  {draft.status}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setOpen(open === draft.id ? null : draft.id)}
+                  className="rounded border border-[var(--edge)] px-2 py-0.5 text-xs"
+                >
+                  {open === draft.id ? "Close" : "Edit"}
+                </button>
+              </div>
             </div>
+
+            {open === draft.id ? (
+              <div className="mt-4">
+                <ListingForm draft={draft} />
+              </div>
+            ) : null}
 
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {readiness.map((r) => {
