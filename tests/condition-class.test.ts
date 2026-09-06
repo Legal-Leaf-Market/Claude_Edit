@@ -37,6 +37,12 @@ const FIXTURES: { condition: string | null; expected: "new" | "used" }[] = [
   { condition: "Seller refurbished", expected: "new" },
   { condition: "Manufacturer refurbished", expected: "new" },
   { condition: "Refurbished", expected: "new" },
+  // B-stock is a dealer selling factory stock with a scratch on it. Reverb's
+  // own normaliser already called it "Refurbished" and therefore new, so
+  // leaving the raw spelling on the used side had the two disagreeing.
+  { condition: "B-Stock", expected: "new" },
+  { condition: "b stock", expected: "new" },
+  { condition: "BSTOCK", expected: "new" },
 
   // Genuinely second-hand.
   { condition: "Used", expected: "used" },
@@ -49,7 +55,6 @@ const FIXTURES: { condition: string | null; expected: "new" | "used" }[] = [
   { condition: "Poor", expected: "used" },
   { condition: "For parts or not working", expected: "used" },
   { condition: "Non Functioning", expected: "used" },
-  { condition: "B-Stock", expected: "used" },
   { condition: "Vintage", expected: "used" },
 
   // A blank field is a private seller who did not fill it in, not a retailer.
@@ -60,6 +65,18 @@ const FIXTURES: { condition: string | null; expected: "new" | "used" }[] = [
   { condition: "Newark reissue", expected: "used" },
   { condition: "Newly serviced", expected: "used" },
   { condition: "Renewed casing", expected: "used" },
+
+  // Reverb's own condition vocabulary, in full. Every grade below "Brand New"
+  // is a second-hand grade and has to reach the used median, or a peer
+  // marketplace's prices would be measured against new retail.
+  { condition: "Non Functioning", expected: "used" },
+  { condition: "Fair", expected: "used" },
+  { condition: "Good", expected: "used" },
+  { condition: "Very Good", expected: "used" },
+  { condition: "Excellent", expected: "used" },
+  { condition: "Mint", expected: "used" },
+  { condition: "Acceptable", expected: "used" },
+  { condition: "Unspecified", expected: "used" },
 ]
 
 describe("conditionClass", () => {

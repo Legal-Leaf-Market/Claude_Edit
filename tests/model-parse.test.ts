@@ -52,6 +52,39 @@ describe("detectCategory", () => {
     expect(detectCategory("Ampeg SVT Classic Bass Amplifier Head")).toBe("Amplifiers")
   })
 
+  it("recognises pedal names that can mean nothing else", () => {
+    // Real Reverb titles. None of these say "pedal", and before these patterns
+    // every one landed in "Other" and was therefore missing from
+    // /used/effects-pedals entirely.
+    expect(detectCategory("Ibanez TS9 Tube Screamer")).toBe("Effects Pedals")
+    expect(detectCategory("Dunlop Cry Baby GCB95")).toBe("Effects Pedals")
+    expect(detectCategory("Electro-Harmonix Big Muff Pi")).toBe("Effects Pedals")
+    expect(detectCategory("Boss RC-500 Loop Station")).toBe("Effects Pedals")
+    expect(detectCategory("Boss DS-1 Distortion")).toBe("Effects Pedals")
+    expect(detectCategory("Xotic EP Booster")).toBe("Effects Pedals")
+  })
+
+  it("still refuses the titles that genuinely say nothing", () => {
+    // The honest limit of a title parser, and the reason feed-category.ts
+    // exists. There is no pattern that reads these as pedals without also
+    // reading half the catalogue as pedals, so they stay "Other" here and are
+    // classified from the merchant's own category instead.
+    expect(detectCategory("Klon Centaur")).toBe("Other")
+    expect(detectCategory("EarthQuaker Devices Plumes")).toBe("Other")
+    expect(detectCategory("Wampler Tumnus Deluxe")).toBe("Other")
+  })
+
+  it("does not let a pedal word steal studio gear", () => {
+    // "Compressor" is in no pedal pattern on purpose: it names a pedal and a
+    // rack unit equally well, and stealing every outboard compressor to catch
+    // one Keeley is the worse trade.
+    expect(detectCategory("Universal Audio 1176LN Compressor")).toBe("Recording & Audio")
+    expect(detectCategory("Focusrite Scarlett 2i2 Audio Interface")).toBe("Recording & Audio")
+    // A distortion PEDAL is a pedal; a distortion-channel amp is still an amp,
+    // because the amplifier pattern is checked first.
+    expect(detectCategory("Marshall JCM800 Guitar Amplifier with distortion")).toBe("Amplifiers")
+  })
+
   it("falls back to Other rather than guessing", () => {
     expect(detectCategory("Assorted studio bits")).toBe("Other")
   })

@@ -291,6 +291,14 @@ table.lot-table { width: 100%; min-width: 520px; border-collapse: collapse; font
 .lot-table input:focus-visible { outline: 2px solid var(--led); outline-offset: -2px; }
 .lot-table input.guessed { color: var(--warn); }
 .lot-table input.seeded { color: var(--text-dim); font-style: italic; }
+/* A pulled number is neither a guess nor a hand-typed answer, so it reads as
+   neither: the LED means "this one is backed by something". */
+.lot-table input.sourced { color: var(--accent-text); }
+.lot-table tr.eviRow td {
+  border-top: 0; padding: 0 10px 8px; font-size: 12px; color: var(--text-faint);
+}
+.lot-table tr.eviRow td span.hit { color: var(--text-dim); }
+.lot-table tr.eviRow td span.miss { color: var(--warn); }
 .lot-table td.drop { width: 34px; text-align: center; }
 .lot-table .x {
   background: transparent; border: 0; color: var(--text-faint);
@@ -549,7 +557,9 @@ table.lot-table { width: 100%; min-width: 520px; border-collapse: collapse; font
           <button class="mini go" id="parseBtn">Read the listing</button>
           <button class="mini" id="addRow">Add a row</button>
           <button class="mini" id="clearLot">Clear</button>
+          <button class="mini" id="compsBtn">Pull comps</button>
           <span class="parse-note" id="parseNote"></span>
+          <span class="parse-note" id="compsNote"></span>
         </div>
 
         <div class="tablewrap" id="tableWrap" hidden>
@@ -1415,6 +1425,8 @@ function parseListing(text) {
       mv: typeof seed === "number" ? seed : null,
       mvSeeded: typeof seed === "number",
       mvSpread: hit ? seed === null : false,
+      mvSourced: false,
+      evi: null,
     });
   }
   return { rows, guessedCount, noPrice };
@@ -1884,6 +1896,7 @@ const els = {
   xDeposit: $("xDeposit"),
   xVerified: $("xVerified"),
   paste: $("paste"), rows: $("rows"),
+  compsBtn: $("compsBtn"), compsNote: $("compsNote"),
   m: [null, $("m1"), $("m2"), $("m3")],
   c: [null, $("c1"), $("c2"), $("c3")],
   d: [null, $("d1"), $("d2"), $("d3")],
@@ -2067,16 +2080,21 @@ function renderLot() {
     });
     tr.appendChild(a.td);
 
-    const v = cell(r.mv === null ? "" : String(r.mv), "num" + (r.mvSeeded ? " seeded" : ""),
+    const v = cell(r.mv === null ? "" : String(r.mv), "num" +
+      (r.mvSeeded ? " seeded" : "") + (r.mvSourced ? " sourced" : ""),
       r.mvSpread ? "varies" : "");
-    v.input.title = r.mvSpread
+    v.input.title = r.mvSourced && r.evi
+      ? r.evi.basis
+      : r.mvSpread
       ? "Vintage and reissue are worlds apart on this one. No seed on purpose, check the comps."
       : r.mvSeeded ? "Estimate. Check it against real comps." : "";
     v.input.addEventListener("input", () => {
       const n = parseFloat(v.input.value.replace(/[^\\d.]/g, ""));
       r.mv = Number.isFinite(n) ? n : null;
       r.mvSeeded = false;
+      r.mvSourced = false;
       v.input.classList.remove("seeded");
+      v.input.classList.remove("sourced");
       recompute();
     });
     tr.appendChild(v.td);
@@ -2093,6 +2111,69 @@ function renderLot() {
     tr.appendChild(x);
 
     tb.appendChild(tr);
+
+    /* The evidence, under the row it belongs to. A pulled number is only worth
+       having if the thing it came from is visible next to it: the sample size,
+       what it matched, and the live spread. A median with 5 behind it and one
+       with 60 behind it are different claims and must not look alike. */
+    if (r.evi) {
+      const er = document.createElement("tr");
+      er.className = "eviRow";
+      const td = document.createElement("td");
+      td.colSpan = 5;
+
+      /* Built as DOM nodes with textContent, deliberately, and there is a test
+         holding it that way. The matched name is a brand and model out of
+         canonical_gear, which came from a merchant's feed and is therefore
+         somebody else's text; assembling markup out of it is how a feed row
+         ends up executing on the admin page. */
+      const parts = [];
+      const bit = (text, cls) => {
+        const sp = document.createElement("span");
+        if (cls) sp.className = cls;
+        sp.textContent = text;
+        parts.push(sp);
+      };
+      const dollars = c => money(Math.round(c / 100));
+
+      if (r.evi.matchedAs) bit(r.evi.matchedAs, "hit");
+      else bit("no catalogue match", "miss");
+
+      if (r.evi.ourSales.count) {
+        bit(r.evi.ourSales.count + " sold by us" +
+          (r.evi.ourSales.medianCents ? " at " + dollars(r.evi.ourSales.medianCents) : ""));
+      }
+      if (r.evi.guide && r.evi.guide.midCents) {
+        bit("Reverb guide " + dollars(r.evi.guide.midCents) +
+          (r.evi.guide.lowCents && r.evi.guide.highCents
+            ? " (" + dollars(r.evi.guide.lowCents) + " to " + dollars(r.evi.guide.highCents) + ")"
+            : "") + ", sold");
+      }
+      if (r.evi.used.sampleSize) {
+        bit("used median " +
+          (r.evi.used.medianCents ? dollars(r.evi.used.medianCents) : "withheld") +
+          " from " + r.evi.used.sampleSize);
+      }
+      if (r.evi.fresh.sampleSize) {
+        bit("new median " +
+          (r.evi.fresh.medianCents ? dollars(r.evi.fresh.medianCents) : "withheld") +
+          " from " + r.evi.fresh.sampleSize);
+      }
+      if (r.evi.live.count) {
+        bit(r.evi.live.count + " live" +
+          (r.evi.live.lowCents && r.evi.live.highCents
+            ? ", " + dollars(r.evi.live.lowCents) + " to " + dollars(r.evi.live.highCents)
+            : ""));
+      }
+      if (r.evi.suggestedCents === null) bit(r.evi.basis, "miss");
+
+      parts.forEach((node, n) => {
+        if (n) td.appendChild(document.createTextNode(" · "));
+        td.appendChild(node);
+      });
+      er.appendChild(td);
+      tb.appendChild(er);
+    }
   });
 
   const t = totals();
@@ -2313,7 +2394,7 @@ function doParse() {
 $("parseBtn").addEventListener("click", doParse);
 els.paste.addEventListener("input", save);
 $("addRow").addEventListener("click", () => {
-  state.lot.push({ brand: "", model: "", ask: null, askGuessed: false, mv: null, mvSeeded: false, mvSpread: false });
+  state.lot.push({ brand: "", model: "", ask: null, askGuessed: false, mv: null, mvSeeded: false, mvSpread: false, mvSourced: false, evi: null });
   renderLot(); recompute();
 });
 $("clearLot").addEventListener("click", () => {
@@ -2321,6 +2402,111 @@ $("clearLot").addEventListener("click", () => {
   $("parseNote").textContent = ""; $("parseNote").className = "parse-note";
   renderLot(); recompute();
 });
+
+/* ---------------------------------------------------------------------------
+   PULL COMPS.
+
+   The market column is seeded from a hand-typed table of about eighty pedals
+   and is honest about being a ballpark. This replaces it, where it can, with
+   what we actually know: our own Reverb sold prices first, then the catalogue's
+   used median. The server refuses to suggest anything it cannot support, so a
+   blank here is a real answer and not a failure.
+
+   IT NEVER OVERWRITES A NUMBER SOMEBODY TYPED. A human who has looked at the
+   comps knows something the query does not, and silently replacing their figure
+   on a refresh is how a checked number becomes an unchecked one. Only empty and
+   still-seeded cells are filled.
+
+   AND IT DOES NOT TICK THE VERIFIED BOX. A median with a sample size behind it
+   is better evidence than the seed it replaced, and it is still not somebody
+   having looked. The box means a person checked, so a person ticks it.
+
+   THE DOCUMENT ALSO RUNS AS A FILE OFF A LAPTOP with no server behind it, which
+   is why every failure here ends in a sentence rather than a broken button. A
+   fetch from file:// fails at the network layer, and the honest report of that
+   is "no server", not "no comps".
+--------------------------------------------------------------------------- */
+function compsNote(text, warn) {
+  els.compsNote.textContent = text;
+  els.compsNote.className = "parse-note" + (warn ? " warn" : "");
+}
+
+async function pullComps() {
+  const named = state.lot.filter(r => (r.brand || "").trim() && (r.model || "").trim());
+  if (!named.length) {
+    compsNote("Nothing to look up. Read a listing first, or fill in a brand and a model.", true);
+    return;
+  }
+
+  els.compsBtn.disabled = true;
+  compsNote("Looking up " + named.length + " row" + (named.length === 1 ? "" : "s") + "...", false);
+
+  let data;
+  try {
+    const res = await fetch("/api/admin/outreach/comps", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ rows: state.lot.map(r => ({ brand: r.brand, model: r.model })) }),
+    });
+    if (res.status === 401) {
+      compsNote("Signed out. Reload the page and sign in again.", true);
+      els.compsBtn.disabled = false;
+      return;
+    }
+    if (!res.ok) {
+      compsNote("The lookup answered " + res.status + ". Nothing was changed.", true);
+      els.compsBtn.disabled = false;
+      return;
+    }
+    data = await res.json();
+  } catch (_) {
+    /* file://, offline, or the app is not running. All three look the same
+       from here and all three mean the same thing to the person reading it. */
+    compsNote("No server to ask. This copy is running as a file, so the market column stays as it is.", true);
+    els.compsBtn.disabled = false;
+    return;
+  }
+
+  const comps = Array.isArray(data.comps) ? data.comps : [];
+  let filled = 0, matched = 0, refused = 0, kept = 0;
+
+  comps.forEach((c, i) => {
+    const r = state.lot[i];
+    if (!r) return;
+    r.evi = c;
+    if (c.matchedAs) matched += 1;
+    if (c.suggestedCents === null) refused += 1;
+    /* Empty or still seeded, never a number a person typed. */
+    const untouched = r.mv === null || r.mvSeeded;
+    if (untouched && c.suggestedCents !== null) {
+      r.mv = Math.round(c.suggestedCents / 100);
+      r.mvSeeded = false;
+      r.mvSourced = true;
+      filled += 1;
+    } else if (!untouched && c.suggestedCents !== null) {
+      kept += 1;
+    }
+  });
+
+  renderLot();
+  recompute();
+  save();
+
+  /* "0 priced" on a second press reads as a failure and is not one: it means
+     every row already had a number, which is the normal case once somebody has
+     been through the lot. Say which it was. */
+  const bits = [];
+  bits.push(matched + " of " + comps.length + " matched");
+  if (filled) bits.push(filled + " priced");
+  if (kept) bits.push(kept + " left as you set " + (kept === 1 ? "it" : "them"));
+  if (!filled && !kept) bits.push("nothing to fill in");
+  if (refused) bits.push(refused + " for you to price by hand");
+  const notes = [data.salesNote, data.guideNote].filter(Boolean).join(" ");
+  compsNote(bits.join(", ") + ". " + notes, refused > 0);
+  els.compsBtn.disabled = false;
+}
+
+els.compsBtn.addEventListener("click", pullComps);
 
 document.addEventListener("click", (e) => {
   const st = e.target.closest("[data-step]");

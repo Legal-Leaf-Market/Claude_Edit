@@ -310,6 +310,10 @@ export function normalizeImpactRow(
     // make. Section 8 depends on this landing in the NEW median rather than
     // dragging the used one up and manufacturing deals that do not exist.
     condition: cell(record, columns.condition) || "New",
+    // The brand's own category path. Impact lets each advertiser name its own
+    // columns, so this is bound by header name through the alias table like
+    // everything else here, and interpreted by lib/canonical/feed-category.ts.
+    feedCategory: cell(record, columns.category).slice(0, 200) || null,
     brand: cell(record, columns.manufacturer).slice(0, 100) || null,
     gtin: cell(record, columns.gtin).slice(0, 20) || null,
     epid: null,

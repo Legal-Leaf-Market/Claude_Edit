@@ -191,6 +191,26 @@ export const marketplaceListings = pgTable(
      */
     platformVariantId: varchar("platform_variant_id", { length: 50 }),
 
+    /**
+     * The merchant's OWN category string, stored verbatim: "Effects and Pedals
+     * / Fuzz", "Guitars > Electric Guitars > Solid Body", a Shopify
+     * product_type, a CJ CATEGORY column.
+     *
+     * WHY IT IS WORTH A COLUMN. Categories used to be inferred from the title
+     * alone, and on a peer marketplace that is mostly a guess: "Ibanez TS9 Tube
+     * Screamer" contains no word the pedal pattern matches, so it landed in
+     * "Other" and never appeared on /used/effects-pedals. Twenty-two of
+     * twenty-five real pedal titles failed that way. The merchant already
+     * publishes the answer in the feed and every reader here already declared
+     * an alias for it; none of them stored it.
+     *
+     * It is EVIDENCE, not a decision. lib/canonical/feed-category.ts maps it
+     * onto our own buckets and the title parse stays as the fallback, which is
+     * section 3's rule that an explicit field beats an inferred one, applied to
+     * a field we were throwing away.
+     */
+    feedCategory: varchar("feed_category", { length: 200 }),
+
     /** 'active' | 'sold' | 'expired'. */
     listingStatus: varchar("listing_status", { length: 20 }).notNull().default("active"),
 
@@ -604,3 +624,144 @@ export type Source = (typeof SOURCES)[number]
 
 export const LISTING_STATUSES = ["active", "sold", "expired"] as const
 export type ListingStatus = (typeof LISTING_STATUSES)[number]
+
+/* -------------------------------------------------------------------------- */
+/*  Our own listings: one master record, many channels                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * OUR OWN STOCK, WRITTEN ONCE AND PUSHED WHERE WE CHOOSE.
+ *
+ * Nothing in here is part of the aggregator. These rows never reach
+ * `marketplace_listings`, a canonical row, a median, a deal badge or any public
+ * page, which is the same boundary section 24 sets out and the reason our own
+ * stock cannot end up marking its own homework. This is an operator's tool for
+ * selling on other people's marketplaces, and it happens to live in the same
+ * app because that is where the admin gate and the comps already are.
+ *
+ * A ROW IS A PHYSICAL UNIT, NOT A LISTING. That distinction is the whole design.
+ * One pedal on the bench becomes one row here, and that row is published to
+ * Reverb and to eBay as two listings of the same object. Modelling it the other
+ * way round (a row per listing) makes the two copies drift the moment somebody
+ * corrects a typo, and gives nothing to hang "it sold, take it down everywhere"
+ * off.
+ *
+ * `sku` IS OURS AND IT IS THE JOIN KEY. Both marketplaces accept a seller SKU
+ * and hand it back on their own records, so it is what ties an eBay offer and a
+ * Reverb listing to this row without trusting either of their ids to mean
+ * anything to the other.
+ */
+export const listingDrafts = pgTable(
+  "listing_drafts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    /** Our own stock number. Unique, and the key every channel is told to use. */
+    sku: varchar("sku", { length: 60 }).notNull(),
+    /**
+     * The intake reference from lib/lab/photos.ts, when this unit was
+     * photographed on our bench. Optional: a unit can be listed before the
+     * shoot, and a shoot can exist for a unit we did not keep.
+     */
+    intakeRef: varchar("intake_ref", { length: 60 }),
+
+    /** 'draft' | 'listed' | 'sold' | 'archived'. */
+    status: varchar("status", { length: 20 }).notNull().default("draft"),
+
+    title: varchar("title", { length: 255 }).notNull(),
+    brand: varchar("brand", { length: 100 }),
+    model: varchar("model", { length: 100 }),
+    /** Our own vocabulary, from lib/categories.ts. */
+    category: varchar("category", { length: 100 }),
+    /** Free text, and the one field worth the most on both marketplaces. */
+    description: text("description"),
+    /** Plain condition words. Each channel maps it to its own id. */
+    condition: varchar("condition", { length: 50 }),
+    year: varchar("year", { length: 20 }),
+    finish: varchar("finish", { length: 60 }),
+    countryOfOrigin: varchar("country_of_origin", { length: 60 }),
+
+    /** Photo URLs in display order. Both channels take URLs rather than uploads. */
+    photos: jsonb("photos").notNull().default(sql`'[]'::jsonb`),
+
+    priceCents: integer("price_cents"),
+    /** What we paid. NEVER published to a channel and never leaves the admin. */
+    costCents: integer("cost_cents"),
+    currency: varchar("currency", { length: 10 }).notNull().default("USD"),
+    acceptsOffers: boolean("accepts_offers").notNull().default(true),
+    /** Below this we do not want the offer. Ours alone; no channel is told. */
+    offerFloorCents: integer("offer_floor_cents"),
+    shippingCents: integer("shipping_cents"),
+    localPickup: boolean("local_pickup").notNull().default(false),
+
+    /**
+     * Per-channel settings that only that channel understands: Reverb's
+     * category and condition UUIDs, eBay's numeric category, its required item
+     * aspects and its three business policy ids. Kept as one document per
+     * channel rather than fifteen columns, because the next channel brings its
+     * own vocabulary and a column each is how this table becomes unreadable.
+     */
+    channelMeta: jsonb("channel_meta").notNull().default(sql`'{}'::jsonb`),
+
+    notes: text("notes"),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_listing_drafts_sku").on(t.sku),
+    index("idx_listing_drafts_status").on(t.status, t.updatedAt),
+  ],
+)
+
+/**
+ * WHERE THIS UNIT IS CURRENTLY LISTED, one row per channel.
+ *
+ * The unique index on (draft, channel) is not bookkeeping, it is the guard
+ * against the single most expensive mistake this tool can make: pressing the
+ * button twice and putting two listings of one physical pedal on one
+ * marketplace. Same instinct as `(source, external_id)` on the ingestion side,
+ * for the same reason, except here the cost of getting it wrong is an oversold
+ * customer rather than a duplicated row.
+ */
+export const listingPublications = pgTable(
+  "listing_publications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    draftId: uuid("draft_id")
+      .notNull()
+      .references(() => listingDrafts.id, { onDelete: "cascade" }),
+
+    /** 'reverb' | 'ebay'. */
+    channel: varchar("channel", { length: 20 }).notNull(),
+    /** 'published' | 'ended' | 'failed'. */
+    state: varchar("state", { length: 20 }).notNull(),
+
+    /** The channel's own id for the listing it created. */
+    externalId: varchar("external_id", { length: 120 }),
+    /** Where a human can go and look at it. */
+    externalUrl: text("external_url"),
+    /** The reason, when state is 'failed'. Never a raw response body. */
+    error: text("error"),
+
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_listing_publications_draft_channel").on(t.draftId, t.channel),
+    index("idx_listing_publications_channel").on(t.channel, t.state),
+  ],
+)
+
+export type ListingDraft = typeof listingDrafts.$inferSelect
+export type NewListingDraft = typeof listingDrafts.$inferInsert
+export type ListingPublication = typeof listingPublications.$inferSelect
+
+/** Channels a draft can be pushed to. Adding one starts here. */
+export const LISTING_CHANNELS = ["reverb", "ebay"] as const
+export type ListingChannel = (typeof LISTING_CHANNELS)[number]
+
+export const DRAFT_STATUSES = ["draft", "listed", "sold", "archived"] as const
+export type DraftStatus = (typeof DRAFT_STATUSES)[number]

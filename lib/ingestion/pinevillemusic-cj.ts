@@ -87,6 +87,10 @@ export function normalizePinevilleMusicRow(row: Record<string, string>): NewMark
     priceCents,
     currency: (pick(row, FIELD_ALIASES.currency) || "USD").slice(0, 10),
     condition: "New",
+    // The merchant's own taxonomy, stored verbatim and interpreted later by
+    // lib/canonical/feed-category.ts. The alias has been declared here since
+    // this reader was written and the value was being dropped on the floor.
+    feedCategory: pick(row, FIELD_ALIASES.category).slice(0, 200) || null,
     brand: pick(row, FIELD_ALIASES.manufacturer).slice(0, 100) || null,
     gtin: pick(row, FIELD_ALIASES.upc).slice(0, 20) || null,
     epid: null,

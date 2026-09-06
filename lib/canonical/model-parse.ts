@@ -207,10 +207,30 @@ export function knownBrands(): string[] {
  * Coarse buckets for the category facet. Ordered: the first pattern that
  * matches wins, so the specific forms sit above the generic ones ("bass amp"
  * must beat "bass", "pedal steel" must not be read as an effects pedal).
+ *
+ * THIS IS THE FALLBACK NOW, NOT THE PRIMARY. A listing carrying the merchant's
+ * own category is classified from that instead, by lib/canonical/feed-category.ts.
+ * The split matters because a title is only evidence when the seller happened to
+ * describe the thing: measured against twenty-five real pedal titles this list
+ * sent twenty-two to "Other", and a pedal in "Other" is absent from
+ * /used/effects-pedals, from liveModels() and from the guide's shelf, silently.
+ *
+ * WHAT WAS ADDED HERE, AND WHY IT STOPS WHERE IT DOES. Pedal names that can
+ * mean nothing else ("tube screamer", "cry baby", "big muff", "loop station")
+ * and effect words that a pedal owns in practice ("distortion", "phaser",
+ * "flanger", "booster"). What is deliberately NOT here is a brand list: Line 6
+ * and Universal Audio sell pedals, amps and interfaces under one name, so a
+ * brand pattern would file an interface as a pedal with total confidence.
+ *
+ * "Compressor" stays out for the same reason it is absent from the feed mapper.
+ * It names a pedal and a studio unit equally well, and a Keeley Compressor
+ * Plus reading as Recording & Audio is the honest cost of not stealing every
+ * outboard compressor in the catalogue. The feed category is what fixes that
+ * one, because Reverb files it under "Effects and Pedals" and says so.
  */
 const CATEGORY_PATTERNS: [string, RegExp][] = [
   ["Amplifiers", /\b(amp head|amplifier|combo amp|\bamp\b|cabinet|\bcab\b|speaker cab|head\b.*\bwatt)\b/i],
-  ["Effects Pedals", /\b(pedal board|pedalboard|overdrive|distortion pedal|fuzz|chorus pedal|delay pedal|reverb pedal|wah|compressor pedal|stompbox|multi-?effects|\bpedal\b)\b/i],
+  ["Effects Pedals", /\b(pedal board|pedalboard|overdrive|distortion|fuzz|chorus pedal|delay pedal|reverb pedal|wah|cry ?baby|tube screamer|big muff|loop station|phaser|flanger|booster|compressor pedal|stompbox|multi-?effects|\bpedal\b)\b/i],
   ["Synthesizers", /\b(synth|synthesizer|analog synth|modular|eurorack|drum machine|sampler|groovebox|sequencer)\b/i],
   ["Keyboards & Pianos", /\b(keyboard|digital piano|stage piano|electric piano|workstation|organ|rhodes|wurlitzer|clavinet|\bpiano\b)\b/i],
   ["Drums & Percussion", /\b(drum kit|drum set|snare|cymbal|hi-?hat|ride\b|crash\b|tom\b|kick drum|bass drum|djembe|cajon|congas?|bongos?|percussion|drumhead)\b/i],

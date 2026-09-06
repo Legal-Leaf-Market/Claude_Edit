@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { canonicalGear, marketplaceListings } from "@/lib/db/schema"
 import type { CanonicalGear, NewMarketplaceListing } from "@/lib/db/schema"
 import { gearSlug, parseGearFromTitle } from "./model-parse"
+import { categoryFromFeed } from "./feed-category"
 
 /**
  * Entity resolution: which real-world instrument is this listing?
@@ -38,7 +39,7 @@ export type ResolutionResult = {
 
 type ResolvableListing = Pick<
   NewMarketplaceListing,
-  "title" | "brand" | "gtin" | "epid" | "mpn" | "primaryImageUrl"
+  "title" | "brand" | "gtin" | "epid" | "mpn" | "primaryImageUrl" | "feedCategory"
 >
 
 /* -------------------------------------------------------------------------- */
@@ -250,6 +251,20 @@ async function createGear(args: CreateArgs): Promise<CanonicalGear> {
  */
 async function enrichGear(gear: CanonicalGear, args: Partial<CreateArgs>): Promise<void> {
   const patch: Record<string, unknown> = {}
+  /**
+   * "Other" is treated as empty here, and it is the one field this function
+   * overwrites rather than only filling.
+   *
+   * A canonical row is created by whichever listing arrives first. If that was
+   * an eBay row whose title said nothing a category pattern matches, the gear
+   * is stuck on "Other" forever, and every later listing that DOES carry a
+   * merchant category resolves onto it and leaves it there. The whole model
+   * then stays off its category page even though a feed told us where it
+   * belongs. Only a mapped feed category is allowed to do this: args.category
+   * is passed as null by every caller that only has a title guess, so a guess
+   * can never overwrite a category somebody's feed stated.
+   */
+  if (gear.category === "Other" && args.category) patch.category = args.category
   if (!gear.gtin && args.gtin) patch.gtin = args.gtin
   if (!gear.epid && args.epid) patch.epid = args.epid
   if (!gear.mpn && args.mpn) patch.mpn = args.mpn.slice(0, 100)
@@ -273,6 +288,23 @@ export async function resolveCanonicalGear(
   listing: ResolvableListing,
 ): Promise<ResolutionResult | null> {
   const parsed = parseGearFromTitle(listing.title ?? "", listing.brand)
+
+  /**
+   * The merchant's own category beats the one parsed out of the title, for the
+   * same reason section 3 makes an explicit eBay field beat an inferred one:
+   * one is a statement and the other is a guess. On a peer marketplace the
+   * guess is usually wrong. "Ibanez TS9 Tube Screamer" carries no word the
+   * pedal pattern matches, so it parsed as "Other" and never appeared on
+   * /used/effects-pedals, while the feed row said "Effects and Pedals / Fuzz"
+   * in a column nothing read.
+   *
+   * categoryFromFeed returns null rather than "Other" when it does not
+   * recognise the path, so an unmapped merchant taxonomy leaves the title parse
+   * exactly as it was rather than replacing it with a worse answer.
+   */
+  const feedCategory = categoryFromFeed(listing.feedCategory)
+  const category = feedCategory ?? parsed.category
+
   const gtin = normalizeGtin(listing.gtin)
   const epid = listing.epid?.trim() || null
   const mpn = listing.mpn?.trim() || null
@@ -288,14 +320,14 @@ export async function resolveCanonicalGear(
   if (gtin) {
     const existing = await findByKey("gtin", gtin)
     if (existing) {
-      await enrichGear(existing, { epid, mpn, imageUrl: image })
+      await enrichGear(existing, { epid, mpn, imageUrl: image, category: feedCategory ?? undefined })
       return { gearId: existing.id, tier: "gtin", score: 1, created: false }
     }
     if (brand && model) {
       const created = await createGear({
         brand,
         model,
-        category: parsed.category,
+        category,
         gtin,
         epid,
         mpn,
@@ -310,14 +342,14 @@ export async function resolveCanonicalGear(
   if (epid) {
     const existing = await findByKey("epid", epid)
     if (existing) {
-      await enrichGear(existing, { gtin, mpn, imageUrl: image })
+      await enrichGear(existing, { gtin, mpn, imageUrl: image, category: feedCategory ?? undefined })
       return { gearId: existing.id, tier: "epid", score: 1, created: false }
     }
     if (brand && model) {
       const created = await createGear({
         brand,
         model,
-        category: parsed.category,
+        category,
         gtin,
         epid,
         mpn,
@@ -335,14 +367,14 @@ export async function resolveCanonicalGear(
   if (normalizedMpn) {
     const existing = await findByBrandMpn(brand, normalizedMpn)
     if (existing) {
-      await enrichGear(existing, { gtin, epid, imageUrl: image })
+      await enrichGear(existing, { gtin, epid, imageUrl: image, category: feedCategory ?? undefined })
       return { gearId: existing.id, tier: "mpn", score: 1, created: false }
     }
     if (model) {
       const created = await createGear({
         brand,
         model,
-        category: parsed.category,
+        category,
         gtin,
         epid,
         mpn,
@@ -359,7 +391,7 @@ export async function resolveCanonicalGear(
   const candidate = await findFuzzyCandidate(brand, model)
   if (candidate) {
     const existing = await findById(candidate.id)
-    if (existing) await enrichGear(existing, { gtin, epid, mpn, imageUrl: image })
+    if (existing) await enrichGear(existing, { gtin, epid, mpn, imageUrl: image, category: feedCategory ?? undefined })
     return { gearId: candidate.id, tier: "fuzzy", score: candidate.score, created: false }
   }
 
@@ -367,7 +399,7 @@ export async function resolveCanonicalGear(
   const created = await createGear({
     brand,
     model,
-    category: parsed.category,
+    category,
     gtin,
     epid,
     mpn,

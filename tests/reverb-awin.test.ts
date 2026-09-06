@@ -2,6 +2,8 @@ import { gzipSync } from "node:zlib"
 import { describe, expect, it } from "vitest"
 import { detectDelimiter, parseCsv, parseCsvRows } from "@/lib/ingestion/csv"
 import { fetchAwinFeedText, normalizeAwinRow, parseAwinFeed } from "@/lib/ingestion/reverb-awin"
+import { categoryFromFeed } from "@/lib/canonical/feed-category"
+import { conditionClass } from "@/lib/deals/pricing"
 
 /* -------------------------------------------------------------------------- */
 /*  CSV                                                                       */
@@ -142,6 +144,28 @@ describe("normalizeAwinRow", () => {
     expect(normalizeAwinRow(record({ product_id: "" }))).toBeNull()
     expect(normalizeAwinRow(record({ search_price: "0" }))).toBeNull()
     expect(normalizeAwinRow(record({ merchant_deep_link: "", aw_deep_link: "" }))).toBeNull()
+  })
+
+  it("keeps the merchant's own category, which used to be dropped", () => {
+    // The alias for this column existed from the day the reader was written
+    // and nothing stored the value. Without it a Reverb pedal is categorised
+    // from its title, and a title like "Ibanez TS9 Tube Screamer" carries no
+    // word the pedal pattern matches.
+    expect(normalizeAwinRow(record({ merchant_category: "Effects and Pedals / Fuzz" }))!.feedCategory).toBe(
+      "Effects and Pedals / Fuzz",
+    )
+    expect(normalizeAwinRow(record({ merchant_category: "" }))!.feedCategory).toBeNull()
+  })
+
+  it("puts a pedal on the pedal page even when its title never says pedal", () => {
+    const row = normalizeAwinRow({
+      product_id: "rvb-ts9",
+      product_name: "Ibanez TS9 Tube Screamer",
+      search_price: "129.00",
+      merchant_deep_link: "https://reverb.com/item/ts9",
+      merchant_category: "Effects and Pedals / Overdrive and Boost",
+    })!
+    expect(categoryFromFeed(row.feedCategory)).toBe("Effects Pedals")
   })
 
   it("reads mixed-case headers, which vary by Awin account", () => {

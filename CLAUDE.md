@@ -286,6 +286,7 @@ lib/
   ingestion/upsert.ts       Idempotent writes, price history, run bookkeeping
   canonical/resolve.ts      Four-tier entity resolution (section 4)
   canonical/model-parse.ts  Brand/model/category from keyword-soup titles
+  canonical/feed-category.ts  The merchant's own category, mapped (section 4)
   catalog/live-models.ts    ONE definition of what a category has in stock (section 20)
   pedalboard/chain.ts       The planner's chain. Its ORDER is the guide's (section 20)
   deals/pricing.ts          Rolling median, deal threshold
@@ -320,6 +321,18 @@ These are not preferences. Each one is a term of service.
   own stock inside the median means setting a price and also computing the
   market price that judges it. Do not delete that module on a fast read of the
   rule above, and do not widen it to any shop that is not ours.
+- **AND THE PRICE GUIDE IS THE SECOND CARVE-OUT, narrower still and switched
+  off by default.** `lib/reverb/price-guide.ts` asks Reverb what a pedal SOLD
+  for, so that an operator can decide what to offer somebody for theirs. That
+  is the one source on this site measuring sold prices rather than asking
+  prices, and it is genuinely gear that is not ours, which is why it needed a
+  decision rather than an inference. What keeps it inside the rule is the same
+  shape as the shop reader: read for ourselves, never republished. The module
+  imports no database, a test pins `lib/outreach/comps.ts` as its only
+  importer, nothing it returns reaches `marketplace_listings` or any public
+  page, and `REVERB_PRICE_GUIDE` withdraws it in one variable without a
+  deploy. Do NOT widen it into ingestion, and do NOT let a value from it be
+  stored anywhere.
 - **`LINKCONNECTOR_SWEETWATER_FEED_URL` unset is the EXPECTED state**, not a
   bug to route around. `AWIN_REVERB_FEED_URL` and `AWIN_GEAR4MUSIC_FEED_URL`
   are a different case as of 10 Aug 2026: both feeds are confirmed to exist in
@@ -412,6 +425,49 @@ price. An unscoped `similarity()` search happily merges them.
 Paid embeddings are deliberately NOT wired up. `resolveByEmbedding()` is a
 marked stub. Structured fields carry the vast majority of rows; do not spend on
 embeddings before the `needs_review` queue proves a miss rate that justifies it.
+
+**CATEGORY IS NOT RESOLVED THE SAME WAY, AND THE ORDER IS THE OTHER WAY ROUND
+FROM IDENTITY.** Identity trusts the title last, because a title is keyword
+soup. Category used to trust it FIRST, and only, through `detectCategory()`.
+Measured against twenty-five real Reverb pedal titles that put twenty-two of
+them in "Other", and filed a Keeley Compressor Plus under Recording & Audio.
+A pedal in "Other" is not on `/used/effects-pedals`, so it is not in
+`liveModels()`, so it is not on the guide's shelf either, and nothing throws.
+
+Meanwhile every feed reader here had declared an alias for the merchant's own
+category column since the day it was written, and not one of them stored the
+value. Reverb publishes "Effects and Pedals / Fuzz" beside the title we were
+guessing from. So `marketplace_listings.feed_category` holds it verbatim,
+`lib/canonical/feed-category.ts` maps it onto our own vocabulary, and the title
+parse is the fallback. Same rule as section 3's `inferredBrand`: an explicit
+field beats an inferred one.
+
+Three things about that mapper are load bearing:
+
+- **It returns null, never "Other".** Null means "nothing here we recognise"
+  and hands the decision back to the title. Answering "Other" would replace a
+  guess with a worse guess, confidently, on every unmapped taxonomy.
+- **It reads the LAST path segment first, then each parent.** Merchant
+  taxonomies run general to specific, so the leaf carries the most information
+  and the department is the safety net.
+- **Genuinely ambiguous words are in NO pattern at all.** "Compressor",
+  "reverb", "delay", "EQ" and "preamp" name a pedal and a rack unit equally
+  well, so they match nothing and the parent segment decides: "Effects and
+  Pedals / Compressors" resolves on the department, and "Pro Audio / Outboard
+  Gear / Compressors" on its own. Adding `compressor` to the pedal pattern to
+  win the first would silently take the second with it.
+
+**eBay is deliberately not wired into this.** Its feed gives a numeric
+`categoryId` rather than a name, and turning that into a category means the
+Taxonomy API and a lookup table nobody has built. A number in that column would
+map to nothing and only look like coverage.
+
+**And a stated category may upgrade gear stuck on "Other", one way only.** The
+canonical row is created by whichever listing arrives first; if that was an
+eBay row with an unhelpful title, every later Reverb listing resolves onto it
+and would leave it in "Other" forever. `enrichGear` treats "Other" as empty for
+exactly this, and only a mapped FEED category is allowed through: a title guess
+can never overwrite a category a merchant stated.
 
 **Bias throughout: under-merge rather than over-merge.** An unmatched listing
 still shows up in search on its own text. A bad merge corrupts the price
@@ -559,6 +615,15 @@ Never fork the logic between them. Add work to the job function.
   used median is precisely what manufactures deals that do not exist. A null
   condition is the exception and stays used, since the retail feeds all set the
   field explicitly.
+- **B-STOCK IS IN THAT GROUP TOO, as of the Reverb wiring, and it was not
+  before.** It is factory stock with a cosmetic blemish sold by a dealer, which
+  is the open-box case wearing a different word, so the asymmetry above applies
+  to it unchanged. The reason it had to move rather than stay a judgement call:
+  `reverb-awin.ts` normalises "B-Stock" to "Refurbished" before storing it, so
+  a Reverb row was already being classed NEW while the identical words arriving
+  from any other feed were classed used. One vocabulary, two answers, and
+  nothing anywhere failed. Both halves of the classifier now carry it, and the
+  spaced spelling too.
 - **The classifier exists three times (JS, the deal-flagging UPDATE, and the
   search projections) and they must agree.** A divergence throws nothing; it
   just starts flagging listings against a median built from a population they
@@ -657,6 +722,8 @@ process, and the accident is far likelier.
 | `CJ_ZZOUNDS_FEED_URL` / `CJ_FULLCOMPASS_FEED_URL` / `CJ_PINEVILLEMUSIC_FEED_URL` | Three independent CJ Affiliate programmes. Each no-ops when unset. |
 | `IMPACT_ANDERTONS_FTP_*` | Anderton's via Impact.com, ingested by `lib/ingestion/andertons-impact.ts`. Impact delivers catalogues by FTP drop, NOT over an HTTPS feed URL like Awin/CJ/LinkConnector, so this is a host/user/password/path quartet. `hasAndertonsFeed` gates on the credential pair, since host and path have defaults. **The credentials are a dedicated pair Impact mails on request** ("Email Product Catalog FTP Username and Password", needs Technical Settings permission), not the Impact account login, and **the host comes from the platform's own "Download via FTP" panel** rather than from this file: `products.impact.com` is the default here but is documented on the brand UPLOAD side, so treat it as a starting guess. See the FTP note below the table. |
 | `GOAFFPRO_*_REF_PARAM` / `GOAFFPRO_*_REF_CODE` | One pair per small independent Shopify/WooCommerce seller (Folkcraft, Acoustic Guitar, Jamstik, Jackson Audio, Eminence Digital, Haze Guitar, EART Guitar, Play With Authority, Pures Music, Squaver, Eason Music Store, Go Kalimba). Catalogue ingestion needs no credential at all; an unset code just means a null `affiliate_url` until the referral is confirmed. |
+| `REVERB_PRICE_GUIDE` | Reverb's price guide, read by `lib/reverb/price-guide.ts` for the outreach tool's comps. **OFF by default and its own switch**, deliberately not riding along on the shop token: it is the one place the Reverb API is asked about gear that is not ours. What keeps it inside section 2 is structural rather than a promise, and `tests/reverb-price-guide.test.ts` holds each part: the module imports no database at all, only `lib/outreach/comps.ts` may import it, and nothing it returns reaches `marketplace_listings`, a median, a deal badge or any public page. It informs one admin deciding what to offer somebody. Withdrawable in one variable, without a deploy. |
+| `EBAY_SELL_*` | Listing on eBay from `/admin/listings`, via the **Sell Inventory API**. A DIFFERENT API and a different OAuth grant from `EBAY_*` above, which is the read-only Buy Feed the aggregator ingests: different base path, different scopes (`sell.inventory`, `sell.account`), separate approval. `EBAY_SELL_API_ORIGIN` defaults to **sandbox** for the same reason the feed does. The access token is a USER token and lapses in about two hours, so the refresh token plus the client id and secret are what keep it working unattended. |
 | `REVERB_SHOP_TOKEN` / `REVERB_SHOP_SLUG` | Dean's Boutique, OUR OWN Reverb shop, read by `lib/reverb/shop.ts` and served as public JSON by `/api/reverb/shop`. This is not the exception to section 2 that it looks like: see the note under that section. The token is a Personal Access Token from the shop's own API settings and belongs in the deployment, never in this repository. The slug is not a secret and defaults to `deans-boutique-505`. Unset is fully supported and the section simply does not render. |
 | `GROQ_API_KEY` / `GROQ_MODEL` | The Ask assistant (section 14). Unset means /api/ask 503s and the button never renders. The model default is overridable because Groq retires models often. |
 | `TYPESENSE_*` | Search backend. Unset falls back to Postgres. |
@@ -1511,6 +1578,31 @@ engine.
   (`components/listing-image.tsx`, `components/board/pedal-photo.tsx`) with the
   already-failed ref check, and the optimizer is a bonus.
 - Do NOT let an `inferred*` field win over an explicit one.
+- Do NOT classify a listing's category from its title when the feed states one.
+  The title is the fallback, and on a peer marketplace it is wrong far more
+  often than it is right (section 4).
+- Do NOT make `categoryFromFeed()` return "Other". Null is what hands an
+  unrecognised taxonomy back to the title parse; "Other" would overwrite it
+  with a worse answer and look decisive doing it.
+- Do NOT add an ambiguous word to a category pattern to win one case.
+  "compressor", "reverb" and "delay" name a pedal and a rack unit equally well;
+  they belong in no pattern, so the parent segment decides.
+- Do NOT put a brand in a category pattern. Line 6 and Universal Audio each
+  sell pedals, amps and interfaces under one name, so a brand rule files an
+  interface as a pedal with total confidence.
+- Do NOT let a title guess overwrite a category a merchant stated. The "Other"
+  upgrade in `enrichGear` is one-directional on purpose.
+- Do NOT let the comps lookup suggest a price from the NEW median, or from a
+  sample under `MIN_SAMPLE_SIZE`. Both inflate an offer made to a real person,
+  and a refusal that names what was missing is the honest answer (section 26).
+- Do NOT let a pulled comp overwrite a market value somebody typed, and do NOT
+  tick the verified box on their behalf. The box means a person checked.
+- Do NOT import `lib/reverb/price-guide.ts` from anywhere but
+  `lib/outreach/comps.ts`, and do NOT store a value it returns. It is the
+  narrow carve-out in section 2, and it stays narrow because a test says so.
+- Do NOT build the evidence row out of an HTML string. The matched name comes
+  from `canonical_gear`, which came from a merchant's feed, and assembling
+  markup from it is how a feed row executes on the admin page.
 - Do NOT unscope MPN or fuzzy matching from the brand.
 - Do NOT publish a market price below `MIN_SAMPLE_SIZE`.
 - Do NOT let the cron guard fail open.
@@ -1763,6 +1855,28 @@ engine.
   a mistyped intake id files one pedal's photo under another and nothing fails.
 - Do NOT publish a manufacturer's serial number alongside a lab photo. Our own
   intake reference identifies the unit for us and means nothing to anybody else.
+- Do NOT import `marketplaceListings` or `canonicalGear` from anywhere under
+  `lib/listing/`. Our own stock inside the median means setting a price and also
+  computing the market price that judges it (section 24).
+- Do NOT publish to a channel without checking `readinessFor` first, and do NOT
+  let a second push reach a marketplace. The unique index on (draft, channel) is
+  what stops two listings of one physical pedal, and eBay's offer POST needs its
+  own lookup because only the SKU-keyed PUT before it is idempotent.
+- Do NOT import a live Reverb listing without writing its publication row. The
+  unit is already for sale there, and a plain draft offers to list it again.
+- Do NOT make the Reverb import refresh fields on an existing draft. It is
+  create-only because the master record wins, and a refresh would quietly undo
+  a description rewritten for another channel.
+- Do NOT add a field to `PublicListing` to make it available to the importer.
+  The reader's private half is what the importer reads, and that split is what
+  keeps our cost and our notes off `/api/reverb/shop`.
+- Do NOT record a failed takedown as ended. It is still live and still buyable,
+  and marking it ended is how one unit gets sold twice with nothing failing.
+- Do NOT send `cost_cents` or `offer_floor_cents` to any marketplace. They are
+  what we paid and the least we will take, and both are ours alone.
+- Do NOT use `EBAY_OAUTH_TOKEN` for selling or `EBAY_SELL_ACCESS_TOKEN` for the
+  feed. Different APIs, different scopes, and the failure reads like a bad
+  credential rather than a wrong one.
 - Do NOT put our own inventory in the comparison grid, or badge it, without the
   four guarantees in section 24. Preferring the listing we earn most from is
   ranking by payout, and our own price inside the median is marking our own
@@ -2194,6 +2308,61 @@ and the footer promises commission never affects ranking. Our own listing pays
 payout at its most extreme, and a badge inside a result set is exactly what
 section 19 refused for the DistroKid banner.
 
+**WHAT IS BUILT AS OF SEPTEMBER 2026 IS THE LISTING SIDE, AND ONLY THAT.**
+`/admin/listings`, `lib/listing/`, `listing_drafts` and `listing_publications`.
+It writes a unit once and pushes it to Reverb and eBay, which is selling on
+other people's marketplaces rather than putting our stock in our own grid, so
+none of the four guarantees below are engaged by it. What keeps that true is
+structural and tested: nothing in `lib/listing/` imports `marketplaceListings`
+or `canonicalGear`, and nothing it does reaches a median or a deal badge.
+
+**A ROW IS A PHYSICAL UNIT, NOT A LISTING, and `sku` is ours.** One pedal on the
+bench is one row, published to two marketplaces as two listings of the same
+object. Modelling it per listing makes the copies drift the moment somebody
+fixes a typo and leaves nothing to hang "it sold, take it down" off. The SKU is
+the join key because both marketplaces accept a seller SKU and hand it back.
+
+**TWO FAILURES COST REAL MONEY HERE AND NOTHING ELSE DOES.** Pushing twice puts
+two listings of one pedal on one marketplace; selling on one channel and leaving
+the other live oversells it. So the unique index on `(draft, channel)` is a
+guard rather than bookkeeping, eBay's offer step is preceded by a lookup because
+it is a POST and not idempotent the way the SKU-keyed PUT before it is, and a
+FAILED takedown stays marked published, because it still is. Recording it as
+ended is exactly how a unit sells twice while the tool reports success.
+
+**THE STOCK ALREADY ON REVERB CAME IN THROUGH AN IMPORT, AND THE PUBLICATION
+ROW IS THE POINT OF IT.** `lib/listing/import-reverb.ts` reads the live shop
+and writes one draft per unit, carrying the description, every photo and the
+cost, which was already ours in Reverb's `seller_cost`. Each one also gets a
+`listing_publications` row marked published with Reverb's own id and URL,
+because an imported unit IS already for sale there: written as a plain draft it
+would show a working "Push to Reverb" button and pressing it would list the
+same pedal twice. It is CREATE-ONLY, so a second run adds what is new and
+leaves edits alone. Reverb is downstream of the master record now, not upstream
+of it, and refreshing fields on every run would silently undo a description
+rewritten here for eBay.
+
+**THE SHOP READER GREW PRIVATE FIELDS RATHER THAN A SECOND READER.**
+`ShopListing` now carries description, make, model, every photo, year, finish
+and shipping, none of which a shop page needs and all of which the importer
+does. That is safe because `PublicListing` names its published fields one by
+one, which is exactly the property `costCents` established: adding a field here
+cannot leak it through `/api/reverb/shop` unless somebody adds it there too.
+
+**THE READINESS CHECK IS NOT A CONVENIENCE.** A marketplace rejects an
+incomplete listing in its own vocabulary naming its own fields, and eBay in
+particular answers with an aspect nobody has heard of. `lib/listing/readiness.ts`
+says what is missing in our words before anything is sent. It is also what keeps
+the master record honest: the moment a channel wants something the form does not
+ask for, that is where it shows up.
+
+**THE REVERB WRITE IS THE SAME CARVE-OUT AS THE READ.** Section 2 bans that API
+for building the catalogue and the reason it gives is that it is scoped to
+managing your own shop. `lib/reverb/shop.ts` reads ours; `lib/listing/channels/
+reverb.ts` writes ours. Ending a listing sends `not_sold` when it went elsewhere,
+because telling Reverb it sold there inflates their sold data and ours, and our
+own order history is the top-ranked source in the comps lookup.
+
 There is also a arithmetic problem that would not announce itself. If our units
 land in `marketplace_listings` they enter the MEDIAN that judges deals, so we
 would be setting a price and also computing the market price that badges it
@@ -2579,6 +2748,44 @@ allowed, nothing that sounds like a brochure. The gear notes were already in
 that register. What does not loosen: the three percentages, "after fees",
 half up front, the prepaid label and USPS flat rate box, and the month names
 from the clock. Casual is the voice, not the terms.
+
+**AND THE MARKET COLUMN CAN NOW BE PULLED RATHER THAN REMEMBERED.**
+`lib/outreach/comps.ts`, behind a "Pull comps" button and the admin-gated
+`/api/admin/outreach/comps`, prices a lot from evidence: our own Reverb sold
+prices first, then the catalogue's used median, with the sample size, the live
+count and the low-to-high spread printed under each row so a number can be
+judged rather than trusted. Four rules keep it compatible with the paragraph
+below rather than an exception to it.
+
+- **`MIN_SAMPLE_SIZE` decides here too.** Under the floor it suggests nothing
+  and names what was missing. The public site refuses to publish a market price
+  on a thin sample; refusing to quote a seller one is the same rule where it
+  costs somebody money instead of a page view.
+- **Reverb's own price guide is the middle tier, and it is off by default.**
+  `REVERB_PRICE_GUIDE` turns it on. It is the only source here measuring SOLD
+  prices rather than asking prices, which is why it outranks the catalogue, and
+  it sits below our own sales because those are our channel and our achieved
+  price. Reading it is not the thing section 2 forbids: that rule bans building
+  the CATALOGUE out of the Reverb API, and the boundary keeping this apart from
+  ingestion is enforced rather than promised. See `lib/reverb/price-guide.ts`.
+- **It never suggests from the NEW median.** New retail sits well above used,
+  so an offer computed off it is inflated on every row, in the direction that
+  costs us. The new median is reported as context and is never the answer.
+- **It never overwrites a number a person typed.** Only empty and still-seeded
+  cells are filled. Somebody who has looked at the comps knows something the
+  query does not, and silently replacing their figure on a refresh is how a
+  checked number becomes an unchecked one.
+- **It does not tick the verified box.** A median with a sample behind it is
+  better evidence than the seed it replaced and is still not somebody having
+  looked, which is what that box claims.
+
+**OUR OWN SALES OUTRANK THE CATALOGUE, because of what each one measures.** The
+catalogue holds ASKING prices, which is what sellers hope for. Our Reverb order
+history holds what somebody actually paid us for that exact pedal. For deciding
+what to pay for one, a real sale beats a hopeful ask. Reading our own shop's
+orders is the section 2 carve-out rather than an exception to it, and the route
+is `private, no-store` behind the passcode because the response carries our
+cost and our margin.
 
 **NEITHER PAGE MAY QUOTE A NUMBER IT DOES NOT HAVE.** This is section 8 aimed
 at a seller instead of a shopper, and it is the rule the whole thing rests on.

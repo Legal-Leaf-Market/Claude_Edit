@@ -147,6 +147,9 @@ export function normalizeShopifyProduct(
       currency: (config.currency ?? "USD").slice(0, 10),
       // These are small new-inventory retailers, not peer marketplaces.
       condition: "New",
+      // Shopify's product_type is the merchant's own single-word taxonomy
+      // ("Effects Pedal", "Guitar"). Interpreted by feed-category.ts.
+      feedCategory: product.product_type?.trim().slice(0, 200) || null,
       brand: product.vendor?.slice(0, 100) || null,
       gtin: null,
       epid: null,

@@ -88,6 +88,11 @@ export async function upsertListings(rows: NewMarketplaceListing[]): Promise<Ups
           affiliateUrl: sql`COALESCE(excluded.affiliate_url, ${marketplaceListings.affiliateUrl})`,
           primaryImageUrl: sql`COALESCE(excluded.primary_image_url, ${marketplaceListings.primaryImageUrl})`,
           platformVariantId: sql`excluded.platform_variant_id`,
+          // Same COALESCE reasoning as affiliate_url above: a re-pull from a
+          // feed that dropped its category column would otherwise erase the
+          // category off every row it touched, and the gear would quietly fall
+          // back to whatever its title parses as.
+          feedCategory: sql`COALESCE(excluded.feed_category, ${marketplaceListings.feedCategory})`,
           listingStatus: sql`excluded.listing_status`,
           listedAt: sql`COALESCE(excluded.listed_at, ${marketplaceListings.listedAt})`,
           endsAt: sql`COALESCE(excluded.ends_at, ${marketplaceListings.endsAt})`,
@@ -201,6 +206,7 @@ export async function resolveAndReprice(stats: UpsertStats): Promise<{
       epid: marketplaceListings.epid,
       mpn: marketplaceListings.mpn,
       primaryImageUrl: marketplaceListings.primaryImageUrl,
+      feedCategory: marketplaceListings.feedCategory,
     })
     .from(marketplaceListings)
     .where(sql`${marketplaceListings.canonicalGearId} IS NULL`)

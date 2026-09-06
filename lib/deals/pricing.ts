@@ -77,11 +77,22 @@ export type ConditionClass = "new" | "used"
  * all set the field explicitly, so a blank one is overwhelmingly a private
  * seller on a peer marketplace who did not fill it in.
  *
+ * B-STOCK IS IN THAT SAME GROUP, and it was not until Reverb was wired up.
+ * It is factory stock with a cosmetic blemish, sold by a dealer at a modest
+ * discount, which is the open-box case wearing a different word. Two things
+ * made leaving it on the used side untenable. The asymmetry argument above
+ * applies to it unchanged: filed as used it lifts the used median, and a
+ * lifted used median is what badges ordinary second-hand prices as bargains.
+ * And the feeds had already started disagreeing with each other, silently.
+ * reverb-awin.ts normalises "B-Stock" to "Refurbished" before storing it, so a
+ * Reverb row was classed NEW while the identical words arriving from any other
+ * feed were classed used. One vocabulary, two answers, no error.
+ *
  * Kept in step with the SQL predicate below; the two must agree or the medians
  * and the deal flags would be computed over different populations, and there is
  * a test walking real condition strings through both.
  */
-const NEW_CONDITION_JS = /(^\s*(brand\s+)?new\b)|(open[-\s]?box)|(refurb)/i
+const NEW_CONDITION_JS = /(^\s*(brand\s+)?new\b)|(open[-\s]?box)|(refurb)|(\bb[-\s]?stock\b)/i
 
 export function conditionClass(condition: string | null | undefined): ConditionClass {
   if (!condition) return "used"
@@ -101,7 +112,7 @@ export function conditionClass(condition: string | null | undefined): ConditionC
  * JS version, so "New" and "New other" classify alike but "Newark" does not.
  */
 export const IS_NEW_CONDITION_REGEX =
-  "(^[[:space:]]*(brand[[:space:]]+)?new\\M)|(open[-[:space:]]?box)|(refurb)"
+  "(^[[:space:]]*(brand[[:space:]]+)?new\\M)|(open[-[:space:]]?box)|(refurb)|(\\mb[-[:space:]]?stock\\M)"
 
 const IS_NEW_SQL = sql`(${marketplaceListings.condition} IS NOT NULL AND ${marketplaceListings.condition} ~* ${IS_NEW_CONDITION_REGEX})`
 
